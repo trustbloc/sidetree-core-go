@@ -3,4 +3,4 @@ language: go
 go:
   - 1.12.x
 
-script: date
+script: make all
