@@ -7,11 +7,6 @@
 
 set -e
 
-GOLANGCI_LINT_CMD=golangci-lint
+DOCKER_CMD=docker
 
-PWD=`pwd`
-echo "Running golangci-lint :: pwd" $PWD
-
-$GOLANGCI_LINT_CMD run -c "$GOPATH/src/github.com/trustbloc/sidetree-core-go/.golangci.yml"
-
-echo "golangci-lint finished successfully :: pwd" $PWD
+${DOCKER_CMD} run --rm -e GOPROXY=${GOPROXY} -v $(pwd):/goapp -e RUN=1 -e REPO=github.com/trustbloc/sidetree-core-go golangci/build-runner goenvbuild
