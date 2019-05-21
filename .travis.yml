@@ -4,3 +4,6 @@ go:
   - 1.12.x
 
 script: make all
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
