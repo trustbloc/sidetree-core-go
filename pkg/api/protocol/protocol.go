@@ -4,7 +4,7 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package api
+package protocol
 
 // Protocol defines protocol parameters
 type Protocol struct {
@@ -18,8 +18,8 @@ type Protocol struct {
 	MaxOperationByteSize uint
 }
 
-// ProtocolClient defines interface for accessing protocol version/information
-type ProtocolClient interface {
+// Client defines interface for accessing protocol version/information
+type Client interface {
 
 	// Current returns latest version of protocol
 	Current() Protocol

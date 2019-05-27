@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"hash"
 
-	multihash "github.com/multiformats/go-multihash"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+
+	"github.com/multiformats/go-multihash"
 )
 
 const sha2_256 = 18
@@ -49,4 +51,14 @@ func GetHash(multihashCode uint) (h hash.Hash, err error) {
 
 	return h, err
 
+}
+
+//GetOperationHash gets the operation hash as encoded string
+func GetOperationHash(o batch.Operation) (string, error) {
+
+	multihash, err := ComputeMultihash(o.HashAlgorithmInMultiHashCode, []byte(o.EncodedPayload))
+	if err != nil {
+		return "", err
+	}
+	return EncodeToString(multihash), nil
 }

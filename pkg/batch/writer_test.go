@@ -14,7 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 
 	"github.com/stretchr/testify/require"
@@ -175,7 +175,7 @@ func TestBlockchainError(t *testing.T) {
 func TestProcessBatchError(t *testing.T) {
 
 	ctx := newMockContext()
-	ctx.ProtocolClient.Protocol = api.Protocol{
+	ctx.ProtocolClient.Protocol = protocol.Protocol{
 		HashAlgorithmInMultiHashCode: 101, // non-existent hash code
 		MaxOperationsPerBatch:        2,
 	}
@@ -244,8 +244,8 @@ func newMockContext() *mockContext {
 	return ctx
 }
 
-// Protocol returns the ProtocolClient
-func (m *mockContext) Protocol() api.ProtocolClient {
+// Protocol returns the Client
+func (m *mockContext) Protocol() protocol.Client {
 	return m.ProtocolClient
 }
 

@@ -7,19 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package mocks
 
 import (
-	"github.com/trustbloc/sidetree-core-go/pkg/api"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
-	Protocol api.Protocol
+	Protocol protocol.Protocol
 }
 
 // NewMockProtocolClient creates mocks protocol client
 func NewMockProtocolClient() *MockProtocolClient {
 
 	return &MockProtocolClient{
-		Protocol: api.Protocol{
+		Protocol: protocol.Protocol{
 			StartingBlockChainTime:       0,
 			HashAlgorithmInMultiHashCode: 18,
 			MaxOperationsPerBatch:        2,
@@ -30,6 +30,6 @@ func NewMockProtocolClient() *MockProtocolClient {
 }
 
 // Current mocks getting last protocol version
-func (m *MockProtocolClient) Current() api.Protocol {
+func (m *MockProtocolClient) Current() protocol.Protocol {
 	return m.Protocol
 }

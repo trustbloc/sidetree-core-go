@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/NebulousLabs/errors"
+	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 
 	log "github.com/sirupsen/logrus"
 
@@ -41,7 +41,7 @@ type Writer struct {
 // 2) content addressable storage client
 // 3) blockchain client
 type Context interface {
-	Protocol() api.ProtocolClient
+	Protocol() protocol.Client
 	CAS() CASClient
 	Blockchain() BlockchainClient
 }
