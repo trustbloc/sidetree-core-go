@@ -62,3 +62,19 @@ func GetOperationHash(o batch.Operation) (string, error) {
 	}
 	return EncodeToString(multihash), nil
 }
+
+//IsSupportedMultihash checks to see if the given encoded hash has been hashed using valid multihash code
+func IsSupportedMultihash(encodedMultihash string) bool {
+
+	multihashBytes, err := DecodeString(encodedMultihash)
+	if err != nil {
+		return false
+	}
+
+	mh, err := multihash.Decode(multihashBytes)
+	if err != nil {
+		return false
+	}
+
+	return multihash.ValidCode(mh.Code)
+}

@@ -13,11 +13,6 @@ const jsonldID = "id"
 // Document defines generic document data structure
 type Document map[string]interface{}
 
-// ID is document identifier
-func (doc *Document) ID() string {
-	return stringEntry((*doc)[jsonldID])
-}
-
 // FromBytes creates an instance of Document by reading a JSON document from bytes
 func FromBytes(data []byte) (Document, error) {
 
@@ -28,6 +23,16 @@ func FromBytes(data []byte) (Document, error) {
 	}
 
 	return doc, nil
+}
+
+// ID is document identifier
+func (doc *Document) ID() string {
+	return stringEntry((*doc)[jsonldID])
+}
+
+// GetStringValue returns string value for specified key or "" if not found or wrong type
+func (doc *Document) GetStringValue(key string) string {
+	return stringEntry((*doc)[key])
 }
 
 // Bytes returns byte representation of did document
