@@ -56,6 +56,21 @@ func TestMarshalError(t *testing.T) {
 
 }
 
+func TestGetStringValue(t *testing.T) {
+
+	const key = "key"
+	const value = "value"
+
+	doc := Document{}
+	doc[key] = value
+
+	require.Equal(t, value, doc.GetStringValue(key))
+
+	doc[key] = []string{"hello"}
+	require.Equal(t, "", doc.GetStringValue(key))
+
+}
+
 func TestStringEntry(t *testing.T) {
 	// not a string
 	str := stringEntry([]string{"hello"})

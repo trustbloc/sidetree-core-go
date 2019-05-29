@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package utils
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
@@ -63,4 +64,24 @@ func TestGetOperationHash(t *testing.T) {
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "algorithm not supported")
 	require.Empty(t, hash)
+}
+
+func TestIsSupportedMultihash(t *testing.T) {
+
+	// scenario: not base64 encoded (corrupted input)
+	supported := IsSupportedMultihash("XXXXXaGVsbG8=")
+	require.False(t, supported)
+
+	// scenario: base64 encoded, however not multihash
+	supported = IsSupportedMultihash(base64.URLEncoding.EncodeToString([]byte("test")))
+	require.False(t, supported)
+
+	// scenario: valid encoded multihash
+	hash, err := ComputeMultihash(sha2_256, []byte("test"))
+	require.Nil(t, err)
+	require.NotNil(t, hash)
+
+	key := base64.URLEncoding.EncodeToString(hash)
+	supported = IsSupportedMultihash(key)
+	require.True(t, supported)
 }

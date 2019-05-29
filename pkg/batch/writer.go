@@ -4,6 +4,19 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package batch batches multiple operations in a single file (batch file) and stores the batch files in a distributed
+// content-addressable storage (DCAS or CAS). A reference to the operation batch is then anchored on the blockchain
+// as Sidetree transaction.
+//
+// Batch Writer basic flow:
+//
+// 1) accept operations being delivered via Add method
+// 2) 'cut' configurable number of operations into batch file
+// 3) store batch file into CAS (content addressable storage)
+// 4) create Merkle tree from batch operations
+// 5) create an anchor file based on batch file address and Merkle tree root
+// 6) store anchor file into CAS
+// 7) write the address of anchor file to the underlying blockchain
 package batch
 
 import (
