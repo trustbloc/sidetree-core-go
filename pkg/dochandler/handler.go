@@ -30,7 +30,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/utils"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 // DocumentHandler implements document handler
@@ -106,7 +106,7 @@ func (r *DocumentHandler) ResolveDocument(idOrDocument string) (document.Documen
 		return nil, err
 	}
 
-	parameterIsID := utils.IsSupportedMultihash(uniquePortion)
+	parameterIsID := docutil.IsSupportedMultihash(uniquePortion)
 	if parameterIsID {
 		return r.resolveRequestWithID(uniquePortion)
 	}
@@ -126,7 +126,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 
 func (r *DocumentHandler) resolveRequestWithDocument(encodedDocument string) (document.Document, error) {
 
-	docBytes, err := utils.DecodeString(encodedDocument)
+	docBytes, err := docutil.DecodeString(encodedDocument)
 	if err != nil {
 		return nil, err
 	}
@@ -167,12 +167,12 @@ func (r *DocumentHandler) addToBatch(operation batch.Operation) error {
 
 func (r *DocumentHandler) getDoc(encodedPayload string) (document.Document, error) {
 
-	id, err := utils.CalculateID(r.namespace, encodedPayload, r.protocol.Current().HashAlgorithmInMultiHashCode)
+	id, err := docutil.CalculateID(r.namespace, encodedPayload, r.protocol.Current().HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
 
-	decodedBytes, err := utils.DecodeString(encodedPayload)
+	decodedBytes, err := docutil.DecodeString(encodedPayload)
 	if err != nil {
 		return nil, err
 	}

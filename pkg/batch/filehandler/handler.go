@@ -9,7 +9,7 @@ package filehandler
 import (
 	"encoding/json"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/utils"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"gitlab.com/NebulousLabs/merkletree"
 )
 
@@ -46,7 +46,7 @@ func (h *Handler) CreateBatchFile(operations [][]byte) ([]byte, error) {
 	// as specified by the Sidetree protocol.
 	var ops []string
 	for _, op := range operations {
-		opStr := utils.EncodeToString(op)
+		opStr := docutil.EncodeToString(op)
 		ops = append(ops, opStr)
 	}
 
@@ -67,7 +67,7 @@ func (h *Handler) CreateAnchorFile(operations [][]byte, batchAddress string, mul
 
 	af := AnchorFile{
 		BatchFileHash: batchAddress,
-		MerkleRoot:    utils.EncodeToString(mtrHash),
+		MerkleRoot:    docutil.EncodeToString(mtrHash),
 	}
 
 	return json.Marshal(af)
@@ -75,7 +75,7 @@ func (h *Handler) CreateAnchorFile(operations [][]byte, batchAddress string, mul
 
 func getMerkleTreeRoot(operations [][]byte, multihashCode uint) ([]byte, error) {
 
-	hash, err := utils.GetHash(multihashCode)
+	hash, err := docutil.GetHash(multihashCode)
 	if err != nil {
 		return nil, err
 	}
