@@ -11,7 +11,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/utils"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
@@ -74,7 +74,7 @@ func (s *OperationProcessor) processOperation(index int, operations []batch.Oper
 
 func (s *OperationProcessor) getInitialDocument(operation batch.Operation) (document.Document, error) {
 
-	decodedBytes, err := utils.DecodeString(operation.EncodedPayload)
+	decodedBytes, err := docutil.DecodeString(operation.EncodedPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (s *OperationProcessor) applyPatch(operation batch.Operation, previousOpera
 		return nil, errors.New("any non-create needs a previous operation hash")
 	}
 
-	calculatedOperationHash, err := utils.GetOperationHash(previousOperation)
+	calculatedOperationHash, err := docutil.GetOperationHash(previousOperation)
 	if err != nil {
 		return nil, err
 	}

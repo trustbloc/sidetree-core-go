@@ -8,18 +8,17 @@ package dochandler
 
 import (
 	"encoding/json"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"testing"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/utils"
-
 	"github.com/stretchr/testify/require"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
 
@@ -150,7 +149,7 @@ func TestGetDocErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "illegal base64 data")
 
 	// scenario: illegal payload (invalid json)
-	doc, err = dochandler.getDoc(utils.EncodeToString([]byte("[test : 123]")))
+	doc, err = dochandler.getDoc(docutil.EncodeToString([]byte("[test : 123]")))
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "invalid character")
@@ -294,7 +293,7 @@ func getUpdateOperation() batchapi.Operation {
 }
 
 func getDecodedPayload(encodedPayload string) (*payloadSchema, error) {
-	decodedPayload, err := utils.DecodeString(encodedPayload)
+	decodedPayload, err := docutil.DecodeString(encodedPayload)
 	if err != nil {
 		return nil, err
 	}

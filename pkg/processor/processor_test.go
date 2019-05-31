@@ -9,12 +9,11 @@ package processor
 import (
 	"encoding/json"
 	"errors"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"strconv"
 	"testing"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/utils"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 
@@ -147,7 +146,7 @@ func TestConsecutiveUpdates(t *testing.T) {
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
-	previousOperationHash, err := utils.GetOperationHash(updateOp)
+	previousOperationHash, err := docutil.GetOperationHash(updateOp)
 	require.Nil(t, err)
 
 	updateOp = getUpdateOperation(uniqueSuffix, previousOperationHash, 2)
@@ -272,7 +271,7 @@ func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID stri
 		panic(err)
 	}
 
-	encodedPayload := utils.EncodeToString(updatePayloadJson)
+	encodedPayload := docutil.EncodeToString(updatePayloadJson)
 
 	operation := batch.Operation{
 		UniqueSuffix:                 didUniqueSuffix,
