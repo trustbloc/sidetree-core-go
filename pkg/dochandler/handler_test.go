@@ -7,8 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
+	"encoding/json"
 	"testing"
 
+	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -28,6 +31,7 @@ const (
 	uniqueSuffix = "EiDOQXC2GnoVyHwIRbjhLx_cNc6vmZaS04SZjZdlLLAPRg=="
 	// encoded payload contains encoded document that corresponds to unique suffix above
 	encodedPayload = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
+	updatePayload  = "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg=="
 	sha2_256       = 18
 )
 
@@ -195,6 +199,25 @@ func TestGetUniquePortion(t *testing.T) {
 
 }
 
+func TestProcessOperation_Update(t *testing.T) {
+
+	store := mocks.NewMockOperationStore(nil)
+	dochandler := getDocumentHandler(store)
+	require.NotNil(t, dochandler)
+
+	// insert document in the store
+	err := store.Put(getCreateOperation())
+	require.Nil(t, err)
+
+	// modify default validator to did validator since update payload is did document update
+	validator := didvalidator.New(store)
+	dochandler.validator = validator
+
+	doc, err := dochandler.ProcessOperation(getUpdateOperation())
+	require.Nil(t, err)
+	require.Nil(t, doc)
+}
+
 // BatchContext implements batch writer context
 type BatchContext struct {
 	ProtocolClient   *mocks.MockProtocolClient
@@ -249,4 +272,48 @@ func getCreateOperation() batchapi.Operation {
 		ID:                           namespace + uniqueSuffix,
 		OperationNumber:              0,
 	}
+}
+
+func getUpdateOperation() batchapi.Operation {
+
+	decodedPayload, err := getDecodedPayload(updatePayload)
+	if err != nil {
+		panic(err)
+	}
+
+	return batchapi.Operation{
+		EncodedPayload:               updatePayload,
+		Type:                         batchapi.OperationTypeUpdate,
+		HashAlgorithmInMultiHashCode: sha2_256,
+		UniqueSuffix:                 decodedPayload.DidUniqueSuffix,
+		ID:                           namespace + decodedPayload.PreviousOperationHash,
+		PreviousOperationHash:        decodedPayload.PreviousOperationHash,
+		OperationNumber:              decodedPayload.OperationNumber,
+		Patch:                        decodedPayload.Patch,
+	}
+}
+
+func getDecodedPayload(encodedPayload string) (*payloadSchema, error) {
+	decodedPayload, err := utils.DecodeString(encodedPayload)
+	if err != nil {
+		return nil, err
+	}
+	uploadPayloadSchema := &payloadSchema{}
+	err = json.Unmarshal(decodedPayload, uploadPayloadSchema)
+	if err != nil {
+		return nil, err
+	}
+	return uploadPayloadSchema, nil
+}
+
+//payloadSchema is the struct for update payload
+type payloadSchema struct {
+	//The unique suffix of the DID
+	DidUniqueSuffix string
+	//The number incremented from the last change version number. 1 if first change.
+	OperationNumber uint
+	//The hash of the previous operation made to the DID Document.
+	PreviousOperationHash string
+	//An RFC 6902 JSON patch to the current DID Document
+	Patch jsonpatch.Patch
 }

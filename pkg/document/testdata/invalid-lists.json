@@ -1,0 +1,14 @@
+{
+  "publicKey":
+    {
+      "id": "#key2",
+      "type": "RsaVerificationKey2018",
+      "publicKeyPem": "-----BEGIN PUBLIC KEY.2.END PUBLIC KEY-----"
+    },
+  "service":
+    {
+      "id": "IdentityHub",
+      "type": "IdentityHub",
+      "serviceEndpoint": ""
+    }
+}
