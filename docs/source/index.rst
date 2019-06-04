@@ -14,4 +14,5 @@ Introduction of the project TODO
 
    Contribution <https://github.com/trustbloc/community/blob/master/CONTRIBUTING.md>
    questions
+   overview
 
