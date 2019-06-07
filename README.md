@@ -7,7 +7,7 @@
 [![codebeat badge](https://codebeat.co/badges/d549a1a4-372c-416b-ae56-7b6e395b3a56)](https://codebeat.co/projects/github-com-trustbloc-sidetree-core-go-master)
 
 # sidetree-core-go
-
+See [Documentation](https://trustbloc-sidetree-core-go.readthedocs.io/en/latest/)
 
 ## Contributing
 Thank you for your interest in contributing. Please see our [community contribution guidelines](https://github.com/trustbloc/community/blob/master/CONTRIBUTING.md) for more information.
