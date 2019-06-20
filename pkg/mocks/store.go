@@ -18,17 +18,28 @@ type MockOperationStore struct {
 	sync.RWMutex
 	operations map[string][]batch.Operation
 	Err        error
+	Validate   bool
 }
 
 // NewMockOperationStore creates mock operations store
 func NewMockOperationStore(err error) *MockOperationStore {
-	return &MockOperationStore{operations: make(map[string][]batch.Operation), Err: err}
+	return &MockOperationStore{operations: make(map[string][]batch.Operation), Err: err, Validate: true}
 }
 
 //Put mocks storing operation
 func (m *MockOperationStore) Put(op batch.Operation) error {
 	if m.Err != nil {
 		return m.Err
+	}
+
+	var opsSize int
+	m.RLock()
+	opsSize = len(m.operations[op.UniqueSuffix])
+	m.RUnlock()
+
+	if m.Validate && op.Type == batch.OperationTypeCreate && opsSize > 0 {
+		// Nothing to do; already created
+		return nil
 	}
 
 	m.Lock()
