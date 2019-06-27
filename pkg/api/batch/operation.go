@@ -13,25 +13,25 @@ import (
 // Operation defines an operation
 type Operation struct {
 	//Operation type
-	Type OperationType
+	Type OperationType `json:"type"`
 	//ID is full ID for this document - includes namespace + unique suffix
-	ID string
+	ID string `json:"id"`
 	//SigningKeyID is the id of the key that was used to sign this operation
-	SigningKeyID string
+	SigningKeyID string `json:"signingKeyID"`
 	//EncodedPayload  is the encoded operation payload
-	EncodedPayload string
+	EncodedPayload string `json:"encodedPayload"`
 	//Signature is the signature of this operation
-	Signature string
+	Signature string `json:"signature"`
 	//PreviousOperationHash is the hash of the previous operation - undefined for create operation
-	PreviousOperationHash string
+	PreviousOperationHash string `json:"previousOperationHash"`
 	//The unique suffix - encoded hash of the original create document
-	UniqueSuffix string
+	UniqueSuffix string `json:"uniqueSuffix"`
 	//The number incremented from the last change version number. 1 if first change.
-	OperationNumber uint
+	OperationNumber uint `json:"operationNumber"`
 	//An RFC 6902 JSON patch to the current Document
-	Patch jsonpatch.Patch
+	Patch jsonpatch.Patch `json:"patch"`
 	//HashAlgorithmInMultiHashCode
-	HashAlgorithmInMultiHashCode uint
+	HashAlgorithmInMultiHashCode uint `json:"hashAlgorithmInMultiHashCode"`
 }
 
 // OperationType defines valid values for operation type
