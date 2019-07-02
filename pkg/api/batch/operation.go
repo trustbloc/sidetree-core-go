@@ -32,6 +32,12 @@ type Operation struct {
 	Patch jsonpatch.Patch `json:"patch"`
 	//HashAlgorithmInMultiHashCode
 	HashAlgorithmInMultiHashCode uint `json:"hashAlgorithmInMultiHashCode"`
+	//The logical blockchain time that this operation was anchored on the blockchain
+	TransactionTime uint64 `json:"transactionTime"`
+	//The transaction number of the transaction this operation was batched within
+	TransactionNumber uint64 `json:"transactionNumber"`
+	//The index this operation was assigned to in the batch
+	OperationIndex uint `json:"operationIndex"`
 }
 
 // OperationType defines valid values for operation type
