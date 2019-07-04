@@ -20,9 +20,9 @@ var logger = logrus.New()
 
 // SidetreeTxn defines info about sidetree transaction
 type SidetreeTxn struct {
-	BlockNumber   uint64
-	TxNum         uint64
-	AnchorAddress string
+	TransactionTime   uint64
+	TransactionNumber uint64
+	AnchorAddress     string
 }
 
 // Ledger interface to access ledger txn
@@ -125,15 +125,11 @@ func updateOperation(encodedOp string, index uint, sidetreeTxn SidetreeTxn) (*ba
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal decoded ops")
 	}
-	// The following three constants define order of operations (when operation happened in blockchain time):
-	// 1) block number
-	// 2) transaction number within block (defines anchor/batch file transaction)
-	// 3) operation index within batch
 
 	//  The logical blockchain time that this operation was anchored on the blockchain
-	op.TransactionTime = sidetreeTxn.BlockNumber
+	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
-	op.TransactionNumber = sidetreeTxn.TxNum
+	op.TransactionNumber = sidetreeTxn.TransactionNumber
 	// The index this operation was assigned to in the batch
 	op.OperationIndex = index
 
