@@ -33,7 +33,7 @@ func TestStartObserver(t *testing.T) {
 			return nil, fmt.Errorf("read error")
 		}
 		Start(mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh}, mockDACS{readFunc: readFunc}, nil)
-		sidetreeTxnCh <- []SidetreeTxn{{BlockNumber: 20, TxNum: 2, AnchorAddress: "address"}}
+		sidetreeTxnCh <- []SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)
@@ -65,7 +65,7 @@ func TestStartObserver(t *testing.T) {
 			rw.Unlock()
 			return nil
 		}})
-		sidetreeTxnCh <- []SidetreeTxn{{BlockNumber: 20, TxNum: 2, AnchorAddress: "address"}}
+		sidetreeTxnCh <- []SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)
@@ -161,7 +161,7 @@ func TestUpdateOperation(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
 		b, err := json.Marshal(batch.Operation{})
 		require.NoError(t, err)
-		updatedOps, err := updateOperation(docutil.EncodeToString(b), 1, SidetreeTxn{BlockNumber: 20, TxNum: 2})
+		updatedOps, err := updateOperation(docutil.EncodeToString(b), 1, SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.NoError(t, err)
 		require.Equal(t, uint64(20), updatedOps.TransactionTime)
 		require.Equal(t, uint64(2), updatedOps.TransactionNumber)
