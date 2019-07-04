@@ -25,6 +25,8 @@ type OperationStoreClient interface {
 
 	// Get retrieves all operations related to document
 	Get(uniqueSuffix string) ([]batch.Operation, error)
+	// Put storing operation
+	Put(op batch.Operation) error
 }
 
 // New returns new operation processor
