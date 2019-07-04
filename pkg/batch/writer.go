@@ -25,13 +25,11 @@ import (
 
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-
 	log "github.com/sirupsen/logrus"
-
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
+	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
+	"github.com/trustbloc/sidetree-core-go/pkg/observer"
 )
 
 const defaultBatchTimeout = 2 * time.Second
@@ -63,6 +61,8 @@ type Context interface {
 type BlockchainClient interface {
 	// WriteAnchor writes the anchor file hash as a transaction to blockchain
 	WriteAnchor(anchor string) error
+	// Read ledger transaction
+	Read(sinceTransactionNumber int) (bool, *observer.SidetreeTxn)
 }
 
 // CASClient defines interface for accessing the underlying content addressable storage
