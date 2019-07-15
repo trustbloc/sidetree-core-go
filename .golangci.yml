@@ -4,12 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-service:
-  project-path: github.com/trustbloc/sidetree-core-go
-  golangci-lint-version: 1.16.x
-  prepare:
-    - GO111MODULE=on go mod vendor
-
 run:
   concurrency: 4
   deadline: 1m
