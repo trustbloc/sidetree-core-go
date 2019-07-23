@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package observer
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
@@ -54,11 +53,11 @@ func TestStartObserver(t *testing.T) {
 		var rw sync.RWMutex
 		Start(mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh}, mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
-				return json.Marshal(&AnchorFile{})
+				return docutil.MarshalCanonical(&AnchorFile{})
 			}
-			b, err := json.Marshal(batch.Operation{})
+			b, err := docutil.MarshalCanonical(batch.Operation{})
 			require.NoError(t, err)
-			return json.Marshal(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
+			return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
 		}}, mockOperationStore{putFunc: func(ops []batch.Operation) error {
 			rw.Lock()
 			isCalled = true
@@ -89,7 +88,7 @@ func TestProcessSidetreeTxn(t *testing.T) {
 	t.Run("test error from processBatchFile", func(t *testing.T) {
 		err := processSidetreeTxn(SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
-				return json.Marshal(&AnchorFile{})
+				return docutil.MarshalCanonical(&AnchorFile{})
 			}
 			return nil, fmt.Errorf("read error")
 		}}, nil)
@@ -102,7 +101,7 @@ func TestProcessBatchFile(t *testing.T) {
 	t.Run("test error from getBatchFile", func(t *testing.T) {
 		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
-				return json.Marshal(&AnchorFile{})
+				return docutil.MarshalCanonical(&AnchorFile{})
 			}
 			return []byte("1"), nil
 		}}, nil)
@@ -113,10 +112,10 @@ func TestProcessBatchFile(t *testing.T) {
 	t.Run("test error from updateOperation", func(t *testing.T) {
 		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
-				return json.Marshal(&AnchorFile{})
+				return docutil.MarshalCanonical(&AnchorFile{})
 			}
 
-			return json.Marshal(&BatchFile{Operations: []string{"1"}})
+			return docutil.MarshalCanonical(&BatchFile{Operations: []string{"1"}})
 		}}, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to update operation with blockchain metadata")
@@ -125,11 +124,11 @@ func TestProcessBatchFile(t *testing.T) {
 	t.Run("test error from operationStore Put", func(t *testing.T) {
 		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
-				return json.Marshal(&AnchorFile{})
+				return docutil.MarshalCanonical(&AnchorFile{})
 			}
-			b, err := json.Marshal(batch.Operation{})
+			b, err := docutil.MarshalCanonical(batch.Operation{})
 			require.NoError(t, err)
-			return json.Marshal(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
+			return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
 		}}, mockOperationStore{putFunc: func(ops []batch.Operation) error {
 			return fmt.Errorf("put error")
 		}})
@@ -140,11 +139,11 @@ func TestProcessBatchFile(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
 		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
-				return json.Marshal(&AnchorFile{})
+				return docutil.MarshalCanonical(&AnchorFile{})
 			}
-			b, err := json.Marshal(batch.Operation{})
+			b, err := docutil.MarshalCanonical(batch.Operation{})
 			require.NoError(t, err)
-			return json.Marshal(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
+			return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
 		}}, mockOperationStore{})
 		require.NoError(t, err)
 	})
@@ -159,7 +158,7 @@ func TestUpdateOperation(t *testing.T) {
 	})
 
 	t.Run("test success", func(t *testing.T) {
-		b, err := json.Marshal(batch.Operation{})
+		b, err := docutil.MarshalCanonical(batch.Operation{})
 		require.NoError(t, err)
 		updatedOps, err := updateOperation(docutil.EncodeToString(b), 1, SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.NoError(t, err)

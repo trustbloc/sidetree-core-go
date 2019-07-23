@@ -6,7 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 
 package document
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+)
 
 const jsonldID = "id"
 
@@ -37,7 +41,7 @@ func (doc *Document) GetStringValue(key string) string {
 
 // Bytes returns byte representation of did document
 func (doc *Document) Bytes() ([]byte, error) {
-	return json.Marshal(doc)
+	return docutil.MarshalCanonical(doc)
 }
 
 // JSONLdObject returns map that represents JSON LD Object

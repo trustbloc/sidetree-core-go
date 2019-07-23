@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package filehandler
 
 import (
-	"encoding/json"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"gitlab.com/NebulousLabs/merkletree"
 )
@@ -52,7 +50,7 @@ func (h *Handler) CreateBatchFile(operations [][]byte) ([]byte, error) {
 
 	bf := BatchFile{Operations: ops}
 
-	return json.Marshal(bf)
+	return docutil.MarshalCanonical(bf)
 }
 
 // CreateAnchorFile will create anchor file for Sidetree transaction
@@ -70,7 +68,7 @@ func (h *Handler) CreateAnchorFile(operations [][]byte, batchAddress string, mul
 		MerkleRoot:    docutil.EncodeToString(mtrHash),
 	}
 
-	return json.Marshal(af)
+	return docutil.MarshalCanonical(af)
 }
 
 func getMerkleTreeRoot(operations [][]byte, multihashCode uint) ([]byte, error) {
