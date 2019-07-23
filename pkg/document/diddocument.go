@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 const (
@@ -133,7 +135,7 @@ func DidDocumentFromBytes(data []byte) (DIDDocument, error) {
 
 // String returns string representation of did document
 func (doc *DIDDocument) String() string {
-	s, err := json.MarshalIndent(doc, "", "  ")
+	s, err := docutil.MarshalIndentCanonical(doc, "", "  ")
 	if err != nil {
 		return "<ERROR marshalling DIDDocument>"
 	}
@@ -142,7 +144,7 @@ func (doc *DIDDocument) String() string {
 
 // Bytes returns byte representation of did document
 func (doc *DIDDocument) Bytes() []byte {
-	s, err := json.Marshal(doc)
+	s, err := docutil.MarshalCanonical(doc)
 	if err != nil {
 		return []byte("<ERROR marshalling DIDDocument>")
 	}

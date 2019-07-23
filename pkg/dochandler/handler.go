@@ -20,7 +20,6 @@ package dochandler
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"strings"
 
@@ -158,7 +157,7 @@ func applyID(doc document.Document, id string) document.Document {
 // helper namespace for adding operations to the batch
 func (r *DocumentHandler) addToBatch(operation batch.Operation) error {
 
-	opBytes, err := json.Marshal(operation)
+	opBytes, err := docutil.MarshalCanonical(operation)
 	if err != nil {
 		return err
 	}

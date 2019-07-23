@@ -12,13 +12,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
-
 	"github.com/stretchr/testify/require"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
 const (
@@ -245,7 +243,7 @@ func getUpdateOperation(uniqueSuffix string, previousOperationHash string, opera
 		"value": "did:sidetree:updateid" + strconv.Itoa(int(operationNumber)),
 	}
 
-	patchBytes, err := json.Marshal([]map[string]interface{}{patch})
+	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{patch})
 	if err != nil {
 		panic(err)
 	}
@@ -268,7 +266,7 @@ func getUpdateOperation(uniqueSuffix string, previousOperationHash string, opera
 
 func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID string, didUniqueSuffix string) batch.Operation {
 
-	updatePayloadJson, err := json.Marshal(updatePayload)
+	updatePayloadJson, err := docutil.MarshalCanonical(updatePayload)
 	if err != nil {
 		panic(err)
 	}
