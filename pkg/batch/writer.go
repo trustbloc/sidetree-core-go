@@ -108,7 +108,7 @@ func New(context Context, options ...Option) (*Writer, error) {
 	}
 
 	return &Writer{
-		batchCutter:  cutter.New(),
+		batchCutter:  cutter.New(context.Protocol()),
 		sendChan:     make(chan []byte),
 		exitChan:     make(chan struct{}),
 		batchTimeout: batchTimeout,
@@ -150,35 +150,12 @@ func (r *Writer) main() {
 
 		select {
 		case op := <-r.sendChan:
-
-			protocol := r.context.Protocol().Current()
-			operations, pending := r.batchCutter.Add(op, protocol.MaxOperationsPerBatch)
-
-			if len(operations) > 0 {
-
-				log.Debug("processing batch operations after adding document ...")
-
-				err := r.processOperations(operations, protocol.HashAlgorithmInMultiHashCode)
-				if err != nil {
-					// log error for now, recovery will be handled later
-					log.Errorf("failed to process operations after adding document: %s", err.Error())
-				}
-			}
-
+			pending := r.addOperation(op) > 0
 			timer = r.handleTimer(timer, pending)
 
 		case <-timer:
-			//clear the timer
-			timer = nil
-
-			log.Debug("processing batch operations after batch timeout ...")
-
-			operations := r.batchCutter.Cut()
-			err := r.processOperations(operations, r.context.Protocol().Current().HashAlgorithmInMultiHashCode)
-			if err != nil {
-				// log error for now, recovery will be handled later
-				log.Errorf("failed to process batch operations after batch timeout: %s", err.Error())
-			}
+			pending := r.handleBatchTimeout() > 0
+			timer = r.handleTimer(nil, pending)
 
 		case <-r.exitChan:
 			log.Info("exiting batch writer")
@@ -187,7 +164,74 @@ func (r *Writer) main() {
 	}
 }
 
-func (r *Writer) processOperations(operations [][]byte, multihashCode uint) error {
+func (r *Writer) addOperation(op []byte) uint {
+	n := r.batchCutter.Add(op)
+	log.Debugf("Added operation: %+v. Number of pending operations: %d", op, n)
+	return r.processAvailableOperations(false)
+}
+
+func (r *Writer) handleBatchTimeout() uint {
+	log.Debug("Handling batch timeout")
+	return r.processAvailableOperations(true)
+}
+
+func (r *Writer) processAvailableOperations(forceCut bool) uint {
+	// First drain the queue of all of the operations that are ready to form a batch
+	pending, err := r.drainOperations()
+	if err != nil {
+		log.Warnf("Error draining operations queue: %s. Pending operations: %d.", err, pending)
+		return pending
+	}
+
+	if pending == 0 || !forceCut {
+		return pending
+	}
+
+	// Now process the remaining operations
+	n, pending, err := r.cutAndProcess(true)
+	if err != nil {
+		log.Warnf("Error processing operations: %s. Pending operations: %d.", err, pending)
+	} else {
+		log.Debugf("Successfully processed %d operations. Pending operations: %d.", n, pending)
+	}
+
+	return pending
+}
+
+// drainOperations cuts and processes all pending operations that are ready to form a batch.
+func (r *Writer) drainOperations() (pending uint, err error) {
+	log.Debug("Draining operations queue...")
+	for {
+		n, pending, err := r.cutAndProcess(false)
+		if err != nil {
+			return pending, err
+		}
+		if n == 0 {
+			log.Debug("... no more operations to be processed")
+			return pending, nil
+		}
+		log.Debugf("... processed %d operations. Pending operations: %d", n, pending)
+	}
+}
+
+func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, err error) {
+	operations, pending := r.batchCutter.Cut(forceCut)
+	if len(operations) == 0 {
+		return 0, pending, nil
+	}
+
+	log.Debugf("processing %d batch operations ...", len(operations))
+
+	err = r.processOperations(operations)
+	if err != nil {
+		// Add the operations to the head of the queue so that they may be processed at the next timeout
+		pending = r.batchCutter.AddFirst(operations...)
+		return 0, pending, err
+	}
+	return len(operations), pending, nil
+}
+
+func (r *Writer) processOperations(operations [][]byte) error {
 
 	if len(operations) == 0 {
 		return errors.New("create batch called with no pending operations, should not happen")
@@ -206,7 +250,7 @@ func (r *Writer) processOperations(operations [][]byte, multihashCode uint) erro
 		return err
 	}
 
-	anchorBytes, err := r.opsHandler.CreateAnchorFile(operations, batchAddr, multihashCode)
+	anchorBytes, err := r.opsHandler.CreateAnchorFile(operations, batchAddr, r.context.Protocol().Current().HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return err
 	}

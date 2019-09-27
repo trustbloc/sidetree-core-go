@@ -211,6 +211,34 @@ func TestAddAfterStop(t *testing.T) {
 
 }
 
+func TestProcessBatchErrorRecovery(t *testing.T) {
+	ctx := newMockContext()
+	ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 2
+	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
+
+	writer, err := New(ctx, WithBatchTimeout(500*time.Millisecond))
+	require.Nil(t, err)
+
+	writer.Start()
+	defer writer.Stop()
+
+	const n = 12
+	const numBatchesExpected = 7
+
+	require.NoError(t, writer.Add([]byte("first-op")))
+	time.Sleep(1 * time.Second)
+
+	for _, op := range generateOperations(n) {
+		require.NoError(t, writer.Add(op))
+	}
+
+	// Clear the error. The batch writer should recover by processing all of the pending batches
+	ctx.CasClient.SetError(nil)
+	time.Sleep(1 * time.Second)
+
+	require.Equal(t, numBatchesExpected, len(ctx.BlockchainClient.GetAnchors()))
+}
+
 //withError allows for testing an error in options
 func withError() Option {
 	return func(o *Options) error {
