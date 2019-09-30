@@ -33,10 +33,9 @@ func NewMockCasClient(err error) *MockCasClient {
 // Write writes the given content to CAS.
 // returns the SHA256 hash in base64url encoding which represents the address of the content.
 func (m *MockCasClient) Write(content []byte) (string, error) {
-
-	if m.err != nil {
-		return "", m.err
-
+	err := m.GetError()
+	if err != nil {
+		return "", err
 	}
 	hash, err := docutil.ComputeMultihash(sha2_256, content)
 	if err != nil {
@@ -56,9 +55,9 @@ func (m *MockCasClient) Write(content []byte) (string, error) {
 // Read reads the content of the given address in CAS.
 // returns the content of the given address.
 func (m *MockCasClient) Read(address string) ([]byte, error) {
-
-	if m.err != nil {
-		return nil, m.err
+	err := m.GetError()
+	if err != nil {
+		return nil, err
 	}
 
 	m.RLock()
@@ -85,4 +84,20 @@ func (m *MockCasClient) Read(address string) ([]byte, error) {
 	}
 
 	return value, nil
+}
+
+// SetError injects an error into the mock client
+func (m *MockCasClient) SetError(err error) {
+	m.Lock()
+	defer m.Unlock()
+
+	m.err = err
+}
+
+// GetError returns the injected error
+func (m *MockCasClient) GetError() error {
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.err
 }
