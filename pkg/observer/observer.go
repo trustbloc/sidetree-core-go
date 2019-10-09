@@ -44,7 +44,7 @@ type OperationStore interface {
 func Start(ledger Ledger, dcas DCAS, operationStore OperationStore) {
 	sidetreeTxnChannel := ledger.RegisterForSidetreeTxn()
 	go func(txnsCh <-chan []SidetreeTxn) {
-
+		processor := NewTxnProcessor(dcas, operationStore)
 		for {
 			txns, ok := <-txnsCh
 			if !ok {
@@ -52,7 +52,7 @@ func Start(ledger Ledger, dcas DCAS, operationStore OperationStore) {
 				return
 			}
 			for _, txn := range txns {
-				err := processSidetreeTxn(txn, dcas, operationStore)
+				err := processor.Process(txn)
 				if err != nil {
 					logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorAddress, err.Error())
 					continue
@@ -63,11 +63,25 @@ func Start(ledger Ledger, dcas DCAS, operationStore OperationStore) {
 	}(sidetreeTxnChannel)
 }
 
-func processSidetreeTxn(sidetreeTxn SidetreeTxn, dcas DCAS, operationStore OperationStore) error {
+// TxnProcessor processes Sidetree transactions by persisting them to an operation store
+type TxnProcessor struct {
+	dcas           DCAS
+	operationStore OperationStore
+}
 
+// NewTxnProcessor returns a new document operation processor
+func NewTxnProcessor(dcas DCAS, opStore OperationStore) *TxnProcessor {
+	return &TxnProcessor{
+		dcas:           dcas,
+		operationStore: opStore,
+	}
+}
+
+// Process persists all of the operations for the given anchor
+func (p *TxnProcessor) Process(sidetreeTxn SidetreeTxn) error {
 	logger.Debugf("processing sidetree txn:%+v", sidetreeTxn)
 
-	content, err := dcas.Read(sidetreeTxn.AnchorAddress)
+	content, err := p.dcas.Read(sidetreeTxn.AnchorAddress)
 	if err != nil {
 		return errors.Wrapf(err, "failed to retrieve content for anchor: key[%s]", sidetreeTxn.AnchorAddress)
 	}
@@ -79,12 +93,12 @@ func processSidetreeTxn(sidetreeTxn SidetreeTxn, dcas DCAS, operationStore Opera
 		return errors.Wrapf(err, "failed to unmarshal anchor[%s]", sidetreeTxn.AnchorAddress)
 	}
 
-	return processBatchFile(af.BatchFileHash, sidetreeTxn, dcas, operationStore)
+	return p.processBatchFile(af.BatchFileHash, sidetreeTxn)
 }
 
-func processBatchFile(batchFileAddress string, sidetreeTxn SidetreeTxn, dcas DCAS, operationStore OperationStore) error {
+func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn SidetreeTxn) error {
 
-	content, err := dcas.Read(batchFileAddress)
+	content, err := p.dcas.Read(batchFileAddress)
 	if err != nil {
 		return errors.Wrapf(err, "failed to retrieve content for batch: key[%s]", batchFileAddress)
 	}
@@ -107,7 +121,7 @@ func processBatchFile(batchFileAddress string, sidetreeTxn SidetreeTxn, dcas DCA
 		ops = append(ops, *updatedOp)
 	}
 
-	err = operationStore.Put(ops)
+	err = p.operationStore.Put(ops)
 	if err != nil {
 		return errors.Wrapf(err, "failed to store operation from batch[%s]", batchFileAddress)
 	}
