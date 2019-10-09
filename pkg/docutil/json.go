@@ -40,15 +40,15 @@ func MarshalIndentCanonical(v interface{}, prefix, indent string) ([]byte, error
 func getCanonicalContent(content []byte) ([]byte, error) {
 	m, err := unmarshalJSONMap(content)
 	if err != nil {
-		a, err := unmarshalJSONArray(content)
-		if err != nil {
-			return nil, err
+		a, e := unmarshalJSONArray(content)
+		if e != nil {
+			return nil, e
 		}
 
 		// Re-marshal it in order to ensure that the JSON fields are marshaled in a deterministic order.
-		bytes, err := marshalJSONArray(a)
-		if err != nil {
-			return nil, err
+		bytes, e := marshalJSONArray(a)
+		if e != nil {
+			return nil, e
 		}
 		return bytes, nil
 	}

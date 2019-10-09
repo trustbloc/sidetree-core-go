@@ -9,7 +9,7 @@ run:
   deadline: 1m
   issues-exit-code: 1
   tests: true
-  build-tags: [""]
+  build-tags: ["testing"]
   skip-files:
     - ^(.*_test.go.*$)$
 

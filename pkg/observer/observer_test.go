@@ -21,7 +21,7 @@ import (
 
 func TestStartObserver(t *testing.T) {
 
-	t.Run("test error from processSidetreeTxn", func(t *testing.T) {
+	t.Run("test error from ProcessSidetreeTxn", func(t *testing.T) {
 		sidetreeTxnCh := make(chan []SidetreeTxn, 100)
 		isCalled := false
 		var rw sync.RWMutex
@@ -71,27 +71,29 @@ func TestStartObserver(t *testing.T) {
 		rw.RUnlock()
 	})
 }
-
-func TestProcessSidetreeTxn(t *testing.T) {
+func TestTxnProcessor_Process(t *testing.T) {
 	t.Run("test error from dacs read", func(t *testing.T) {
-		err := processSidetreeTxn(SidetreeTxn{}, mockDACS{readFunc: func(key string) ([]byte, error) { return nil, fmt.Errorf("read error") }}, nil)
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) { return nil, fmt.Errorf("read error") }}, nil)
+		err := p.Process(SidetreeTxn{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to retrieve content for anchor")
 	})
 
 	t.Run("test error from getAnchorFile", func(t *testing.T) {
-		err := processSidetreeTxn(SidetreeTxn{}, mockDACS{readFunc: func(key string) ([]byte, error) { return []byte("1"), nil }}, nil)
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) { return []byte("1"), nil }}, nil)
+		err := p.Process(SidetreeTxn{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to unmarshal anchor")
 	})
 
 	t.Run("test error from processBatchFile", func(t *testing.T) {
-		err := processSidetreeTxn(SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
 				return docutil.MarshalCanonical(&AnchorFile{})
 			}
 			return nil, fmt.Errorf("read error")
 		}}, nil)
+		err := p.Process(SidetreeTxn{AnchorAddress: "anchorAddress"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to retrieve content for batch")
 	})
@@ -99,30 +101,32 @@ func TestProcessSidetreeTxn(t *testing.T) {
 
 func TestProcessBatchFile(t *testing.T) {
 	t.Run("test error from getBatchFile", func(t *testing.T) {
-		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
 				return docutil.MarshalCanonical(&AnchorFile{})
 			}
 			return []byte("1"), nil
 		}}, nil)
+		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to unmarshal batch")
 	})
 
 	t.Run("test error from updateOperation", func(t *testing.T) {
-		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
 				return docutil.MarshalCanonical(&AnchorFile{})
 			}
 
 			return docutil.MarshalCanonical(&BatchFile{Operations: []string{"1"}})
 		}}, nil)
+		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to update operation with blockchain metadata")
 	})
 
 	t.Run("test error from operationStore Put", func(t *testing.T) {
-		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
 				return docutil.MarshalCanonical(&AnchorFile{})
 			}
@@ -132,12 +136,13 @@ func TestProcessBatchFile(t *testing.T) {
 		}}, mockOperationStore{putFunc: func(ops []batch.Operation) error {
 			return fmt.Errorf("put error")
 		}})
+		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to store operation from batch")
 	})
 
 	t.Run("test success", func(t *testing.T) {
-		err := processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"}, mockDACS{readFunc: func(key string) ([]byte, error) {
+		p := NewTxnProcessor(mockDACS{readFunc: func(key string) ([]byte, error) {
 			if key == "anchorAddress" {
 				return docutil.MarshalCanonical(&AnchorFile{})
 			}
@@ -145,6 +150,7 @@ func TestProcessBatchFile(t *testing.T) {
 			require.NoError(t, err)
 			return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
 		}}, mockOperationStore{})
+		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: "anchorAddress"})
 		require.NoError(t, err)
 	})
 
