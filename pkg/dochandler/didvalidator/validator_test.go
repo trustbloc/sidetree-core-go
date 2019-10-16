@@ -8,14 +8,15 @@ package didvalidator
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
 func TestNew(t *testing.T) {
@@ -43,10 +44,6 @@ func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "document must contain at least one public key")
 
-	err = v.IsValidOriginalDocument(pubKeyNotFragmentDoc)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "public key id is either absent or not starting with #")
-
 }
 
 func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
@@ -69,7 +66,6 @@ func TestIsValidPayload(t *testing.T) {
 	require.Nil(t, err)
 
 }
-
 
 func TestIsValidPayloadError(t *testing.T) {
 
@@ -132,9 +128,7 @@ func reader(t *testing.T, filename string) io.Reader {
 }
 
 var noPublicKeyDoc = []byte(`{ "@context": "some context", "name": "John Smith" }`)
-var pubKeyNotFragmentDoc = []byte(`{ "@context": "some context", "publicKey": [{"id": "key1", "type": "type"}]}`)
 var docWithID = []byte(`{ "@context": "some context", "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
-

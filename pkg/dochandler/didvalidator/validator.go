@@ -8,7 +8,6 @@ package didvalidator
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 
@@ -100,14 +99,6 @@ func validatePublicKeys(didDoc document.DIDDocument) error {
 	publicKeyArray := didDoc.PublicKeys()
 	if len(publicKeyArray) == 0 {
 		return errors.New("document must contain at least one public key")
-	}
-
-	// The id property of a publickey element must be specified and be a fragment (e.g. #key1).
-	for _, pubKey := range publicKeyArray {
-		i := strings.Index(pubKey.ID(), "#")
-		if pubKey.ID() == "" || i != 0 {
-			return errors.New("public key id is either absent or not starting with #")
-		}
 	}
 
 	return nil
