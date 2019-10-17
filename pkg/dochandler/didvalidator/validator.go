@@ -87,7 +87,8 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 	// Sidetree rule: add service validation
 
 	// generic did document validation - must have context
-	if didDoc.Context() != didContext {
+	ctx := didDoc.Context()
+	if len(ctx) != 0 && didDoc.Context()[0] != didContext {
 		return errors.New("context is invalid or absent")
 	}
 

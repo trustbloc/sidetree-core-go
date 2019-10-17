@@ -20,7 +20,7 @@ func TestValid(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 	require.Equal(t, "", doc.ID())
-	require.Equal(t, "https://w3id.org/did/v1", doc.Context())
+	require.Equal(t, "https://w3id.org/did/v1", doc.Context()[0])
 
 	publicKeys := doc.PublicKeys()
 	require.Equal(t, []PublicKey{

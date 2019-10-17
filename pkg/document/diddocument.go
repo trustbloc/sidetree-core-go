@@ -42,8 +42,8 @@ func (doc *DIDDocument) ID() string {
 }
 
 // Context is the context of did document
-func (doc *DIDDocument) Context() string {
-	return stringEntry((*doc)[jsonldContext])
+func (doc *DIDDocument) Context() []string {
+	return arrayStringEntry((*doc)[jsonldContext])
 }
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations

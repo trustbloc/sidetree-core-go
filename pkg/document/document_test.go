@@ -80,6 +80,16 @@ func TestStringEntry(t *testing.T) {
 	require.Equal(t, "hello", str)
 }
 
+func TestArrayStringEntry(t *testing.T) {
+	arr := arrayStringEntry(nil)
+	require.Nil(t, arr)
+
+	// not a array
+	arr = arrayStringEntry("hello")
+	require.Nil(t, arr)
+
+}
+
 func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.Nil(t, err)
