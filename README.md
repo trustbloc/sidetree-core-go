@@ -1,7 +1,7 @@
 [![Release](https://img.shields.io/github/release/trustbloc/sidetree-core-go.svg?style=flat-square)](https://github.com/trustbloc/sidetree-core-go/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://raw.githubusercontent.com/trustbloc/sidetree-core-go/master/LICENSE)
 
-[![Build Status](https://travis-ci.com/trustbloc/sidetree-core-go.svg?branch=master)](https://travis-ci.com/trustbloc/sidetree-core-go)
+[![Build Status](https://dev.azure.com/trustbloc/sidetree-core-go/_apis/build/status/trustbloc.sidetree-core-go?branchName=master)](https://dev.azure.com/trustbloc/sidetree-core-go/_build/latest?definitionId=2&branchName=master)
 [![GolangCI](https://golangci.com/badges/github.com/trustbloc/sidetree-core-go.svg)](https://golangci.com/r/github.com/trustbloc/sidetree-core-go)
 [![codecov](https://codecov.io/gh/trustbloc/sidetree-core-go/branch/master/graph/badge.svg)](https://codecov.io/gh/trustbloc/sidetree-core-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/trustbloc/sidetree-core-go?style=flat-square)](https://goreportcard.com/report/github.com/trustbloc/sidetree-core-go)
