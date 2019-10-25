@@ -5,7 +5,7 @@
 module github.com/trustbloc/sidetree-core-go
 
 require (
-	github.com/evanphx/json-patch v4.1.0+incompatible
+	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/multiformats/go-multihash v0.0.2-0.20190226174941-1a04c485626b
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.3.0
