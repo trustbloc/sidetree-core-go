@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 // OperationType is the operation type
+// swagger:model OperationType
 type OperationType string
 
 const (

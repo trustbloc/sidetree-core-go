@@ -7,8 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 // Request is the document request
+// swagger:model docRequest
 type Request struct {
-	Header    *Header `json:"header"`
-	Payload   string  `json:"payload"`
-	Signature string  `json:"signature"`
+	// header
+	// Required: true
+	Header *Header `json:"header"`
+
+	// payload
+	// Required: true
+	Payload string `json:"payload"`
+
+	// signature
+	// Required: true
+	Signature string `json:"signature"`
 }

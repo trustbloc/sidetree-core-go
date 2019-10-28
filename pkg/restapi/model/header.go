@@ -7,8 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 // Header is the operation header
+// swagger:model Header
 type Header struct {
-	Alg       string        `json:"alg"`
-	Kid       string        `json:"kid"`
+	// alg
+	// Required: true
+	Alg string `json:"alg"`
+
+	// kid
+	// Required: true
+	Kid string `json:"kid"`
+
+	// operation
+	// Required: true
 	Operation OperationType `json:"operation"`
 }
