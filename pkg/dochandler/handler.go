@@ -69,6 +69,16 @@ func New(namespace string, protocol protocol.Client, validator DocumentValidator
 	}
 }
 
+// Namespace returns the namespace of the document handler
+func (r *DocumentHandler) Namespace() string {
+	return r.namespace
+}
+
+// Protocol returns the protocol provider
+func (r *DocumentHandler) Protocol() protocol.Client {
+	return r.protocol
+}
+
 //ProcessOperation validates operation and adds it to the batch
 func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.Document, error) {
 
