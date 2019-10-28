@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
@@ -80,17 +81,23 @@ func httpPut(t *testing.T, url string, req *model.Request) (*model.Response, err
 	require.NoError(t, err)
 
 	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := client.Do(httpReq)
+	resp, err := invokeWithRetry(
+		func() (response *http.Response, e error) {
+			return client.Do(httpReq)
+		},
+	)
 	require.NoError(t, err)
-
 	return handleHttpResp(t, resp)
 }
 
 // httpGet send a regular GET request to the sidetree-node and expects 'side tree document' argument as a response
 func httpGet(t *testing.T, url string) (*model.Response, error) {
 	client := &http.Client{}
-	resp, err := client.Get(url)
+	resp, err := invokeWithRetry(
+		func() (response *http.Response, e error) {
+			return client.Get(url)
+		},
+	)
 	require.NoError(t, err)
 	return handleHttpResp(t, resp)
 }
@@ -112,6 +119,21 @@ func decode(t *testing.T, response *http.Response, v interface{}) {
 	require.NoError(t, err)
 	err = json.NewDecoder(strings.NewReader(string(respBytes))).Decode(v)
 	require.NoError(t, err)
+}
+
+func invokeWithRetry(invoke func() (*http.Response, error)) (*http.Response, error) {
+	remainingAttempts := 20
+	for {
+		resp, err := invoke()
+		if err == nil {
+			return resp, err
+		}
+		remainingAttempts--
+		if remainingAttempts == 0 {
+			return nil, err
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 type restService struct {

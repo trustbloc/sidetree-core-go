@@ -44,8 +44,3 @@ func (h *UpdateHandler) Method() string {
 func (h *UpdateHandler) Handler() common.HTTPRequestHandler {
 	return h.Update
 }
-
-// Update updates/creates a DID document.
-func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
-	h.UpdateHandler.Update(rw, req)
-}

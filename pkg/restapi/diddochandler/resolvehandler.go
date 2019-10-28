@@ -39,8 +39,3 @@ func (o *ResolveHandler) Method() string {
 func (o *ResolveHandler) Handler() common.HTTPRequestHandler {
 	return o.Resolve
 }
-
-// Resolve resolves a DID document by ID or DID document
-func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
-	o.ResolveHandler.Resolve(rw, req)
-}
