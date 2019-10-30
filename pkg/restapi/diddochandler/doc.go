@@ -15,10 +15,10 @@ SPDX-License-Identifier: Apache-2.0
 //     License: SPDX-License-Identifier: Apache-2.0
 //
 //     Consumes:
-//     - application/json
+//     - application/did+ld+json
 //
 //     Produces:
-//     - application/json
+//     - application/did+ld+json
 //
 // swagger:meta
 package diddochandler

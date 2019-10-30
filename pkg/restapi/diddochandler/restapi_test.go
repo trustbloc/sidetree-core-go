@@ -80,13 +80,14 @@ func httpPut(t *testing.T, url string, req *model.Request) (*model.Response, err
 	httpReq, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	require.NoError(t, err)
 
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", "application/did+ld+json")
 	resp, err := invokeWithRetry(
 		func() (response *http.Response, e error) {
 			return client.Do(httpReq)
 		},
 	)
 	require.NoError(t, err)
+	require.Equal(t, "application/did+ld+json", resp.Header.Get("content-type"))
 	return handleHttpResp(t, resp)
 }
 

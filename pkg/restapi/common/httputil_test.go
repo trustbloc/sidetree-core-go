@@ -22,6 +22,7 @@ func TestWriteResponse(t *testing.T) {
 	WriteResponse(rw, http.StatusOK, "content")
 	require.Equal(t, http.StatusOK, rw.Code)
 	require.Equal(t, "\"content\"\n", rw.Body.String())
+	require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 }
 
 func TestWriteError(t *testing.T) {

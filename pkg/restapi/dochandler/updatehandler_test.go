@@ -62,6 +62,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(createRequest)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
+		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Update", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
@@ -71,6 +72,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(updateRequest)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
+		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Unsupported operation", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
