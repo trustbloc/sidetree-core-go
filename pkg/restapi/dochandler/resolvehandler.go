@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 var logger = logrus.New()
@@ -47,17 +46,17 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)
 		return
 	}
-	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Body)
+	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response)
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func (o *ResolveHandler) doResolve(id string) (*model.Response, error) {
+func (o *ResolveHandler) doResolve(id string) (document.Document, error) {
 	if !strings.HasPrefix(id, o.resolver.Namespace()) {
 		logger.Errorf("DID ID [%s] does not start with supported namespace [%s]", id, o.resolver.Namespace())
 		return nil, common.NewHTTPError(http.StatusBadRequest, errors.New("must start with supported namespace"))
 	}
 
-	didDoc, err := o.resolver.ResolveDocument(id)
+	doc, err := o.resolver.ResolveDocument(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, common.NewHTTPError(http.StatusNotFound, errors.New("document not found"))
@@ -65,7 +64,7 @@ func (o *ResolveHandler) doResolve(id string) (*model.Response, error) {
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return &model.Response{Body: didDoc}, nil
+	return doc, nil
 }
 
 var getID = func(req *http.Request) string {

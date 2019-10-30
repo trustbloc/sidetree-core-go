@@ -9,6 +9,7 @@ package dochandler
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -34,6 +35,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
 		handler.Resolve(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
+		fmt.Printf("Response: %s\n", rw.Body.String())
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Invalid ID", func(t *testing.T) {
