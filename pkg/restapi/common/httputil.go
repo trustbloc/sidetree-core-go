@@ -15,6 +15,7 @@ import (
 
 // WriteResponse writes a response to the response writer
 func WriteResponse(rw http.ResponseWriter, status int, v interface{}) {
+	rw.Header().Set("Content-Type", "application/did+ld+json")
 	rw.WriteHeader(status)
 	err := json.NewEncoder(rw).Encode(v)
 	if err != nil {

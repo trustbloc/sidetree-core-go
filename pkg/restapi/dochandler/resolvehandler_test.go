@@ -34,6 +34,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
 		handler.Resolve(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
+		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Invalid ID", func(t *testing.T) {
 		getID = func(req *http.Request) string { return "someid" }
