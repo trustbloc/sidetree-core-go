@@ -39,17 +39,6 @@ import (
 //    default: error
 //        200: response
 
-// Contains the DID document.
-//swagger:response response
-//nolint:deadcode,unused
-type responseWrapper struct {
-	// The body of the response.
-	//
-	// required: true
-	// in: body
-	Body model.Response
-}
-
 // Contains the request.
 //swagger:parameters request
 //nolint:deadcode,unused
@@ -59,6 +48,28 @@ type requestWrapper struct {
 	// required: true
 	// in: body
 	Body model.Request
+}
+
+// Contains the document.
+//swagger:response response
+//nolint:deadcode,unused
+type responseWrapper struct {
+	// The body of the response.
+	//
+	// required: true
+	// in: body
+	Body string
+}
+
+// Contains the error.
+//swagger:response error
+//nolint:deadcode,unused
+type errorWrapper struct {
+	// A description of the error.
+	//
+	// required: true
+	// in: body
+	Body string
 }
 
 // resolveDocumentParams model

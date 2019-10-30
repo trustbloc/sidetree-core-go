@@ -56,7 +56,7 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func (h *UpdateHandler) doUpdate(request *model.Request) (*model.Response, error) {
+func (h *UpdateHandler) doUpdate(request *model.Request) (document.Document, error) {
 	operation, err := h.getOperation(request)
 	if err != nil {
 		logger.Errorf("Error: %s", err)
@@ -64,13 +64,13 @@ func (h *UpdateHandler) doUpdate(request *model.Request) (*model.Response, error
 	}
 
 	//handling operation based on validated operation type and encoded payload from request bytes
-	didDoc, err := h.processor.ProcessOperation(operation)
+	doc, err := h.processor.ProcessOperation(operation)
 	if err != nil {
 		logger.Errorf("Error: %s", err)
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return &model.Response{Body: didDoc}, nil
+	return doc, nil
 }
 
 func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, error) {

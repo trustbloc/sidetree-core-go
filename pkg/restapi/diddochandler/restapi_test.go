@@ -13,12 +13,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -51,28 +51,26 @@ func TestRESTAPI(t *testing.T) {
 
 		resp, err := httpPut(t, clientURL+Path, request)
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.NotNil(t, resp.Body)
+		require.NotEmpty(t, resp)
 
-		doc, ok := resp.Body.(map[string]interface{})
-		require.True(t, ok)
+		var doc document.Document
+		require.NoError(t, json.Unmarshal(resp, &doc))
 		require.Equal(t, didID, doc["id"])
 	})
 	t.Run("Resolve DID doc", func(t *testing.T) {
 		resp, err := httpGet(t, clientURL+Path+"/"+didID)
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.NotNil(t, resp.Body)
+		require.NotEmpty(t, resp)
 
-		doc, ok := resp.Body.(map[string]interface{})
-		require.True(t, ok)
+		var doc document.Document
+		require.NoError(t, json.Unmarshal(resp, &doc))
 		require.Equal(t, didID, doc["id"])
 	})
 }
 
 // httpPut sends a regular POST request to the sidetree-node
 // - If post request has operation "create" then return sidetree document else no response
-func httpPut(t *testing.T, url string, req *model.Request) (*model.Response, error) {
+func httpPut(t *testing.T, url string, req *model.Request) ([]byte, error) {
 	client := &http.Client{}
 	b, err := json.Marshal(req)
 	require.NoError(t, err)
@@ -92,7 +90,7 @@ func httpPut(t *testing.T, url string, req *model.Request) (*model.Response, err
 }
 
 // httpGet send a regular GET request to the sidetree-node and expects 'side tree document' argument as a response
-func httpGet(t *testing.T, url string) (*model.Response, error) {
+func httpGet(t *testing.T, url string) ([]byte, error) {
 	client := &http.Client{}
 	resp, err := invokeWithRetry(
 		func() (response *http.Response, e error) {
@@ -103,23 +101,17 @@ func httpGet(t *testing.T, url string) (*model.Response, error) {
 	return handleHttpResp(t, resp)
 }
 
-func handleHttpResp(t *testing.T, resp *http.Response) (*model.Response, error) {
+func handleHttpResp(t *testing.T, resp *http.Response) ([]byte, error) {
 	if status := resp.StatusCode; status != http.StatusOK {
-		r := &model.Error{}
-		decode(t, resp, r)
-		return nil, fmt.Errorf(r.Message)
+		return nil, fmt.Errorf(string(read(t, resp)))
 	}
-
-	r := &model.Response{}
-	decode(t, resp, r)
-	return r, nil
+	return read(t, resp), nil
 }
 
-func decode(t *testing.T, response *http.Response, v interface{}) {
+func read(t *testing.T, response *http.Response) []byte {
 	respBytes, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
-	err = json.NewDecoder(strings.NewReader(string(respBytes))).Decode(v)
-	require.NoError(t, err)
+	return respBytes
 }
 
 func invokeWithRetry(invoke func() (*http.Response, error)) (*http.Response, error) {
