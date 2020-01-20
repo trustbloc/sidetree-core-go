@@ -13,26 +13,23 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/dochandler"
 )
 
-const (
-	// Path is the context path for the DID document REST service
-	Path = "/document"
-)
-
 // UpdateHandler handles the creation and update of DID documents
 type UpdateHandler struct {
 	*dochandler.UpdateHandler
+	basePath string
 }
 
 // NewUpdateHandler returns a new DID document update handler
-func NewUpdateHandler(processor dochandler.Processor) *UpdateHandler {
+func NewUpdateHandler(basePath string, processor dochandler.Processor) *UpdateHandler {
 	return &UpdateHandler{
 		UpdateHandler: dochandler.NewUpdateHandler(processor),
+		basePath:      basePath,
 	}
 }
 
 // Path returns the context path
 func (h *UpdateHandler) Path() string {
-	return Path
+	return h.basePath
 }
 
 // Method returns the HTTP method

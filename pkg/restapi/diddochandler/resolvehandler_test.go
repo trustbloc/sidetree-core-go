@@ -18,8 +18,8 @@ import (
 
 func TestResolveHandler_Resolve(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-	handler := NewResolveHandler(docHandler)
-	require.Equal(t, Path+"/{id}", handler.Path())
+	handler := NewResolveHandler(basePath, docHandler)
+	require.Equal(t, basePath+"/{id}", handler.Path())
 	require.Equal(t, http.MethodGet, handler.Method())
 	require.NotNil(t, handler.Handler())
 
