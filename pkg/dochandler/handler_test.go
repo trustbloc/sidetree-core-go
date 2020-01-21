@@ -29,12 +29,24 @@ const (
 	namespace    = "doc:namespace:"
 	uniqueSuffix = "EiDOQXC2GnoVyHwIRbjhLx_cNc6vmZaS04SZjZdlLLAPRg=="
 	// encoded payload contains encoded document that corresponds to unique suffix above
-	encodedPayload = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
-	updatePayload  = "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg=="
-	sha2_256       = 18
+	encodedPayload     = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
+	updatePayload      = "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg=="
+	sha2_256           = 18
+	initialValuesParam = ";initial-values="
 )
 
-func TestProcessOperation_Create(t *testing.T) {
+func TestDocumentHandler_Namespace(t *testing.T) {
+	dh := New(namespace, nil, nil, nil, nil)
+	require.Equal(t, namespace, dh.Namespace())
+}
+
+func TestDocumentHandler_Protocol(t *testing.T) {
+	pc := mocks.NewMockProtocolClient()
+	dh := New("", pc, nil, nil, nil)
+	require.Equal(t, pc, dh.Protocol())
+}
+
+func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
@@ -53,7 +65,7 @@ func TestProcessOperation_Create(t *testing.T) {
 
 }
 
-func TestProcessOperation_MaxOperationSizeError(t *testing.T) {
+func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
@@ -71,7 +83,7 @@ func TestProcessOperation_MaxOperationSizeError(t *testing.T) {
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
 }
 
-func TestResolveDocumentByID(t *testing.T) {
+func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 
 	store := mocks.NewMockOperationStore(nil)
 	dochandler := getDocumentHandler(store)
@@ -106,22 +118,27 @@ func TestResolveDocumentByID(t *testing.T) {
 
 }
 
-func TestResolveDocumentByDoc(t *testing.T) {
+func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
-	doc, err := dochandler.ResolveDocument(namespace + getCreateOperation().EncodedPayload)
+	doc, err := dochandler.ResolveDocument(namespace + uniqueSuffix + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 
-	doc, err = dochandler.ResolveDocument(namespace + "payload")
+	doc, err = dochandler.ResolveDocument(namespace + uniqueSuffix + initialValuesParam)
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "initial values is present but empty")
+
+	doc, err = dochandler.ResolveDocument(namespace + uniqueSuffix + initialValuesParam + "payload")
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "illegal base64 data")
 }
 
-func TestResolveDocumentByDoc_MaxOperationSizeError(t *testing.T) {
+func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
 
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
@@ -131,7 +148,8 @@ func TestResolveDocumentByDoc_MaxOperationSizeError(t *testing.T) {
 	protocol.Protocol.MaxOperationByteSize = 2
 	dochandler.protocol = protocol
 
-	doc, err := dochandler.ResolveDocument(namespace + getCreateOperation().EncodedPayload)
+	did := namespace + uniqueSuffix
+	doc, err := dochandler.ResolveDocument(did + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
@@ -195,7 +213,25 @@ func TestGetUniquePortion(t *testing.T) {
 	uniquePortion, err = getUniquePortion(namespace, namespace+unique)
 	require.Nil(t, err)
 	require.Equal(t, unique, uniquePortion)
+}
 
+func TestGetParts(t *testing.T) {
+
+	const testDID = "did:method:abc"
+
+	did, initial, err := getParts(testDID)
+	require.Nil(t, err)
+	require.Empty(t, initial)
+	require.Equal(t, testDID, did)
+
+	did, initial, err = getParts(testDID + initialValuesParam)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "initial values is present but empty")
+
+	did, initial, err = getParts(testDID + initialValuesParam + "xyz")
+	require.Nil(t, err)
+	require.Equal(t, testDID, did)
+	require.Equal(t, initial, "xyz")
 }
 
 func TestProcessOperation_Update(t *testing.T) {
