@@ -34,7 +34,7 @@ import (
 //        200: response
 
 // Resolve swagger:route GET /document/{id} resolve-did-document resolveDocParams
-// Resolves a DID document by ID or validates the DID document if provided.
+// Resolves a DID document by ID or by ID and initial value if provided.
 // Responses:
 //    default: error
 //        200: response
@@ -78,7 +78,7 @@ type errorWrapper struct {
 //swagger:parameters resolveDocParams
 //nolint:deadcode,unused
 type resolveDocumentParams struct {
-	// The ID of the DID document or the DID document to be validated.
+	// The DID or the DID with initial-values parameter that contains encoded original did document.
 	//
 	// in: path
 	// required: true

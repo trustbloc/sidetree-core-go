@@ -102,25 +102,46 @@ func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.
 	return nil, nil
 }
 
-// ResolveDocument returns document based on passed in ID or Document
-func (r *DocumentHandler) ResolveDocument(idOrDocument string) (document.Document, error) {
+// ResolveDocument fetches the latest DID Document of a DID. Two forms of string can be passed in the URI:
+//
+// 1. Standard DID format: did:sidetree:<unique-portion>
+//
+// 2. DID with initial-values DID parameter:
+// did:sidetree:<unique-portion>;initial-values=<encoded-original-did-document>
+//
+// Standard resolution is performed if the DID is found to be registered on the blockchain.
+// If the DID Document cannot be found, the encoded DID Document given in the initial-values DID parameter is used
+// to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to
+// the same validation as an original DID Document in a create operation
+func (r *DocumentHandler) ResolveDocument(didOrInitialDID string) (document.Document, error) {
 
-	if !strings.HasPrefix(idOrDocument, r.namespace) {
+	if !strings.HasPrefix(didOrInitialDID, r.namespace) {
 		return nil, errors.New("must start with configured namespace")
 	}
 
-	// Figure out if the given parameter contains a ID or Document
-	uniquePortion, err := getUniquePortion(r.namespace, idOrDocument)
+	// extract did and optional initial document value
+	did, initial, err := getParts(didOrInitialDID)
 	if err != nil {
 		return nil, err
 	}
 
-	parameterIsID := docutil.IsSupportedMultihash(uniquePortion)
-	if parameterIsID {
-		return r.resolveRequestWithID(uniquePortion)
+	uniquePortion, err := getUniquePortion(r.namespace, did)
+	if err != nil {
+		return nil, err
 	}
 
-	return r.resolveRequestWithDocument(uniquePortion)
+	// resolve document from the blockchain
+	didDoc, err := r.resolveRequestWithID(uniquePortion)
+	if err == nil {
+		return didDoc, nil
+	}
+
+	// if document was not found on the blockchain and initial value has been provided resolve using initial value
+	if initial != "" && strings.Contains(err.Error(), "not found") {
+		return r.resolveRequestWithDocument(initial)
+	}
+
+	return nil, err
 }
 
 func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.Document, error) {
@@ -229,4 +250,22 @@ func getUniquePortion(namespace, idOrDocument string) (string, error) {
 	}
 
 	return idOrDocument[adjustedPos:], nil
+}
+
+// getParts inspects params string and returns did and optional initial value
+func getParts(params string) (string, string, error) {
+	const initialParam = ";initial-values="
+	pos := strings.Index(params, initialParam)
+	if pos == -1 {
+		// there is no initial-values so params contains only did
+		return params, "", nil
+	}
+
+	adjustedPos := pos + len(initialParam)
+	if adjustedPos >= len(params) {
+		return "", "", errors.New("initial values is present but empty")
+	}
+
+	// return did and initial document value
+	return params[0:pos], params[adjustedPos:], nil
 }
