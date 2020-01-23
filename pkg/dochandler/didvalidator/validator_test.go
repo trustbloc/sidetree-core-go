@@ -8,14 +8,16 @@ package didvalidator
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
 func TestNew(t *testing.T) {
@@ -24,7 +26,6 @@ func TestNew(t *testing.T) {
 }
 
 func TestIsValidOriginalDocument(t *testing.T) {
-
 	r := reader(t, "testdata/doc.json")
 	didDoc, err := ioutil.ReadAll(r)
 	require.Nil(t, err)
@@ -36,7 +37,6 @@ func TestIsValidOriginalDocument(t *testing.T) {
 }
 
 func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	err := v.IsValidOriginalDocument(noPublicKeyDoc)
@@ -46,11 +46,9 @@ func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 	err = v.IsValidOriginalDocument(pubKeyNotFragmentDoc)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "public key id is either absent or not starting with #")
-
 }
 
 func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	err := v.IsValidOriginalDocument(docWithID)
@@ -59,7 +57,6 @@ func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
 }
 
 func TestIsValidPayload(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
 
@@ -67,22 +64,17 @@ func TestIsValidPayload(t *testing.T) {
 
 	err := v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
-
 }
 
-
 func TestIsValidPayloadError(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	err := v.IsValidPayload(invalidUpdate)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "missing did unique suffix")
-
 }
 
 func TestIsValidPayload_StoreErrors(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
 
@@ -105,7 +97,6 @@ func TestIsValidPayload_StoreErrors(t *testing.T) {
 }
 
 func TestInvalidPayloadError(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	// payload is invalid json
@@ -118,7 +109,6 @@ func TestInvalidPayloadError(t *testing.T) {
 	err = v.IsValidOriginalDocument(payload)
 	assert.NotNil(t, err)
 	require.Contains(t, err.Error(), "invalid character")
-
 }
 
 func getDefaultValidator() *Validator {
@@ -137,4 +127,3 @@ var docWithID = []byte(`{ "@context": "some context", "id" : "001", "name": "Joh
 
 var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
-

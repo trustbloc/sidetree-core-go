@@ -8,6 +8,7 @@ package cutter
 
 import (
 	"github.com/sirupsen/logrus"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
@@ -46,7 +47,6 @@ func New(client protocol.Client) *BatchCutter {
 // Add adds the given operation(s) to pending batch queue and returns the total
 // number of pending operations.
 func (r *BatchCutter) Add(operations ...[]byte) uint {
-
 	// Enqueuing operations into batch
 	r.pendingBatch = append(r.pendingBatch, operations...)
 	return uint(len(r.pendingBatch))

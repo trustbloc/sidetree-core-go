@@ -113,7 +113,6 @@ func (doc DIDDocument) JSONLdObject() map[string]interface{} {
 
 // DIDDocumentFromReader creates an instance of DIDDocument by reading a JSON document from Reader
 func DIDDocumentFromReader(r io.Reader) (DIDDocument, error) {
-
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -123,7 +122,6 @@ func DIDDocumentFromReader(r io.Reader) (DIDDocument, error) {
 
 // DidDocumentFromBytes creates an instance of DIDDocument by reading a JSON document from bytes
 func DidDocumentFromBytes(data []byte) (DIDDocument, error) {
-
 	doc := make(DIDDocument)
 	err := json.Unmarshal(data, &doc)
 	if err != nil {

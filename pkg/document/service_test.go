@@ -13,7 +13,6 @@ import (
 )
 
 func TestService(t *testing.T) {
-
 	svc := NewService(map[string]interface{}{})
 	require.Empty(t, svc.Type())
 	require.Empty(t, svc.Endpoint())
@@ -26,5 +25,4 @@ func TestService(t *testing.T) {
 	require.Equal(t, "did:example:123456789abcdefghi;openid", svc.ID())
 	require.Equal(t, "OpenIdConnectVersion3.1Service", svc.Type())
 	require.Equal(t, "https://openid.example.com/", svc.Endpoint())
-
 }

@@ -38,7 +38,6 @@ func New(store OperationStoreClient) *OperationProcessor {
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123"
 func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, error) {
-
 	ops, err := s.store.Get(uniqueSuffix)
 	if err != nil {
 		return nil, err
@@ -56,7 +55,6 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 }
 
 func (s *OperationProcessor) processOperation(index int, operations []batch.Operation, doc document.Document) (document.Document, error) {
-
 	operation := operations[index]
 	switch operation.Type {
 	case batch.OperationTypeCreate:
@@ -75,7 +73,6 @@ func (s *OperationProcessor) processOperation(index int, operations []batch.Oper
 }
 
 func (s *OperationProcessor) getInitialDocument(operation batch.Operation) (document.Document, error) {
-
 	decodedBytes, err := docutil.DecodeString(operation.EncodedPayload)
 	if err != nil {
 		return nil, err
@@ -85,7 +82,6 @@ func (s *OperationProcessor) getInitialDocument(operation batch.Operation) (docu
 }
 
 func (s *OperationProcessor) applyPatch(operation batch.Operation, previousOperation batch.Operation, currentDoc document.Document) (document.Document, error) {
-
 	if len(operation.PreviousOperationHash) == 0 {
 		return nil, errors.New("any non-create needs a previous operation hash")
 	}

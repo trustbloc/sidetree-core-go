@@ -26,7 +26,6 @@ func NewMockBlockchainClient(err error) *MockBlockchainClient {
 
 // WriteAnchor writes the anchor file hash as a transaction to blockchain.
 func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string) error {
-
 	if m.err != nil {
 		return m.err
 	}
@@ -56,7 +55,6 @@ func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *observer
 
 // GetAnchors returns anchors
 func (m *MockBlockchainClient) GetAnchors() []string {
-
 	m.RLock()
 	defer m.RUnlock()
 

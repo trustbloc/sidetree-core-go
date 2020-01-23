@@ -19,7 +19,6 @@ type Document map[string]interface{}
 
 // FromBytes creates an instance of Document by reading a JSON document from bytes
 func FromBytes(data []byte) (Document, error) {
-
 	doc := make(Document)
 	err := json.Unmarshal(data, &doc)
 	if err != nil {

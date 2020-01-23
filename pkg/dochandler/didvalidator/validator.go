@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
@@ -42,7 +41,6 @@ func New(store OperationStoreClient) *Validator {
 // IsValidPayload verifies that the given payload is a valid Sidetree specific payload
 // that can be accepted by the Sidetree update operations
 func (v *Validator) IsValidPayload(payload []byte) error {
-
 	doc, err := document.FromBytes(payload)
 	if err != nil {
 		return err
@@ -68,7 +66,6 @@ func (v *Validator) IsValidPayload(payload []byte) error {
 
 // IsValidOriginalDocument verifies that the given payload is a valid Sidetree specific did document that can be accepted by the Sidetree create operation.
 func (v *Validator) IsValidOriginalDocument(payload []byte) error {
-
 	didDoc, err := document.DidDocumentFromBytes(payload)
 	if err != nil {
 		return err
@@ -96,7 +93,6 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 }
 
 func validatePublicKeys(didDoc document.DIDDocument) error {
-
 	// The document must contain at least 1 entry in the publicKey array property
 	publicKeyArray := didDoc.PublicKeys()
 	if len(publicKeyArray) == 0 {
