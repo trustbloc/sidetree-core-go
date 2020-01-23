@@ -6,12 +6,11 @@
 
 run:
   concurrency: 4
-  deadline: 1m
+  deadline: 3m
   issues-exit-code: 1
   tests: true
-  build-tags: ["testing"]
-  skip-files:
-    - ^(.*_test.go.*$)$
+  build-tags: [""]
+  skip-dirs:  [""]
 
 output:
   format: colored-line-number
@@ -20,24 +19,20 @@ output:
 
 linters-settings:
   errcheck:
-    check-type-assertions: false
-    check-blank: false
+    check-type-assertions: true
+    check-blank: true
     ignore: fmt:.*,io/ioutil:^Read.*
   govet:
     check-shadowing: true
     settings:
       printf:
         funcs:
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
   golint:
-    min-confidence: 0.8
+    min-confidence: 0.6
   gofmt:
     simplify: true
   goimports:
-    local-prefixes:
+    local-prefixes: github.com/trustbloc/sidetree-core-go
   gocyclo:
     min-complexity: 10
   maligned:
@@ -48,6 +43,7 @@ linters-settings:
     min-len: 3
     min-occurrences: 3
   misspell:
+    # default locale is a neutral variety of English.
     locale:
     ignore-words: []
   lll:
@@ -55,33 +51,57 @@ linters-settings:
     tab-width: 1
   unused:
     check-exported: false
+  unparam:
+    check-exported: false
+  nakedret:
+    max-func-lines: 0
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+      - opinionated
+    disabled-checks:
+      - unnamedResult
+  funlen:
+    lines: 60
+    statements: 40
+  wsl:
+    strict-append: true
+    allow-assign-and-call: true
+    allow-multiline-assign: true
+    allow-case-traling-whitespace: true
+    allow-cuddle-declarations: false
 
 linters:
-  disable-all: true
-  enable:
-    - deadcode
-    - gocyclo
-    - gofmt
-    - goimports
-    - golint
-    - gosimple
-    - ineffassign
-    - misspell
-    - unconvert
-    - unused
-    - vet
-    - varcheck
+  enable-all: true
+  disable:
     - maligned
-    - errcheck
-    - megacheck
-    - goconst
-    - gas
-    - structcheck
-  enable-all: false
-  disable: []
-  presets:
-    - bugs
-    - unused
-  fast: false
+    - prealloc
+    - gochecknoglobals # TODO enable
+    - wsl # TODO enable
+    - lll # TODO enable
+    - gocritic # TODO enable
+
 issues:
   exclude-use-default: false
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - funlen
+        - gomnd
+        - gosec # TODO enable
+        - ineffassign # TODO enable        
+        - errcheck # TODO enable
+        - nakedret # TODO enable
+        - staticcheck # TODO enable
+
+  exclude:
+    # Allow package logger variables (for now)
+    - \`logger\` is a global variable
+    -  Line contains TODO/BUG/FIXME
+    # Add comments for package
+    -  at least one file in a package should have a package comment
+    # Allow magic number 1
+    - Magic number[:] 1[^\d]

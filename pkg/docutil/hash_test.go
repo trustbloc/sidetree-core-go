@@ -16,7 +16,6 @@ import (
 )
 
 func TestGetHash(t *testing.T) {
-
 	hash, err := GetHash(100)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "algorithm not supported")
@@ -25,11 +24,9 @@ func TestGetHash(t *testing.T) {
 	hash, err = GetHash(sha2_256)
 	require.Nil(t, err)
 	require.NotNil(t, hash)
-
 }
 
 func TestComputeHash(t *testing.T) {
-
 	hash, err := ComputeMultihash(sha2_256, []byte(""))
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "empty bytes")
@@ -46,7 +43,6 @@ func TestComputeHash(t *testing.T) {
 }
 
 func TestGetOperationHash(t *testing.T) {
-
 	createOp := batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 "abc",
@@ -67,7 +63,6 @@ func TestGetOperationHash(t *testing.T) {
 }
 
 func TestIsSupportedMultihash(t *testing.T) {
-
 	// scenario: not base64 encoded (corrupted input)
 	supported := IsSupportedMultihash("XXXXXaGVsbG8=")
 	require.False(t, supported)

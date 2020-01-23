@@ -26,6 +26,7 @@ import (
 	"errors"
 
 	log "github.com/sirupsen/logrus"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
@@ -89,7 +90,6 @@ type OperationHandler interface {
 // cutter to form the operations batch file. This batch file will then be used to generate Merkle tree and create
 // an anchor file. The hash of anchor file will be written to the given ledger.
 func New(context Context, options ...Option) (*Writer, error) {
-
 	rOpts, err := prepareOptsFromOptions(options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read opts: %s", err)
@@ -143,11 +143,9 @@ func (r *Writer) Add(operation []byte) error {
 }
 
 func (r *Writer) main() {
-
 	var timer <-chan time.Time
 
 	for {
-
 		select {
 		case op := <-r.sendChan:
 			pending := r.addOperation(op) > 0
@@ -232,7 +230,6 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 }
 
 func (r *Writer) processOperations(operations [][]byte) error {
-
 	if len(operations) == 0 {
 		return errors.New("create batch called with no pending operations, should not happen")
 	}
@@ -281,7 +278,6 @@ func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.T
 		// 2. Timer is not set and there are no messages pending
 		return timer
 	}
-
 }
 
 //WithBatchTimeout allows for specifying batch timeout

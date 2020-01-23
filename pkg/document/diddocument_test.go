@@ -13,7 +13,6 @@ import (
 )
 
 func TestValid(t *testing.T) {
-
 	r := reader(t, "testdata/doc.json")
 
 	doc, err := DIDDocumentFromReader(r)
@@ -68,7 +67,6 @@ func TestValid(t *testing.T) {
 }
 
 func TestEmptyDoc(t *testing.T) {
-
 	var bytes = []byte(`{ "@context": "https://w3id.org/did/v1" }`)
 
 	doc, err := DidDocumentFromBytes(bytes)
@@ -83,7 +81,6 @@ func TestEmptyDoc(t *testing.T) {
 }
 
 func TestMissingInfo(t *testing.T) {
-
 	r := reader(t, "testdata/missing-info.json")
 
 	doc, err := DIDDocumentFromReader(r)
@@ -98,7 +95,6 @@ func TestMissingInfo(t *testing.T) {
 }
 
 func TestInvalidLists(t *testing.T) {
-
 	r := reader(t, "testdata/invalid-lists.json")
 
 	doc, err := DIDDocumentFromReader(r)

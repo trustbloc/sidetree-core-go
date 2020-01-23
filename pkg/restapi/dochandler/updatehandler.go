@@ -13,6 +13,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"

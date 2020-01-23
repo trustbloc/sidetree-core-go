@@ -17,7 +17,6 @@ const sha2_256 = 18
 var batch = [][]byte{[]byte("op1"), []byte("op2")}
 
 func TestProcessBatch(t *testing.T) {
-
 	handler := Handler{}
 
 	batch, err := handler.CreateBatchFile(batch)
@@ -42,7 +41,6 @@ func TestCreateAnchorFileError(t *testing.T) {
 }
 
 func TestGetMerkleTreeError(t *testing.T) {
-
 	mtr, err := getMerkleTreeRoot(batch, 55)
 	require.NotNil(t, err)
 	require.Nil(t, mtr)

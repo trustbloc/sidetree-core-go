@@ -21,14 +21,12 @@ const (
 )
 
 func TestCalculateDID(t *testing.T) {
-
 	id, err := CalculateID(didMethodName, encodedPayload, multihashCode)
 	require.Nil(t, err)
 	require.Equal(t, expectedID, id)
 }
 
 func TestDidCalculationError(t *testing.T) {
-
 	// non-supported mulithash code will cause an error
 	id, err := CalculateID(didMethodName, encodedPayload, 5)
 	require.NotNil(t, err)

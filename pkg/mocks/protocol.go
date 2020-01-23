@@ -17,8 +17,8 @@ type MockProtocolClient struct {
 
 // NewMockProtocolClient creates mocks protocol client
 func NewMockProtocolClient() *MockProtocolClient {
-
 	return &MockProtocolClient{
+		//nolint:gomnd // mock values are defined below.
 		Protocol: protocol.Protocol{
 			StartingBlockChainTime:       0,
 			HashAlgorithmInMultiHashCode: 18,
@@ -26,7 +26,6 @@ func NewMockProtocolClient() *MockProtocolClient {
 			MaxOperationByteSize:         2000,
 		},
 	}
-
 }
 
 // Current mocks getting last protocol version

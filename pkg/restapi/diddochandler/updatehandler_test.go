@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 

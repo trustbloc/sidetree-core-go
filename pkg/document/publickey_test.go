@@ -13,7 +13,6 @@ import (
 )
 
 func TestPublicKey(t *testing.T) {
-
 	pk := NewPublicKey(map[string]interface{}{})
 	require.Empty(t, pk.ID())
 	require.Empty(t, pk.Type())
@@ -39,5 +38,4 @@ func TestPublicKey(t *testing.T) {
 	require.Equal(t, "Hex", pk.PublicKeyHex())
 	require.Equal(t, "Jwk", pk.PublicKeyJWK())
 	require.Equal(t, "otherValue", pk["other"])
-
 }

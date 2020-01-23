@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
@@ -86,7 +87,7 @@ func httpPut(t *testing.T, url string, req *model.Request) ([]byte, error) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "application/did+ld+json", resp.Header.Get("content-type"))
-	return handleHttpResp(t, resp)
+	return handleHTTPResp(t, resp)
 }
 
 // httpGet send a regular GET request to the sidetree-node and expects 'side tree document' argument as a response
@@ -98,10 +99,10 @@ func httpGet(t *testing.T, url string) ([]byte, error) {
 		},
 	)
 	require.NoError(t, err)
-	return handleHttpResp(t, resp)
+	return handleHTTPResp(t, resp)
 }
 
-func handleHttpResp(t *testing.T, resp *http.Response) ([]byte, error) {
+func handleHTTPResp(t *testing.T, resp *http.Response) ([]byte, error) {
 	if status := resp.StatusCode; status != http.StatusOK {
 		return nil, fmt.Errorf(string(read(t, resp)))
 	}

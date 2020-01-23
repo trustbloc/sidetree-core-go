@@ -23,7 +23,6 @@ import (
 var testOp = []byte("Test Operation")
 
 func TestNew(t *testing.T) {
-
 	ctx := newMockContext()
 	writer, err := New(ctx)
 	require.Nil(t, err)
@@ -44,11 +43,9 @@ func TestNew(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, writer)
 	require.EqualValues(t, writer.opsHandler, opsHandler)
-
 }
 
 func TestStart(t *testing.T) {
-
 	ctx := newMockContext()
 	writer, err := New(ctx)
 	require.Nil(t, err)
@@ -87,11 +84,9 @@ func TestStart(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bf)
 	require.Equal(t, 2, len(bf.Operations))
-
 }
 
 func TestBatchTimer(t *testing.T) {
-
 	ctx := newMockContext()
 	writer, err := New(ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
@@ -126,11 +121,9 @@ func TestBatchTimer(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bf)
 	require.Equal(t, 1, len(bf.Operations))
-
 }
 
 func TestCasError(t *testing.T) {
-
 	ctx := newMockContext()
 	writer, err := New(ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
@@ -152,12 +145,11 @@ func TestCasError(t *testing.T) {
 }
 
 func TestBlockchainError(t *testing.T) {
-
 	ctx := newMockContext()
 	writer, err := New(ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
 
-	ctx.BlockchainClient = mocks.NewMockBlockchainClient(fmt.Errorf("Blockchain Error"))
+	ctx.BlockchainClient = mocks.NewMockBlockchainClient(fmt.Errorf("blockchain error"))
 	writer.Start()
 	defer writer.Stop()
 
@@ -173,7 +165,6 @@ func TestBlockchainError(t *testing.T) {
 }
 
 func TestProcessBatchError(t *testing.T) {
-
 	ctx := newMockContext()
 	ctx.ProtocolClient.Protocol = protocol.Protocol{
 		HashAlgorithmInMultiHashCode: 101, // non-existent hash code
@@ -199,7 +190,6 @@ func TestProcessBatchError(t *testing.T) {
 }
 
 func TestAddAfterStop(t *testing.T) {
-
 	writer, err := New(newMockContext())
 	require.Nil(t, err)
 
@@ -208,7 +198,6 @@ func TestAddAfterStop(t *testing.T) {
 	err = writer.Add(testOp)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "message from exit channel")
-
 }
 
 func TestProcessBatchErrorRecovery(t *testing.T) {
@@ -262,7 +251,6 @@ type mockContext struct {
 
 // newMockContext returns a new mockContext object
 func newMockContext() *mockContext {
-
 	ctx := &mockContext{
 		ProtocolClient:   mocks.NewMockProtocolClient(),
 		CasClient:        mocks.NewMockCasClient(nil),

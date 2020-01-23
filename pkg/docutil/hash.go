@@ -20,7 +20,6 @@ const sha2_256 = 18
 
 // ComputeMultihash will compute the hash for the supplied bytes using multihash code
 func ComputeMultihash(multihashCode uint, bytes []byte) ([]byte, error) {
-
 	if len(bytes) == 0 {
 		return nil, fmt.Errorf("empty bytes")
 	}
@@ -36,12 +35,10 @@ func ComputeMultihash(multihashCode uint, bytes []byte) ([]byte, error) {
 	hash := h.Sum(nil)
 
 	return multihash.Encode(hash, uint64(multihashCode))
-
 }
 
 // GetHash will return hash based on specified multihash code
 func GetHash(multihashCode uint) (h hash.Hash, err error) {
-
 	switch multihashCode {
 	case sha2_256:
 		h = crypto.SHA256.New()
@@ -50,12 +47,10 @@ func GetHash(multihashCode uint) (h hash.Hash, err error) {
 	}
 
 	return h, err
-
 }
 
 //GetOperationHash gets the operation hash as encoded string
 func GetOperationHash(o batch.Operation) (string, error) {
-
 	multihash, err := ComputeMultihash(o.HashAlgorithmInMultiHashCode, []byte(o.EncodedPayload))
 	if err != nil {
 		return "", err
@@ -65,7 +60,6 @@ func GetOperationHash(o batch.Operation) (string, error) {
 
 //IsSupportedMultihash checks to see if the given encoded hash has been hashed using valid multihash code
 func IsSupportedMultihash(encodedMultihash string) bool {
-
 	multihashBytes, err := DecodeString(encodedMultihash)
 	if err != nil {
 		return false

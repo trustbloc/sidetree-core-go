@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
@@ -97,7 +98,6 @@ func (p *TxnProcessor) Process(sidetreeTxn SidetreeTxn) error {
 }
 
 func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn SidetreeTxn) error {
-
 	content, err := p.dcas.Read(batchFileAddress)
 	if err != nil {
 		return errors.Wrapf(err, "failed to retrieve content for batch: key[%s]", batchFileAddress)
@@ -111,7 +111,6 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 	logger.Debugf("batch file operations: %s", bf.Operations)
 	ops := make([]batch.Operation, 0)
 	for index, op := range bf.Operations {
-
 		updatedOp, errUpdateOps := updateOperation(op, uint(index), sidetreeTxn)
 		if errUpdateOps != nil {
 			return errors.Wrapf(errUpdateOps, "failed to update operation with blockchain metadata")
@@ -166,7 +165,6 @@ var getAnchorFile = func(bytes []byte) (*AnchorFile, error) {
 
 // unmarshalAnchorFile creates new anchor file struct from bytes
 func unmarshalAnchorFile(bytes []byte) (*AnchorFile, error) {
-
 	af := &AnchorFile{}
 	err := json.Unmarshal(bytes, af)
 	if err != nil {
@@ -189,7 +187,6 @@ var getBatchFile = func(bytes []byte) (*BatchFile, error) {
 
 // unmarshalBatchFile creates new batch file struct from bytes
 func unmarshalBatchFile(bytes []byte) (*BatchFile, error) {
-
 	bf := &BatchFile{}
 	err := json.Unmarshal(bytes, bf)
 	if err != nil {

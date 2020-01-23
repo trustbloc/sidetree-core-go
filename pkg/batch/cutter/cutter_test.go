@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
@@ -21,7 +22,6 @@ var (
 )
 
 func TestBatchCutter(t *testing.T) {
-
 	c := mocks.NewMockProtocolClient()
 	c.Protocol.MaxOperationsPerBatch = 3
 	r := New(c)

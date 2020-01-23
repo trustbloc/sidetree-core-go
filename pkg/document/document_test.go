@@ -16,7 +16,6 @@ import (
 )
 
 func TestFromBytes(t *testing.T) {
-
 	r := reader(t, "testdata/doc.json")
 
 	data, err := ioutil.ReadAll(r)
@@ -33,11 +32,9 @@ func TestFromBytes(t *testing.T) {
 
 	jsonld := doc.JSONLdObject()
 	require.NotNil(t, jsonld)
-
 }
 
 func TestFromBytesError(t *testing.T) {
-
 	doc, err := FromBytes([]byte("[test : 123]"))
 	require.NotNil(t, err)
 	require.Nil(t, doc)
@@ -45,7 +42,6 @@ func TestFromBytesError(t *testing.T) {
 }
 
 func TestMarshalError(t *testing.T) {
-
 	doc := Document{}
 	doc["test"] = make(chan int)
 
@@ -53,11 +49,9 @@ func TestMarshalError(t *testing.T) {
 	require.NotNil(t, err)
 	require.Nil(t, bytes)
 	require.Contains(t, err.Error(), "json: unsupported type: chan int")
-
 }
 
 func TestGetStringValue(t *testing.T) {
-
 	const key = "key"
 	const value = "value"
 
@@ -68,7 +62,6 @@ func TestGetStringValue(t *testing.T) {
 
 	doc[key] = []string{"hello"}
 	require.Equal(t, "", doc.GetStringValue(key))
-
 }
 
 func TestStringEntry(t *testing.T) {
@@ -87,7 +80,6 @@ func TestArrayStringEntry(t *testing.T) {
 	// not a array
 	arr = arrayStringEntry("hello")
 	require.Nil(t, arr)
-
 }
 
 func reader(t *testing.T, filename string) io.Reader {

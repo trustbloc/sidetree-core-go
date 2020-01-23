@@ -59,7 +59,6 @@ type DocumentValidator interface {
 
 // New creates a new requestHandler with the context
 func New(namespace string, protocol protocol.Client, validator DocumentValidator, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
-
 	return &DocumentHandler{
 		protocol:  protocol,
 		processor: processor,
@@ -81,7 +80,6 @@ func (r *DocumentHandler) Protocol() protocol.Client {
 
 //ProcessOperation validates operation and adds it to the batch
 func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.Document, error) {
-
 	// perform validation for operation request
 	if err := r.validateOperation(operation); err != nil {
 		log.Warnf("Failed to validate operation: %s", err.Error())
@@ -114,7 +112,6 @@ func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.
 // to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to
 // the same validation as an original DID Document in a create operation
 func (r *DocumentHandler) ResolveDocument(didOrInitialDID string) (document.Document, error) {
-
 	if !strings.HasPrefix(didOrInitialDID, r.namespace) {
 		return nil, errors.New("must start with configured namespace")
 	}
@@ -151,11 +148,9 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 		return nil, err
 	}
 	return applyID(doc, r.namespace+uniquePortion), nil
-
 }
 
 func (r *DocumentHandler) resolveRequestWithDocument(encodedDocument string) (document.Document, error) {
-
 	docBytes, err := docutil.DecodeString(encodedDocument)
 	if err != nil {
 		return nil, err
@@ -187,7 +182,6 @@ func applyID(doc document.Document, id string) document.Document {
 
 // helper namespace for adding operations to the batch
 func (r *DocumentHandler) addToBatch(operation batch.Operation) error {
-
 	opBytes, err := docutil.MarshalCanonical(operation)
 	if err != nil {
 		return err
@@ -196,7 +190,6 @@ func (r *DocumentHandler) addToBatch(operation batch.Operation) error {
 }
 
 func (r *DocumentHandler) getDoc(encodedPayload string) (document.Document, error) {
-
 	id, err := docutil.CalculateID(r.namespace, encodedPayload, r.protocol.Current().HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
@@ -217,7 +210,6 @@ func (r *DocumentHandler) getDoc(encodedPayload string) (document.Document, erro
 
 // validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation batch.Operation) error {
-
 	// decode encoded payload
 	payload, err := base64.StdEncoding.DecodeString(operation.EncodedPayload)
 	if err != nil {
@@ -234,7 +226,6 @@ func (r *DocumentHandler) validateOperation(operation batch.Operation) error {
 	}
 
 	return r.validator.IsValidPayload(payload)
-
 }
 
 // getUniquePortion fetches unique portion of ID which is string after namespace

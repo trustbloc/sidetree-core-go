@@ -8,14 +8,17 @@ package dochandler
 
 import (
 	"encoding/json"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"testing"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+
 	jsonpatch "github.com/evanphx/json-patch"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -47,7 +50,6 @@ func TestDocumentHandler_Protocol(t *testing.T) {
 }
 
 func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
-
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
@@ -62,11 +64,9 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "illegal base64 data")
-
 }
 
 func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
-
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
@@ -84,7 +84,6 @@ func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 }
 
 func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	dochandler := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
@@ -115,11 +114,9 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "unique portion is empty")
-
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
-
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
@@ -139,7 +136,6 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
-
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
@@ -156,7 +152,6 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 }
 
 func TestGetDocErrors(t *testing.T) {
-
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
@@ -185,7 +180,6 @@ func TestGetDocErrors(t *testing.T) {
 }
 
 func TestApplyID(t *testing.T) {
-
 	doc := applyID(nil, "abc")
 	require.Nil(t, doc)
 
@@ -195,7 +189,6 @@ func TestApplyID(t *testing.T) {
 }
 
 func TestGetUniquePortion(t *testing.T) {
-
 	const namespace = "did:sidetree:"
 
 	// id doesn't contain namespace
@@ -216,7 +209,6 @@ func TestGetUniquePortion(t *testing.T) {
 }
 
 func TestGetParts(t *testing.T) {
-
 	const testDID = "did:method:abc"
 
 	did, initial, err := getParts(testDID)
@@ -235,7 +227,6 @@ func TestGetParts(t *testing.T) {
 }
 
 func TestProcessOperation_Update(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	dochandler := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
@@ -275,8 +266,7 @@ func (m *BatchContext) CAS() batch.CASClient {
 	return m.CasClient
 }
 
-func getDocumentHandler(store *mocks.MockOperationStore) *DocumentHandler {
-
+func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 	protocol := mocks.NewMockProtocolClient()
 
 	validator := docvalidator.New(store)
@@ -310,7 +300,6 @@ func getCreateOperation() batchapi.Operation {
 }
 
 func getUpdateOperation() batchapi.Operation {
-
 	decodedPayload, err := getDecodedPayload(updatePayload)
 	if err != nil {
 		panic(err)

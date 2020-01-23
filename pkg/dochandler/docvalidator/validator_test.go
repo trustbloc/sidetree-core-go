@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
@@ -24,7 +25,6 @@ func TestNew(t *testing.T) {
 }
 
 func TestIsValidOriginalDocument(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	err := v.IsValidOriginalDocument(validDoc)
@@ -32,7 +32,6 @@ func TestIsValidOriginalDocument(t *testing.T) {
 }
 
 func TestValidatoIsValidOriginalDocumentError(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	err := v.IsValidOriginalDocument(invalidDoc)
@@ -41,7 +40,6 @@ func TestValidatoIsValidOriginalDocumentError(t *testing.T) {
 }
 
 func TestValidatorIsValidPayload(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
 
@@ -49,11 +47,9 @@ func TestValidatorIsValidPayload(t *testing.T) {
 
 	err := v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
-
 }
 
 func TestInvalidPayloadError(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	// payload is invalid json
@@ -66,21 +62,17 @@ func TestInvalidPayloadError(t *testing.T) {
 	err = v.IsValidOriginalDocument(payload)
 	assert.NotNil(t, err)
 	require.Contains(t, err.Error(), "invalid character")
-
 }
 
 func TestValidatorIsValidPayloadError(t *testing.T) {
-
 	v := getDefaultValidator()
 
 	err := v.IsValidPayload(invalidUpdate)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "missing unique suffix")
-
 }
 
 func TestIsValidPayload_StoreErrors(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
 

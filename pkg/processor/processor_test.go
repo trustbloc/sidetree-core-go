@@ -14,6 +14,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -28,7 +29,6 @@ const (
 )
 
 func TestResolve(t *testing.T) {
-
 	op := New(getDefaultStore())
 
 	doc, err := op.Resolve(uniqueSuffix)
@@ -36,11 +36,9 @@ func TestResolve(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 	require.NotEmpty(t, doc["@context"])
-
 }
 
 func TestDocumentNotFoundError(t *testing.T) {
-
 	op := New(getDefaultStore())
 	doc, err := op.Resolve(dummyUniqueSuffix)
 	require.Nil(t, doc)
@@ -49,7 +47,6 @@ func TestDocumentNotFoundError(t *testing.T) {
 }
 
 func TestResolveMockStoreError(t *testing.T) {
-
 	testErr := errors.New("test store error")
 	store := mocks.NewMockOperationStore(testErr)
 	p := New(store)
@@ -61,7 +58,6 @@ func TestResolveMockStoreError(t *testing.T) {
 }
 
 func TestResolveError(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 
 	createOp := batch.Operation{
@@ -82,7 +78,6 @@ func TestResolveError(t *testing.T) {
 }
 
 func TestUpdateDocument(t *testing.T) {
-
 	store := getDefaultStore()
 
 	updateOp := getUpdateOperation(uniqueSuffix, uniqueSuffix, 1)
@@ -104,11 +99,9 @@ func TestUpdateDocument(t *testing.T) {
 				"did:zaz:789"}},
 		"type": "IdentityHub",
 	}})
-
 }
 
 func TestUpdateInvalidPreviousOperation(t *testing.T) {
-
 	store := getDefaultStore()
 
 	updateOp := getUpdateOperation(uniqueSuffix, "", 1)
@@ -123,7 +116,6 @@ func TestUpdateInvalidPreviousOperation(t *testing.T) {
 }
 
 func TestUpdateMisMatchPreviousOperation(t *testing.T) {
-
 	store := getDefaultStore()
 
 	updateOp := getUpdateOperation(uniqueSuffix, "this is invalid operation hash", 1)
@@ -138,7 +130,6 @@ func TestUpdateMisMatchPreviousOperation(t *testing.T) {
 }
 
 func TestConsecutiveUpdates(t *testing.T) {
-
 	store := getDefaultStore()
 
 	updateOp := getUpdateOperation(uniqueSuffix, uniqueSuffix, 1)
@@ -168,11 +159,9 @@ func TestConsecutiveUpdates(t *testing.T) {
 				"did:zaz:789"}},
 		"type": "IdentityHub",
 	}})
-
 }
 
 func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 
 	updateOp := getUpdateOperation(uniqueSuffix, uniqueSuffix, 1)
@@ -187,7 +176,6 @@ func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 }
 
 func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 	store.Validate = false
 
@@ -214,7 +202,6 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 }
 
 func TestProcessOperation_InvalidOperationType(t *testing.T) {
-
 	store := mocks.NewMockOperationStore(nil)
 
 	createOp := batch.Operation{
@@ -235,8 +222,7 @@ func TestProcessOperation_InvalidOperationType(t *testing.T) {
 	require.Equal(t, "operation type not supported for process operation", err.Error())
 }
 
-func getUpdateOperation(uniqueSuffix string, previousOperationHash string, operationNumber uint) batch.Operation {
-
+func getUpdateOperation(uniqueSuffix string, previousOperationHash string, operationNumber uint) batch.Operation { //nolint:unparam
 	patch := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/service/0/serviceEndpoint/instance/0",
@@ -264,14 +250,13 @@ func getUpdateOperation(uniqueSuffix string, previousOperationHash string, opera
 	return generateUpdateOperationBuffer(updatePayload, "#key1", uniqueSuffix)
 }
 
-func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID string, didUniqueSuffix string) batch.Operation {
-
-	updatePayloadJson, err := docutil.MarshalCanonical(updatePayload)
+func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID string, didUniqueSuffix string) batch.Operation { //nolint:unparam
+	updatePayloadJSON, err := docutil.MarshalCanonical(updatePayload)
 	if err != nil {
 		panic(err)
 	}
 
-	encodedPayload := docutil.EncodeToString(updatePayloadJson)
+	encodedPayload := docutil.EncodeToString(updatePayloadJSON)
 
 	operation := batch.Operation{
 		UniqueSuffix:                 didUniqueSuffix,
@@ -297,7 +282,6 @@ type updatePayloadSchema struct {
 }
 
 func getDefaultStore() *mocks.MockOperationStore {
-
 	store := mocks.NewMockOperationStore(nil)
 
 	createOp := batch.Operation{
@@ -314,5 +298,4 @@ func getDefaultStore() *mocks.MockOperationStore {
 	}
 
 	return store
-
 }

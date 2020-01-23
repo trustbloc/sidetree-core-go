@@ -38,7 +38,6 @@ func New(store OperationStoreClient) *Validator {
 // IsValidPayload verifies that the given payload is a valid Sidetree specific payload
 // that can be accepted by the Sidetree update operations
 func (v *Validator) IsValidPayload(payload []byte) error {
-
 	doc, err := document.FromBytes(payload)
 	if err != nil {
 		return err
@@ -64,7 +63,6 @@ func (v *Validator) IsValidPayload(payload []byte) error {
 
 // IsValidOriginalDocument verifies that the given payload is a valid Sidetree specific document that can be accepted by the Sidetree create operation.
 func (v *Validator) IsValidOriginalDocument(payload []byte) error {
-
 	doc, err := document.FromBytes(payload)
 	if err != nil {
 		return err
