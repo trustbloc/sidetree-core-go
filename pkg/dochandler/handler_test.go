@@ -29,8 +29,10 @@ import (
 )
 
 const (
-	namespace    = "doc:namespace:"
+	namespace    = "doc:namespace"
 	uniqueSuffix = "EiDOQXC2GnoVyHwIRbjhLx_cNc6vmZaS04SZjZdlLLAPRg=="
+	docID        = namespace + docutil.NamespaceDelimiter + uniqueSuffix
+
 	// encoded payload contains encoded document that corresponds to unique suffix above
 	encodedPayload     = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
 	updatePayload      = "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg=="
@@ -89,7 +91,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.NotNil(t, dochandler)
 
 	// scenario: not found in the store
-	doc, err := dochandler.ResolveDocument(namespace + uniqueSuffix)
+	doc, err := dochandler.ResolveDocument(docID)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "not found")
@@ -99,7 +101,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Nil(t, err)
 
 	// scenario: resolved document (success)
-	doc, err = dochandler.ResolveDocument(namespace + uniqueSuffix)
+	doc, err = dochandler.ResolveDocument(docID)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 
@@ -110,7 +112,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Contains(t, err.Error(), "must start with configured namespace")
 
 	// scenario: invalid id
-	doc, err = dochandler.ResolveDocument(namespace)
+	doc, err = dochandler.ResolveDocument(namespace + docutil.NamespaceDelimiter)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "unique portion is empty")
@@ -120,16 +122,16 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
-	doc, err := dochandler.ResolveDocument(namespace + uniqueSuffix + initialValuesParam + getCreateOperation().EncodedPayload)
+	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 
-	doc, err = dochandler.ResolveDocument(namespace + uniqueSuffix + initialValuesParam)
+	doc, err = dochandler.ResolveDocument(docID + initialValuesParam)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "initial values is present but empty")
 
-	doc, err = dochandler.ResolveDocument(namespace + uniqueSuffix + initialValuesParam + "payload")
+	doc, err = dochandler.ResolveDocument(docID + initialValuesParam + "payload")
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "illegal base64 data")
@@ -144,8 +146,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 	protocol.Protocol.MaxOperationByteSize = 2
 	dochandler.protocol = protocol
 
-	did := namespace + uniqueSuffix
-	doc, err := dochandler.ResolveDocument(did + initialValuesParam + getCreateOperation().EncodedPayload)
+	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
@@ -189,7 +190,7 @@ func TestApplyID(t *testing.T) {
 }
 
 func TestGetUniquePortion(t *testing.T) {
-	const namespace = "did:sidetree:"
+	const namespace = "did:sidetree"
 
 	// id doesn't contain namespace
 	uniquePortion, err := getUniquePortion(namespace, "invalid")
@@ -197,13 +198,13 @@ func TestGetUniquePortion(t *testing.T) {
 	require.Contains(t, err.Error(), "ID must start with configured namespace")
 
 	// id equals namespace; unique portion is empty
-	uniquePortion, err = getUniquePortion(namespace, namespace)
+	uniquePortion, err = getUniquePortion(namespace, namespace+docutil.NamespaceDelimiter)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "unique portion is empty")
 
 	// valid unique portion
 	const unique = "exKwW0HjS5y4zBtJ7vYDwglYhtckdO15JDt1j5F5Q0A"
-	uniquePortion, err = getUniquePortion(namespace, namespace+unique)
+	uniquePortion, err = getUniquePortion(namespace, namespace+docutil.NamespaceDelimiter+unique)
 	require.Nil(t, err)
 	require.Equal(t, unique, uniquePortion)
 }
@@ -310,7 +311,7 @@ func getUpdateOperation() batchapi.Operation {
 		Type:                         batchapi.OperationTypeUpdate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 decodedPayload.DidUniqueSuffix,
-		ID:                           namespace + decodedPayload.PreviousOperationHash,
+		ID:                           namespace + docutil.NamespaceDelimiter + decodedPayload.PreviousOperationHash,
 		PreviousOperationHash:        decodedPayload.PreviousOperationHash,
 		OperationNumber:              decodedPayload.OperationNumber,
 		Patch:                        decodedPayload.Patch,

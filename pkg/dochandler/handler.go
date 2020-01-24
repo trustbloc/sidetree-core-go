@@ -112,7 +112,7 @@ func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.
 // to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to
 // the same validation as an original DID Document in a create operation
 func (r *DocumentHandler) ResolveDocument(didOrInitialDID string) (document.Document, error) {
-	if !strings.HasPrefix(didOrInitialDID, r.namespace) {
+	if !strings.HasPrefix(didOrInitialDID, r.namespace+docutil.NamespaceDelimiter) {
 		return nil, errors.New("must start with configured namespace")
 	}
 
@@ -147,7 +147,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 		log.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 		return nil, err
 	}
-	return applyID(doc, r.namespace+uniquePortion), nil
+	return applyID(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion), nil
 }
 
 func (r *DocumentHandler) resolveRequestWithDocument(encodedDocument string) (document.Document, error) {
@@ -230,12 +230,13 @@ func (r *DocumentHandler) validateOperation(operation batch.Operation) error {
 
 // getUniquePortion fetches unique portion of ID which is string after namespace
 func getUniquePortion(namespace, idOrDocument string) (string, error) {
-	pos := strings.Index(idOrDocument, namespace)
+	ns := namespace + docutil.NamespaceDelimiter
+	pos := strings.Index(idOrDocument, ns)
 	if pos == -1 {
 		return "", errors.New("ID must start with configured namespace")
 	}
 
-	adjustedPos := pos + len(namespace)
+	adjustedPos := pos + len(ns)
 	if adjustedPos >= len(idOrDocument) {
 		return "", errors.New("unique portion is empty")
 	}

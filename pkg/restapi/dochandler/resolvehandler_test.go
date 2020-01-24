@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
@@ -50,7 +51,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
 	t.Run("Not found", func(t *testing.T) {
-		getID = func(req *http.Request) string { return namespace + "someid" }
+		getID = func(req *http.Request) string { return namespace + docutil.NamespaceDelimiter + "someid" }
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewResolveHandler(docHandler)
 
@@ -60,7 +61,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, rw.Code)
 	})
 	t.Run("Error", func(t *testing.T) {
-		getID = func(req *http.Request) string { return namespace + "someid" }
+		getID = func(req *http.Request) string { return namespace + docutil.NamespaceDelimiter + "someid" }
 		errExpected := errors.New("get doc error")
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
 		handler := NewResolveHandler(docHandler)

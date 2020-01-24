@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	namespace string = "sample:sidetree:"
+	namespace string = "sample:sidetree"
 
 	createRequest = `{
   "header": {
