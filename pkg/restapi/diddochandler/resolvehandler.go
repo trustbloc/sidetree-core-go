@@ -16,26 +16,28 @@ import (
 // ResolveHandler resolves DID documents
 type ResolveHandler struct {
 	*dochandler.ResolveHandler
+	basePath string
 }
 
 // NewResolveHandler returns a new DID document resolve handler
-func NewResolveHandler(resolver dochandler.Resolver) *ResolveHandler {
+func NewResolveHandler(basePath string, resolver dochandler.Resolver) *ResolveHandler {
 	return &ResolveHandler{
 		ResolveHandler: dochandler.NewResolveHandler(resolver),
+		basePath:       basePath,
 	}
 }
 
 // Path returns the context path
-func (o *ResolveHandler) Path() string {
-	return Path + "/{id}"
+func (h *ResolveHandler) Path() string {
+	return h.basePath + "/{id}"
 }
 
 // Method returns the HTTP method
-func (o *ResolveHandler) Method() string {
+func (h *ResolveHandler) Method() string {
 	return http.MethodGet
 }
 
 // Handler returns the handler
-func (o *ResolveHandler) Handler() common.HTTPRequestHandler {
-	return o.Resolve
+func (h *ResolveHandler) Handler() common.HTTPRequestHandler {
+	return h.Resolve
 }

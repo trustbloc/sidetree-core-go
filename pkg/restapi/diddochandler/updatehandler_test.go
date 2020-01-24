@@ -35,8 +35,8 @@ const (
 func TestUpdateHandler_Update(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
-		require.Equal(t, Path, handler.Path())
+		handler := NewUpdateHandler(basePath, docHandler)
+		require.Equal(t, basePath, handler.Path())
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
 
