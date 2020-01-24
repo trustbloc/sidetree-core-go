@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	namespace string = "did:sidetree:"
+	namespace string = "did:sidetree"
 
 	createRequest = `{
   "header": {

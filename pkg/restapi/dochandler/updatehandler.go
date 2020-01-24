@@ -90,7 +90,7 @@ func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, e
 			return batch.Operation{}, err
 		}
 		operation.UniqueSuffix = uniqueSuffix
-		operation.ID = h.processor.Namespace() + uniqueSuffix
+		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + uniqueSuffix
 		operation.OperationNumber = 0
 		return operation, nil
 
@@ -103,7 +103,7 @@ func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, e
 		operation.UniqueSuffix = decodedPayload.DidUniqueSuffix
 		operation.PreviousOperationHash = decodedPayload.PreviousOperationHash
 		operation.Patch = decodedPayload.Patch
-		operation.ID = h.processor.Namespace() + decodedPayload.DidUniqueSuffix
+		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + decodedPayload.DidUniqueSuffix
 		return operation, nil
 
 	default:
