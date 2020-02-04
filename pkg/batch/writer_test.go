@@ -164,31 +164,6 @@ func TestBlockchainError(t *testing.T) {
 	require.Equal(t, 0, len(ctx.BlockchainClient.GetAnchors()))
 }
 
-func TestProcessBatchError(t *testing.T) {
-	ctx := newMockContext()
-	ctx.ProtocolClient.Protocol = protocol.Protocol{
-		HashAlgorithmInMultiHashCode: 101, // non-existent hash code
-		MaxOperationsPerBatch:        2,
-	}
-
-	// Error will be generated in the context
-	writer, err := New(ctx, WithBatchTimeout(2*time.Second))
-	require.Nil(t, err)
-
-	writer.Start()
-	defer writer.Stop()
-
-	operations := generateOperations(3)
-	for _, op := range operations {
-		err = writer.Add(op)
-		require.Nil(t, err)
-	}
-
-	time.Sleep(3 * time.Second)
-
-	require.Equal(t, 0, len(ctx.BlockchainClient.GetAnchors()))
-}
-
 func TestAddAfterStop(t *testing.T) {
 	writer, err := New(newMockContext())
 	require.Nil(t, err)
@@ -284,6 +259,6 @@ func (h *mockOpsHandler) CreateBatchFile(operations [][]byte) ([]byte, error) {
 }
 
 // CreateAnchorFile mocks creating anchor file bytes
-func (h *mockOpsHandler) CreateAnchorFile(operations [][]byte, batchAddress string, multihashCode uint) ([]byte, error) {
+func (h *mockOpsHandler) CreateAnchorFile(didUniqueSuffixes []string, batchAddress string) ([]byte, error) {
 	return nil, nil
 }

@@ -7,22 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package filehandler
 
 import (
-	"gitlab.com/NebulousLabs/merkletree"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 // Handler creates batch/anchor files from operations
 type Handler struct{}
 
-// AnchorFile defines the schema of a Anchor File and its related operations.
+// AnchorFile defines the schema of a Anchor File and its related did suffixes.
 type AnchorFile struct {
 	// BatchFileHash is encoded hash of the batch file
 	BatchFileHash string `json:"batchFileHash"`
 
-	// MerkleRoot is encoded root hash of the Merkle tree constructed from
-	// the operations included in the batch file
-	MerkleRoot string `json:"merkleRoot"`
+	// DidUniqueSuffixes is an array of DID suffixes (the unique portion of the DID string that differentiates
+	// one DID from another) for all DIDs that are declared to have operations within the associated batch file.
+	DidUniqueSuffixes []string `json:"didUniqueSuffixes"`
 }
 
 // BatchFile defines the schema of a Batch File and its related operations.
@@ -55,35 +53,11 @@ func (h *Handler) CreateBatchFile(operations [][]byte) ([]byte, error) {
 
 // CreateAnchorFile will create anchor file for Sidetree transaction
 // returns anchor file bytes
-func (h *Handler) CreateAnchorFile(operations [][]byte, batchAddress string, multihashCode uint) ([]byte, error) {
-	// Create Merkle tree and get it's root for anchor file
-	mtrHash, err := getMerkleTreeRoot(operations, multihashCode)
-	if err != nil {
-		return nil, err
-	}
-
+func (h *Handler) CreateAnchorFile(didSuffixes []string, batchAddress string) ([]byte, error) {
 	af := AnchorFile{
-		BatchFileHash: batchAddress,
-		MerkleRoot:    docutil.EncodeToString(mtrHash),
+		BatchFileHash:     batchAddress,
+		DidUniqueSuffixes: didSuffixes,
 	}
 
 	return docutil.MarshalCanonical(af)
-}
-
-func getMerkleTreeRoot(operations [][]byte, multihashCode uint) ([]byte, error) {
-	hash, err := docutil.GetHash(multihashCode)
-	if err != nil {
-		return nil, err
-	}
-
-	tree := merkletree.New(hash)
-	if err = tree.SetIndex(1); err != nil {
-		return nil, err
-	}
-
-	for _, op := range operations {
-		tree.Push(op)
-	}
-
-	return tree.Root(), nil
 }

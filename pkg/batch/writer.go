@@ -13,10 +13,9 @@ SPDX-License-Identifier: Apache-2.0
 // 1) accept operations being delivered via Add method
 // 2) 'cut' configurable number of operations into batch file
 // 3) store batch file into CAS (content addressable storage)
-// 4) create Merkle tree from batch operations
-// 5) create an anchor file based on batch file address and Merkle tree root
-// 6) store anchor file into CAS
-// 7) write the address of anchor file to the underlying blockchain
+// 4) create an anchor file based on batch file address
+// 5) store anchor file into CAS
+// 6) write the address of anchor file to the underlying blockchain
 package batch
 
 import (
@@ -83,11 +82,11 @@ type OperationHandler interface {
 	CreateBatchFile(operations [][]byte) ([]byte, error)
 
 	// CreateAnchorFile will create anchor file bytes for Sidetree transaction
-	CreateAnchorFile(operations [][]byte, batchAddress string, multihashCode uint) ([]byte, error)
+	CreateAnchorFile(didUniqueSuffixes []string, batchAddress string) ([]byte, error)
 }
 
 // New creates a new Writer. Writer accepts operations being delivered via Add, orders them, and then uses the batch
-// cutter to form the operations batch file. This batch file will then be used to generate Merkle tree and create
+// cutter to form the operations batch file. This batch file will then be used to create
 // an anchor file. The hash of anchor file will be written to the given ledger.
 func New(context Context, options ...Option) (*Writer, error) {
 	rOpts, err := prepareOptsFromOptions(options...)
@@ -247,7 +246,8 @@ func (r *Writer) processOperations(operations [][]byte) error {
 		return err
 	}
 
-	anchorBytes, err := r.opsHandler.CreateAnchorFile(operations, batchAddr, r.context.Protocol().Current().HashAlgorithmInMultiHashCode)
+	// TODO: Calculate DID unique suffixes for this anchor file and set it here
+	anchorBytes, err := r.opsHandler.CreateAnchorFile([]string{}, batchAddr)
 	if err != nil {
 		return err
 	}
