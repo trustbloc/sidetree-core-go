@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const sha2_256 = 18
-
 var batch = [][]byte{[]byte("op1"), []byte("op2")}
 
 func TestProcessBatch(t *testing.T) {
@@ -27,21 +25,7 @@ func TestProcessBatch(t *testing.T) {
 func TestCreateAnchorFile(t *testing.T) {
 	handler := Handler{}
 
-	anchorBytes, err := handler.CreateAnchorFile(batch, "batchAddr", sha2_256)
+	anchorBytes, err := handler.CreateAnchorFile([]string{"uniqueSuffix1", "uniqueSuffix2"}, "batchAddr")
 	require.Nil(t, err)
 	require.NotNil(t, anchorBytes)
-}
-
-func TestCreateAnchorFileError(t *testing.T) {
-	handler := Handler{}
-
-	anchorBytes, err := handler.CreateAnchorFile(batch, "batchAddr", 55)
-	require.NotNil(t, err)
-	require.Nil(t, anchorBytes)
-}
-
-func TestGetMerkleTreeError(t *testing.T) {
-	mtr, err := getMerkleTreeRoot(batch, 55)
-	require.NotNil(t, err)
-	require.Nil(t, mtr)
 }

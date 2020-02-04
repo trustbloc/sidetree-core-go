@@ -35,12 +35,6 @@ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJyk=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
-gitlab.com/NebulousLabs/errors v0.0.0-20171229012116-7ead97ef90b8 h1:gZfMjx7Jr6N8b7iJO4eUjDsn6xJqoyXg8D+ogdoAfKY=
-gitlab.com/NebulousLabs/errors v0.0.0-20171229012116-7ead97ef90b8/go.mod h1:ZkMZ0dpQyWwlENaeZVBiQRjhMEZvk6VTXquzl3FOFP8=
-gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40 h1:dizWJqTWjwyD8KGcMOwgrkqu1JIkofYgKkmDeNE7oAs=
-gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40/go.mod h1:rOnSnoRyxMI3fe/7KIbVcsHRGxe30OONv8dEgo+vCfA=
-gitlab.com/NebulousLabs/merkletree v0.0.0-20190207030457-bc4a11e31a0d h1:ObC0V0W72CGqAliMv63xNEzKI6V0FnKcNHfi4+X5jiY=
-gitlab.com/NebulousLabs/merkletree v0.0.0-20190207030457-bc4a11e31a0d/go.mod h1:xItahGeKIkh9BQfxDEX6O3eWxOxbLBPX738sXm0uVaQ=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190211182817-74369b46fc67/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=

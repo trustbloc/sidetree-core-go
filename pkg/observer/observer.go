@@ -153,9 +153,10 @@ func updateOperation(encodedOp string, index uint, sidetreeTxn SidetreeTxn) (*ba
 type AnchorFile struct {
 	// BatchFileHash is encoded hash of the batch file
 	BatchFileHash string `json:"batchFileHash"`
-	// MerkleRoot is encoded root hash of the Merkle tree constructed from
-	// the operations included in the batch file
-	MerkleRoot string `json:"merkleRoot"`
+
+	// DidUniqueSuffixes is an array of DID suffixes (the unique portion of the DID string that differentiates
+	// one DID from another) for all DIDs that are declared to have operations within the associated batch file.
+	DidUniqueSuffixes []string `json:"didUniqueSuffixes"`
 }
 
 // getAnchorFile creates new anchor file struct from bytes
