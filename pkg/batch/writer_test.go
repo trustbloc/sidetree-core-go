@@ -20,7 +20,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testOp = []byte("Test Operation")
+var testOp = opInfo{
+	Data:         []byte("Test Operation"),
+	UniqueSuffix: "test",
+}
 
 func TestNew(t *testing.T) {
 	ctx := newMockContext()
@@ -56,7 +59,7 @@ func TestStart(t *testing.T) {
 	operations := generateOperations(8)
 
 	for _, op := range operations {
-		err = writer.Add(op)
+		err = writer.Add(op.Data, op.UniqueSuffix)
 		require.Nil(t, err)
 	}
 
@@ -94,7 +97,7 @@ func TestBatchTimer(t *testing.T) {
 	writer.Start()
 	defer writer.Stop()
 
-	err = writer.Add(testOp)
+	err = writer.Add(testOp.Data, testOp.UniqueSuffix)
 	require.Nil(t, err)
 
 	// Batch will be cut after 2 seconds even though
@@ -135,7 +138,7 @@ func TestCasError(t *testing.T) {
 
 	operations := generateOperations(3)
 	for _, op := range operations {
-		err = writer.Add(op)
+		err = writer.Add(op.Data, op.UniqueSuffix)
 		require.Nil(t, err)
 	}
 
@@ -155,7 +158,7 @@ func TestBlockchainError(t *testing.T) {
 
 	operations := generateOperations(3)
 	for _, op := range operations {
-		err = writer.Add(op)
+		err = writer.Add(op.Data, op.UniqueSuffix)
 		require.Nil(t, err)
 	}
 
@@ -170,7 +173,7 @@ func TestAddAfterStop(t *testing.T) {
 
 	writer.Stop()
 
-	err = writer.Add(testOp)
+	err = writer.Add(testOp.Data, testOp.UniqueSuffix)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "message from exit channel")
 }
@@ -189,11 +192,11 @@ func TestProcessBatchErrorRecovery(t *testing.T) {
 	const n = 12
 	const numBatchesExpected = 7
 
-	require.NoError(t, writer.Add([]byte("first-op")))
+	require.NoError(t, writer.Add([]byte("first-op"), "unique"))
 	time.Sleep(1 * time.Second)
 
 	for _, op := range generateOperations(n) {
-		require.NoError(t, writer.Add(op))
+		require.NoError(t, writer.Add(op.Data, op.UniqueSuffix))
 	}
 
 	// Clear the error. The batch writer should recover by processing all of the pending batches
@@ -210,9 +213,9 @@ func withError() Option {
 	}
 }
 
-func generateOperations(numOfOperations int) (ops [][]byte) {
+func generateOperations(numOfOperations int) (ops []opInfo) {
 	for j := 1; j <= numOfOperations; j++ {
-		ops = append(ops, []byte(fmt.Sprintf("op%d", j)))
+		ops = append(ops, opInfo{Data: []byte(fmt.Sprintf("op%d", j)), UniqueSuffix: string(j)})
 	}
 	return
 }
