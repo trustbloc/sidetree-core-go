@@ -296,7 +296,6 @@ func getCreateOperation() batchapi.Operation {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
 		ID:                           namespace + uniqueSuffix,
-		OperationNumber:              0,
 	}
 }
 
@@ -311,9 +310,6 @@ func getUpdateOperation() batchapi.Operation {
 		Type:                         batchapi.OperationTypeUpdate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 decodedPayload.DidUniqueSuffix,
-		ID:                           namespace + docutil.NamespaceDelimiter + decodedPayload.PreviousOperationHash,
-		PreviousOperationHash:        decodedPayload.PreviousOperationHash,
-		OperationNumber:              decodedPayload.OperationNumber,
 		Patch:                        decodedPayload.Patch,
 	}
 }
@@ -335,10 +331,6 @@ func getDecodedPayload(encodedPayload string) (*payloadSchema, error) {
 type payloadSchema struct {
 	//The unique suffix of the DID
 	DidUniqueSuffix string
-	//The number incremented from the last change version number. 1 if first change.
-	OperationNumber uint
-	//The hash of the previous operation made to the DID Document.
-	PreviousOperationHash string
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch jsonpatch.Patch
 }

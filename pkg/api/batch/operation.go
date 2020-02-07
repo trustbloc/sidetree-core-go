@@ -22,12 +22,8 @@ type Operation struct {
 	EncodedPayload string `json:"encodedPayload"`
 	//Signature is the signature of this operation
 	Signature string `json:"signature"`
-	//PreviousOperationHash is the hash of the previous operation - undefined for create operation
-	PreviousOperationHash string `json:"previousOperationHash"`
 	//The unique suffix - encoded hash of the original create document
 	UniqueSuffix string `json:"uniqueSuffix"`
-	//The number incremented from the last change version number. 1 if first change.
-	OperationNumber uint `json:"operationNumber"`
 	//An RFC 6902 JSON patch to the current Document
 	Patch jsonpatch.Patch `json:"patch"`
 	//HashAlgorithmInMultiHashCode

@@ -66,7 +66,7 @@ func (s *OperationProcessor) processOperation(index int, operations []batch.Oper
 		if index == 0 {
 			return nil, errors.New("update cannot be first operation")
 		}
-		return s.applyPatch(operation, operations[index-1], doc)
+		return s.applyPatch(operation, doc)
 	default:
 		return nil, errors.New("operation type not supported for process operation")
 	}
@@ -81,21 +81,7 @@ func (s *OperationProcessor) getInitialDocument(operation batch.Operation) (docu
 	return document.FromBytes(decodedBytes)
 }
 
-func (s *OperationProcessor) applyPatch(operation batch.Operation, previousOperation batch.Operation, currentDoc document.Document) (document.Document, error) {
-	if len(operation.PreviousOperationHash) == 0 {
-		return nil, errors.New("any non-create needs a previous operation hash")
-	}
-
-	calculatedOperationHash, err := docutil.GetOperationHash(previousOperation)
-	if err != nil {
-		return nil, err
-	}
-
-	// any non-create requires a previous operation hash that should match the hash of the latest valid operation (previousOperation)
-	if operation.PreviousOperationHash != calculatedOperationHash {
-		return nil, errors.New("previous operation hash has to match the hash of the previous valid operation")
-	}
-
+func (s *OperationProcessor) applyPatch(operation batch.Operation, currentDoc document.Document) (document.Document, error) {
 	docBytes, err := currentDoc.Bytes()
 	if err != nil {
 		return nil, err

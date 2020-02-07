@@ -80,7 +80,7 @@ func TestResolveError(t *testing.T) {
 func TestUpdateDocument(t *testing.T) {
 	store := getDefaultStore()
 
-	updateOp := getUpdateOperation(uniqueSuffix, uniqueSuffix, 1)
+	updateOp := getUpdateOperation(uniqueSuffix, 1)
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -101,45 +101,14 @@ func TestUpdateDocument(t *testing.T) {
 	}})
 }
 
-func TestUpdateInvalidPreviousOperation(t *testing.T) {
-	store := getDefaultStore()
-
-	updateOp := getUpdateOperation(uniqueSuffix, "", 1)
-	err := store.Put(updateOp)
-	require.Nil(t, err)
-
-	p := New(store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Equal(t, err.Error(), "any non-create needs a previous operation hash")
-}
-
-func TestUpdateMisMatchPreviousOperation(t *testing.T) {
-	store := getDefaultStore()
-
-	updateOp := getUpdateOperation(uniqueSuffix, "this is invalid operation hash", 1)
-	err := store.Put(updateOp)
-	require.Nil(t, err)
-
-	p := New(store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Equal(t, "previous operation hash has to match the hash of the previous valid operation", err.Error())
-}
-
 func TestConsecutiveUpdates(t *testing.T) {
 	store := getDefaultStore()
 
-	updateOp := getUpdateOperation(uniqueSuffix, uniqueSuffix, 1)
+	updateOp := getUpdateOperation(uniqueSuffix, 1)
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
-	previousOperationHash, err := docutil.GetOperationHash(updateOp)
-	require.Nil(t, err)
-
-	updateOp = getUpdateOperation(uniqueSuffix, previousOperationHash, 2)
+	updateOp = getUpdateOperation(uniqueSuffix, 2)
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -164,7 +133,7 @@ func TestConsecutiveUpdates(t *testing.T) {
 func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 
-	updateOp := getUpdateOperation(uniqueSuffix, uniqueSuffix, 1)
+	updateOp := getUpdateOperation(uniqueSuffix, 1)
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -222,7 +191,7 @@ func TestProcessOperation_InvalidOperationType(t *testing.T) {
 	require.Equal(t, "operation type not supported for process operation", err.Error())
 }
 
-func getUpdateOperation(uniqueSuffix string, previousOperationHash string, operationNumber uint) batch.Operation { //nolint:unparam
+func getUpdateOperation(uniqueSuffix string, operationNumber uint) batch.Operation { //nolint:unparam
 	patch := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/service/0/serviceEndpoint/instance/0",
@@ -241,10 +210,8 @@ func getUpdateOperation(uniqueSuffix string, previousOperationHash string, opera
 	}
 
 	updatePayload := updatePayloadSchema{
-		DidUniqueSuffix:       uniqueSuffix,
-		OperationNumber:       operationNumber,
-		PreviousOperationHash: previousOperationHash,
-		Patch:                 jsonPatch,
+		DidUniqueSuffix: uniqueSuffix,
+		Patch:           jsonPatch,
 	}
 
 	return generateUpdateOperationBuffer(updatePayload, "#key1", uniqueSuffix)
@@ -261,7 +228,6 @@ func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID stri
 	operation := batch.Operation{
 		UniqueSuffix:                 didUniqueSuffix,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		PreviousOperationHash:        updatePayload.PreviousOperationHash,
 		Patch:                        updatePayload.Patch,
 		Type:                         batch.OperationTypeUpdate,
 		EncodedPayload:               encodedPayload,
@@ -273,10 +239,7 @@ func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID stri
 type updatePayloadSchema struct {
 	//The unique suffix of the DID
 	DidUniqueSuffix string
-	//The number incremented from the last change version number. 1 if first change.
-	OperationNumber uint
-	//The hash of the previous operation made to the DID Document.
-	PreviousOperationHash string
+
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch jsonpatch.Patch
 }
