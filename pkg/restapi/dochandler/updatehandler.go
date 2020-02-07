@@ -91,7 +91,6 @@ func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, e
 		}
 		operation.UniqueSuffix = uniqueSuffix
 		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + uniqueSuffix
-		operation.OperationNumber = 0
 		return operation, nil
 
 	case batch.OperationTypeUpdate:
@@ -99,9 +98,7 @@ func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, e
 		if err != nil {
 			return batch.Operation{}, errors.New("request payload doesn't follow the expected update payload schema")
 		}
-		operation.OperationNumber = decodedPayload.OperationNumber
 		operation.UniqueSuffix = decodedPayload.DidUniqueSuffix
-		operation.PreviousOperationHash = decodedPayload.PreviousOperationHash
 		operation.Patch = decodedPayload.Patch
 		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + decodedPayload.DidUniqueSuffix
 		return operation, nil
@@ -139,10 +136,7 @@ func getOperationType(t model.OperationType) batch.OperationType {
 type payloadSchema struct {
 	//The unique suffix of the DID
 	DidUniqueSuffix string
-	//The number incremented from the last change version number. 1 if first change.
-	OperationNumber uint
-	//The hash of the previous operation made to the DID Document.
-	PreviousOperationHash string
+
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch jsonpatch.Patch
 }
