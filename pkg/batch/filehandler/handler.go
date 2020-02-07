@@ -13,14 +13,14 @@ import (
 // Handler creates batch/anchor files from operations
 type Handler struct{}
 
-// AnchorFile defines the schema of a Anchor File and its related did suffixes.
+// AnchorFile defines the schema of a Anchor File
 type AnchorFile struct {
 	// BatchFileHash is encoded hash of the batch file
 	BatchFileHash string `json:"batchFileHash"`
 
-	// DidUniqueSuffixes is an array of DID suffixes (the unique portion of the DID string that differentiates
-	// one DID from another) for all DIDs that are declared to have operations within the associated batch file.
-	DidUniqueSuffixes []string `json:"didUniqueSuffixes"`
+	// UniqueSuffixes is an array of suffixes (the unique portion of the ID string that differentiates
+	// one document from another) for all documents that are declared to have operations within the associated batch file.
+	UniqueSuffixes []string `json:"uniqueSuffixes"`
 }
 
 // BatchFile defines the schema of a Batch File and its related operations.
@@ -53,10 +53,10 @@ func (h *Handler) CreateBatchFile(operations [][]byte) ([]byte, error) {
 
 // CreateAnchorFile will create anchor file for Sidetree transaction
 // returns anchor file bytes
-func (h *Handler) CreateAnchorFile(didSuffixes []string, batchAddress string) ([]byte, error) {
+func (h *Handler) CreateAnchorFile(uniqueSuffixes []string, batchAddress string) ([]byte, error) {
 	af := AnchorFile{
-		BatchFileHash:     batchAddress,
-		DidUniqueSuffixes: didSuffixes,
+		BatchFileHash:  batchAddress,
+		UniqueSuffixes: uniqueSuffixes,
 	}
 
 	return docutil.MarshalCanonical(af)

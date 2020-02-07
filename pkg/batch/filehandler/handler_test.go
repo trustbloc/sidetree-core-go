@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package filehandler
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,14 @@ func TestProcessBatch(t *testing.T) {
 func TestCreateAnchorFile(t *testing.T) {
 	handler := Handler{}
 
-	anchorBytes, err := handler.CreateAnchorFile([]string{"uniqueSuffix1", "uniqueSuffix2"}, "batchAddr")
+	uniqueSuffixes := []string{"uniqueSuffix1", "uniqueSuffix2"}
+
+	anchorBytes, err := handler.CreateAnchorFile(uniqueSuffixes, "batchAddr")
 	require.Nil(t, err)
 	require.NotNil(t, anchorBytes)
+
+	af := AnchorFile{}
+	err = json.Unmarshal(anchorBytes, &af)
+	require.NoError(t, err)
+	require.Equal(t, uniqueSuffixes, af.UniqueSuffixes)
 }

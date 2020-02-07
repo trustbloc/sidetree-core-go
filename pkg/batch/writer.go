@@ -37,11 +37,16 @@ const defaultBatchTimeout = 2 * time.Second
 // Option defines Writer options such as batch timeout
 type Option func(opts *Options) error
 
+type opInfo struct {
+	Data         []byte
+	UniqueSuffix string
+}
+
 // Writer implements batch writer
 type Writer struct {
 	context      Context
 	batchCutter  cutter.Cutter
-	sendChan     chan []byte
+	sendChan     chan opInfo
 	exitChan     chan struct{}
 	batchTimeout time.Duration
 	opsHandler   OperationHandler
@@ -82,7 +87,7 @@ type OperationHandler interface {
 	CreateBatchFile(operations [][]byte) ([]byte, error)
 
 	// CreateAnchorFile will create anchor file bytes for Sidetree transaction
-	CreateAnchorFile(didUniqueSuffixes []string, batchAddress string) ([]byte, error)
+	CreateAnchorFile(uniqueSuffixes []string, batchAddress string) ([]byte, error)
 }
 
 // New creates a new Writer. Writer accepts operations being delivered via Add, orders them, and then uses the batch
@@ -108,7 +113,7 @@ func New(context Context, options ...Option) (*Writer, error) {
 
 	return &Writer{
 		batchCutter:  cutter.New(context.Protocol()),
-		sendChan:     make(chan []byte),
+		sendChan:     make(chan opInfo),
 		exitChan:     make(chan struct{}),
 		batchTimeout: batchTimeout,
 		context:      context,
@@ -132,9 +137,9 @@ func (r *Writer) Stop() {
 }
 
 // Add the given operation to a queue of operations to be batched and anchored on blockchain.
-func (r *Writer) Add(operation []byte) error {
+func (r *Writer) Add(operation []byte, uniqueSuffix string) error {
 	select {
-	case r.sendChan <- operation:
+	case r.sendChan <- opInfo{Data: operation, UniqueSuffix: uniqueSuffix}:
 		return nil
 	case <-r.exitChan:
 		return fmt.Errorf("message from exit channel")
@@ -147,7 +152,7 @@ func (r *Writer) main() {
 	for {
 		select {
 		case op := <-r.sendChan:
-			pending := r.addOperation(op) > 0
+			pending := r.addOperation(op.Data, op.UniqueSuffix) > 0
 			timer = r.handleTimer(timer, pending)
 
 		case <-timer:
@@ -161,8 +166,8 @@ func (r *Writer) main() {
 	}
 }
 
-func (r *Writer) addOperation(op []byte) uint {
-	n := r.batchCutter.Add(op)
+func (r *Writer) addOperation(op []byte, didUniqueSuffix string) uint {
+	n := r.batchCutter.Add(op, didUniqueSuffix)
 	log.Debugf("Added operation: %+v. Number of pending operations: %d", op, n)
 	return r.processAvailableOperations(false)
 }
@@ -212,23 +217,23 @@ func (r *Writer) drainOperations() (pending uint, err error) {
 }
 
 func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, err error) {
-	operations, pending := r.batchCutter.Cut(forceCut)
+	operations, dids, pending := r.batchCutter.Cut(forceCut)
 	if len(operations) == 0 {
 		return 0, pending, nil
 	}
 
 	log.Debugf("processing %d batch operations ...", len(operations))
 
-	err = r.processOperations(operations)
+	err = r.processOperations(operations, dids)
 	if err != nil {
 		// Add the operations to the head of the queue so that they may be processed at the next timeout
-		pending = r.batchCutter.AddFirst(operations...)
+		pending = r.batchCutter.AddFirst(operations, dids)
 		return 0, pending, err
 	}
 	return len(operations), pending, nil
 }
 
-func (r *Writer) processOperations(operations [][]byte) error {
+func (r *Writer) processOperations(operations [][]byte, uniqueSuffixes []string) error {
 	if len(operations) == 0 {
 		return errors.New("create batch called with no pending operations, should not happen")
 	}
@@ -246,8 +251,7 @@ func (r *Writer) processOperations(operations [][]byte) error {
 		return err
 	}
 
-	// TODO: Calculate DID unique suffixes for this anchor file and set it here
-	anchorBytes, err := r.opsHandler.CreateAnchorFile([]string{}, batchAddr)
+	anchorBytes, err := r.opsHandler.CreateAnchorFile(uniqueSuffixes, batchAddr)
 	if err != nil {
 		return err
 	}

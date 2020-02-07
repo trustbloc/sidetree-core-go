@@ -149,14 +149,14 @@ func updateOperation(encodedOp string, index uint, sidetreeTxn SidetreeTxn) (*ba
 	return &op, nil
 }
 
-// AnchorFile defines the schema of a Anchor File and its related operations.
+// AnchorFile defines the schema of a Anchor File
 type AnchorFile struct {
 	// BatchFileHash is encoded hash of the batch file
 	BatchFileHash string `json:"batchFileHash"`
 
-	// DidUniqueSuffixes is an array of DID suffixes (the unique portion of the DID string that differentiates
-	// one DID from another) for all DIDs that are declared to have operations within the associated batch file.
-	DidUniqueSuffixes []string `json:"didUniqueSuffixes"`
+	// UniqueSuffixes is an array of suffixes (the unique portion of the ID string that differentiates
+	// one document from another) for all documents that are declared to have operations within the associated batch file.
+	UniqueSuffixes []string `json:"uniqueSuffixes"`
 }
 
 // getAnchorFile creates new anchor file struct from bytes
