@@ -34,6 +34,15 @@ type Operation struct {
 	TransactionNumber uint64 `json:"transactionNumber"`
 	//The index this operation was assigned to in the batch
 	OperationIndex uint `json:"operationIndex"`
+
+	// One-time password for update operation
+	UpdateOTP string `json:"updateOTP"`
+	// One-time password for this recovery/checkpoint/revoke operation
+	RecoveryOTP string `json:"recoveryOTP"`
+	// Hash of the one-time password for the next update operation
+	NextUpdateOTPHash string `json:"nextUpdateOTPHash"`
+	// Hash of the one-time password for this recovery/checkpoint/revoke operation.
+	NextRecoveryOTPHash string `json:"nextRecoveryOTPHash"`
 }
 
 // OperationType defines valid values for operation type
