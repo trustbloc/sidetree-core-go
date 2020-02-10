@@ -94,7 +94,7 @@ func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
-		return r.getDoc(operation.EncodedPayload)
+		return r.getDoc(operation.ID, operation.EncodedDocument)
 	}
 
 	return nil, nil
@@ -111,31 +111,31 @@ func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.
 // If the DID Document cannot be found, the encoded DID Document given in the initial-values DID parameter is used
 // to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to
 // the same validation as an original DID Document in a create operation
-func (r *DocumentHandler) ResolveDocument(didOrInitialDID string) (document.Document, error) {
-	if !strings.HasPrefix(didOrInitialDID, r.namespace+docutil.NamespaceDelimiter) {
+func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (document.Document, error) {
+	if !strings.HasPrefix(idOrInitialDoc, r.namespace+docutil.NamespaceDelimiter) {
 		return nil, errors.New("must start with configured namespace")
 	}
 
 	// extract did and optional initial document value
-	did, initial, err := getParts(didOrInitialDID)
+	id, initial, err := getParts(idOrInitialDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	uniquePortion, err := getUniquePortion(r.namespace, did)
+	uniquePortion, err := getUniquePortion(r.namespace, id)
 	if err != nil {
 		return nil, err
 	}
 
 	// resolve document from the blockchain
-	didDoc, err := r.resolveRequestWithID(uniquePortion)
+	doc, err := r.resolveRequestWithID(uniquePortion)
 	if err == nil {
-		return didDoc, nil
+		return doc, nil
 	}
 
 	// if document was not found on the blockchain and initial value has been provided resolve using initial value
 	if initial != "" && strings.Contains(err.Error(), "not found") {
-		return r.resolveRequestWithDocument(initial)
+		return r.resolveRequestWithDocument(id, initial)
 	}
 
 	return nil, err
@@ -150,7 +150,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 	return applyID(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion), nil
 }
 
-func (r *DocumentHandler) resolveRequestWithDocument(encodedDocument string) (document.Document, error) {
+func (r *DocumentHandler) resolveRequestWithDocument(id, encodedDocument string) (document.Document, error) {
 	docBytes, err := docutil.DecodeString(encodedDocument)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (r *DocumentHandler) resolveRequestWithDocument(encodedDocument string) (do
 		return nil, err
 	}
 
-	return r.getDoc(encodedDocument)
+	return r.getDoc(id, encodedDocument)
 }
 
 // helper function to insert id into document
@@ -189,12 +189,7 @@ func (r *DocumentHandler) addToBatch(operation batch.Operation) error {
 	return r.writer.Add(opBytes, operation.UniqueSuffix)
 }
 
-func (r *DocumentHandler) getDoc(encodedPayload string) (document.Document, error) {
-	id, err := docutil.CalculateID(r.namespace, encodedPayload, r.protocol.Current().HashAlgorithmInMultiHashCode)
-	if err != nil {
-		return nil, err
-	}
-
+func (r *DocumentHandler) getDoc(id, encodedPayload string) (document.Document, error) {
 	decodedBytes, err := docutil.DecodeString(encodedPayload)
 	if err != nil {
 		return nil, err
@@ -222,7 +217,12 @@ func (r *DocumentHandler) validateOperation(operation batch.Operation) error {
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
-		return r.validator.IsValidOriginalDocument(payload)
+		document, err := base64.StdEncoding.DecodeString(operation.EncodedDocument)
+		if err != nil {
+			return err
+		}
+
+		return r.validator.IsValidOriginalDocument(document)
 	}
 
 	return r.validator.IsValidPayload(payload)

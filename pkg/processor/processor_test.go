@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -26,6 +27,7 @@ const (
 	// encoded payload contains encoded document that corresponds to unique suffix above
 	encodedPayload = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
 	sha2_256       = 18
+	updateOTP      = "updateOTP"
 )
 
 func TestResolve(t *testing.T) {
@@ -99,6 +101,20 @@ func TestUpdateDocument(t *testing.T) {
 				"did:zaz:789"}},
 		"type": "IdentityHub",
 	}})
+}
+
+func TestUpdateDocument_InvalidOTP(t *testing.T) {
+	store := getDefaultStore()
+
+	updateOp := getUpdateOperation(uniqueSuffix, 77)
+	err := store.Put(updateOp)
+	require.Nil(t, err)
+
+	p := New(store) //Storing operation in the test store
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+	require.Nil(t, doc)
 }
 
 func TestConsecutiveUpdates(t *testing.T) {
@@ -191,6 +207,29 @@ func TestProcessOperation_InvalidOperationType(t *testing.T) {
 	require.Equal(t, "operation type not supported for process operation", err.Error())
 }
 
+func TestIsValidHashErrors(t *testing.T) {
+	multihash, err := docutil.ComputeMultihash(sha2_256, []byte("test"))
+	require.NoError(t, err)
+
+	encodedMultihash := docutil.EncodeToString(multihash)
+
+	err = isValidHash("", encodedMultihash)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "empty bytes")
+
+	err = isValidHash("hello", encodedMultihash)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "illegal base64 data at input byte 4")
+
+	err = isValidHash(docutil.EncodeToString([]byte("content")), string(multihash))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "illegal base64 data at input byte 0")
+
+	err = isValidHash(docutil.EncodeToString([]byte("content")), encodedMultihash)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+}
+
 func getUpdateOperation(uniqueSuffix string, operationNumber uint) batch.Operation { //nolint:unparam
 	patch := map[string]interface{}{
 		"op":    "replace",
@@ -214,16 +253,21 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) batch.Operati
 		Patch:           jsonPatch,
 	}
 
-	return generateUpdateOperationBuffer(updatePayload, "#key1", uniqueSuffix)
+	return generateUpdateOperationBuffer(updatePayload, "#key1", uniqueSuffix, operationNumber)
 }
 
-func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID string, didUniqueSuffix string) batch.Operation { //nolint:unparam
+func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID string, didUniqueSuffix string, operationNumber uint) batch.Operation { //nolint:unparam
 	updatePayloadJSON, err := docutil.MarshalCanonical(updatePayload)
 	if err != nil {
 		panic(err)
 	}
 
 	encodedPayload := docutil.EncodeToString(updatePayloadJSON)
+
+	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+strconv.Itoa(int(operationNumber+1))))
+	if err != nil {
+		panic(err)
+	}
 
 	operation := batch.Operation{
 		UniqueSuffix:                 didUniqueSuffix,
@@ -232,6 +276,8 @@ func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID stri
 		Type:                         batch.OperationTypeUpdate,
 		EncodedPayload:               encodedPayload,
 		TransactionNumber:            1,
+		UpdateOTP:                    base64.URLEncoding.EncodeToString([]byte(updateOTP + strconv.Itoa(int(operationNumber)))),
+		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
 	}
 	return operation
 }
@@ -248,16 +294,22 @@ type updatePayloadSchema struct {
 func getDefaultStore() *mocks.MockOperationStore {
 	store := mocks.NewMockOperationStore(nil)
 
+	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
+	if err != nil {
+		panic(err)
+	}
+
 	createOp := batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		EncodedPayload:               encodedPayload,
 		TransactionNumber:            0,
+		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
 	}
 
 	// store default create operation
-	err := store.Put(createOp)
+	err = store.Put(createOp)
 	if err != nil {
 		panic(err)
 	}

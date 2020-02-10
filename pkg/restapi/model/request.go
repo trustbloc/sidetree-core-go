@@ -9,9 +9,9 @@ package model
 // Request is the document request
 // swagger:model docRequest
 type Request struct {
-	// header
+	// protected
 	// Required: true
-	Header *Header `json:"header"`
+	Protected *Header `json:"protected"`
 
 	// payload
 	// Required: true

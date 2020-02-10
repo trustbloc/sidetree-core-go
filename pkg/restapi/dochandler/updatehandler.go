@@ -78,29 +78,52 @@ func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, e
 	operation := batch.Operation{
 		EncodedPayload:               request.Payload,
 		Signature:                    request.Signature,
-		SigningKeyID:                 request.Header.Kid,
-		Type:                         getOperationType(request.Header.Operation),
+		SigningKeyID:                 request.Protected.Kid,
 		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
 	}
 
+	decodedPayload, operationType, err := getDecodedPayload(operation.EncodedPayload)
+	if err != nil {
+		return batch.Operation{}, err
+	}
+
+	operation.Type = operationType
+
 	switch operation.Type {
 	case batch.OperationTypeCreate:
+
 		uniqueSuffix, err := docutil.GetOperationHash(operation)
 		if err != nil {
 			return batch.Operation{}, err
 		}
+
 		operation.UniqueSuffix = uniqueSuffix
-		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + uniqueSuffix
+		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + operation.UniqueSuffix
+
+		schema, err := getCreatePayloadSchema(decodedPayload)
+		if err != nil {
+			return batch.Operation{}, errors.New("request payload doesn't follow the expected create payload schema")
+		}
+
+		operation.EncodedDocument = schema.DidDocument
+		operation.NextUpdateOTPHash = schema.NextUpdateOTPHash
+		operation.NextRecoveryOTPHash = schema.NextRecoveryOTPHash
+
 		return operation, nil
 
 	case batch.OperationTypeUpdate:
-		decodedPayload, err := getDecodedPayload(request.Payload)
+		schema, err := getUpdatePayloadSchema(decodedPayload)
 		if err != nil {
 			return batch.Operation{}, errors.New("request payload doesn't follow the expected update payload schema")
 		}
-		operation.UniqueSuffix = decodedPayload.DidUniqueSuffix
-		operation.Patch = decodedPayload.Patch
-		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + decodedPayload.DidUniqueSuffix
+
+		operation.UniqueSuffix = schema.DidUniqueSuffix
+		operation.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + schema.DidUniqueSuffix
+
+		operation.Patch = schema.Patch
+
+		operation.NextUpdateOTPHash = schema.NextUpdateOTPHash
+
 		return operation, nil
 
 	default:
@@ -108,17 +131,37 @@ func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, e
 	}
 }
 
-func getDecodedPayload(encodedPayload string) (*payloadSchema, error) {
-	decodedPayload, err := docutil.DecodeString(encodedPayload)
+func getUpdatePayloadSchema(payload []byte) (*updatePayloadSchema, error) {
+	schema := &updatePayloadSchema{}
+	err := json.Unmarshal(payload, schema)
 	if err != nil {
 		return nil, err
 	}
-	uploadPayloadSchema := &payloadSchema{}
-	err = json.Unmarshal(decodedPayload, uploadPayloadSchema)
+	return schema, nil
+}
+
+func getCreatePayloadSchema(payload []byte) (*createPayloadSchema, error) {
+	schema := &createPayloadSchema{}
+	err := json.Unmarshal(payload, schema)
 	if err != nil {
 		return nil, err
 	}
-	return uploadPayloadSchema, nil
+	return schema, nil
+}
+
+func getDecodedPayload(encodedPayload string) (decodedPayload []byte, operationType batch.OperationType, err error) {
+	decodedPayload, err = docutil.DecodeString(encodedPayload)
+	if err != nil {
+		return nil, "", err
+	}
+
+	typeSchema := &payloadSchema{}
+	err = json.Unmarshal(decodedPayload, typeSchema)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return decodedPayload, getOperationType(typeSchema.Operation), nil
 }
 
 func getOperationType(t model.OperationType) batch.OperationType {
@@ -132,11 +175,45 @@ func getOperationType(t model.OperationType) batch.OperationType {
 	}
 }
 
-//payloadSchema is the struct for update payload
-type payloadSchema struct {
+//updatePayloadSchema is the struct for update payload
+type updatePayloadSchema struct {
+
+	// operation
+	// Required: true
+	Operation model.OperationType `json:"type"`
+
 	//The unique suffix of the DID
-	DidUniqueSuffix string
+	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch jsonpatch.Patch
+
+	// One-time password for update operation
+	UpdateOTP string `json:"updateOtp"`
+
+	// Hash of the one-time password for the next update operation
+	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
+}
+
+// createPayloadSchema is the struct for create payload
+type createPayloadSchema struct {
+
+	// operation
+	Operation model.OperationType `json:"type"`
+
+	// Encoded original DID document
+	DidDocument string `json:"didDocument"`
+
+	// Hash of the one-time password for the next update operation
+	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
+
+	// Hash of the one-time password for this recovery/checkpoint/revoke operation.
+	NextRecoveryOTPHash string `json:"nextRecoveryOtpHash"`
+}
+
+// payloadSchema is used to get operation type
+type payloadSchema struct {
+
+	// operation
+	Operation model.OperationType `json:"type"`
 }

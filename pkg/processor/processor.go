@@ -142,6 +142,11 @@ func (s *OperationProcessor) applyUpdateOperation(operation batch.Operation, rm 
 		return nil, errors.New("update cannot be first operation")
 	}
 
+	err := isValidHash(operation.UpdateOTP, rm.NextUpdateOTPHash)
+	if err != nil {
+		return nil, err
+	}
+
 	docBytes, err := rm.Doc.Bytes()
 	if err != nil {
 		return nil, err
@@ -164,4 +169,29 @@ func (s *OperationProcessor) applyUpdateOperation(operation batch.Operation, rm 
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
 		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
+}
+
+func isValidHash(encodedContent, encodedMultihash string) error {
+	content, err := docutil.DecodeString(encodedContent)
+	if err != nil {
+		return err
+	}
+
+	code, err := docutil.GetMultihashCode(encodedMultihash)
+	if err != nil {
+		return err
+	}
+
+	computedMultihash, err := docutil.ComputeMultihash(uint(code), content)
+	if err != nil {
+		return err
+	}
+
+	encodedComputedMultihash := docutil.EncodeToString(computedMultihash)
+
+	if encodedComputedMultihash != encodedMultihash {
+		return errors.New("supplied hash doesn't match original content")
+	}
+
+	return nil
 }

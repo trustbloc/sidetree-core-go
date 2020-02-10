@@ -86,7 +86,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation batch.Operation) (docum
 }
 
 func getDocumentFromPayload(operation batch.Operation) (document.Document, error) {
-	decodedBytes, err := docutil.DecodeString(operation.EncodedPayload)
+	decodedBytes, err := docutil.DecodeString(operation.EncodedDocument)
 	if err != nil {
 		return nil, err
 	}
