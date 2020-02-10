@@ -231,6 +231,7 @@ func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID stri
 		Patch:                        updatePayload.Patch,
 		Type:                         batch.OperationTypeUpdate,
 		EncodedPayload:               encodedPayload,
+		TransactionNumber:            1,
 	}
 	return operation
 }
@@ -252,6 +253,7 @@ func getDefaultStore() *mocks.MockOperationStore {
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		EncodedPayload:               encodedPayload,
+		TransactionNumber:            0,
 	}
 
 	// store default create operation

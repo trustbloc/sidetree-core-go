@@ -43,54 +43,125 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 		return nil, err
 	}
 
-	// Apply each operation in chronological order to build latest document
-	var doc document.Document
-	for i := 0; i < len(ops); i++ {
-		if doc, err = s.processOperation(i, ops, doc); err != nil {
+	rm := &resolutionModel{}
+
+	// split operations info 'full' and 'update' operations
+	fullOps, updateOps := splitOperations(ops)
+
+	// apply 'full' operations first
+	rm, err = s.applyOperations(fullOps, rm)
+	if err != nil {
+		return nil, err
+	}
+
+	// next apply update ops since last 'full' transaction
+	rm, err = s.applyOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionNumber), rm)
+	if err != nil {
+		return nil, err
+	}
+
+	return rm.Doc, nil
+}
+
+func splitOperations(ops []batch.Operation) (fullOps, updateOps []batch.Operation) {
+	for _, op := range ops {
+		if op.Type == batch.OperationTypeUpdate {
+			updateOps = append(updateOps, op)
+		} else { // Create, Recover, Delete
+			fullOps = append(fullOps, op)
+		}
+	}
+
+	return fullOps, updateOps
+}
+
+func getOpsWithTxnGreaterThan(ops []batch.Operation, txnNumber uint64) []batch.Operation {
+	for index, op := range ops {
+		if op.TransactionNumber > txnNumber {
+			return ops[index:]
+		}
+	}
+
+	return nil
+}
+
+func (s *OperationProcessor) applyOperations(ops []batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	var err error
+
+	for _, op := range ops {
+		if rm, err = s.applyOperation(op, rm); err != nil {
 			return nil, err
 		}
 	}
 
-	return doc, nil
+	return rm, nil
 }
 
-func (s *OperationProcessor) processOperation(index int, operations []batch.Operation, doc document.Document) (document.Document, error) {
-	operation := operations[index]
+type resolutionModel struct {
+	Doc                            document.Document
+	LastOperationTransactionNumber uint64
+	NextUpdateOTPHash              string
+	NextRecoveryOTPHash            string
+}
+
+func (s *OperationProcessor) applyOperation(operation batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
 	switch operation.Type {
 	case batch.OperationTypeCreate:
-		if index != 0 {
-			return nil, errors.New("create has to be the first operation")
-		}
-		return s.getInitialDocument(operation)
+		return s.applyCreateOperation(operation, rm)
 	case batch.OperationTypeUpdate:
-		if index == 0 {
-			return nil, errors.New("update cannot be first operation")
-		}
-		return s.applyPatch(operation, doc)
+		return s.applyUpdateOperation(operation, rm)
 	default:
 		return nil, errors.New("operation type not supported for process operation")
 	}
 }
 
-func (s *OperationProcessor) getInitialDocument(operation batch.Operation) (document.Document, error) {
+func (s *OperationProcessor) applyCreateOperation(operation batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	if rm.Doc != nil {
+		return nil, errors.New("create has to be the first operation")
+	}
+
 	decodedBytes, err := docutil.DecodeString(operation.EncodedPayload)
 	if err != nil {
 		return nil, err
 	}
 
-	return document.FromBytes(decodedBytes)
-}
-
-func (s *OperationProcessor) applyPatch(operation batch.Operation, currentDoc document.Document) (document.Document, error) {
-	docBytes, err := currentDoc.Bytes()
+	doc, err := document.FromBytes(decodedBytes)
 	if err != nil {
 		return nil, err
 	}
 
+	return &resolutionModel{
+		Doc:                            doc,
+		LastOperationTransactionNumber: operation.TransactionNumber,
+		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
+		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
+}
+
+func (s *OperationProcessor) applyUpdateOperation(operation batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	if rm.Doc == nil {
+		return nil, errors.New("update cannot be first operation")
+	}
+
+	docBytes, err := rm.Doc.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	// since update will be changed to operate on did document instead of bytes
+	// there will be no extra conversions from/to bytes
 	updatedDocBytes, err := operation.Patch.Apply(docBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return document.FromBytes(updatedDocBytes)
+	doc, err := document.FromBytes(updatedDocBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resolutionModel{
+		Doc:                            doc,
+		LastOperationTransactionNumber: operation.TransactionNumber,
+		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
+		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
 }
