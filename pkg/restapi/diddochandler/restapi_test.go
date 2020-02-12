@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -30,10 +29,6 @@ const (
 	url       = "localhost:4656"
 	clientURL = "http://" + url
 	basePath  = "/Document"
-)
-
-const (
-	didID = namespace + docutil.NamespaceDelimiter + "EiDOQXC2GnoVyHwIRbjhLx_cNc6vmZaS04SZjZdlLLAPRg=="
 )
 
 func TestRESTAPI(t *testing.T) {
@@ -48,19 +43,32 @@ func TestRESTAPI(t *testing.T) {
 	defer s.stop()
 
 	t.Run("Create DID doc", func(t *testing.T) {
+		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		require.NoError(t, err)
+		createReq, err := getCreateRequest(encodedPayload)
+		require.NoError(t, err)
+
 		request := &model.Request{}
-		err := json.Unmarshal([]byte(createRequest), request)
+		err = json.Unmarshal(createReq, request)
 		require.NoError(t, err)
 
 		resp, err := httpPut(t, clientURL+basePath, request)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 
+		didID, err := getID(encodedPayload)
+		require.NoError(t, err)
+
 		var doc document.Document
 		require.NoError(t, json.Unmarshal(resp, &doc))
 		require.Equal(t, didID, doc["id"])
 	})
 	t.Run("Resolve DID doc", func(t *testing.T) {
+		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		require.NoError(t, err)
+		didID, err := getID(encodedPayload)
+		require.NoError(t, err)
+
 		resp, err := httpGet(t, clientURL+basePath+"/"+didID)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)

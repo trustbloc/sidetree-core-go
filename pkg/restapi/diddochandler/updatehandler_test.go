@@ -8,28 +8,22 @@ package diddochandler
 
 import (
 	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
 	namespace string = "did:sidetree"
-
-	createRequest = `{
-  "header": {
-    "operation": "create",
-    "kid": "#key1",
-    "alg": "ES256K"
-  },
-  "payload": "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo=",
-  "signature": "mAJp4ZHwY5UMA05OEKvoZreRo0XrYe77s3RLyGKArG85IoBULs4cLDBtdpOToCtSZhPvCC2xOUXMGyGXDmmEHg"
-}
-`
+	sha2256          = 18
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
@@ -40,9 +34,64 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
 
+		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		require.NoError(t, err)
+		createReq, err := getCreateRequest(encodedPayload)
+		require.NoError(t, err)
+
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(createRequest)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReq))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
+
+		id, err := getID(encodedPayload)
+		require.NoError(t, err)
+
+		body, err := ioutil.ReadAll(rw.Body)
+		require.NoError(t, err)
+		require.Contains(t, string(body), id)
 	})
 }
+
+func getEncodedPayload(doc []byte) (string, error) {
+	payload, err := json.Marshal(
+		struct {
+			Operation   model.OperationType `json:"type"`
+			DIDDocument string              `json:"didDocument"`
+		}{model.OperationTypeCreate, docutil.EncodeToString(doc)})
+
+	if err != nil {
+		return "", err
+	}
+
+	return docutil.EncodeToString(payload), nil
+}
+
+func getCreateRequest(encodedPayload string) ([]byte, error) {
+	req := model.Request{
+		Protected: &model.Header{
+			Alg: "ES256K",
+			Kid: "#key1",
+		},
+		Payload:   encodedPayload,
+		Signature: "",
+	}
+
+	return json.Marshal(req)
+}
+
+func getID(encodedPayload string) (string, error) {
+	return docutil.CalculateID(namespace, encodedPayload, sha2256)
+}
+
+const validDoc = `{
+	"@context": ["https://w3id.org/did/v1"],
+	"created": "2019-09-23T14:16:59.261024-04:00",
+	"publicKey": [{
+		"controller": "id",
+		"id": "did:method:abc#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type": "Ed25519VerificationKey2018"
+	}],
+	"updated": "2019-09-23T14:16:59.261024-04:00"
+}`

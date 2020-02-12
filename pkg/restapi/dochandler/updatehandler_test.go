@@ -8,6 +8,7 @@ package dochandler
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,42 +16,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
-	namespace string = "sample:sidetree"
+	namespace = "sample:sidetree"
 
-	createRequest = `{
-  "header": {
-    "operation": "create",
-    "kid": "#key1",
-    "alg": "ES256K"
-  },
-  "payload": "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo=",
-  "signature": "mAJp4ZHwY5UMA05OEKvoZreRo0XrYe77s3RLyGKArG85IoBULs4cLDBtdpOToCtSZhPvCC2xOUXMGyGXDmmEHg"
-}
-`
-	updateRequest = `{
-  "header": {
-    "operation": "update",
-    "kid": "#key1",
-    "alg": "ES256K"
-  },
-  "payload": "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg==",
-  "signature": "mAJp4ZHwY5UMA05OEKvoZreRo0XrYe77s3RLyGKArG85IoBULs4cLDBtdpOToCtSZhPvCC2xOUXMGyGXDmmEHg"
-}
-`
-	unsupportedOperationRequest = `{
-  "header": {
-    "operation": "some operation",
-    "kid": "#key1",
-    "alg": "ES256K"
-  },
-  "payload": "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg==",
-  "signature": "mAJp4ZHwY5UMA05OEKvoZreRo0XrYe77s3RLyGKArG85IoBULs4cLDBtdpOToCtSZhPvCC2xOUXMGyGXDmmEHg"
-}
-`
+	create      = "create"
+	update      = "update"
+	unsupported = "unsupported"
+
 	badRequest = `bad request`
 )
 
@@ -60,7 +37,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler := NewUpdateHandler(docHandler)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(createRequest)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(create)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
@@ -70,7 +47,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler := NewUpdateHandler(docHandler)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(updateRequest)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(update)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
@@ -80,7 +57,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler := NewUpdateHandler(docHandler)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(unsupportedOperationRequest)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(unsupported)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
@@ -99,9 +76,99 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler := NewUpdateHandler(docHandler)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(createRequest)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(create)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusInternalServerError, rw.Code)
 		require.Contains(t, rw.Body.String(), errExpected.Error())
 	})
 }
+
+func getCreatePayload(encodedDocument string) string {
+	schema := &createPayloadSchema{
+		Operation:           model.OperationTypeCreate,
+		DidDocument:         encodedDocument,
+		NextUpdateOTPHash:   "",
+		NextRecoveryOTPHash: "",
+	}
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		panic(err)
+	}
+
+	return docutil.EncodeToString(payload)
+}
+
+func getUpdatePayload() string {
+	schema := &updatePayloadSchema{
+		Operation:         model.OperationTypeUpdate,
+		DidUniqueSuffix:   "",
+		Patch:             nil,
+		UpdateOTP:         "",
+		NextUpdateOTPHash: "",
+	}
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		panic(err)
+	}
+
+	return docutil.EncodeToString(payload)
+}
+
+func getUnsupportedPayload() string {
+	schema := &payloadSchema{
+		Operation: "unsupported",
+	}
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		panic(err)
+	}
+
+	return docutil.EncodeToString(payload)
+}
+
+func getRequest(operation string) []byte {
+	var encodedPayload string
+
+	switch operation {
+	case create:
+		encodedPayload = getCreatePayload(getEncodedDocument())
+	case update:
+		encodedPayload = getUpdatePayload()
+	case unsupported:
+		encodedPayload = getUnsupportedPayload()
+	}
+
+	req := model.Request{
+		Protected: &model.Header{
+			Alg: "ES256K",
+			Kid: "#key1",
+		},
+		Payload:   encodedPayload,
+		Signature: "",
+	}
+
+	bytes, err := json.Marshal(req)
+	if err != nil {
+		panic(err)
+	}
+
+	return bytes
+}
+
+func getEncodedDocument() string {
+	return docutil.EncodeToString([]byte(validDoc))
+}
+
+const validDoc = `{
+	"@context": ["https://w3id.org/did/v1"],
+	"created": "2019-09-23T14:16:59.261024-04:00",
+	"publicKey": [{
+		"id": "#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type": "Ed25519VerificationKey2018"
+	}],
+	"updated": "2019-09-23T14:16:59.261024-04:00"
+}`

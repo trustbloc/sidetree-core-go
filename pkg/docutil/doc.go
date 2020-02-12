@@ -11,12 +11,21 @@ const NamespaceDelimiter = ":"
 
 //CalculateID calculates the ID from an encoded initial document (from create operation)
 func CalculateID(namespace, encodedDocument string, hashAlgorithmAsMultihashCode uint) (string, error) {
-	didDocumentBytes := []byte(encodedDocument)
-	multiHashBytes, err := ComputeMultihash(hashAlgorithmAsMultihashCode, didDocumentBytes)
+	uniqueSuffix, err := CalculateUniqueSuffix(encodedDocument, hashAlgorithmAsMultihashCode)
 	if err != nil {
 		return "", err
 	}
 
-	didID := namespace + NamespaceDelimiter + EncodeToString(multiHashBytes)
+	didID := namespace + NamespaceDelimiter + uniqueSuffix
 	return didID, nil
+}
+
+//CalculateUniqueSuffix calculates the unique from an encoded initial document (from create operation)
+func CalculateUniqueSuffix(encodedDocument string, hashAlgorithmAsMultihashCode uint) (string, error) {
+	multiHashBytes, err := ComputeMultihash(hashAlgorithmAsMultihashCode, []byte(encodedDocument))
+	if err != nil {
+		return "", err
+	}
+
+	return EncodeToString(multiHashBytes), nil
 }

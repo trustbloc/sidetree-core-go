@@ -7,35 +7,29 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-
 	jsonpatch "github.com/evanphx/json-patch"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
-	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
+	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 
 	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
 const (
-	namespace    = "doc:namespace"
-	uniqueSuffix = "EiDOQXC2GnoVyHwIRbjhLx_cNc6vmZaS04SZjZdlLLAPRg=="
-	docID        = namespace + docutil.NamespaceDelimiter + uniqueSuffix
+	namespace = "doc:namespace"
 
-	// encoded payload contains encoded document that corresponds to unique suffix above
-	encodedPayload     = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
-	updatePayload      = "ewogICJkaWRVbmlxdWVTdWZmaXgiOiAiRWlET1FYQzJHbm9WeUh3SVJiamhMeF9jTmM2dm1aYVMwNFNaalpkbExMQVBSZz09IiwKICAib3BlcmF0aW9uTnVtYmVyIjogMSwKICAicHJldmlvdXNPcGVyYXRpb25IYXNoIjogIkVpRE9RWEMyR25vVnlId0lSYmpoTHhfY05jNnZtWmFTMDRTWmpaZGxMTEFQUmc9PSIsCiAgInBhdGNoIjogW3sKICAgICJvcCI6ICJyZW1vdmUiLAogICAgInBhdGgiOiAiL3NlcnZpY2UvMCIKICB9XQp9Cg=="
 	sha2_256           = 18
 	initialValuesParam = ";initial-values="
 )
@@ -90,6 +84,8 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	dochandler := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
 
+	docID := getCreateOperation().ID
+
 	// scenario: not found in the store
 	doc, err := dochandler.ResolveDocument(docID)
 	require.NotNil(t, err)
@@ -122,6 +118,8 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
+	docID := getCreateOperation().ID
+
 	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
@@ -146,6 +144,8 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 	protocol.Protocol.MaxOperationByteSize = 2
 	dochandler.protocol = protocol
 
+	docID := getCreateOperation().ID
+
 	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
@@ -156,14 +156,16 @@ func TestGetDocErrors(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
+	const id = "doc:method:abc"
+
 	// scenario: illegal payload (not base64)
-	doc, err := dochandler.getDoc("{}")
+	doc, err := dochandler.getDoc(id, "{}")
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "illegal base64 data")
 
 	// scenario: illegal payload (invalid json)
-	doc, err = dochandler.getDoc(docutil.EncodeToString([]byte("[test : 123]")))
+	doc, err = dochandler.getDoc(id, docutil.EncodeToString([]byte("[test : 123]")))
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "invalid character")
@@ -172,12 +174,6 @@ func TestGetDocErrors(t *testing.T) {
 	protocol := mocks.NewMockProtocolClient()
 	protocol.Protocol.HashAlgorithmInMultiHashCode = 999
 	dochandler.protocol = protocol
-
-	// scenario: invalid multihash code
-	doc, err = dochandler.getDoc(getCreateOperation().EncodedPayload)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
 }
 
 func TestApplyID(t *testing.T) {
@@ -290,47 +286,101 @@ func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 }
 
 func getCreateOperation() batchapi.Operation {
-	return batchapi.Operation{
-		EncodedPayload:               encodedPayload,
-		Type:                         batchapi.OperationTypeCreate,
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 uniqueSuffix,
-		ID:                           namespace + uniqueSuffix,
+	encodedDoc := docutil.EncodeToString([]byte(validDoc))
+	schema := &createPayloadSchema{
+		Operation:   model.OperationTypeCreate,
+		DidDocument: encodedDoc,
 	}
-}
 
-func getUpdateOperation() batchapi.Operation {
-	decodedPayload, err := getDecodedPayload(updatePayload)
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		panic(err)
+	}
+
+	encodedPayload := base64.URLEncoding.EncodeToString(payload)
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(encodedPayload, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
+	id, err := docutil.CalculateID(namespace, encodedPayload, sha2_256)
 	if err != nil {
 		panic(err)
 	}
 
 	return batchapi.Operation{
-		EncodedPayload:               updatePayload,
+		EncodedPayload:               encodedPayload,
+		EncodedDocument:              encodedDoc,
+		Type:                         batchapi.OperationTypeCreate,
+		HashAlgorithmInMultiHashCode: sha2_256,
+		UniqueSuffix:                 uniqueSuffix,
+		ID:                           id,
+	}
+}
+
+func getUpdateOperation() batchapi.Operation {
+	schema := &updatePayloadSchema{
+		Operation:       model.OperationTypeUpdate,
+		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
+	}
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		panic(err)
+	}
+
+	return batchapi.Operation{
+		EncodedPayload:               docutil.EncodeToString(payload),
 		Type:                         batchapi.OperationTypeUpdate,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 decodedPayload.DidUniqueSuffix,
-		Patch:                        decodedPayload.Patch,
+		UniqueSuffix:                 getCreateOperation().UniqueSuffix,
 	}
 }
 
-func getDecodedPayload(encodedPayload string) (*payloadSchema, error) {
-	decodedPayload, err := docutil.DecodeString(encodedPayload)
-	if err != nil {
-		return nil, err
-	}
-	uploadPayloadSchema := &payloadSchema{}
-	err = json.Unmarshal(decodedPayload, uploadPayloadSchema)
-	if err != nil {
-		return nil, err
-	}
-	return uploadPayloadSchema, nil
+// createPayloadSchema is the struct for create payload
+type createPayloadSchema struct {
+
+	// operation
+	Operation model.OperationType `json:"type"`
+
+	// Encoded original DID document
+	DidDocument string `json:"didDocument"`
+
+	// Hash of the one-time password for the next update operation
+	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
+
+	// Hash of the one-time password for this recovery/checkpoint/revoke operation.
+	NextRecoveryOTPHash string `json:"nextRecoveryOtpHash"`
 }
 
-//payloadSchema is the struct for update payload
-type payloadSchema struct {
+//updatePayloadSchema is the struct for update payload
+type updatePayloadSchema struct {
+
+	// operation
+	// Required: true
+	Operation model.OperationType `json:"type"`
+
 	//The unique suffix of the DID
-	DidUniqueSuffix string
+	DidUniqueSuffix string `json:"didUniqueSuffix"`
+
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch jsonpatch.Patch
+
+	// One-time password for update operation
+	UpdateOTP string `json:"updateOtp"`
+
+	// Hash of the one-time password for the next update operation
+	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
 }
+
+const validDoc = `{
+	"@context": ["https://w3id.org/did/v1"],
+	"created": "2019-09-23T14:16:59.261024-04:00",
+	"publicKey": [{
+		"controller": "did:method:abc",
+		"id": "#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type": "Ed25519VerificationKey2018"
+	}],
+	"updated": "2019-09-23T14:16:59.261024-04:00"
+}`

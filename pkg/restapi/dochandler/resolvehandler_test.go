@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,9 +24,12 @@ func TestResolveHandler_Resolve(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().
 			WithNamespace(namespace)
+
+		encodedDocument := getEncodedDocument()
 		doc, err := docHandler.ProcessOperation(batch.Operation{
-			Type:           batch.OperationTypeCreate,
-			EncodedPayload: base64.URLEncoding.EncodeToString([]byte(createRequest)),
+			Type:            batch.OperationTypeCreate,
+			EncodedPayload:  getCreatePayload(encodedDocument),
+			EncodedDocument: encodedDocument,
 		})
 		require.NoError(t, err)
 

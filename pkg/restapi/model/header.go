@@ -16,8 +16,4 @@ type Header struct {
 	// kid
 	// Required: true
 	Kid string `json:"kid"`
-
-	// operation
-	// Required: true
-	Operation OperationType `json:"operation"`
 }
