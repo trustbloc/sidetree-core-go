@@ -10,12 +10,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -29,6 +31,8 @@ const (
 	unsupported = "unsupported"
 
 	badRequest = `bad request`
+
+	sha2256 = 18
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
@@ -41,6 +45,16 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
+
+		id, err := docutil.CalculateID(namespace, getCreatePayload(getEncodedDocument()), sha2256)
+		require.NoError(t, err)
+
+		body, err := ioutil.ReadAll(rw.Body)
+		require.NoError(t, err)
+
+		doc, err := document.DidDocumentFromBytes(body)
+		require.Contains(t, doc.ID(), id)
+		require.Equal(t, len(doc.PublicKeys()), 1)
 	})
 	t.Run("Update", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
@@ -51,6 +65,27 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
+	})
+	t.Run("missing protected header", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+		handler := NewUpdateHandler(docHandler)
+
+		// missing protected header
+		createReq := model.Request{
+			Payload:   getCreatePayload(getEncodedDocument()),
+			Signature: "",
+		}
+
+		createReqBytes, err := json.Marshal(createReq)
+		require.NoError(t, err)
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReqBytes))
+		handler.Update(rw, req)
+		require.Equal(t, http.StatusBadRequest, rw.Code)
+
+		body, err := ioutil.ReadAll(rw.Body)
+		require.NoError(t, err)
+		require.Contains(t, string(body), "missing protected header")
 	})
 	t.Run("Unsupported operation", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)

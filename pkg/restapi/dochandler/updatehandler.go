@@ -75,6 +75,10 @@ func (h *UpdateHandler) doUpdate(request *model.Request) (document.Document, err
 }
 
 func (h *UpdateHandler) getOperation(request *model.Request) (batch.Operation, error) {
+	if request.Protected == nil {
+		return batch.Operation{}, errors.New("missing protected header")
+	}
+
 	operation := batch.Operation{
 		EncodedPayload:               request.Payload,
 		Signature:                    request.Signature,
