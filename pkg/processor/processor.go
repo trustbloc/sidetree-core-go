@@ -120,7 +120,7 @@ func (s *OperationProcessor) applyCreateOperation(operation batch.Operation, rm 
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	decodedBytes, err := docutil.DecodeString(operation.EncodedPayload)
+	decodedBytes, err := docutil.DecodeString(operation.EncodedDocument)
 	if err != nil {
 		return nil, err
 	}

@@ -19,21 +19,21 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
 	dummyUniqueSuffix = "dummy"
-	uniqueSuffix      = "EiDOQXC2GnoVyHwIRbjhLx_cNc6vmZaS04SZjZdlLLAPRg=="
+
 	// encoded payload contains encoded document that corresponds to unique suffix above
-	encodedPayload = "ewogICJAY29udGV4dCI6ICJodHRwczovL3czaWQub3JnL2RpZC92MSIsCiAgInB1YmxpY0tleSI6IFt7CiAgICAiaWQiOiAiI2tleTEiLAogICAgInR5cGUiOiAiU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOCIsCiAgICAicHVibGljS2V5SGV4IjogIjAyZjQ5ODAyZmIzZTA5YzZkZDQzZjE5YWE0MTI5M2QxZTBkYWQwNDRiNjhjZjgxY2Y3MDc5NDk5ZWRmZDBhYTlmMSIKICB9XSwKICAic2VydmljZSI6IFt7CiAgICAiaWQiOiAiSWRlbnRpdHlIdWIiLAogICAgInR5cGUiOiAiSWRlbnRpdHlIdWIiLAogICAgInNlcnZpY2VFbmRwb2ludCI6IHsKICAgICAgIkBjb250ZXh0IjogInNjaGVtYS5pZGVudGl0eS5mb3VuZGF0aW9uL2h1YiIsCiAgICAgICJAdHlwZSI6ICJVc2VyU2VydmljZUVuZHBvaW50IiwKICAgICAgImluc3RhbmNlIjogWyJkaWQ6YmFyOjQ1NiIsICJkaWQ6emF6Ojc4OSJdCiAgICB9CiAgfV0KfQo="
-	sha2_256       = 18
-	updateOTP      = "updateOTP"
+	sha2_256  = 18
+	updateOTP = "updateOTP"
 )
 
 func TestResolve(t *testing.T) {
 	op := New(getDefaultStore())
 
-	doc, err := op.Resolve(uniqueSuffix)
+	doc, err := op.Resolve(getCreateOperation().UniqueSuffix)
 
 	require.Nil(t, err)
 	require.NotNil(t, doc)
@@ -53,7 +53,7 @@ func TestResolveMockStoreError(t *testing.T) {
 	store := mocks.NewMockOperationStore(testErr)
 	p := New(store)
 
-	doc, err := p.Resolve(uniqueSuffix)
+	doc, err := p.Resolve(getCreateOperation().UniqueSuffix)
 	require.Nil(t, doc)
 	require.NotNil(t, err)
 	require.Equal(t, testErr, err)
@@ -62,18 +62,14 @@ func TestResolveMockStoreError(t *testing.T) {
 func TestResolveError(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 
-	createOp := batch.Operation{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 uniqueSuffix,
-		Type:                         batch.OperationTypeCreate,
-		EncodedPayload:               "invalid payload",
-	}
+	createOp := getCreateOperation()
+	createOp.EncodedDocument = "invalid payload"
 
 	err := store.Put(createOp)
 	require.Nil(t, err)
 
 	p := New(store)
-	doc, err := p.Resolve(uniqueSuffix)
+	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.Nil(t, doc)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "illegal base64 data")
@@ -81,6 +77,8 @@ func TestResolveError(t *testing.T) {
 
 func TestUpdateDocument(t *testing.T) {
 	store := getDefaultStore()
+
+	uniqueSuffix := getCreateOperation().UniqueSuffix
 
 	updateOp := getUpdateOperation(uniqueSuffix, 1)
 	err := store.Put(updateOp)
@@ -91,20 +89,18 @@ func TestUpdateDocument(t *testing.T) {
 	require.Nil(t, err)
 
 	//updated instance value inside service end point through a json patch
-	require.Equal(t, doc["service"], []interface{}{map[string]interface{}{
-		"id": "IdentityHub",
-		"serviceEndpoint": map[string]interface{}{
-			"@context": "schema.identity.foundation/hub",
-			"@type":    "UserServiceEndpoint",
-			"instance": []interface{}{
-				"did:sidetree:updateid1",
-				"did:zaz:789"}},
-		"type": "IdentityHub",
+	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
+		"controller":      "controller1",
+		"id":              "did:method:abc#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type":            "Ed25519VerificationKey2018",
 	}})
 }
 
 func TestUpdateDocument_InvalidOTP(t *testing.T) {
 	store := getDefaultStore()
+
+	uniqueSuffix := getCreateOperation().UniqueSuffix
 
 	updateOp := getUpdateOperation(uniqueSuffix, 77)
 	err := store.Put(updateOp)
@@ -120,6 +116,8 @@ func TestUpdateDocument_InvalidOTP(t *testing.T) {
 func TestConsecutiveUpdates(t *testing.T) {
 	store := getDefaultStore()
 
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
 	updateOp := getUpdateOperation(uniqueSuffix, 1)
 	err := store.Put(updateOp)
 	require.Nil(t, err)
@@ -131,23 +129,20 @@ func TestConsecutiveUpdates(t *testing.T) {
 	p := New(store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.Nil(t, err)
-	require.NotContains(t, doc["service"], "did:bar:456")
 
 	//patched twice instance replaced from did:bar:456 to did:sidetree:updateid0  and then to did:sidetree:updateid1
-	require.Equal(t, doc["service"], []interface{}{map[string]interface{}{
-		"id": "IdentityHub",
-		"serviceEndpoint": map[string]interface{}{
-			"@context": "schema.identity.foundation/hub",
-			"@type":    "UserServiceEndpoint",
-			"instance": []interface{}{
-				"did:sidetree:updateid2",
-				"did:zaz:789"}},
-		"type": "IdentityHub",
+	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
+		"controller":      "controller2",
+		"id":              "did:method:abc#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type":            "Ed25519VerificationKey2018",
 	}})
 }
 
 func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
+
+	uniqueSuffix := getCreateOperation().UniqueSuffix
 
 	updateOp := getUpdateOperation(uniqueSuffix, 1)
 	err := store.Put(updateOp)
@@ -164,12 +159,7 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	store.Validate = false
 
-	createOp := batch.Operation{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 uniqueSuffix,
-		Type:                         batch.OperationTypeCreate,
-		EncodedPayload:               encodedPayload,
-	}
+	createOp := getCreateOperation()
 
 	// store create operation
 	err := store.Put(createOp)
@@ -180,7 +170,7 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 	require.Nil(t, err)
 
 	p := New(store)
-	doc, err := p.Resolve(uniqueSuffix)
+	doc, err := p.Resolve(getCreateOperation().UniqueSuffix)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Equal(t, "create has to be the first operation", err.Error())
@@ -189,19 +179,15 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 func TestProcessOperation_InvalidOperationType(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 
-	createOp := batch.Operation{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 uniqueSuffix,
-		Type:                         "invalid",
-		EncodedPayload:               encodedPayload,
-	}
+	createOp := getCreateOperation()
+	createOp.Type = "invalid"
 
 	// store create operation
 	err := store.Put(createOp)
 	require.Nil(t, err)
 
 	p := New(store)
-	doc, err := p.Resolve(uniqueSuffix)
+	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Equal(t, "operation type not supported for process operation", err.Error())
@@ -233,8 +219,8 @@ func TestIsValidHashErrors(t *testing.T) {
 func getUpdateOperation(uniqueSuffix string, operationNumber uint) batch.Operation { //nolint:unparam
 	patch := map[string]interface{}{
 		"op":    "replace",
-		"path":  "/service/0/serviceEndpoint/instance/0",
-		"value": "did:sidetree:updateid" + strconv.Itoa(int(operationNumber)),
+		"path":  "/publicKey/0/controller",
+		"value": "controller" + strconv.Itoa(int(operationNumber)),
 	}
 
 	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{patch})
@@ -294,25 +280,64 @@ type updatePayloadSchema struct {
 func getDefaultStore() *mocks.MockOperationStore {
 	store := mocks.NewMockOperationStore(nil)
 
-	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
-	if err != nil {
-		panic(err)
-	}
-
-	createOp := batch.Operation{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 uniqueSuffix,
-		Type:                         batch.OperationTypeCreate,
-		EncodedPayload:               encodedPayload,
-		TransactionNumber:            0,
-		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
-	}
-
 	// store default create operation
-	err = store.Put(createOp)
+	err := store.Put(getCreateOperation())
 	if err != nil {
 		panic(err)
 	}
 
 	return store
 }
+
+func getCreateOperation() batch.Operation {
+	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
+	if err != nil {
+		panic(err)
+	}
+
+	encodedDoc := docutil.EncodeToString([]byte(validDoc))
+	encodedPayload, err := getEncodedPayload(encodedDoc)
+	if err != nil {
+		panic(err)
+	}
+
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(encodedDoc, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
+	return batch.Operation{
+		HashAlgorithmInMultiHashCode: sha2_256,
+		UniqueSuffix:                 uniqueSuffix,
+		Type:                         batch.OperationTypeCreate,
+		EncodedPayload:               encodedPayload,
+		EncodedDocument:              encodedDoc,
+		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
+	}
+}
+
+func getEncodedPayload(encodedDoc string) (string, error) {
+	payload, err := json.Marshal(
+		struct {
+			Operation   model.OperationType `json:"type"`
+			DIDDocument string              `json:"didDocument"`
+		}{model.OperationTypeCreate, encodedDoc})
+
+	if err != nil {
+		return "", err
+	}
+
+	return docutil.EncodeToString(payload), nil
+}
+
+const validDoc = `{
+	"@context": ["https://w3id.org/did/v1"],
+	"created": "2019-09-23T14:16:59.261024-04:00",
+	"publicKey": [{
+		"controller": "id",
+		"id": "did:method:abc#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type": "Ed25519VerificationKey2018"
+	}],
+	"updated": "2019-09-23T14:16:59.261024-04:00"
+}`

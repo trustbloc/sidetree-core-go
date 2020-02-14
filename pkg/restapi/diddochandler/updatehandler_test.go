@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -49,7 +50,37 @@ func TestUpdateHandler_Update(t *testing.T) {
 
 		body, err := ioutil.ReadAll(rw.Body)
 		require.NoError(t, err)
-		require.Contains(t, string(body), id)
+
+		doc, err := document.DidDocumentFromBytes(body)
+		require.Contains(t, doc.ID(), id)
+	})
+}
+
+func TestUpdateHandler_Update_Error(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+		handler := NewUpdateHandler(basePath, docHandler)
+
+		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		require.NoError(t, err)
+
+		// missing protected header
+		createReq := model.Request{
+			Payload:   encodedPayload,
+			Signature: "",
+		}
+
+		createReqBytes, err := json.Marshal(createReq)
+		require.NoError(t, err)
+
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReqBytes))
+		handler.Update(rw, req)
+		require.Equal(t, http.StatusBadRequest, rw.Code)
+
+		body, err := ioutil.ReadAll(rw.Body)
+		require.NoError(t, err)
+		require.Contains(t, string(body), "missing protected header")
 	})
 }
 
