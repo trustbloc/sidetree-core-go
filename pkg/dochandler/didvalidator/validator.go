@@ -28,7 +28,7 @@ type Validator struct {
 type OperationStoreClient interface {
 
 	// Get retrieves all operations related to document
-	Get(uniqueSuffix string) ([]batch.Operation, error)
+	Get(uniqueSuffix string) ([]*batch.Operation, error)
 }
 
 // New creates a new did validator

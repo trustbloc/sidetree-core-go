@@ -23,11 +23,11 @@ import (
 )
 
 const (
+	sha2_256          = 18
 	dummyUniqueSuffix = "dummy"
 
-	// encoded payload contains encoded document that corresponds to unique suffix above
-	sha2_256  = 18
-	updateOTP = "updateOTP"
+	updateOTP   = "updateOTP"
+	recoveryOTP = "recoveryOTP"
 )
 
 func TestResolve(t *testing.T) {
@@ -216,7 +216,72 @@ func TestIsValidHashErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
 }
 
-func getUpdateOperation(uniqueSuffix string, operationNumber uint) batch.Operation { //nolint:unparam
+func TestDelete(t *testing.T) {
+	store := getDefaultStore()
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	deleteOp := getDeleteOperation(uniqueSuffix, 1)
+	err := store.Put(deleteOp)
+	require.Nil(t, err)
+
+	p := New(store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "document not found")
+	require.Nil(t, doc)
+}
+
+func TestConsecutiveDelete(t *testing.T) {
+	store := getDefaultStore()
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	deleteOp := getDeleteOperation(uniqueSuffix, 1)
+	err := store.Put(deleteOp)
+	require.Nil(t, err)
+
+	deleteOp = getDeleteOperation(uniqueSuffix, 2)
+	err = store.Put(deleteOp)
+	require.Nil(t, err)
+
+	p := New(store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "delete can only be applied to an existing document")
+	require.Nil(t, doc)
+}
+
+func TestDelete_DocumentNotFound(t *testing.T) {
+	store := getDefaultStore()
+
+	deleteOp := getDeleteOperation(dummyUniqueSuffix, 0)
+	err := store.Put(deleteOp)
+	require.Nil(t, err)
+
+	p := New(store)
+	doc, err := p.Resolve(dummyUniqueSuffix)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "delete can only be applied to an existing document")
+	require.Nil(t, doc)
+}
+
+func TestDelete_InvalidRecoveryOTP(t *testing.T) {
+	store := getDefaultStore()
+
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	deleteOp := getDeleteOperation(uniqueSuffix, 1)
+	deleteOp.RecoveryOTP = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	err := store.Put(deleteOp)
+	require.NoError(t, err)
+
+	p := New(store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+	require.Nil(t, doc)
+}
+
+func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
 	patch := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/publicKey/0/controller",
@@ -234,47 +299,31 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) batch.Operati
 		panic(err)
 	}
 
-	updatePayload := updatePayloadSchema{
-		DidUniqueSuffix: uniqueSuffix,
-		Patch:           jsonPatch,
-	}
-
-	return generateUpdateOperationBuffer(updatePayload, "#key1", uniqueSuffix, operationNumber)
-}
-
-func generateUpdateOperationBuffer(updatePayload updatePayloadSchema, keyID string, didUniqueSuffix string, operationNumber uint) batch.Operation { //nolint:unparam
-	updatePayloadJSON, err := docutil.MarshalCanonical(updatePayload)
-	if err != nil {
-		panic(err)
-	}
-
-	encodedPayload := docutil.EncodeToString(updatePayloadJSON)
-
 	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+strconv.Itoa(int(operationNumber+1))))
 	if err != nil {
 		panic(err)
 	}
 
-	operation := batch.Operation{
-		UniqueSuffix:                 didUniqueSuffix,
+	operation := &batch.Operation{
+		UniqueSuffix:                 uniqueSuffix,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		Patch:                        updatePayload.Patch,
+		Patch:                        jsonPatch,
 		Type:                         batch.OperationTypeUpdate,
-		EncodedPayload:               encodedPayload,
-		TransactionNumber:            1,
+		TransactionNumber:            uint64(operationNumber),
 		UpdateOTP:                    base64.URLEncoding.EncodeToString([]byte(updateOTP + strconv.Itoa(int(operationNumber)))),
 		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
 	}
+
 	return operation
 }
 
-//updatePayloadSchema is the struct for update payload
-type updatePayloadSchema struct {
-	//The unique suffix of the DID
-	DidUniqueSuffix string
-
-	//An RFC 6902 JSON patch to the current DID Document
-	Patch jsonpatch.Patch
+func getDeleteOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
+	return &batch.Operation{
+		UniqueSuffix:      uniqueSuffix,
+		Type:              batch.OperationTypeDelete,
+		TransactionNumber: uint64(operationNumber),
+		RecoveryOTP:       base64.URLEncoding.EncodeToString([]byte(recoveryOTP)),
+	}
 }
 
 func getDefaultStore() *mocks.MockOperationStore {
@@ -289,8 +338,13 @@ func getDefaultStore() *mocks.MockOperationStore {
 	return store
 }
 
-func getCreateOperation() batch.Operation {
+func getCreateOperation() *batch.Operation {
 	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
+	if err != nil {
+		panic(err)
+	}
+
+	nextRecoveryOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryOTP))
 	if err != nil {
 		panic(err)
 	}
@@ -306,13 +360,15 @@ func getCreateOperation() batch.Operation {
 		panic(err)
 	}
 
-	return batch.Operation{
+	return &batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		EncodedPayload:               encodedPayload,
 		EncodedDocument:              encodedDoc,
+		TransactionNumber:            0,
 		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
+		NextRecoveryOTPHash:          base64.URLEncoding.EncodeToString(nextRecoveryOTPHash),
 	}
 }
 

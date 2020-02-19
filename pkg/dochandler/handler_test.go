@@ -285,7 +285,7 @@ func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 	return New(namespace, protocol, validator, writer, processor)
 }
 
-func getCreateOperation() batchapi.Operation {
+func getCreateOperation() *batchapi.Operation {
 	encodedDoc := docutil.EncodeToString([]byte(validDoc))
 	schema := &createPayloadSchema{
 		Operation:   model.OperationTypeCreate,
@@ -308,7 +308,7 @@ func getCreateOperation() batchapi.Operation {
 		panic(err)
 	}
 
-	return batchapi.Operation{
+	return &batchapi.Operation{
 		EncodedPayload:               encodedPayload,
 		EncodedDocument:              encodedDoc,
 		Type:                         batchapi.OperationTypeCreate,
@@ -318,7 +318,7 @@ func getCreateOperation() batchapi.Operation {
 	}
 }
 
-func getUpdateOperation() batchapi.Operation {
+func getUpdateOperation() *batchapi.Operation {
 	schema := &updatePayloadSchema{
 		Operation:       model.OperationTypeUpdate,
 		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
@@ -329,7 +329,7 @@ func getUpdateOperation() batchapi.Operation {
 		panic(err)
 	}
 
-	return batchapi.Operation{
+	return &batchapi.Operation{
 		EncodedPayload:               docutil.EncodeToString(payload),
 		Type:                         batchapi.OperationTypeUpdate,
 		HashAlgorithmInMultiHashCode: sha2_256,

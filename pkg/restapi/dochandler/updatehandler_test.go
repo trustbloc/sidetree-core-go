@@ -28,11 +28,12 @@ const (
 
 	create      = "create"
 	update      = "update"
+	delete      = "delete"
 	unsupported = "unsupported"
 
 	badRequest = `bad request`
 
-	sha2256 = 18
+	sha2_256 = 18
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
@@ -46,7 +47,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 
-		id, err := docutil.CalculateID(namespace, getCreatePayload(getEncodedDocument()), sha2256)
+		id, err := docutil.CalculateID(namespace, getCreatePayload(getEncodedDocument()), sha2_256)
 		require.NoError(t, err)
 
 		body, err := ioutil.ReadAll(rw.Body)
@@ -62,6 +63,16 @@ func TestUpdateHandler_Update(t *testing.T) {
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(update)))
+		handler.Update(rw, req)
+		require.Equal(t, http.StatusOK, rw.Code)
+		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
+	})
+	t.Run("Delete", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+		handler := NewUpdateHandler(docHandler)
+
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(delete)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
@@ -151,6 +162,23 @@ func getUpdatePayload() string {
 	return docutil.EncodeToString(payload)
 }
 
+func getDeletePayload() string {
+	schema := &updatePayloadSchema{
+		Operation:         model.OperationTypeDelete,
+		DidUniqueSuffix:   "",
+		Patch:             nil,
+		UpdateOTP:         "",
+		NextUpdateOTPHash: "",
+	}
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		panic(err)
+	}
+
+	return docutil.EncodeToString(payload)
+}
+
 func getUnsupportedPayload() string {
 	schema := &payloadSchema{
 		Operation: "unsupported",
@@ -172,6 +200,8 @@ func getRequest(operation string) []byte {
 		encodedPayload = getCreatePayload(getEncodedDocument())
 	case update:
 		encodedPayload = getUpdatePayload()
+	case delete:
+		encodedPayload = getDeletePayload()
 	case unsupported:
 		encodedPayload = getUnsupportedPayload()
 	}

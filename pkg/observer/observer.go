@@ -38,7 +38,7 @@ type DCAS interface {
 
 // OperationStore interface to access operation store
 type OperationStore interface {
-	Put(ops []batch.Operation) error
+	Put(ops []*batch.Operation) error
 }
 
 // Start starts channel observer routines
@@ -109,7 +109,7 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 	}
 
 	logger.Debugf("batch file operations: %s", bf.Operations)
-	ops := make([]batch.Operation, 0)
+	ops := make([]*batch.Operation, 0)
 	for index, op := range bf.Operations {
 		updatedOp, errUpdateOps := updateOperation(op, uint(index), sidetreeTxn)
 		if errUpdateOps != nil {
@@ -117,7 +117,7 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 		}
 
 		logger.Debugf("updated operation with blockchain time: %s", updatedOp.ID)
-		ops = append(ops, *updatedOp)
+		ops = append(ops, updatedOp)
 	}
 
 	err = p.operationStore.Put(ops)

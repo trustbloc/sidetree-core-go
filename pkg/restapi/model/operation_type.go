@@ -16,4 +16,7 @@ const (
 
 	// OperationTypeUpdate captures enum value "update"
 	OperationTypeUpdate OperationType = "update"
+
+	// OperationTypeDelete captures enum value "delete"
+	OperationTypeDelete OperationType = "delete"
 )
