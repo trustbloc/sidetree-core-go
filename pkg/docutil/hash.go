@@ -50,7 +50,7 @@ func GetHash(multihashCode uint) (h hash.Hash, err error) {
 }
 
 //GetOperationHash gets the operation hash as encoded string
-func GetOperationHash(o batch.Operation) (string, error) {
+func GetOperationHash(o *batch.Operation) (string, error) {
 	multihash, err := ComputeMultihash(o.HashAlgorithmInMultiHashCode, []byte(o.EncodedPayload))
 	if err != nil {
 		return "", err

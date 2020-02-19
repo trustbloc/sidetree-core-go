@@ -60,7 +60,7 @@ func (m *MockDocumentHandler) Protocol() protocol.Client {
 }
 
 // ProcessOperation mocks process operation
-func (m *MockDocumentHandler) ProcessOperation(operation batch.Operation) (document.Document, error) {
+func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (document.Document, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -85,7 +85,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation batch.Operation) (docum
 	return doc, nil
 }
 
-func getDocumentFromPayload(operation batch.Operation) (document.Document, error) {
+func getDocumentFromPayload(operation *batch.Operation) (document.Document, error) {
 	decodedBytes, err := docutil.DecodeString(operation.EncodedDocument)
 	if err != nil {
 		return nil, err

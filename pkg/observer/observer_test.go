@@ -58,7 +58,7 @@ func TestStartObserver(t *testing.T) {
 			b, err := docutil.MarshalCanonical(batch.Operation{})
 			require.NoError(t, err)
 			return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
-		}}, mockOperationStore{putFunc: func(ops []batch.Operation) error {
+		}}, mockOperationStore{putFunc: func(ops []*batch.Operation) error {
 			rw.Lock()
 			isCalled = true
 			rw.Unlock()
@@ -133,7 +133,7 @@ func TestProcessBatchFile(t *testing.T) {
 			b, err := docutil.MarshalCanonical(batch.Operation{})
 			require.NoError(t, err)
 			return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
-		}}, mockOperationStore{putFunc: func(ops []batch.Operation) error {
+		}}, mockOperationStore{putFunc: func(ops []*batch.Operation) error {
 			return fmt.Errorf("put error")
 		}})
 		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: anchorAddressKey})
@@ -193,10 +193,10 @@ func (m mockDACS) Read(key string) ([]byte, error) {
 }
 
 type mockOperationStore struct {
-	putFunc func(ops []batch.Operation) error
+	putFunc func(ops []*batch.Operation) error
 }
 
-func (m mockOperationStore) Put(ops []batch.Operation) error {
+func (m mockOperationStore) Put(ops []*batch.Operation) error {
 	if m.putFunc != nil {
 		return m.putFunc(ops)
 	}

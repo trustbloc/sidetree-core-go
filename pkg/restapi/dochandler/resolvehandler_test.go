@@ -26,7 +26,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 			WithNamespace(namespace)
 
 		encodedDocument := getEncodedDocument()
-		doc, err := docHandler.ProcessOperation(batch.Operation{
+		doc, err := docHandler.ProcessOperation(&batch.Operation{
 			Type:            batch.OperationTypeCreate,
 			EncodedPayload:  getCreatePayload(encodedDocument),
 			EncodedDocument: encodedDocument,

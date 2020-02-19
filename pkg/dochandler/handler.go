@@ -79,7 +79,7 @@ func (r *DocumentHandler) Protocol() protocol.Client {
 }
 
 //ProcessOperation validates operation and adds it to the batch
-func (r *DocumentHandler) ProcessOperation(operation batch.Operation) (document.Document, error) {
+func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document.Document, error) {
 	// perform validation for operation request
 	if err := r.validateOperation(operation); err != nil {
 		log.Warnf("Failed to validate operation: %s", err.Error())
@@ -181,7 +181,7 @@ func applyID(doc document.Document, id string) document.Document {
 }
 
 // helper namespace for adding operations to the batch
-func (r *DocumentHandler) addToBatch(operation batch.Operation) error {
+func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 	opBytes, err := docutil.MarshalCanonical(operation)
 	if err != nil {
 		return err
@@ -204,7 +204,7 @@ func (r *DocumentHandler) getDoc(id, encodedPayload string) (document.Document, 
 }
 
 // validateOperation validates the operation
-func (r *DocumentHandler) validateOperation(operation batch.Operation) error {
+func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	// decode encoded payload
 	payload, err := base64.StdEncoding.DecodeString(operation.EncodedPayload)
 	if err != nil {

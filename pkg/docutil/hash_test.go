@@ -43,7 +43,7 @@ func TestComputeHash(t *testing.T) {
 }
 
 func TestGetOperationHash(t *testing.T) {
-	createOp := batch.Operation{
+	createOp := &batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 "abc",
 		Type:                         batch.OperationTypeCreate,

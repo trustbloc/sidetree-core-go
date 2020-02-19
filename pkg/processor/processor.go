@@ -24,9 +24,9 @@ type OperationProcessor struct {
 type OperationStoreClient interface {
 
 	// Get retrieves all operations related to document
-	Get(uniqueSuffix string) ([]batch.Operation, error)
+	Get(uniqueSuffix string) ([]*batch.Operation, error)
 	// Put storing operation
-	Put(op batch.Operation) error
+	Put(op *batch.Operation) error
 }
 
 // New returns new operation processor
@@ -60,10 +60,14 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 		return nil, err
 	}
 
+	if rm.Doc == nil {
+		return nil, errors.New("document not found")
+	}
+
 	return rm.Doc, nil
 }
 
-func splitOperations(ops []batch.Operation) (fullOps, updateOps []batch.Operation) {
+func splitOperations(ops []*batch.Operation) (fullOps, updateOps []*batch.Operation) {
 	for _, op := range ops {
 		if op.Type == batch.OperationTypeUpdate {
 			updateOps = append(updateOps, op)
@@ -75,7 +79,7 @@ func splitOperations(ops []batch.Operation) (fullOps, updateOps []batch.Operatio
 	return fullOps, updateOps
 }
 
-func getOpsWithTxnGreaterThan(ops []batch.Operation, txnNumber uint64) []batch.Operation {
+func getOpsWithTxnGreaterThan(ops []*batch.Operation, txnNumber uint64) []*batch.Operation {
 	for index, op := range ops {
 		if op.TransactionNumber > txnNumber {
 			return ops[index:]
@@ -85,7 +89,7 @@ func getOpsWithTxnGreaterThan(ops []batch.Operation, txnNumber uint64) []batch.O
 	return nil
 }
 
-func (s *OperationProcessor) applyOperations(ops []batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
 	var err error
 
 	for _, op := range ops {
@@ -104,18 +108,20 @@ type resolutionModel struct {
 	NextRecoveryOTPHash            string
 }
 
-func (s *OperationProcessor) applyOperation(operation batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
 	switch operation.Type {
 	case batch.OperationTypeCreate:
 		return s.applyCreateOperation(operation, rm)
 	case batch.OperationTypeUpdate:
 		return s.applyUpdateOperation(operation, rm)
+	case batch.OperationTypeDelete:
+		return s.applyDeleteOperation(operation, rm)
 	default:
 		return nil, errors.New("operation type not supported for process operation")
 	}
 }
 
-func (s *OperationProcessor) applyCreateOperation(operation batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
 	if rm.Doc != nil {
 		return nil, errors.New("create has to be the first operation")
 	}
@@ -137,7 +143,7 @@ func (s *OperationProcessor) applyCreateOperation(operation batch.Operation, rm 
 		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
 }
 
-func (s *OperationProcessor) applyUpdateOperation(operation batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
 	if rm.Doc == nil {
 		return nil, errors.New("update cannot be first operation")
 	}
@@ -169,6 +175,23 @@ func (s *OperationProcessor) applyUpdateOperation(operation batch.Operation, rm 
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
 		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
+}
+
+func (s *OperationProcessor) applyDeleteOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	if rm.Doc == nil {
+		return nil, errors.New("delete can only be applied to an existing document")
+	}
+
+	err := isValidHash(operation.RecoveryOTP, rm.NextRecoveryOTPHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resolutionModel{
+		Doc:                            nil,
+		LastOperationTransactionNumber: operation.TransactionNumber,
+		NextUpdateOTPHash:              "",
+		NextRecoveryOTPHash:            ""}, nil
 }
 
 func isValidHash(encodedContent, encodedMultihash string) error {

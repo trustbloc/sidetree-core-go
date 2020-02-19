@@ -60,7 +60,7 @@ func TestIsValidPayload(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
 
-	store.Put(batch.Operation{UniqueSuffix: "abc"})
+	store.Put(&batch.Operation{UniqueSuffix: "abc"})
 
 	err := v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
@@ -84,7 +84,7 @@ func TestIsValidPayload_StoreErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "not found")
 
 	// scenario: found in the store and is valid
-	store.Put(batch.Operation{UniqueSuffix: "abc"})
+	store.Put(&batch.Operation{UniqueSuffix: "abc"})
 	err = v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
 
