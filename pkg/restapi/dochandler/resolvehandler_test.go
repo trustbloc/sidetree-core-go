@@ -74,4 +74,29 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, rw.Code)
 		require.Contains(t, rw.Body.String(), errExpected.Error())
 	})
+	t.Run("Document is no longer available", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+
+		encodedDocument := getEncodedDocument()
+		doc, err := docHandler.ProcessOperation(&batch.Operation{
+			Type:            batch.OperationTypeCreate,
+			EncodedPayload:  getCreatePayload(encodedDocument),
+			EncodedDocument: encodedDocument,
+		})
+		require.NoError(t, err)
+
+		_, err = docHandler.ProcessOperation(&batch.Operation{
+			Type: batch.OperationTypeDelete,
+			ID:   doc.ID(),
+		})
+		require.NoError(t, err)
+
+		getID = func(req *http.Request) string { return doc.ID() }
+		handler := NewResolveHandler(docHandler)
+
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/document", nil)
+		handler.Resolve(rw, req)
+		require.Equal(t, http.StatusGone, rw.Code)
+	})
 }

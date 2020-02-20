@@ -64,7 +64,13 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 	if m.err != nil {
 		return nil, m.err
 	}
-	if operation.Type != batch.OperationTypeCreate {
+
+	if operation.Type == batch.OperationTypeDelete {
+		m.store[operation.ID] = nil
+		return nil, nil
+	}
+
+	if operation.Type == batch.OperationTypeUpdate {
 		return nil, nil
 	}
 
@@ -101,6 +107,11 @@ func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (document.Doc
 	if _, ok := m.store[idOrDocument]; !ok {
 		return nil, errors.New("not found")
 	}
+
+	if m.store[idOrDocument] == nil {
+		return nil, errors.New("was deleted")
+	}
+
 	return m.store[idOrDocument], nil
 }
 

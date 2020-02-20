@@ -163,12 +163,9 @@ func getUpdatePayload() string {
 }
 
 func getDeletePayload() string {
-	schema := &updatePayloadSchema{
-		Operation:         model.OperationTypeDelete,
-		DidUniqueSuffix:   "",
-		Patch:             nil,
-		UpdateOTP:         "",
-		NextUpdateOTPHash: "",
+	schema := &deletePayloadSchema{
+		Operation:       model.OperationTypeDelete,
+		DidUniqueSuffix: "",
 	}
 
 	payload, err := json.Marshal(schema)

@@ -47,6 +47,9 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 
 	// split operations info 'full' and 'update' operations
 	fullOps, updateOps := splitOperations(ops)
+	if len(fullOps) == 0 {
+		return nil, errors.New("missing create operation")
+	}
 
 	// apply 'full' operations first
 	rm, err = s.applyOperations(fullOps, rm)
@@ -54,14 +57,14 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 		return nil, err
 	}
 
+	if rm.Doc == nil {
+		return nil, errors.New("document was deleted")
+	}
+
 	// next apply update ops since last 'full' transaction
 	rm, err = s.applyOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionNumber), rm)
 	if err != nil {
 		return nil, err
-	}
-
-	if rm.Doc == nil {
-		return nil, errors.New("document not found")
 	}
 
 	return rm.Doc, nil
