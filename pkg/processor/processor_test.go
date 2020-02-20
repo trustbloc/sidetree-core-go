@@ -152,7 +152,7 @@ func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
-	require.Equal(t, "update cannot be first operation", err.Error())
+	require.Equal(t, "missing create operation", err.Error())
 }
 
 func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
@@ -227,7 +227,7 @@ func TestDelete(t *testing.T) {
 	p := New(store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "document not found")
+	require.Contains(t, err.Error(), "document was deleted")
 	require.Nil(t, doc)
 }
 
