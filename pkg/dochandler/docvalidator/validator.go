@@ -75,3 +75,8 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 
 	return nil
 }
+
+// TransformDocument takes internal representation of document and transforms it to required representation
+func (v *Validator) TransformDocument(document document.Document) (document.Document, error) {
+	return document, nil
+}

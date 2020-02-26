@@ -55,6 +55,7 @@ type BatchWriter interface {
 type DocumentValidator interface {
 	IsValidOriginalDocument(payload []byte) error
 	IsValidPayload(payload []byte) error
+	TransformDocument(document document.Document) (document.Document, error)
 }
 
 // New creates a new requestHandler with the context
@@ -147,7 +148,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 		log.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 		return nil, err
 	}
-	return applyID(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion), nil
+	return r.transformDoc(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion)
 }
 
 func (r *DocumentHandler) resolveRequestWithDocument(id, encodedDocument string) (document.Document, error) {
@@ -169,15 +170,16 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedDocument string)
 	return r.getDoc(id, encodedDocument)
 }
 
-// helper function to insert id into document
-func applyID(doc document.Document, id string) document.Document {
+// helper function to insert id into document and transform document as per document specification
+func (r *DocumentHandler) transformDoc(doc document.Document, id string) (document.Document, error) {
 	if doc == nil {
-		return nil
+		return nil, nil
 	}
 
 	// apply id to document
 	doc["id"] = id
-	return doc
+
+	return r.validator.TransformDocument(doc)
 }
 
 // helper namespace for adding operations to the batch
@@ -200,7 +202,7 @@ func (r *DocumentHandler) getDoc(id, encodedPayload string) (document.Document, 
 		return nil, err
 	}
 
-	return applyID(doc, id), nil
+	return r.transformDoc(doc, id)
 }
 
 // validateOperation validates the operation

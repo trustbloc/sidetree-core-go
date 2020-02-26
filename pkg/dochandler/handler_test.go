@@ -177,11 +177,15 @@ func TestGetDocErrors(t *testing.T) {
 }
 
 func TestApplyID(t *testing.T) {
-	doc := applyID(nil, "abc")
+	dochandler := getDocumentHandler(nil)
+
+	doc, err := dochandler.transformDoc(nil, "abc")
+	require.NoError(t, err)
 	require.Nil(t, doc)
 
 	doc = document.Document{}
-	doc = applyID(doc, "abc")
+	doc, err = dochandler.transformDoc(doc, "abc")
+	require.NoError(t, err)
 	require.Equal(t, "abc", doc["id"])
 }
 

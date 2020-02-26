@@ -13,10 +13,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
@@ -46,6 +46,10 @@ func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 	err = v.IsValidOriginalDocument(pubKeyNotFragmentDoc)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "public key id is either absent or not starting with #")
+
+	err = v.IsValidOriginalDocument(pubKeyWithController)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "controller is not allowed")
 }
 
 func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
@@ -103,12 +107,28 @@ func TestInvalidPayloadError(t *testing.T) {
 	payload := []byte("[test : 123]")
 
 	err := v.IsValidPayload(payload)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid character")
 
 	err = v.IsValidOriginalDocument(payload)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid character")
+}
+
+func TestTransformDocument(t *testing.T) {
+	r := reader(t, "testdata/doc.json")
+	docBytes, err := ioutil.ReadAll(r)
+	require.NoError(t, err)
+	doc, err := document.FromBytes(docBytes)
+	require.NoError(t, err)
+
+	v := getDefaultValidator()
+
+	transformed, err := v.TransformDocument(doc)
+	require.NoError(t, err)
+
+	didDoc := document.DidDocumentFromJSONLDObject(transformed.JSONLdObject())
+	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
 }
 
 func getDefaultValidator() *Validator {
@@ -127,3 +147,14 @@ var docWithID = []byte(`{ "@context": "some context", "id" : "001", "name": "Joh
 
 var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
+
+var pubKeyWithController = []byte(`{
+  "publicKey": [
+    {
+      "id": "#keys-1",
+      "type": "Secp256k1VerificationKey2018",
+      "controller": "did:example:123456789abcdefghi",
+      "publicKeyBase58": "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"
+    }
+  ]
+}`)

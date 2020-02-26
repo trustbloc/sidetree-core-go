@@ -8,14 +8,12 @@ package docvalidator
 
 import (
 	"fmt"
-
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
@@ -56,11 +54,11 @@ func TestInvalidPayloadError(t *testing.T) {
 	payload := []byte("[test : 123]")
 
 	err := v.IsValidPayload(payload)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid character")
 
 	err = v.IsValidOriginalDocument(payload)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid character")
 }
 
@@ -92,6 +90,18 @@ func TestIsValidPayload_StoreErrors(t *testing.T) {
 	err = v.IsValidPayload(validUpdate)
 	require.NotNil(t, err)
 	require.Equal(t, err, storeErr)
+}
+
+func TestTransofrmDocument(t *testing.T) {
+	doc, err := document.FromBytes(validDoc)
+	require.NoError(t, err)
+
+	v := getDefaultValidator()
+
+	// there is no transformation for generic doc for now
+	transformed, err := v.TransformDocument(doc)
+	require.NoError(t, err)
+	require.Equal(t, doc, transformed)
 }
 
 func getDefaultValidator() *Validator {
