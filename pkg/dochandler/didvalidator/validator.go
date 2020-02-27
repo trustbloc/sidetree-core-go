@@ -17,6 +17,9 @@ import (
 const (
 	didUniqueSuffix = "didUniqueSuffix"
 	didContext      = "https://w3id.org/did/v1"
+
+	controllerKey = "controller"
+	idKey         = "id"
 )
 
 // Validator is responsible for validating did operations and sidetree rules
@@ -92,6 +95,18 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 	return nil
 }
 
+// TransformDocument takes internal representation of document and transforms it to required representation
+func (v *Validator) TransformDocument(doc document.Document) (document.Document, error) {
+	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+
+	// add controller to public key
+	for _, pk := range diddoc.PublicKeys() {
+		pk[controllerKey] = diddoc[idKey]
+	}
+
+	return diddoc.JSONLdObject(), nil
+}
+
 func validatePublicKeys(didDoc document.DIDDocument) error {
 	// The document must contain at least 1 entry in the publicKey array property
 	publicKeyArray := didDoc.PublicKeys()
@@ -104,6 +119,11 @@ func validatePublicKeys(didDoc document.DIDDocument) error {
 		i := strings.Index(pubKey.ID(), "#")
 		if pubKey.ID() == "" || i != 0 {
 			return errors.New("public key id is either absent or not starting with #")
+		}
+
+		// Controller field is not allowed to be filled in by the client
+		if pubKey.Controller() != "" {
+			return errors.New("controller is not allowed")
 		}
 	}
 

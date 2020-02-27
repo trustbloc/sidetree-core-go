@@ -131,6 +131,11 @@ func DidDocumentFromBytes(data []byte) (DIDDocument, error) {
 	return doc, nil
 }
 
+// DidDocumentFromJSONLDObject creates an instance of DIDDocument from json ld object
+func DidDocumentFromJSONLDObject(jsonldObject map[string]interface{}) DIDDocument {
+	return jsonldObject
+}
+
 // String returns string representation of did document
 func (doc *DIDDocument) String() string {
 	s, err := docutil.MarshalIndentCanonical(doc, "", "  ")
