@@ -9,84 +9,80 @@ package cutter
 import (
 	"github.com/sirupsen/logrus"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
 var logger = logrus.New()
 
-// Cutter defines queue for batching document operations. It also cuts batch file based on batch size.
-type Cutter interface {
-
-	// Add adds the given operation(s) to pending batch queue and returns the total
-	// number of pending operations.
-	Add(operation []byte, uniqueSuffix string) uint
-
-	// AddFirst adds the given operation(s) to the front of the pending batch queue
-	// and returns the total number of pending operations.
-	AddFirst(operation [][]byte, uniqueSuffix []string) uint
-
-	// Cut returns the current batch along with number of items remaining in the queue.
-	// If force is false then the batch will be cut only if it has reached the max batch size (as specified in the protocol)
-	// If force is true then the batch will be cut if there is at least one operation in the batch
-	Cut(force bool) ([][]byte, []string, uint)
+// OperationQueue defines the functions for adding and removing operations from a queue
+type OperationQueue interface {
+	// Add adds the given operation to the tail of the queue and returns the new length of the queue
+	Add(data *batch.OperationInfo) (uint, error)
+	// Remove removes (up to) the given number of operations from the head of the queue. The operation are returned
+	// along with the new length of the queue.
+	Remove(num uint) ([]*batch.OperationInfo, uint, error)
+	// Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
+	Peek(num uint) ([]*batch.OperationInfo, error)
+	// Len returns the number of operation in the queue
+	Len() uint
 }
+
+// Committer is invoked to commit a batch Cut. The new number of pending items
+// in the queue is returned.
+type Committer = func() (pending uint, err error)
 
 // BatchCutter implements batch cutting
 type BatchCutter struct {
-	pendingBatch   [][]byte
-	uniqueSuffixes []string
-	client         protocol.Client
+	pendingBatch OperationQueue
+	client       protocol.Client
 }
 
 // New creates a Cutter implementation
-func New(client protocol.Client) *BatchCutter {
+func New(client protocol.Client, queue OperationQueue) *BatchCutter {
 	return &BatchCutter{
-		client: client,
+		client:       client,
+		pendingBatch: queue,
 	}
 }
 
-// Add adds the given operation(s) to pending batch queue and returns the total
+// Add adds the given operation to pending batch queue and returns the total
 // number of pending operations.
-func (r *BatchCutter) Add(operation []byte, uniqueSuffix string) uint {
+func (r *BatchCutter) Add(operation *batch.OperationInfo) (uint, error) {
 	// Enqueuing operation into batch
-	r.pendingBatch = append(r.pendingBatch, operation)
-	r.uniqueSuffixes = append(r.uniqueSuffixes, uniqueSuffix)
-
-	return uint(len(r.pendingBatch))
+	return r.pendingBatch.Add(operation)
 }
 
-// AddFirst adds the given operation(s) to the front of the pending batch queue
-// and returns the total number of pending operations.
-func (r *BatchCutter) AddFirst(operations [][]byte, uniqueSuffixes []string) uint {
-	// TODO: Only one operation per DID per batch is allowed; re-shuffle DIDs
-	r.pendingBatch = append(operations, r.pendingBatch...)
-	r.uniqueSuffixes = append(uniqueSuffixes, r.uniqueSuffixes...)
-	return uint(len(r.pendingBatch))
-}
-
-// Cut returns the current batch along with number of items remaining in the queue.
+// Cut returns the current batch along with number of items that should be remaining in the queue after the committer is called.
 // If force is false then the batch will be cut only if it has reached the max batch size (as specified in the protocol)
-// If force is true then the batch will be cut if there is at least one operation in the batch
-func (r *BatchCutter) Cut(force bool) (operations [][]byte, uniqueSuffixes []string, pending uint) {
-	pendingSize := uint(len(r.pendingBatch))
-	if pendingSize == 0 {
-		return nil, nil, 0
-	}
+// If force is true then the batch will be cut if there is at least one Data in the batch
+// Note that the operations are removed from the queue when the committer is invoked, otherwise they remain in the queue.
+func (r *BatchCutter) Cut(force bool) ([]*batch.OperationInfo, uint, Committer, error) {
+	pending := r.pendingBatch.Len()
 
 	maxOperationsPerBatch := r.client.Current().MaxOperationsPerBatch
-	if !force && pendingSize < maxOperationsPerBatch {
-		return nil, nil, pendingSize
+	if !force && pending < maxOperationsPerBatch {
+		return nil, pending, nil, nil
 	}
 
-	batchSize := min(pendingSize, maxOperationsPerBatch)
-	operations = r.pendingBatch[0:batchSize]
-	r.pendingBatch = r.pendingBatch[batchSize:]
+	batchSize := min(pending, maxOperationsPerBatch)
+	ops, err := r.pendingBatch.Peek(batchSize)
+	if err != nil {
+		return nil, pending, nil, err
+	}
 
-	uniqueSuffixes = r.uniqueSuffixes[0:batchSize]
-	r.uniqueSuffixes = r.uniqueSuffixes[batchSize:]
+	pending -= batchSize
 
-	logger.Debugf("Pending Size: %d, MaxOperationsPerBatch: %d, Batch Size: %d", pendingSize, maxOperationsPerBatch, batchSize)
-	return operations, uniqueSuffixes, uint(len(r.pendingBatch))
+	logger.Debugf("Pending Size: %d, MaxOperationsPerBatch: %d, Batch Size: %d", pending, maxOperationsPerBatch, batchSize)
+
+	committer := func() (uint, error) {
+		logger.Debugf("Removing %d operations from the queue", batchSize)
+
+		_, p, err := r.pendingBatch.Remove(batchSize)
+		return p, err
+	}
+
+	return ops, pending, committer, nil
 }
 
 func min(i, j uint) uint {

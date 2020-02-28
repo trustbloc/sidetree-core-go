@@ -14,8 +14,11 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
+	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
+	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -23,8 +26,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-
-	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
 const (
@@ -250,6 +251,7 @@ type BatchContext struct {
 	ProtocolClient   *mocks.MockProtocolClient
 	CasClient        *mocks.MockCasClient
 	BlockchainClient *mocks.MockBlockchainClient
+	OpQueue          cutter.OperationQueue
 }
 
 // Protocol returns the ProtocolClient
@@ -267,18 +269,24 @@ func (m *BatchContext) CAS() batch.CASClient {
 	return m.CasClient
 }
 
+// OperationQueue returns the queue of operations pending to be cut
+func (m *BatchContext) OperationQueue() cutter.OperationQueue {
+	return m.OpQueue
+}
+
 func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 	protocol := mocks.NewMockProtocolClient()
 
 	validator := docvalidator.New(store)
-	processor := processor.New(store)
+	processor := processor.New("test", store)
 
 	ctx := &BatchContext{
 		ProtocolClient:   protocol,
 		CasClient:        mocks.NewMockCasClient(nil),
 		BlockchainClient: mocks.NewMockBlockchainClient(nil),
+		OpQueue:          &opqueue.MemQueue{},
 	}
-	writer, err := batch.New(ctx)
+	writer, err := batch.New("test", ctx)
 	if err != nil {
 		panic(err)
 	}

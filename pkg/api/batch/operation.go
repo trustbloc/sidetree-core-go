@@ -74,3 +74,9 @@ const (
 	// OperationTypeRecover captures "recover" operation type
 	OperationTypeRecover OperationType = "recover"
 )
+
+// OperationInfo contains the unique suffix as well as the operation payload
+type OperationInfo struct {
+	Data         []byte
+	UniqueSuffix string
+}

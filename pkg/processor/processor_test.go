@@ -31,7 +31,7 @@ const (
 )
 
 func TestResolve(t *testing.T) {
-	op := New(getDefaultStore())
+	op := New("test", getDefaultStore())
 
 	doc, err := op.Resolve(getCreateOperation().UniqueSuffix)
 
@@ -41,7 +41,7 @@ func TestResolve(t *testing.T) {
 }
 
 func TestDocumentNotFoundError(t *testing.T) {
-	op := New(getDefaultStore())
+	op := New("test", getDefaultStore())
 	doc, err := op.Resolve(dummyUniqueSuffix)
 	require.Nil(t, doc)
 	require.NotNil(t, err)
@@ -51,7 +51,7 @@ func TestDocumentNotFoundError(t *testing.T) {
 func TestResolveMockStoreError(t *testing.T) {
 	testErr := errors.New("test store error")
 	store := mocks.NewMockOperationStore(testErr)
-	p := New(store)
+	p := New("test", store)
 
 	doc, err := p.Resolve(getCreateOperation().UniqueSuffix)
 	require.Nil(t, doc)
@@ -68,7 +68,7 @@ func TestResolveError(t *testing.T) {
 	err := store.Put(createOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.Nil(t, doc)
 	require.NotNil(t, err)
@@ -84,7 +84,7 @@ func TestUpdateDocument(t *testing.T) {
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
-	p := New(store) //Storing operation in the test store
+	p := New("test", store) //Storing operation in the test store
 	doc, err := p.Resolve(uniqueSuffix)
 	require.Nil(t, err)
 
@@ -106,7 +106,7 @@ func TestUpdateDocument_InvalidOTP(t *testing.T) {
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
-	p := New(store) //Storing operation in the test store
+	p := New("test", store) //Storing operation in the test store
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
@@ -126,7 +126,7 @@ func TestConsecutiveUpdates(t *testing.T) {
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.Nil(t, err)
 
@@ -148,7 +148,7 @@ func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 	err := store.Put(updateOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
@@ -169,7 +169,7 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 	err = store.Put(createOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(getCreateOperation().UniqueSuffix)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
@@ -186,7 +186,7 @@ func TestProcessOperation_InvalidOperationType(t *testing.T) {
 	err := store.Put(createOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
@@ -224,7 +224,7 @@ func TestDelete(t *testing.T) {
 	err := store.Put(deleteOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "document was deleted")
@@ -243,7 +243,7 @@ func TestConsecutiveDelete(t *testing.T) {
 	err = store.Put(deleteOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "delete can only be applied to an existing document")
@@ -257,7 +257,7 @@ func TestDelete_DocumentNotFound(t *testing.T) {
 	err := store.Put(deleteOp)
 	require.Nil(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(dummyUniqueSuffix)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "delete can only be applied to an existing document")
@@ -274,7 +274,7 @@ func TestDelete_InvalidRecoveryOTP(t *testing.T) {
 	err := store.Put(deleteOp)
 	require.NoError(t, err)
 
-	p := New(store)
+	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
