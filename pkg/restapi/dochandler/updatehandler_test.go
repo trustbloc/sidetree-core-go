@@ -47,7 +47,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 
-		id, err := docutil.CalculateID(namespace, getCreatePayload(getEncodedDocument()), sha2_256)
+		id, err := docutil.CalculateID(namespace, getCreatePayload(), sha2_256)
 		require.NoError(t, err)
 
 		body, err := ioutil.ReadAll(rw.Body)
@@ -83,7 +83,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 
 		// missing protected header
 		createReq := model.Request{
-			Payload:   getCreatePayload(getEncodedDocument()),
+			Payload:   getCreatePayload(),
 			Signature: "",
 		}
 
@@ -129,12 +129,18 @@ func TestUpdateHandler_Update(t *testing.T) {
 	})
 }
 
-func getCreatePayload(encodedDocument string) string {
-	schema := &createPayloadSchema{
-		Operation:           model.OperationTypeCreate,
-		DidDocument:         encodedDocument,
-		NextUpdateOTPHash:   "",
-		NextRecoveryOTPHash: "",
+func getCreatePayload() string {
+	schema := &model.CreatePayloadSchema{
+		Operation: model.OperationTypeCreate,
+		OperationData: model.OperationData{
+			Document:          validDoc,
+			NextUpdateOTPHash: "",
+		},
+		SuffixData: model.SuffixDataSchema{
+			OperationDataHash:   "",
+			RecoveryKey:         model.PublicKey{},
+			NextRecoveryOTPHash: "",
+		},
 	}
 
 	payload, err := json.Marshal(schema)
@@ -146,7 +152,7 @@ func getCreatePayload(encodedDocument string) string {
 }
 
 func getUpdatePayload() string {
-	schema := &updatePayloadSchema{
+	schema := &model.UpdatePayloadSchema{
 		Operation:         model.OperationTypeUpdate,
 		DidUniqueSuffix:   "",
 		Patch:             nil,
@@ -163,7 +169,7 @@ func getUpdatePayload() string {
 }
 
 func getDeletePayload() string {
-	schema := &deletePayloadSchema{
+	schema := &model.DeletePayloadSchema{
 		Operation:       model.OperationTypeDelete,
 		DidUniqueSuffix: "",
 	}
@@ -194,7 +200,7 @@ func getRequest(operation string) []byte {
 
 	switch operation {
 	case create:
-		encodedPayload = getCreatePayload(getEncodedDocument())
+		encodedPayload = getCreatePayload()
 	case update:
 		encodedPayload = getUpdatePayload()
 	case delete:
@@ -220,12 +226,7 @@ func getRequest(operation string) []byte {
 	return bytes
 }
 
-func getEncodedDocument() string {
-	return docutil.EncodeToString([]byte(validDoc))
-}
-
 const validDoc = `{
-	"@context": ["https://w3id.org/did/v1"],
 	"created": "2019-09-23T14:16:59.261024-04:00",
 	"publicKey": [{
 		"id": "#key-1",

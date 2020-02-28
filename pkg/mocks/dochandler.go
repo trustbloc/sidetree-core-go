@@ -79,7 +79,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 	if err != nil {
 		return nil, err
 	}
-	doc, err := getDocumentFromPayload(operation)
+	doc, err := document.FromBytes([]byte(operation.Document))
 	if err != nil {
 		return nil, err
 	}
@@ -89,14 +89,6 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 	m.store[id] = doc
 
 	return doc, nil
-}
-
-func getDocumentFromPayload(operation *batch.Operation) (document.Document, error) {
-	decodedBytes, err := docutil.DecodeString(operation.EncodedDocument)
-	if err != nil {
-		return nil, err
-	}
-	return document.FromBytes(decodedBytes)
 }
 
 //ResolveDocument mocks resolve document

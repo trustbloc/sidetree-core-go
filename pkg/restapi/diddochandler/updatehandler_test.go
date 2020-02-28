@@ -35,7 +35,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
 
-		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		encodedPayload, err := getCreatePayload()
 		require.NoError(t, err)
 		createReq, err := getCreateRequest(encodedPayload)
 		require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewUpdateHandler(basePath, docHandler)
 
-		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		encodedPayload, err := getCreatePayload()
 		require.NoError(t, err)
 
 		// missing protected header
@@ -84,13 +84,21 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 	})
 }
 
-func getEncodedPayload(doc []byte) (string, error) {
-	payload, err := json.Marshal(
-		struct {
-			Operation   model.OperationType `json:"type"`
-			DIDDocument string              `json:"didDocument"`
-		}{model.OperationTypeCreate, docutil.EncodeToString(doc)})
+func getCreatePayload() (string, error) {
+	schema := &model.CreatePayloadSchema{
+		Operation: model.OperationTypeCreate,
+		OperationData: model.OperationData{
+			Document:          validDoc,
+			NextUpdateOTPHash: "",
+		},
+		SuffixData: model.SuffixDataSchema{
+			OperationDataHash:   "",
+			RecoveryKey:         model.PublicKey{},
+			NextRecoveryOTPHash: "",
+		},
+	}
 
+	payload, err := json.Marshal(schema)
 	if err != nil {
 		return "", err
 	}
@@ -116,7 +124,6 @@ func getID(encodedPayload string) (string, error) {
 }
 
 const validDoc = `{
-	"@context": ["https://w3id.org/did/v1"],
 	"created": "2019-09-23T14:16:59.261024-04:00",
 	"publicKey": [{
 		"controller": "id",

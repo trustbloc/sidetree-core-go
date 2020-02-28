@@ -20,16 +20,17 @@ package dochandler
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strings"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-
 	log "github.com/sirupsen/logrus"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 // DocumentHandler implements document handler
@@ -95,7 +96,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
-		return r.getDoc(operation.ID, operation.EncodedDocument)
+		return r.getDoc(operation.ID, operation.Document)
 	}
 
 	return nil, nil
@@ -151,23 +152,31 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 	return r.transformDoc(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion)
 }
 
-func (r *DocumentHandler) resolveRequestWithDocument(id, encodedDocument string) (document.Document, error) {
-	docBytes, err := docutil.DecodeString(encodedDocument)
+func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string) (document.Document, error) {
+	createReqBytes, err := docutil.DecodeString(encodedCreateReq)
 	if err != nil {
 		return nil, err
 	}
 
 	// verify size of each operation does not exceed the maximum allowed limit
-	if len(docBytes) > int(r.protocol.Current().MaxOperationByteSize) {
+	if len(createReqBytes) > int(r.protocol.Current().MaxOperationByteSize) {
 		return nil, errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
-	// Verify that the document passes both Sidetree and document validation
-	if err = r.validator.IsValidOriginalDocument(docBytes); err != nil {
+	var createReq model.CreatePayloadSchema
+	err = json.Unmarshal(createReqBytes, &createReq)
+	if err != nil {
 		return nil, err
 	}
 
-	return r.getDoc(id, encodedDocument)
+	initialDocument := createReq.OperationData.Document
+
+	// Verify that the document passes both Sidetree and document validation
+	if err = r.validator.IsValidOriginalDocument([]byte(initialDocument)); err != nil {
+		return nil, err
+	}
+
+	return r.getDoc(id, initialDocument)
 }
 
 // helper function to insert id into document and transform document as per document specification
@@ -195,13 +204,8 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 	})
 }
 
-func (r *DocumentHandler) getDoc(id, encodedPayload string) (document.Document, error) {
-	decodedBytes, err := docutil.DecodeString(encodedPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := document.FromBytes(decodedBytes)
+func (r *DocumentHandler) getDoc(id, internal string) (document.Document, error) {
+	doc, err := document.FromBytes([]byte(internal))
 	if err != nil {
 		return nil, err
 	}
@@ -223,12 +227,7 @@ func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
-		document, err := base64.StdEncoding.DecodeString(operation.EncodedDocument)
-		if err != nil {
-			return err
-		}
-
-		return r.validator.IsValidOriginalDocument(document)
+		return r.validator.IsValidOriginalDocument([]byte(operation.Document))
 	}
 
 	return r.validator.IsValidPayload(payload)

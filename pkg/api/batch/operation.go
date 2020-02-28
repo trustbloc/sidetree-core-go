@@ -26,8 +26,8 @@ type Operation struct {
 	//EncodedPayload  is the encoded operation payload
 	EncodedPayload string `json:"encodedPayload"`
 
-	//EncodedDocument contains encoded original document
-	EncodedDocument string `json:"document"`
+	//Document contains original opaque document
+	Document string `json:"document"`
 
 	//SigningKeyID is the id of the key that was used to sign this operation
 	SigningKeyID string `json:"signingKeyID"`

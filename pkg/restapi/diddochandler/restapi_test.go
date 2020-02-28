@@ -43,7 +43,7 @@ func TestRESTAPI(t *testing.T) {
 	defer s.stop()
 
 	t.Run("Create DID doc", func(t *testing.T) {
-		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		encodedPayload, err := getCreatePayload()
 		require.NoError(t, err)
 		createReq, err := getCreateRequest(encodedPayload)
 		require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestRESTAPI(t *testing.T) {
 		require.Equal(t, didID, doc["id"])
 	})
 	t.Run("Resolve DID doc", func(t *testing.T) {
-		encodedPayload, err := getEncodedPayload([]byte(validDoc))
+		encodedPayload, err := getCreatePayload()
 		require.NoError(t, err)
 		didID, err := getID(encodedPayload)
 		require.NoError(t, err)

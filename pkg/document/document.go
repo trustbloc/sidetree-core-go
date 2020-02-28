@@ -63,6 +63,12 @@ func arrayStringEntry(entry interface{}) []string {
 	if entry == nil {
 		return nil
 	}
+
+	strArr, ok := entry.([]string)
+	if ok {
+		return strArr
+	}
+
 	typedEntry, ok := entry.([]interface{})
 	if !ok {
 		return nil

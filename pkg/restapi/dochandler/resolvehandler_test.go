@@ -25,11 +25,10 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().
 			WithNamespace(namespace)
 
-		encodedDocument := getEncodedDocument()
 		doc, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:            batch.OperationTypeCreate,
-			EncodedPayload:  getCreatePayload(encodedDocument),
-			EncodedDocument: encodedDocument,
+			Type:           batch.OperationTypeCreate,
+			EncodedPayload: getCreatePayload(),
+			Document:       validDoc,
 		})
 		require.NoError(t, err)
 
@@ -77,11 +76,10 @@ func TestResolveHandler_Resolve(t *testing.T) {
 	t.Run("Document is no longer available", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 
-		encodedDocument := getEncodedDocument()
 		doc, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:            batch.OperationTypeCreate,
-			EncodedPayload:  getCreatePayload(encodedDocument),
-			EncodedDocument: encodedDocument,
+			Type:           batch.OperationTypeCreate,
+			EncodedPayload: getCreatePayload(),
+			Document:       validDoc,
 		})
 		require.NoError(t, err)
 

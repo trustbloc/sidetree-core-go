@@ -98,7 +98,7 @@ func getOperation(opType string) *batch.Operation {
 
 	switch opType {
 	case create:
-		encodedPayload = getCreatePayload(getEncodedDocument())
+		encodedPayload = getCreatePayload()
 	case update:
 		encodedPayload = getUpdatePayload()
 	case delete:
