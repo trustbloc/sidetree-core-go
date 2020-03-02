@@ -37,7 +37,6 @@ func TestResolve(t *testing.T) {
 
 	require.Nil(t, err)
 	require.NotNil(t, doc)
-	require.NotEmpty(t, doc["@context"])
 }
 
 func TestDocumentNotFoundError(t *testing.T) {
@@ -63,7 +62,7 @@ func TestResolveError(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 
 	createOp := getCreateOperation()
-	createOp.EncodedDocument = "invalid payload"
+	createOp.Document = "invalid payload"
 
 	err := store.Put(createOp)
 	require.Nil(t, err)
@@ -72,7 +71,7 @@ func TestResolveError(t *testing.T) {
 	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.Nil(t, doc)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "illegal base64 data")
+	require.Contains(t, err.Error(), "invalid character")
 }
 
 func TestUpdateDocument(t *testing.T) {
@@ -91,7 +90,7 @@ func TestUpdateDocument(t *testing.T) {
 	//updated instance value inside service end point through a json patch
 	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
 		"controller":      "controller1",
-		"id":              "did:method:abc#key-1",
+		"id":              "#key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type":            "Ed25519VerificationKey2018",
 	}})
@@ -133,7 +132,7 @@ func TestConsecutiveUpdates(t *testing.T) {
 	//patched twice instance replaced from did:bar:456 to did:sidetree:updateid0  and then to did:sidetree:updateid1
 	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
 		"controller":      "controller2",
-		"id":              "did:method:abc#key-1",
+		"id":              "#key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type":            "Ed25519VerificationKey2018",
 	}})
@@ -349,13 +348,12 @@ func getCreateOperation() *batch.Operation {
 		panic(err)
 	}
 
-	encodedDoc := docutil.EncodeToString([]byte(validDoc))
-	encodedPayload, err := getEncodedPayload(encodedDoc)
+	encodedPayload, err := getEncodedPayload(validDoc)
 	if err != nil {
 		panic(err)
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(encodedDoc, sha2_256)
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(encodedPayload, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -365,20 +363,28 @@ func getCreateOperation() *batch.Operation {
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		EncodedPayload:               encodedPayload,
-		EncodedDocument:              encodedDoc,
+		Document:                     validDoc,
 		TransactionNumber:            0,
 		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
 		NextRecoveryOTPHash:          base64.URLEncoding.EncodeToString(nextRecoveryOTPHash),
 	}
 }
 
-func getEncodedPayload(encodedDoc string) (string, error) {
-	payload, err := json.Marshal(
-		struct {
-			Operation   model.OperationType `json:"type"`
-			DIDDocument string              `json:"didDocument"`
-		}{model.OperationTypeCreate, encodedDoc})
+func getEncodedPayload(doc string) (string, error) {
+	schema := &model.CreatePayloadSchema{
+		Operation: model.OperationTypeCreate,
+		OperationData: model.OperationData{
+			Document:          doc,
+			NextUpdateOTPHash: "",
+		},
+		SuffixData: model.SuffixDataSchema{
+			OperationDataHash:   "",
+			RecoveryKey:         model.PublicKey{},
+			NextRecoveryOTPHash: "",
+		},
+	}
 
+	payload, err := json.Marshal(schema)
 	if err != nil {
 		return "", err
 	}
@@ -387,13 +393,10 @@ func getEncodedPayload(encodedDoc string) (string, error) {
 }
 
 const validDoc = `{
-	"@context": ["https://w3id.org/did/v1"],
-	"created": "2019-09-23T14:16:59.261024-04:00",
 	"publicKey": [{
 		"controller": "id",
-		"id": "did:method:abc#key-1",
+		"id": "#key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
-	}],
-	"updated": "2019-09-23T14:16:59.261024-04:00"
+	}]
 }`

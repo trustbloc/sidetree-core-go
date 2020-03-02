@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
 	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
@@ -159,14 +158,8 @@ func TestGetDocErrors(t *testing.T) {
 
 	const id = "doc:method:abc"
 
-	// scenario: illegal payload (not base64)
-	doc, err := dochandler.getDoc(id, "{}")
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "illegal base64 data")
-
 	// scenario: illegal payload (invalid json)
-	doc, err = dochandler.getDoc(id, docutil.EncodeToString([]byte("[test : 123]")))
+	doc, err := dochandler.getDoc(id, docutil.EncodeToString([]byte("[test : 123]")))
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "invalid character")
@@ -298,10 +291,17 @@ func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 }
 
 func getCreateOperation() *batchapi.Operation {
-	encodedDoc := docutil.EncodeToString([]byte(validDoc))
-	schema := &createPayloadSchema{
-		Operation:   model.OperationTypeCreate,
-		DidDocument: encodedDoc,
+	schema := &model.CreatePayloadSchema{
+		Operation: model.OperationTypeCreate,
+		OperationData: model.OperationData{
+			Document:          validDoc,
+			NextUpdateOTPHash: "",
+		},
+		SuffixData: model.SuffixDataSchema{
+			OperationDataHash:   "",
+			RecoveryKey:         model.PublicKey{},
+			NextRecoveryOTPHash: "",
+		},
 	}
 
 	payload, err := json.Marshal(schema)
@@ -322,7 +322,7 @@ func getCreateOperation() *batchapi.Operation {
 
 	return &batchapi.Operation{
 		EncodedPayload:               encodedPayload,
-		EncodedDocument:              encodedDoc,
+		Document:                     validDoc,
 		Type:                         batchapi.OperationTypeCreate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
@@ -331,7 +331,7 @@ func getCreateOperation() *batchapi.Operation {
 }
 
 func getUpdateOperation() *batchapi.Operation {
-	schema := &updatePayloadSchema{
+	schema := &model.UpdatePayloadSchema{
 		Operation:       model.OperationTypeUpdate,
 		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
 	}
@@ -347,42 +347,6 @@ func getUpdateOperation() *batchapi.Operation {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 getCreateOperation().UniqueSuffix,
 	}
-}
-
-// createPayloadSchema is the struct for create payload
-type createPayloadSchema struct {
-
-	// operation
-	Operation model.OperationType `json:"type"`
-
-	// Encoded original DID document
-	DidDocument string `json:"didDocument"`
-
-	// Hash of the one-time password for the next update operation
-	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
-
-	// Hash of the one-time password for this recovery/checkpoint/revoke operation.
-	NextRecoveryOTPHash string `json:"nextRecoveryOtpHash"`
-}
-
-//updatePayloadSchema is the struct for update payload
-type updatePayloadSchema struct {
-
-	// operation
-	// Required: true
-	Operation model.OperationType `json:"type"`
-
-	//The unique suffix of the DID
-	DidUniqueSuffix string `json:"didUniqueSuffix"`
-
-	//An RFC 6902 JSON patch to the current DID Document
-	Patch jsonpatch.Patch
-
-	// One-time password for update operation
-	UpdateOTP string `json:"updateOtp"`
-
-	// Hash of the one-time password for the next update operation
-	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
 }
 
 const validDoc = `{

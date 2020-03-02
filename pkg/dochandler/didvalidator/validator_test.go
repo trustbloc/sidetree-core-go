@@ -52,6 +52,14 @@ func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "controller is not allowed")
 }
 
+func TestIsValidOriginalDocument_ContextProvidedError(t *testing.T) {
+	v := getDefaultValidator()
+
+	err := v.IsValidOriginalDocument(docWithContext)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "document must NOT have context")
+}
+
 func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
 	v := getDefaultValidator()
 
@@ -122,6 +130,11 @@ func TestTransformDocument(t *testing.T) {
 	doc, err := document.FromBytes(docBytes)
 	require.NoError(t, err)
 
+	// document to be transformed has to have 'id' field
+	// this field is added by sidetree protocol for any document
+	const testID = "doc:abc:123"
+	doc[idKey] = testID
+
 	v := getDefaultValidator()
 
 	transformed, err := v.TransformDocument(doc)
@@ -129,6 +142,8 @@ func TestTransformDocument(t *testing.T) {
 
 	didDoc := document.DidDocumentFromJSONLDObject(transformed.JSONLdObject())
 	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
+	require.Contains(t, didDoc.PublicKeys()[0].ID(), testID)
+	require.Equal(t, didContext, didDoc.Context()[0])
 }
 
 func getDefaultValidator() *Validator {
@@ -141,9 +156,10 @@ func reader(t *testing.T, filename string) io.Reader {
 	return f
 }
 
-var noPublicKeyDoc = []byte(`{ "@context": "some context", "name": "John Smith" }`)
-var pubKeyNotFragmentDoc = []byte(`{ "@context": "some context", "publicKey": [{"id": "key1", "type": "type"}]}`)
-var docWithID = []byte(`{ "@context": "some context", "id" : "001", "name": "John Smith" }`)
+var noPublicKeyDoc = []byte(`{  "name": "John Smith" }`)
+var docWithContext = []byte(`{ "@context": ["https://w3id.org/did/v1"], "publicKey": [{"id": "#key1", "type": "type"}] }`)
+var pubKeyNotFragmentDoc = []byte(`{ "publicKey": [{"id": "key1", "type": "type"}]}`)
+var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)

@@ -108,8 +108,8 @@ func getDefaultValidator() *Validator {
 	return New(mocks.NewMockOperationStore(nil))
 }
 
-var validDoc = []byte(`{ "@context": "some context", "name": "John Smith" }`)
-var invalidDoc = []byte(`{ "@context": "some context", "id" : "001", "name": "John Smith" }`)
+var validDoc = []byte(`{ "name": "John Smith" }`)
+var invalidDoc = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "uniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)

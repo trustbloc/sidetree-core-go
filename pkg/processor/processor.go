@@ -135,12 +135,7 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	decodedBytes, err := docutil.DecodeString(operation.EncodedDocument)
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := document.FromBytes(decodedBytes)
+	doc, err := document.FromBytes([]byte(operation.Document))
 	if err != nil {
 		return nil, err
 	}

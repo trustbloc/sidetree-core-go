@@ -17,6 +17,7 @@ import (
 const (
 	didUniqueSuffix = "didUniqueSuffix"
 	didContext      = "https://w3id.org/did/v1"
+	didContextKey   = "@context"
 
 	controllerKey = "controller"
 	idKey         = "id"
@@ -86,10 +87,10 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 
 	// Sidetree rule: add service validation
 
-	// generic did document validation - must have context
+	// Sidetree rule: must not have context
 	ctx := didDoc.Context()
-	if len(ctx) != 0 && didDoc.Context()[0] != didContext {
-		return errors.New("context is invalid or absent")
+	if len(ctx) != 0 {
+		return errors.New("document must NOT have context")
 	}
 
 	return nil
@@ -99,9 +100,14 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 func (v *Validator) TransformDocument(doc document.Document) (document.Document, error) {
 	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
+	// add context to did document
+	diddoc[didContextKey] = []string{didContext}
+
 	// add controller to public key
 	for _, pk := range diddoc.PublicKeys() {
 		pk[controllerKey] = diddoc[idKey]
+		// add did to key
+		pk[idKey] = diddoc[idKey].(string) + pk[idKey].(string)
 	}
 
 	return diddoc.JSONLdObject(), nil
