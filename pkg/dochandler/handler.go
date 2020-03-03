@@ -33,6 +33,11 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
+const (
+	keyID        = "id"
+	keyPublished = "published"
+)
+
 // DocumentHandler implements document handler
 type DocumentHandler struct {
 	protocol  protocol.Client
@@ -96,7 +101,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
-		return r.getDoc(operation.ID, operation.Document)
+		return r.getDoc(operation.ID, operation.Document, false)
 	}
 
 	return nil, nil
@@ -149,7 +154,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.D
 		log.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 		return nil, err
 	}
-	return r.transformDoc(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion)
+	return r.transformDoc(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion, true)
 }
 
 func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string) (document.Document, error) {
@@ -176,17 +181,18 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, err
 	}
 
-	return r.getDoc(id, initialDocument)
+	return r.getDoc(id, initialDocument, false)
 }
 
 // helper function to insert id into document and transform document as per document specification
-func (r *DocumentHandler) transformDoc(doc document.Document, id string) (document.Document, error) {
+func (r *DocumentHandler) transformDoc(doc document.Document, id string, published bool) (document.Document, error) {
 	if doc == nil {
 		return nil, nil
 	}
 
 	// apply id to document
-	doc["id"] = id
+	doc[keyID] = id
+	doc[keyPublished] = published
 
 	return r.validator.TransformDocument(doc)
 }
@@ -204,13 +210,13 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 	})
 }
 
-func (r *DocumentHandler) getDoc(id, internal string) (document.Document, error) {
+func (r *DocumentHandler) getDoc(id, internal string, published bool) (document.Document, error) {
 	doc, err := document.FromBytes([]byte(internal))
 	if err != nil {
 		return nil, err
 	}
 
-	return r.transformDoc(doc, id)
+	return r.transformDoc(doc, id, published)
 }
 
 // validateOperation validates the operation
