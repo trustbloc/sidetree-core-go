@@ -100,6 +100,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	doc, err = dochandler.ResolveDocument(docID)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
+	require.Equal(t, true, doc.JSONLdObject()[keyPublished])
 
 	// scenario: invalid namespace
 	doc, err = dochandler.ResolveDocument("doc:invalid:")
@@ -123,6 +124,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
+	require.Equal(t, false, doc.JSONLdObject()[keyPublished])
 
 	doc, err = dochandler.ResolveDocument(docID + initialValuesParam)
 	require.NotNil(t, err)
@@ -159,7 +161,7 @@ func TestGetDocErrors(t *testing.T) {
 	const id = "doc:method:abc"
 
 	// scenario: illegal payload (invalid json)
-	doc, err := dochandler.getDoc(id, docutil.EncodeToString([]byte("[test : 123]")))
+	doc, err := dochandler.getDoc(id, docutil.EncodeToString([]byte("[test : 123]")), false)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "invalid character")
@@ -173,14 +175,21 @@ func TestGetDocErrors(t *testing.T) {
 func TestApplyID(t *testing.T) {
 	dochandler := getDocumentHandler(nil)
 
-	doc, err := dochandler.transformDoc(nil, "abc")
+	doc, err := dochandler.transformDoc(nil, "abc", false)
 	require.NoError(t, err)
 	require.Nil(t, doc)
 
 	doc = document.Document{}
-	doc, err = dochandler.transformDoc(doc, "abc")
+	doc, err = dochandler.transformDoc(doc, "abc", true)
 	require.NoError(t, err)
-	require.Equal(t, "abc", doc["id"])
+	require.Equal(t, "abc", doc[keyID])
+	require.Equal(t, true, doc[keyPublished])
+
+	doc = document.Document{}
+	doc, err = dochandler.transformDoc(doc, "abc", false)
+	require.NoError(t, err)
+	require.Equal(t, "abc", doc[keyID])
+	require.Equal(t, false, doc[keyPublished])
 }
 
 func TestGetUniquePortion(t *testing.T) {
