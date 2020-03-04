@@ -13,7 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 func TestHandlePayload(t *testing.T) {
@@ -91,6 +93,85 @@ func TestHandlePayload(t *testing.T) {
 			require.Nil(t, op)
 		}
 	})
+}
+
+func TestParseCreatePayload(t *testing.T) {
+	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+	handler := NewUpdateHandler(docHandler)
+
+	t.Run("success", func(t *testing.T) {
+		payload, err := docutil.DecodeString(getCreatePayload())
+		require.NoError(t, err)
+
+		schema, err := handler.parseCreatePayload(payload)
+		require.NoError(t, err)
+		require.Equal(t, schema.Operation, model.OperationTypeCreate)
+	})
+	t.Run("failed schema validation", func(t *testing.T) {
+		schema, err := handler.parseCreatePayload([]byte("{}"))
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "missing opaque document")
+	})
+}
+
+func TestValidateCreatePayload(t *testing.T) {
+	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+	handler := NewUpdateHandler(docHandler)
+
+	t.Run("missing recovery key", func(t *testing.T) {
+		schema := getCreatePayloadSchema()
+		schema.SuffixData.RecoveryKey.PublicKeyHex = ""
+		err := handler.validateCreatePayload(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(),
+			"missing recovery key")
+	})
+	t.Run("invalid operation data hash", func(t *testing.T) {
+		schema := getCreatePayloadSchema()
+		schema.SuffixData.OperationDataHash = ""
+		err := handler.validateCreatePayload(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "operation data hash is not computed with the latest supported hash algorithm")
+	})
+	t.Run("invalid next recovery OTP hash", func(t *testing.T) {
+		schema := getCreatePayloadSchema()
+		schema.SuffixData.NextRecoveryOTPHash = ""
+		err := handler.validateCreatePayload(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "next recovery OTP hash is not computed with the latest supported hash algorithm")
+	})
+	t.Run("invalid next update OTP", func(t *testing.T) {
+		schema := getCreatePayloadSchema()
+		schema.OperationData.NextUpdateOTPHash = ""
+		err := handler.validateCreatePayload(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(),
+			"next update OTP hash is not computed with the latest supported hash algorithm")
+	})
+	t.Run("missing opaque document", func(t *testing.T) {
+		schema := getCreatePayloadSchema()
+		schema.OperationData.Document = ""
+		err := handler.validateCreatePayload(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(),
+			"missing opaque document")
+	})
+}
+
+func getCreatePayloadSchema() *model.CreatePayloadSchema {
+	return &model.CreatePayloadSchema{
+		Operation: model.OperationTypeCreate,
+		OperationData: model.OperationData{
+			Document:          validDoc,
+			NextUpdateOTPHash: computeMultihash("updateOTP"),
+		},
+		SuffixData: model.SuffixDataSchema{
+			OperationDataHash:   computeMultihash(validDoc),
+			RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+			NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+		},
+	}
 }
 
 func getOperation(opType string) *batch.Operation {

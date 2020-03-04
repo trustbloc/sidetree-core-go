@@ -198,10 +198,6 @@ func TestIsValidHashErrors(t *testing.T) {
 
 	encodedMultihash := docutil.EncodeToString(multihash)
 
-	err = isValidHash("", encodedMultihash)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "empty bytes")
-
 	err = isValidHash("hello", encodedMultihash)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "illegal base64 data at input byte 4")
