@@ -134,12 +134,12 @@ func getCreatePayload() string {
 		Operation: model.OperationTypeCreate,
 		OperationData: model.OperationData{
 			Document:          validDoc,
-			NextUpdateOTPHash: "",
+			NextUpdateOTPHash: computeMultihash("updateOTP"),
 		},
 		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   "",
-			RecoveryKey:         model.PublicKey{},
-			NextRecoveryOTPHash: "",
+			OperationDataHash:   computeMultihash(validDoc),
+			RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+			NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
 		},
 	}
 
@@ -149,6 +149,14 @@ func getCreatePayload() string {
 	}
 
 	return docutil.EncodeToString(payload)
+}
+
+func computeMultihash(data string) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+	if err != nil {
+		panic(err)
+	}
+	return docutil.EncodeToString(mh)
 }
 
 func getUpdatePayload() string {

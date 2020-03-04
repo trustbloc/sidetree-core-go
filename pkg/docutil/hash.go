@@ -20,10 +20,6 @@ const sha2_256 = 18
 
 // ComputeMultihash will compute the hash for the supplied bytes using multihash code
 func ComputeMultihash(multihashCode uint, bytes []byte) ([]byte, error) {
-	if len(bytes) == 0 {
-		return nil, fmt.Errorf("empty bytes")
-	}
-
 	h, err := GetHash(multihashCode)
 	if err != nil {
 		return nil, err
@@ -66,6 +62,16 @@ func IsSupportedMultihash(encodedMultihash string) bool {
 	}
 
 	return multihash.ValidCode(code)
+}
+
+//IsComputedUsingHashAlgorithm checks to see if the given encoded hash has been hashed using multihash code
+func IsComputedUsingHashAlgorithm(encodedMultihash string, code uint64) bool {
+	mhCode, err := GetMultihashCode(encodedMultihash)
+	if err != nil {
+		return false
+	}
+
+	return mhCode == code
 }
 
 //GetMultihashCode returns multihash code from encoded multihash

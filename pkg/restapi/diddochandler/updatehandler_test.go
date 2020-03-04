@@ -24,7 +24,7 @@ import (
 
 const (
 	namespace string = "did:sidetree"
-	sha2256          = 18
+	sha2_256         = 18
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
@@ -89,12 +89,12 @@ func getCreatePayload() (string, error) {
 		Operation: model.OperationTypeCreate,
 		OperationData: model.OperationData{
 			Document:          validDoc,
-			NextUpdateOTPHash: "",
+			NextUpdateOTPHash: computeMultihash("updateOTP"),
 		},
 		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   "",
-			RecoveryKey:         model.PublicKey{},
-			NextRecoveryOTPHash: "",
+			OperationDataHash:   computeMultihash(validDoc),
+			RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+			NextRecoveryOTPHash: computeMultihash("recoverOTP"),
 		},
 	}
 
@@ -104,6 +104,14 @@ func getCreatePayload() (string, error) {
 	}
 
 	return docutil.EncodeToString(payload), nil
+}
+
+func computeMultihash(data string) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+	if err != nil {
+		panic(err)
+	}
+	return docutil.EncodeToString(mh)
 }
 
 func getCreateRequest(encodedPayload string) ([]byte, error) {
@@ -120,7 +128,7 @@ func getCreateRequest(encodedPayload string) ([]byte, error) {
 }
 
 func getID(encodedPayload string) (string, error) {
-	return docutil.CalculateID(namespace, encodedPayload, sha2256)
+	return docutil.CalculateID(namespace, encodedPayload, sha2_256)
 }
 
 const validDoc = `{

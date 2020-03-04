@@ -27,16 +27,16 @@ func (h *UpdateHandler) handlePayload(operation *batch.Operation) (*batch.Operat
 	switch operation.Type {
 	case batch.OperationTypeCreate:
 
+		schema, err := h.parseCreatePayload(decodedPayload)
+		if err != nil {
+			return nil, err
+		}
+
 		uniqueSuffix, err := docutil.GetOperationHash(operation)
 		if err != nil {
 			return nil, err
 		}
 		operation.UniqueSuffix = uniqueSuffix
-
-		schema, err := getCreatePayloadSchema(decodedPayload)
-		if err != nil {
-			return nil, errors.New("request payload doesn't follow the expected create payload schema")
-		}
 
 		operation.Document = schema.OperationData.Document
 		operation.NextUpdateOTPHash = schema.OperationData.NextUpdateOTPHash
@@ -79,13 +79,44 @@ func getUpdatePayloadSchema(payload []byte) (*model.UpdatePayloadSchema, error) 
 	return schema, nil
 }
 
-func getCreatePayloadSchema(payload []byte) (*model.CreatePayloadSchema, error) {
+func (h *UpdateHandler) parseCreatePayload(payload []byte) (*model.CreatePayloadSchema, error) {
 	schema := &model.CreatePayloadSchema{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
 		return nil, err
 	}
+
+	if err := h.validateCreatePayload(schema); err != nil {
+		return nil, err
+	}
+
 	return schema, nil
+}
+
+func (h *UpdateHandler) validateCreatePayload(schema *model.CreatePayloadSchema) error {
+	if schema.OperationData.Document == "" {
+		return errors.New("missing opaque document")
+	}
+
+	if schema.SuffixData.RecoveryKey.PublicKeyHex == "" {
+		return errors.New("missing recovery key")
+	}
+
+	code := h.processor.Protocol().Current().HashAlgorithmInMultiHashCode
+
+	if !docutil.IsComputedUsingHashAlgorithm(schema.SuffixData.NextRecoveryOTPHash, uint64(code)) {
+		return errors.New("next recovery OTP hash is not computed with the latest supported hash algorithm")
+	}
+
+	if !docutil.IsComputedUsingHashAlgorithm(schema.SuffixData.OperationDataHash, uint64(code)) {
+		return errors.New("operation data hash is not computed with the latest supported hash algorithm")
+	}
+
+	if !docutil.IsComputedUsingHashAlgorithm(schema.OperationData.NextUpdateOTPHash, uint64(code)) {
+		return errors.New("next update OTP hash is not computed with the latest supported hash algorithm")
+	}
+
+	return nil
 }
 
 func getDeletePayloadSchema(payload []byte) (*model.DeletePayloadSchema, error) {

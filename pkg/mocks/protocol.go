@@ -21,7 +21,7 @@ func NewMockProtocolClient() *MockProtocolClient {
 		//nolint:gomnd // mock values are defined below.
 		Protocol: protocol.Protocol{
 			StartingBlockChainTime:       0,
-			HashAlgorithmInMultiHashCode: 18,
+			HashAlgorithmInMultiHashCode: sha2_256,
 			MaxOperationsPerBatch:        2,
 			MaxOperationByteSize:         2000,
 		},

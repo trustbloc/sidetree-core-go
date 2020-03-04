@@ -10,10 +10,12 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
+
+var sample = []byte("test")
 
 func TestGetHash(t *testing.T) {
 	hash, err := GetHash(100)
@@ -27,17 +29,12 @@ func TestGetHash(t *testing.T) {
 }
 
 func TestComputeHash(t *testing.T) {
-	hash, err := ComputeMultihash(sha2_256, []byte(""))
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "empty bytes")
-	require.Nil(t, hash)
-
-	hash, err = ComputeMultihash(100, []byte("Test"))
+	hash, err := ComputeMultihash(100, sample)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "algorithm not supported")
 	require.Nil(t, hash)
 
-	hash, err = ComputeMultihash(sha2_256, []byte("Test"))
+	hash, err = ComputeMultihash(sha2_256, sample)
 	require.Nil(t, err)
 	require.NotNil(t, hash)
 }
@@ -68,15 +65,32 @@ func TestIsSupportedMultihash(t *testing.T) {
 	require.False(t, supported)
 
 	// scenario: base64 encoded, however not multihash
-	supported = IsSupportedMultihash(base64.URLEncoding.EncodeToString([]byte("test")))
+	supported = IsSupportedMultihash(base64.URLEncoding.EncodeToString(sample))
 	require.False(t, supported)
 
 	// scenario: valid encoded multihash
-	hash, err := ComputeMultihash(sha2_256, []byte("test"))
+	hash, err := ComputeMultihash(sha2_256, sample)
 	require.Nil(t, err)
 	require.NotNil(t, hash)
 
 	key := base64.URLEncoding.EncodeToString(hash)
 	supported = IsSupportedMultihash(key)
 	require.True(t, supported)
+}
+
+func TestIsComputedUsingHashAlgorithm(t *testing.T) {
+	hash, err := ComputeMultihash(sha2_256, sample)
+	require.Nil(t, err)
+	require.NotNil(t, hash)
+
+	key := base64.URLEncoding.EncodeToString(hash)
+	ok := IsComputedUsingHashAlgorithm(key, sha2_256)
+	require.True(t, ok)
+
+	// use random code to fail
+	ok = IsComputedUsingHashAlgorithm(key, 55)
+	require.False(t, ok)
+
+	ok = IsComputedUsingHashAlgorithm("invalid", sha2_256)
+	require.False(t, ok)
 }
