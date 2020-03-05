@@ -77,7 +77,7 @@ type DeletePayloadSchema struct {
 	// Required: true
 	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
-	// One-time password for update operation
+	// One-time password for recovery operation
 	// Required: true
 	RecoveryOTP string `json:"recoveryOtp"`
 }
