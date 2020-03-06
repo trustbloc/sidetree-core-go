@@ -37,17 +37,20 @@ const (
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
-	t.Run("Create", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
+	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+	handler := NewUpdateHandler(docHandler)
 
+	createReq, err := getCreateRequest()
+	require.NoError(t, err)
+
+	t.Run("Create", func(t *testing.T) {
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(create)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReq))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 
-		id, err := docutil.CalculateID(namespace, getCreatePayload(), sha2_256)
+		id, err := docutil.CalculateID(namespace, docutil.EncodeToString(createReq), sha2_256)
 		require.NoError(t, err)
 
 		body, err := ioutil.ReadAll(rw.Body)
@@ -58,32 +61,22 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, len(doc.PublicKeys()), 1)
 	})
 	t.Run("Update", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
-
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(update)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getSignedRequest(update)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Delete", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
-
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(delete)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getSignedRequest(delete)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("missing protected header", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
-
-		// missing protected header
 		createReq := model.Request{
-			Payload:   getCreatePayload(),
+			Payload:   docutil.EncodeToString(createReq),
 			Signature: "",
 		}
 
@@ -99,18 +92,12 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Contains(t, string(body), "missing protected header")
 	})
 	t.Run("Unsupported operation", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
-
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(unsupported)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getSignedRequest(unsupported)))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
 	t.Run("Bad Request", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(docHandler)
-
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader([]byte(badRequest)))
 		handler.Update(rw, req)
@@ -118,18 +105,18 @@ func TestUpdateHandler_Update(t *testing.T) {
 	})
 	t.Run("Error", func(t *testing.T) {
 		errExpected := errors.New("create doc error")
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
-		handler := NewUpdateHandler(docHandler)
+		docHandlerWithErr := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
+		handler := NewUpdateHandler(docHandlerWithErr)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getRequest(create)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReq))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusInternalServerError, rw.Code)
 		require.Contains(t, rw.Body.String(), errExpected.Error())
 	})
 }
 
-func getCreatePayload() string {
+func getCreateRequest() ([]byte, error) {
 	schema := &model.CreatePayloadSchema{
 		Operation: model.OperationTypeCreate,
 		OperationData: model.OperationData{
@@ -143,12 +130,7 @@ func getCreatePayload() string {
 		},
 	}
 
-	payload, err := json.Marshal(schema)
-	if err != nil {
-		panic(err)
-	}
-
-	return docutil.EncodeToString(payload)
+	return json.Marshal(schema)
 }
 
 func computeMultihash(data string) string {
@@ -203,12 +185,10 @@ func getUnsupportedPayload() string {
 	return docutil.EncodeToString(payload)
 }
 
-func getRequest(operation string) []byte {
+func getSignedRequest(operation string) []byte {
 	var encodedPayload string
 
 	switch operation {
-	case create:
-		encodedPayload = getCreatePayload()
 	case update:
 		encodedPayload = getUpdatePayload()
 	case delete:

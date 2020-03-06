@@ -8,9 +8,12 @@ package dochandler
 
 import (
 	"encoding/json"
+	"errors"
+	"io/ioutil"
 	"net/http"
+	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -40,18 +43,60 @@ func NewUpdateHandler(processor Processor) *UpdateHandler {
 
 // Update creates or updates a document
 func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
-	request := &model.Request{}
-	err := json.NewDecoder(req.Body).Decode(&request)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		common.WriteError(rw, http.StatusBadRequest, err)
 		return
 	}
+
+	request, err := getRequest(string(body))
+	if err != nil {
+		common.WriteError(rw, http.StatusBadRequest, err)
+		return
+	}
+
 	response, err := h.doUpdate(request)
 	if err != nil {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)
 		return
 	}
 	common.WriteResponse(rw, http.StatusOK, response)
+}
+
+func getRequest(body string) (*model.Request, error) {
+	request := &model.Request{}
+	err := json.NewDecoder(strings.NewReader(body)).Decode(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// update, delete and recover require protected header all good
+	if request.Protected != nil {
+		return request, nil
+	}
+
+	// only create operation may not be protected - check if it is create operation
+	create := &model.CreatePayloadSchema{}
+	err = json.NewDecoder(strings.NewReader(body)).Decode(create)
+	if err != nil {
+		return nil, err
+	}
+
+	if create.Operation != model.OperationTypeCreate {
+		// not create request; protected header is mandatory
+		return nil, errors.New("missing protected header")
+	}
+
+	payload, err := json.Marshal(create)
+	if err != nil {
+		return nil, err
+	}
+
+	request = &model.Request{
+		Payload: docutil.EncodeToString(payload),
+	}
+
+	return request, nil
 }
 
 func (h *UpdateHandler) doUpdate(request *model.Request) (document.Document, error) {
@@ -72,16 +117,16 @@ func (h *UpdateHandler) doUpdate(request *model.Request) (document.Document, err
 }
 
 func (h *UpdateHandler) getOperation(request *model.Request) (*batch.Operation, error) {
-	if request.Protected == nil {
-		return nil, errors.New("missing protected header")
-	}
-
 	// populate common values
 	operation := &batch.Operation{
 		EncodedPayload:               request.Payload,
 		Signature:                    request.Signature,
-		SigningKeyID:                 request.Protected.Kid,
 		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
+	}
+
+	if request.Protected != nil {
+		operation.SigningKeyID = request.Protected.Kid
+		operation.SigningAlgorithm = request.Protected.Alg
 	}
 
 	return h.handlePayload(operation)
