@@ -29,10 +29,12 @@ type Operation struct {
 	//Document contains original opaque document
 	Document string `json:"document"`
 
-	//SigningKeyID is the id of the key that was used to sign this operation
+	//SigningKeyID is the id of the key that was used to sign this encoded payload
 	SigningKeyID string `json:"signingKeyID"`
-	//Signature is the signature of this operation
+	//Signature is the signature of this encoded payload
 	Signature string `json:"signature"`
+	// Signing algorithm
+	SigningAlgorithm string `json:"algorithm"`
 
 	//An RFC 6902 JSON patch to the current Document
 	Patch jsonpatch.Patch `json:"patch"`

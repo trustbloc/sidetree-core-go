@@ -100,7 +100,7 @@ func TestParseCreatePayload(t *testing.T) {
 	handler := NewUpdateHandler(docHandler)
 
 	t.Run("success", func(t *testing.T) {
-		payload, err := docutil.DecodeString(getCreatePayload())
+		payload, err := getCreateRequest()
 		require.NoError(t, err)
 
 		schema, err := handler.parseCreatePayload(payload)
@@ -179,7 +179,11 @@ func getOperation(opType string) *batch.Operation {
 
 	switch opType {
 	case create:
-		encodedPayload = getCreatePayload()
+		createReq, err := getCreateRequest()
+		if err != nil {
+			panic(err)
+		}
+		encodedPayload = docutil.EncodeToString(createReq)
 	case update:
 		encodedPayload = getUpdatePayload()
 	case delete:
