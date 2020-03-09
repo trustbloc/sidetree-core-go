@@ -9,6 +9,7 @@ package helper
 import (
 	"testing"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -49,7 +50,7 @@ func TestNewCreateRequest(t *testing.T) {
 }
 
 func TestNewDeletePayload(t *testing.T) {
-	t.Run("missing opaque document", func(t *testing.T) {
+	t.Run("missing unique suffix", func(t *testing.T) {
 		info := &DeletePayloadInfo{}
 
 		request, err := NewDeletePayload(info)
@@ -61,6 +62,46 @@ func TestNewDeletePayload(t *testing.T) {
 		info := &DeletePayloadInfo{DidUniqueSuffix: "whatever"}
 
 		request, err := NewDeletePayload(info)
+		require.NoError(t, err)
+		require.NotEmpty(t, request)
+	})
+}
+
+func TestNewUpdatePayload(t *testing.T) {
+	const didUniqueSuffix = "whatever"
+	patch, err := getTestPatch()
+	require.NoError(t, err)
+
+	t.Run("missing unique suffix", func(t *testing.T) {
+		info := &UpdatePayloadInfo{}
+
+		request, err := NewUpdatePayload(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing did unique suffix")
+	})
+	t.Run("missing json patch", func(t *testing.T) {
+		info := &UpdatePayloadInfo{DidUniqueSuffix: didUniqueSuffix}
+
+		request, err := NewUpdatePayload(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing update information")
+	})
+
+	t.Run("multihash not supported", func(t *testing.T) {
+		info := &UpdatePayloadInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch}
+
+		request, err := NewUpdatePayload(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "algorithm not supported")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		info := &UpdatePayloadInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch, MultihashCode: sha2_256}
+
+		request, err := NewUpdatePayload(info)
 		require.NoError(t, err)
 		require.NotEmpty(t, request)
 	})
@@ -113,4 +154,12 @@ func TestNewRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing signature")
 	})
+}
+
+func getTestPatch() (jsonpatch.Patch, error) {
+	patchJSON := []byte(`[
+		{"op": "replace", "path": "/name", "value": "Jane"}
+	]`)
+
+	return jsonpatch.DecodePatch(patchJSON)
 }

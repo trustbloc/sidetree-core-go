@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 
+	jsonpatch "github.com/evanphx/json-patch"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -41,6 +43,25 @@ type DeletePayloadInfo struct {
 
 	// One-time password for recovery operation
 	RecoveryOTP string
+}
+
+//UpdatePayloadInfo is the information required to create update payload
+type UpdatePayloadInfo struct {
+
+	// Unique Suffix
+	DidUniqueSuffix string
+
+	//An RFC 6902 JSON patch to the current DID Document
+	Patch jsonpatch.Patch
+
+	// One-time password for update operation
+	UpdateOTP string
+
+	// One-time password for the next update operation
+	NextUpdateOTP string
+
+	// latest hashing algorithm supported by protocol
+	MultihashCode uint
 }
 
 // SignedRequestInfo contains data required for signed requests
@@ -121,7 +142,37 @@ func NewDeletePayload(info *DeletePayloadInfo) (string, error) {
 
 	payload, err := json.Marshal(schema)
 	if err != nil {
-		panic(err)
+		return "", err
+	}
+
+	return docutil.EncodeToString(payload), nil
+}
+
+// NewUpdatePayload is utility function to create payload for 'update' request
+func NewUpdatePayload(info *UpdatePayloadInfo) (string, error) {
+	if info.DidUniqueSuffix == "" {
+		return "", errors.New("missing did unique suffix")
+	}
+
+	if info.Patch == nil {
+		return "", errors.New("missing update information")
+	}
+
+	mhNextUpdateOTPHash, err := docutil.ComputeMultihash(info.MultihashCode, []byte(info.NextUpdateOTP))
+	if err != nil {
+		return "", err
+	}
+
+	schema := &model.UpdatePayloadSchema{
+		Operation:         model.OperationTypeDelete,
+		DidUniqueSuffix:   info.DidUniqueSuffix,
+		UpdateOTP:         info.UpdateOTP,
+		NextUpdateOTPHash: docutil.EncodeToString(mhNextUpdateOTPHash),
+	}
+
+	payload, err := json.Marshal(schema)
+	if err != nil {
+		return "", err
 	}
 
 	return docutil.EncodeToString(payload), nil
