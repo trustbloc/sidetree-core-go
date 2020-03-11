@@ -51,6 +51,7 @@ func (h *UpdateHandler) handlePayload(operation *batch.Operation) (*batch.Operat
 		operation.UniqueSuffix = schema.DidUniqueSuffix
 		operation.Patch = schema.Patch
 		operation.NextUpdateOTPHash = schema.NextUpdateOTPHash
+		operation.UpdateOTP = schema.UpdateOTP
 
 	case batch.OperationTypeDelete:
 		schema, err := getDeletePayloadSchema(decodedPayload)

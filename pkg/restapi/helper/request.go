@@ -164,10 +164,11 @@ func NewUpdatePayload(info *UpdatePayloadInfo) (string, error) {
 	}
 
 	schema := &model.UpdatePayloadSchema{
-		Operation:         model.OperationTypeDelete,
+		Operation:         model.OperationTypeUpdate,
 		DidUniqueSuffix:   info.DidUniqueSuffix,
 		UpdateOTP:         info.UpdateOTP,
 		NextUpdateOTPHash: docutil.EncodeToString(mhNextUpdateOTPHash),
+		Patch:             info.Patch,
 	}
 
 	payload, err := json.Marshal(schema)
