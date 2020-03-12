@@ -35,17 +35,17 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
 
-		encodedPayload, err := getCreatePayload()
+		createRequest, err := getCreateRequest()
 		require.NoError(t, err)
-		createReq, err := getCreateRequest(encodedPayload)
+		request, err := json.Marshal(createRequest)
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReq))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(request))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 
-		id, err := getID(encodedPayload)
+		id, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
 		body, err := ioutil.ReadAll(rw.Body)
@@ -61,49 +61,57 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewUpdateHandler(basePath, docHandler)
 
-		encodedPayload, err := getCreatePayload()
+		createRequest, err := getCreateRequest()
 		require.NoError(t, err)
 
-		// missing protected header
-		createReq := model.Request{
-			Payload:   encodedPayload,
-			Signature: "",
-		}
+		// wrong operation type
+		createRequest.Operation = ""
 
-		createReqBytes, err := json.Marshal(createReq)
+		request, err := json.Marshal(createRequest)
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReqBytes))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(request))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 
 		body, err := ioutil.ReadAll(rw.Body)
 		require.NoError(t, err)
-		require.Contains(t, string(body), "missing protected header")
+		require.Contains(t, string(body), "not implemented")
 	})
 }
 
-func getCreatePayload() (string, error) {
-	schema := &model.CreatePayloadSchema{
-		Operation: model.OperationTypeCreate,
-		OperationData: model.OperationData{
-			Document:          validDoc,
-			NextUpdateOTPHash: computeMultihash("updateOTP"),
-		},
-		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   computeMultihash(validDoc),
-			RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-			NextRecoveryOTPHash: computeMultihash("recoverOTP"),
-		},
-	}
-
-	payload, err := json.Marshal(schema)
+func getCreateRequest() (*model.CreateRequest, error) {
+	operationDataBytes, err := docutil.MarshalCanonical(getOperationData())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return docutil.EncodeToString(payload), nil
+	suffixDataBytes, err := docutil.MarshalCanonical(getSuffixData())
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.CreateRequest{
+		Operation:     model.OperationTypeCreate,
+		OperationData: docutil.EncodeToString(operationDataBytes),
+		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+	}, nil
+}
+
+func getOperationData() *model.CreateOperationData {
+	return &model.CreateOperationData{
+		Document:          validDoc,
+		NextUpdateOTPHash: computeMultihash("updateOTP"),
+	}
+}
+
+func getSuffixData() *model.SuffixDataSchema {
+	return &model.SuffixDataSchema{
+		OperationDataHash:   computeMultihash(validDoc),
+		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+	}
 }
 
 func computeMultihash(data string) string {
@@ -114,24 +122,11 @@ func computeMultihash(data string) string {
 	return docutil.EncodeToString(mh)
 }
 
-func getCreateRequest(encodedPayload string) ([]byte, error) {
-	req := model.Request{
-		Protected: &model.Header{
-			Alg: "ES256K",
-			Kid: "#key1",
-		},
-		Payload:   encodedPayload,
-		Signature: "",
-	}
-
-	return json.Marshal(req)
+func getID(suffixData string) (string, error) {
+	return docutil.CalculateID(namespace, suffixData, sha2_256)
 }
 
-func getID(encodedPayload string) (string, error) {
-	return docutil.CalculateID(namespace, encodedPayload, sha2_256)
-}
-
-const validDoc = `{
+const validDoc = `{	
 	"created": "2019-09-23T14:16:59.261024-04:00",
 	"publicKey": [{
 		"controller": "id",

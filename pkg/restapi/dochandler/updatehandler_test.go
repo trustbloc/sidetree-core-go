@@ -15,22 +15,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
-	namespace = "sample:sidetree"
-
-	create      = "create"
-	update      = "update"
-	delete      = "delete"
-	unsupported = "unsupported"
-
+	namespace  = "sample:sidetree"
 	badRequest = `bad request`
 
 	sha2_256 = 18
@@ -40,60 +36,53 @@ func TestUpdateHandler_Update(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 	handler := NewUpdateHandler(docHandler)
 
-	createReq, err := getCreateRequest()
+	create, err := helper.NewCreateRequest(getCreateRequestInfo())
+	require.NoError(t, err)
+
+	var createReq model.CreateRequest
+	err = json.Unmarshal(create, &createReq)
+	require.NoError(t, err)
+
+	id, err := docutil.CalculateID(namespace, createReq.SuffixData, sha2_256)
 	require.NoError(t, err)
 
 	t.Run("Create", func(t *testing.T) {
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReq))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(create))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
-
-		id, err := docutil.CalculateID(namespace, docutil.EncodeToString(createReq), sha2_256)
-		require.NoError(t, err)
 
 		body, err := ioutil.ReadAll(rw.Body)
 		require.NoError(t, err)
 
 		doc, err := document.DidDocumentFromBytes(body)
-		require.Contains(t, doc.ID(), id)
+		require.Equal(t, id, doc.ID())
 		require.Equal(t, len(doc.PublicKeys()), 1)
 	})
 	t.Run("Update", func(t *testing.T) {
+		update, err := helper.NewUpdateRequest(getUpdateRequestInfo(id))
+		require.NoError(t, err)
+
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getSignedRequest(update)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(update))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Revoke", func(t *testing.T) {
+		revoke, err := helper.NewRevokeRequest(getRevokeRequestInfo(id))
+		require.NoError(t, err)
+
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getSignedRequest(delete)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(revoke))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
-	})
-	t.Run("missing protected header", func(t *testing.T) {
-		createReq := model.Request{
-			Payload:   docutil.EncodeToString(createReq),
-			Signature: "",
-		}
-
-		createReqBytes, err := json.Marshal(createReq)
-		require.NoError(t, err)
-		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReqBytes))
-		handler.Update(rw, req)
-		require.Equal(t, http.StatusBadRequest, rw.Code)
-
-		body, err := ioutil.ReadAll(rw.Body)
-		require.NoError(t, err)
-		require.Contains(t, string(body), "missing protected header")
 	})
 	t.Run("Unsupported operation", func(t *testing.T) {
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getSignedRequest(unsupported)))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(getUnsupportedRequest()))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
@@ -109,28 +98,83 @@ func TestUpdateHandler_Update(t *testing.T) {
 		handler := NewUpdateHandler(docHandlerWithErr)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(createReq))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(create))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusInternalServerError, rw.Code)
 		require.Contains(t, rw.Body.String(), errExpected.Error())
 	})
 }
 
-func getCreateRequest() ([]byte, error) {
-	schema := &model.CreatePayloadSchema{
-		Operation: model.OperationTypeCreate,
-		OperationData: model.OperationData{
-			Document:          validDoc,
-			NextUpdateOTPHash: computeMultihash("updateOTP"),
-		},
-		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   computeMultihash(validDoc),
-			RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-			NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
-		},
+func TestGetOperation(t *testing.T) {
+	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
+	handler := NewUpdateHandler(docHandler)
+
+	t.Run("create", func(t *testing.T) {
+		operation, err := getCreateRequestBytes()
+		require.NoError(t, err)
+
+		op, err := handler.getOperation(operation)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+	})
+	t.Run("update", func(t *testing.T) {
+		operation, err := getUpdateRequestBytes()
+		require.NoError(t, err)
+
+		op, err := handler.getOperation(operation)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+	})
+	t.Run("revoke", func(t *testing.T) {
+		operation, err := getRevokeRequestBytes()
+		require.NoError(t, err)
+
+		op, err := handler.getOperation(operation)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+	})
+	t.Run("unsupported operation type error", func(t *testing.T) {
+		operation := getUnsupportedRequest()
+		op, err := handler.getOperation(operation)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not implemented")
+		require.Nil(t, op)
+	})
+}
+
+func getCreateRequestInfo() *helper.CreateRequestInfo {
+	return &helper.CreateRequestInfo{
+		OpaqueDocument:  validDoc,
+		RecoveryKey:     "HEX",
+		NextRecoveryOTP: docutil.EncodeToString([]byte("recoveryOTP")),
+		NextUpdateOTP:   docutil.EncodeToString([]byte("updateOTP")),
+		MultihashCode:   sha2_256,
+	}
+}
+
+func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
+	patchJSON := []byte(`[{"op": "replace", "path": "/name", "value": "value"}]`)
+
+	patch, err := jsonpatch.DecodePatch(patchJSON)
+
+	if err != nil {
+		panic(err)
 	}
 
-	return json.Marshal(schema)
+	return &helper.UpdateRequestInfo{
+		DidUniqueSuffix: uniqueSuffix,
+		Patch:           patch,
+		UpdateOTP:       docutil.EncodeToString([]byte("updateOTP")),
+		NextUpdateOTP:   docutil.EncodeToString([]byte("updateOTP")),
+		MultihashCode:   sha2_256,
+	}
+}
+
+func getRevokeRequestInfo(uniqueSuffix string) *helper.RevokeRequestInfo {
+	return &helper.RevokeRequestInfo{
+		DidUniqueSuffix: uniqueSuffix,
+		RecoveryOTP:     "recoveryOTP",
+	}
 }
 
 func computeMultihash(data string) string {
@@ -141,39 +185,8 @@ func computeMultihash(data string) string {
 	return docutil.EncodeToString(mh)
 }
 
-func getUpdatePayload() string {
-	schema := &model.UpdatePayloadSchema{
-		Operation:         model.OperationTypeUpdate,
-		DidUniqueSuffix:   "",
-		Patch:             nil,
-		UpdateOTP:         "",
-		NextUpdateOTPHash: "",
-	}
-
-	payload, err := json.Marshal(schema)
-	if err != nil {
-		panic(err)
-	}
-
-	return docutil.EncodeToString(payload)
-}
-
-func getDeletePayload() string {
-	schema := &model.DeletePayloadSchema{
-		Operation:       model.OperationTypeDelete,
-		DidUniqueSuffix: "",
-	}
-
-	payload, err := json.Marshal(schema)
-	if err != nil {
-		panic(err)
-	}
-
-	return docutil.EncodeToString(payload)
-}
-
-func getUnsupportedPayload() string {
-	schema := &payloadSchema{
+func getUnsupportedRequest() []byte {
+	schema := &requestSchema{
 		Operation: "unsupported",
 	}
 
@@ -182,36 +195,7 @@ func getUnsupportedPayload() string {
 		panic(err)
 	}
 
-	return docutil.EncodeToString(payload)
-}
-
-func getSignedRequest(operation string) []byte {
-	var encodedPayload string
-
-	switch operation {
-	case update:
-		encodedPayload = getUpdatePayload()
-	case delete:
-		encodedPayload = getDeletePayload()
-	case unsupported:
-		encodedPayload = getUnsupportedPayload()
-	}
-
-	req := model.Request{
-		Protected: &model.Header{
-			Alg: "ES256K",
-			Kid: "#key1",
-		},
-		Payload:   encodedPayload,
-		Signature: "",
-	}
-
-	bytes, err := json.Marshal(req)
-	if err != nil {
-		panic(err)
-	}
-
-	return bytes
+	return payload
 }
 
 const validDoc = `{

@@ -11,8 +11,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
 var sample = []byte("test")
@@ -37,26 +35,6 @@ func TestComputeHash(t *testing.T) {
 	hash, err = ComputeMultihash(sha2_256, sample)
 	require.Nil(t, err)
 	require.NotNil(t, hash)
-}
-
-func TestGetOperationHash(t *testing.T) {
-	createOp := &batch.Operation{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 "abc",
-		Type:                         batch.OperationTypeCreate,
-		EncodedPayload:               "encoded",
-	}
-
-	hash, err := GetOperationHash(createOp)
-	require.Nil(t, err)
-	require.NotNil(t, hash)
-
-	// set up invalid multihash code to cause error
-	createOp.HashAlgorithmInMultiHashCode = 999
-	hash, err = GetOperationHash(createOp)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "algorithm not supported")
-	require.Empty(t, hash)
 }
 
 func TestIsSupportedMultihash(t *testing.T) {

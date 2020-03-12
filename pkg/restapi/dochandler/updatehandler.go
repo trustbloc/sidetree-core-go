@@ -8,12 +8,9 @@ package dochandler
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -43,13 +40,7 @@ func NewUpdateHandler(processor Processor) *UpdateHandler {
 
 // Update creates or updates a document
 func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		common.WriteError(rw, http.StatusBadRequest, err)
-		return
-	}
-
-	request, err := getRequest(string(body))
+	request, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		common.WriteError(rw, http.StatusBadRequest, err)
 		return
@@ -63,50 +54,14 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func getRequest(body string) (*model.Request, error) {
-	request := &model.Request{}
-	err := json.NewDecoder(strings.NewReader(body)).Decode(request)
-	if err != nil {
-		return nil, err
-	}
-
-	// update, delete and recover require protected header all good
-	if request.Protected != nil {
-		return request, nil
-	}
-
-	// only create operation may not be protected - check if it is create operation
-	create := &model.CreatePayloadSchema{}
-	err = json.NewDecoder(strings.NewReader(body)).Decode(create)
-	if err != nil {
-		return nil, err
-	}
-
-	if create.Operation != model.OperationTypeCreate {
-		// not create request; protected header is mandatory
-		return nil, errors.New("missing protected header")
-	}
-
-	payload, err := json.Marshal(create)
-	if err != nil {
-		return nil, err
-	}
-
-	request = &model.Request{
-		Payload: docutil.EncodeToString(payload),
-	}
-
-	return request, nil
-}
-
-func (h *UpdateHandler) doUpdate(request *model.Request) (document.Document, error) {
+func (h *UpdateHandler) doUpdate(request []byte) (document.Document, error) {
 	operation, err := h.getOperation(request)
 	if err != nil {
 		logger.Errorf("Error: %s", err)
 		return nil, common.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	//handling operation based on validated operation type and encoded payload from request bytes
+	// operation has been validated, now process it
 	doc, err := h.processor.ProcessOperation(operation)
 	if err != nil {
 		logger.Errorf("Error: %s", err)
@@ -116,18 +71,28 @@ func (h *UpdateHandler) doUpdate(request *model.Request) (document.Document, err
 	return doc, nil
 }
 
-func (h *UpdateHandler) getOperation(request *model.Request) (*batch.Operation, error) {
-	// populate common values
-	operation := &batch.Operation{
-		EncodedPayload:               request.Payload,
-		Signature:                    request.Signature,
-		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
+func (h *UpdateHandler) getOperation(payload []byte) (*batch.Operation, error) {
+	schema := &requestSchema{}
+	err := json.Unmarshal(payload, schema)
+	if err != nil {
+		return nil, err
 	}
 
-	if request.Protected != nil {
-		operation.SigningKeyID = request.Protected.Kid
-		operation.SigningAlgorithm = request.Protected.Alg
+	switch schema.Operation {
+	case model.OperationTypeCreate:
+		return h.parseCreateOperation(payload)
+	case model.OperationTypeUpdate:
+		return h.parseUpdateOperation(payload)
+	case model.OperationTypeRevoke:
+		return h.parseRevokeOperation(payload)
+	default:
+		return nil, fmt.Errorf("operation type [%s] not implemented", schema.Operation)
 	}
+}
 
-	return h.handlePayload(operation)
+// requestSchema is used to get operation type
+type requestSchema struct {
+
+	// operation
+	Operation model.OperationType `json:"type"`
 }

@@ -9,9 +9,9 @@ package docutil
 // NamespaceDelimiter is the delimiter that separates the namespace from the unique suffix
 const NamespaceDelimiter = ":"
 
-//CalculateID calculates the ID from an encoded initial document (from create operation)
-func CalculateID(namespace, encodedDocument string, hashAlgorithmAsMultihashCode uint) (string, error) {
-	uniqueSuffix, err := CalculateUniqueSuffix(encodedDocument, hashAlgorithmAsMultihashCode)
+//CalculateID calculates the ID from an encoded value
+func CalculateID(namespace, encoded string, hashAlgorithmAsMultihashCode uint) (string, error) {
+	uniqueSuffix, err := CalculateUniqueSuffix(encoded, hashAlgorithmAsMultihashCode)
 	if err != nil {
 		return "", err
 	}
@@ -20,9 +20,14 @@ func CalculateID(namespace, encodedDocument string, hashAlgorithmAsMultihashCode
 	return didID, nil
 }
 
-//CalculateUniqueSuffix calculates the unique from an encoded initial document (from create operation)
-func CalculateUniqueSuffix(encodedDocument string, hashAlgorithmAsMultihashCode uint) (string, error) {
-	multiHashBytes, err := ComputeMultihash(hashAlgorithmAsMultihashCode, []byte(encodedDocument))
+//CalculateUniqueSuffix calculates the unique suffix from an encoded value
+func CalculateUniqueSuffix(encoded string, hashAlgorithmAsMultihashCode uint) (string, error) {
+	value, err := DecodeString(encoded)
+	if err != nil {
+		return "", nil
+	}
+
+	multiHashBytes, err := ComputeMultihash(hashAlgorithmAsMultihashCode, value)
 	if err != nil {
 		return "", err
 	}

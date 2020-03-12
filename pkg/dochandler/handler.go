@@ -19,7 +19,6 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -168,13 +167,23 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
-	var createReq model.CreatePayloadSchema
+	var createReq model.CreateRequest
 	err = json.Unmarshal(createReqBytes, &createReq)
 	if err != nil {
 		return nil, err
 	}
 
-	initialDocument := createReq.OperationData.Document
+	operationDataBytes, err := docutil.DecodeString(createReq.OperationData)
+	if err != nil {
+		return nil, err
+	}
+
+	var opData model.CreateOperationData
+	err = json.Unmarshal(operationDataBytes, &opData)
+	if err != nil {
+		return nil, err
+	}
+	initialDocument := opData.Document
 
 	// Verify that the document passes both Sidetree and document validation
 	if err = r.validator.IsValidOriginalDocument([]byte(initialDocument)); err != nil {
@@ -221,14 +230,8 @@ func (r *DocumentHandler) getDoc(id, internal string, published bool) (document.
 
 // validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
-	// decode encoded payload
-	payload, err := base64.StdEncoding.DecodeString(operation.EncodedPayload)
-	if err != nil {
-		return err
-	}
-
 	// check maximum operation size against protocol
-	if len(payload) > int(r.protocol.Current().MaxOperationByteSize) {
+	if len(operation.OperationBuffer) > int(r.protocol.Current().MaxOperationByteSize) {
 		return errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
@@ -236,7 +239,7 @@ func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 		return r.validator.IsValidOriginalDocument([]byte(operation.Document))
 	}
 
-	return r.validator.IsValidPayload(payload)
+	return r.validator.IsValidPayload(operation.OperationBuffer)
 }
 
 // getUniquePortion fetches unique portion of ID which is string after namespace

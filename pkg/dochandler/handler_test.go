@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -54,12 +53,6 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(createOp)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
-
-	createOp.EncodedPayload = "invalid"
-	doc, err = dochandler.ProcessOperation(createOp)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "illegal base64 data")
 }
 
 func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
@@ -121,8 +114,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 	docID := getCreateOperation().ID
 
-	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
-	require.Nil(t, err)
+	encodedRequest := docutil.EncodeToString(getCreateOperation().OperationBuffer)
+
+	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + encodedRequest)
 	require.NotNil(t, doc)
 	require.Equal(t, false, doc.JSONLdObject()[keyPublished])
 
@@ -148,7 +142,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 
 	docID := getCreateOperation().ID
 
-	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + getCreateOperation().EncodedPayload)
+	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString(getCreateOperation().OperationBuffer))
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
@@ -300,72 +294,115 @@ func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 }
 
 func getCreateOperation() *batchapi.Operation {
-	schema := &model.CreatePayloadSchema{
-		Operation: model.OperationTypeCreate,
-		OperationData: model.OperationData{
-			Document:          validDoc,
-			NextUpdateOTPHash: "",
-		},
-		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   "",
-			RecoveryKey:         model.PublicKey{},
-			NextRecoveryOTPHash: "",
-		},
-	}
-
-	payload, err := json.Marshal(schema)
+	request, err := getCreateRequest()
 	if err != nil {
 		panic(err)
 	}
 
-	encodedPayload := base64.URLEncoding.EncodeToString(payload)
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(encodedPayload, sha2_256)
+	payload, err := json.Marshal(request)
 	if err != nil {
 		panic(err)
 	}
 
-	id, err := docutil.CalculateID(namespace, encodedPayload, sha2_256)
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(request.SuffixData, sha2_256)
 	if err != nil {
 		panic(err)
 	}
 
 	return &batchapi.Operation{
-		EncodedPayload:               encodedPayload,
+		OperationBuffer:              payload,
 		Document:                     validDoc,
 		Type:                         batchapi.OperationTypeCreate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
-		ID:                           id,
+		ID:                           namespace + docutil.NamespaceDelimiter + uniqueSuffix,
+	}
+}
+
+const validDoc = `{
+	"publicKey": [{
+		"id": "#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type": "Ed25519VerificationKey2018"
+	}]
+}`
+
+func getCreateRequest() (*model.CreateRequest, error) {
+	operationDataBytes, err := json.Marshal(getOperationData())
+	if err != nil {
+		return nil, err
+	}
+
+	suffixDataBytes, err := docutil.MarshalCanonical(getSuffixData())
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.CreateRequest{
+		Operation:     model.OperationTypeCreate,
+		OperationData: docutil.EncodeToString(operationDataBytes),
+		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+	}, nil
+}
+
+func getOperationData() *model.CreateOperationData {
+	return &model.CreateOperationData{
+		Document:          validDoc,
+		NextUpdateOTPHash: computeMultihash("updateOTP"),
+	}
+}
+
+func getSuffixData() *model.SuffixDataSchema {
+	return &model.SuffixDataSchema{
+		OperationDataHash:   computeMultihash(validDoc),
+		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+	}
+}
+
+func computeMultihash(data string) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+	if err != nil {
+		panic(err)
+	}
+	return docutil.EncodeToString(mh)
+}
+
+func getUpdateRequest() (*model.UpdateRequest, error) {
+	operationDataBytes, err := json.Marshal(getUpdateOperationData())
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.UpdateRequest{
+		Operation:       model.OperationTypeUpdate,
+		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
+		OperationData:   docutil.EncodeToString(operationDataBytes),
+	}, nil
+}
+
+func getUpdateOperationData() *model.UpdateOperationData {
+	return &model.UpdateOperationData{
+		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }
 
 func getUpdateOperation() *batchapi.Operation {
-	schema := &model.UpdatePayloadSchema{
-		Operation:       model.OperationTypeUpdate,
-		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
+	request, err := getUpdateRequest()
+	if err != nil {
+		panic(err)
 	}
 
-	payload, err := json.Marshal(schema)
+	payload, err := json.Marshal(request)
 	if err != nil {
 		panic(err)
 	}
 
 	return &batchapi.Operation{
-		EncodedPayload:               docutil.EncodeToString(payload),
+		OperationBuffer:              payload,
 		Type:                         batchapi.OperationTypeUpdate,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 getCreateOperation().UniqueSuffix,
+		UniqueSuffix:                 request.DidUniqueSuffix,
+		ID:                           namespace + docutil.NamespaceDelimiter + request.DidUniqueSuffix,
 	}
 }
-
-const validDoc = `{
-	"@context": ["https://w3id.org/did/v1"],
-	"created": "2019-09-23T14:16:59.261024-04:00",
-	"publicKey": [{
-		"controller": "did:method:abc",
-		"id": "#key-1",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type": "Ed25519VerificationKey2018"
-	}],
-	"updated": "2019-09-23T14:16:59.261024-04:00"
-}`
