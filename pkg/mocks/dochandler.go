@@ -12,7 +12,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 // NewMockDocumentHandler returns a new mock document handler
@@ -65,7 +64,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 		return nil, m.err
 	}
 
-	if operation.Type == batch.OperationTypeDelete {
+	if operation.Type == batch.OperationTypeRevoke {
 		m.store[operation.ID] = nil
 		return nil, nil
 	}
@@ -74,19 +73,14 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 		return nil, nil
 	}
 
-	// create operation returns document
-	id, err := docutil.CalculateID(m.Namespace(), operation.EncodedPayload, m.Protocol().Current().HashAlgorithmInMultiHashCode)
-	if err != nil {
-		return nil, err
-	}
 	doc, err := document.FromBytes([]byte(operation.Document))
 	if err != nil {
 		return nil, err
 	}
 
-	doc = applyID(doc, id)
+	doc = applyID(doc, operation.ID)
 
-	m.store[id] = doc
+	m.store[operation.ID] = doc
 
 	return doc, nil
 }
@@ -101,7 +95,7 @@ func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (document.Doc
 	}
 
 	if m.store[idOrDocument] == nil {
-		return nil, errors.New("was deleted")
+		return nil, errors.New("was revoked")
 	}
 
 	return m.store[idOrDocument], nil

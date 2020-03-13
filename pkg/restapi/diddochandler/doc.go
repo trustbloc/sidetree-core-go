@@ -23,10 +23,6 @@ SPDX-License-Identifier: Apache-2.0
 // swagger:meta
 package diddochandler
 
-import (
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-)
-
 // swagger:route POST /document create-did-document request
 // Creates/updates a DID document.
 // Responses:
@@ -47,7 +43,7 @@ type requestWrapper struct {
 	//
 	// required: true
 	// in: body
-	Body model.Request
+	Body string
 }
 
 // Contains the document.

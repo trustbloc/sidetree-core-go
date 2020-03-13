@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package helper
 
 import (
-	"encoding/json"
 	"errors"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -25,28 +24,28 @@ type CreateRequestInfo struct {
 	// the recovery public key as a HEX string
 	RecoveryKey string
 
-	// one-time password to be used for the next recovery
+	// encoded one-time password to be used for the next recovery
 	NextRecoveryOTP string
 
-	// one-time password to be used for the next update
+	// encoded one-time password to be used for the next update
 	NextUpdateOTP string
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
 }
 
-//DeletePayloadInfo is the information required to create delete payload
-type DeletePayloadInfo struct {
+//RevokeRequestInfo is the information required to create revoke request
+type RevokeRequestInfo struct {
 
 	// Unique Suffix
 	DidUniqueSuffix string
 
-	// One-time password for recovery operation
+	// encoded one-time password for recovery operation
 	RecoveryOTP string
 }
 
-//UpdatePayloadInfo is the information required to create update payload
-type UpdatePayloadInfo struct {
+//UpdateRequestInfo is the information required to create update request
+type UpdateRequestInfo struct {
 
 	// Unique Suffix
 	DidUniqueSuffix string
@@ -54,30 +53,14 @@ type UpdatePayloadInfo struct {
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch jsonpatch.Patch
 
-	// One-time password for update operation
+	// encoded one-time password for update operation
 	UpdateOTP string
 
-	// One-time password for the next update operation
+	// encoded one-time password for the next update operation
 	NextUpdateOTP string
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
-}
-
-// SignedRequestInfo contains data required for signed requests
-type SignedRequestInfo struct {
-
-	// encoded payload
-	Payload string
-
-	// algorithm used for signing
-	Algorithm string
-
-	// ID of the signing key
-	KID string
-
-	// signature over payload
-	Signature string
 }
 
 // NewCreateRequest is utility function to create payload for 'create' request
@@ -90,22 +73,17 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing recovery key")
 	}
 
-	mhNextRecoveryOTPHash, err := docutil.ComputeMultihash(info.MultihashCode, []byte(info.NextRecoveryOTP))
+	mhNextUpdateOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextUpdateOTP)
 	if err != nil {
 		return nil, err
 	}
 
-	mhNextUpdateOTPHash, err := docutil.ComputeMultihash(info.MultihashCode, []byte(info.NextUpdateOTP))
-	if err != nil {
-		return nil, err
-	}
-
-	operationData := model.OperationData{
-		NextUpdateOTPHash: docutil.EncodeToString(mhNextUpdateOTPHash),
+	operationData := model.CreateOperationData{
+		NextUpdateOTPHash: mhNextUpdateOTPHash,
 		Document:          info.OpaqueDocument,
 	}
 
-	operationDataBytes, err := json.Marshal(operationData)
+	operationDataBytes, err := docutil.MarshalCanonical(operationData)
 	if err != nil {
 		return nil, err
 	}
@@ -115,96 +93,91 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	schema := &model.CreatePayloadSchema{
-		Operation:     model.OperationTypeCreate,
-		OperationData: operationData,
-		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   docutil.EncodeToString(mhOperationData),
-			RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
-			NextRecoveryOTPHash: docutil.EncodeToString(mhNextRecoveryOTPHash),
-		},
+	mhNextRecoveryOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextRecoveryOTP)
+	if err != nil {
+		return nil, err
 	}
 
-	return json.Marshal(schema)
+	suffixData := model.SuffixDataSchema{
+		OperationDataHash:   docutil.EncodeToString(mhOperationData),
+		RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
+		NextRecoveryOTPHash: mhNextRecoveryOTPHash,
+	}
+
+	suffixDataBytes, err := docutil.MarshalCanonical(suffixData)
+	if err != nil {
+		return nil, err
+	}
+
+	schema := &model.CreateRequest{
+		Operation:     model.OperationTypeCreate,
+		OperationData: docutil.EncodeToString(operationDataBytes),
+		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+	}
+
+	return docutil.MarshalCanonical(schema)
 }
 
-// NewDeletePayload is utility function to create payload for 'delete' request
-func NewDeletePayload(info *DeletePayloadInfo) (string, error) {
-	if info.DidUniqueSuffix == "" {
-		return "", errors.New("missing did unique suffix")
+func getEncodedOTPMultihash(mhCode uint, encodedOTP string) (string, error) {
+	otpBytes, err := docutil.DecodeString(encodedOTP)
+	if err != nil {
+		return "", err
 	}
 
-	schema := &model.DeletePayloadSchema{
-		Operation:       model.OperationTypeDelete,
+	otpHash, err := docutil.ComputeMultihash(mhCode, otpBytes)
+	if err != nil {
+		return "", err
+	}
+
+	return docutil.EncodeToString(otpHash), nil
+}
+
+// NewRevokeRequest is utility function to create payload for 'revoke' request
+func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
+	if info.DidUniqueSuffix == "" {
+		return nil, errors.New("missing did unique suffix")
+	}
+
+	schema := &model.RevokeRequest{
+		Operation:       model.OperationTypeRevoke,
 		DidUniqueSuffix: info.DidUniqueSuffix,
 		RecoveryOTP:     info.RecoveryOTP,
 	}
 
-	payload, err := json.Marshal(schema)
-	if err != nil {
-		return "", err
-	}
-
-	return docutil.EncodeToString(payload), nil
+	return docutil.MarshalCanonical(schema)
 }
 
-// NewUpdatePayload is utility function to create payload for 'update' request
-func NewUpdatePayload(info *UpdatePayloadInfo) (string, error) {
+// NewUpdateRequest is utility function to create payload for 'update' request
+func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	if info.DidUniqueSuffix == "" {
-		return "", errors.New("missing did unique suffix")
+		return nil, errors.New("missing did unique suffix")
 	}
 
 	if info.Patch == nil {
-		return "", errors.New("missing update information")
+		return nil, errors.New("missing update information")
 	}
 
-	mhNextUpdateOTPHash, err := docutil.ComputeMultihash(info.MultihashCode, []byte(info.NextUpdateOTP))
+	mhNextUpdateOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextUpdateOTP)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	schema := &model.UpdatePayloadSchema{
-		Operation:         model.OperationTypeDelete,
-		DidUniqueSuffix:   info.DidUniqueSuffix,
-		UpdateOTP:         info.UpdateOTP,
-		NextUpdateOTPHash: docutil.EncodeToString(mhNextUpdateOTPHash),
+	opData := &model.UpdateOperationData{
+		NextUpdateOTPHash: mhNextUpdateOTPHash,
+		// TODO: Set new patches here
 	}
 
-	payload, err := json.Marshal(schema)
+	opDataBytes, err := docutil.MarshalCanonical(opData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return docutil.EncodeToString(payload), nil
-}
-
-// NewSignedRequest is utility function to create request with payload and payload signature
-// This helper function applies to update, delete and recovery
-func NewSignedRequest(info *SignedRequestInfo) ([]byte, error) {
-	if info.Payload == "" {
-		return nil, errors.New("missing payload")
+	schema := &model.UpdateRequest{
+		Operation:       model.OperationTypeUpdate,
+		DidUniqueSuffix: info.DidUniqueSuffix,
+		UpdateOTP:       info.UpdateOTP,
+		OperationData:   docutil.EncodeToString(opDataBytes),
 	}
 
-	if info.Algorithm == "" {
-		return nil, errors.New("missing algorithm")
-	}
-
-	if info.KID == "" {
-		return nil, errors.New("missing signing key ID")
-	}
-
-	if info.Signature == "" {
-		return nil, errors.New("missing signature")
-	}
-
-	req := model.Request{
-		Protected: &model.Header{
-			Alg: info.Algorithm,
-			Kid: info.KID,
-		},
-		Payload:   info.Payload,
-		Signature: info.Signature,
-	}
-
-	return json.Marshal(req)
+	return docutil.MarshalCanonical(schema)
 }

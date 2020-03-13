@@ -211,62 +211,62 @@ func TestIsValidHashErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
 }
 
-func TestDelete(t *testing.T) {
+func TestRevoke(t *testing.T) {
 	store := getDefaultStore()
 	uniqueSuffix := getCreateOperation().UniqueSuffix
 
-	deleteOp := getDeleteOperation(uniqueSuffix, 1)
-	err := store.Put(deleteOp)
+	revokeOp := getRevokeOperation(uniqueSuffix, 1)
+	err := store.Put(revokeOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "document was deleted")
+	require.Contains(t, err.Error(), "document was revoked")
 	require.Nil(t, doc)
 }
 
-func TestConsecutiveDelete(t *testing.T) {
+func TestConsecutiveRevoke(t *testing.T) {
 	store := getDefaultStore()
 	uniqueSuffix := getCreateOperation().UniqueSuffix
 
-	deleteOp := getDeleteOperation(uniqueSuffix, 1)
-	err := store.Put(deleteOp)
+	revokeOp := getRevokeOperation(uniqueSuffix, 1)
+	err := store.Put(revokeOp)
 	require.Nil(t, err)
 
-	deleteOp = getDeleteOperation(uniqueSuffix, 2)
-	err = store.Put(deleteOp)
+	revokeOp = getRevokeOperation(uniqueSuffix, 2)
+	err = store.Put(revokeOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "delete can only be applied to an existing document")
+	require.Contains(t, err.Error(), "revoke can only be applied to an existing document")
 	require.Nil(t, doc)
 }
 
-func TestDelete_DocumentNotFound(t *testing.T) {
+func TestRevoke_DocumentNotFound(t *testing.T) {
 	store := getDefaultStore()
 
-	deleteOp := getDeleteOperation(dummyUniqueSuffix, 0)
-	err := store.Put(deleteOp)
+	revokeOp := getRevokeOperation(dummyUniqueSuffix, 0)
+	err := store.Put(revokeOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
 	doc, err := p.Resolve(dummyUniqueSuffix)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "delete can only be applied to an existing document")
+	require.Contains(t, err.Error(), "revoke can only be applied to an existing document")
 	require.Nil(t, doc)
 }
 
-func TestDelete_InvalidRecoveryOTP(t *testing.T) {
+func TestRevoke_InvalidRecoveryOTP(t *testing.T) {
 	store := getDefaultStore()
 
 	uniqueSuffix := getCreateOperation().UniqueSuffix
 
-	deleteOp := getDeleteOperation(uniqueSuffix, 1)
-	deleteOp.RecoveryOTP = base64.URLEncoding.EncodeToString([]byte("invalid"))
-	err := store.Put(deleteOp)
+	revokeOp := getRevokeOperation(uniqueSuffix, 1)
+	revokeOp.RecoveryOTP = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	err := store.Put(revokeOp)
 	require.NoError(t, err)
 
 	p := New("test", store)
@@ -312,10 +312,10 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 	return operation
 }
 
-func getDeleteOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
+func getRevokeOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
 	return &batch.Operation{
 		UniqueSuffix:      uniqueSuffix,
-		Type:              batch.OperationTypeDelete,
+		Type:              batch.OperationTypeRevoke,
 		TransactionNumber: uint64(operationNumber),
 		RecoveryOTP:       base64.URLEncoding.EncodeToString([]byte(recoveryOTP)),
 	}
@@ -344,12 +344,17 @@ func getCreateOperation() *batch.Operation {
 		panic(err)
 	}
 
-	encodedPayload, err := getEncodedPayload(validDoc)
+	createRequest, err := getCreateRequest()
 	if err != nil {
 		panic(err)
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(encodedPayload, sha2_256)
+	operationBuffer, err := json.Marshal(createRequest)
+	if err != nil {
+		panic(err)
+	}
+
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(createRequest.SuffixData, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -358,7 +363,7 @@ func getCreateOperation() *batch.Operation {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
-		EncodedPayload:               encodedPayload,
+		OperationBuffer:              operationBuffer,
 		Document:                     validDoc,
 		TransactionNumber:            0,
 		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
@@ -366,26 +371,45 @@ func getCreateOperation() *batch.Operation {
 	}
 }
 
-func getEncodedPayload(doc string) (string, error) {
-	schema := &model.CreatePayloadSchema{
-		Operation: model.OperationTypeCreate,
-		OperationData: model.OperationData{
-			Document:          doc,
-			NextUpdateOTPHash: "",
-		},
-		SuffixData: model.SuffixDataSchema{
-			OperationDataHash:   "",
-			RecoveryKey:         model.PublicKey{},
-			NextRecoveryOTPHash: "",
-		},
-	}
-
-	payload, err := json.Marshal(schema)
+func getCreateRequest() (*model.CreateRequest, error) {
+	operationDataBytes, err := docutil.MarshalCanonical(getOperationData())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return docutil.EncodeToString(payload), nil
+	suffixDataBytes, err := docutil.MarshalCanonical(getSuffixData())
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.CreateRequest{
+		Operation:     model.OperationTypeCreate,
+		OperationData: docutil.EncodeToString(operationDataBytes),
+		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+	}, nil
+}
+
+func getOperationData() *model.CreateOperationData {
+	return &model.CreateOperationData{
+		Document:          validDoc,
+		NextUpdateOTPHash: computeMultihash("updateOTP"),
+	}
+}
+
+func getSuffixData() *model.SuffixDataSchema {
+	return &model.SuffixDataSchema{
+		OperationDataHash:   computeMultihash(validDoc),
+		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+	}
+}
+
+func computeMultihash(data string) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+	if err != nil {
+		panic(err)
+	}
+	return docutil.EncodeToString(mh)
 }
 
 const validDoc = `{

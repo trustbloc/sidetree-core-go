@@ -22,7 +22,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
@@ -43,20 +42,16 @@ func TestRESTAPI(t *testing.T) {
 	defer s.stop()
 
 	t.Run("Create DID doc", func(t *testing.T) {
-		encodedPayload, err := getCreatePayload()
+		createRequest, err := getCreateRequest()
 		require.NoError(t, err)
-		createReq, err := getCreateRequest(encodedPayload)
-		require.NoError(t, err)
-
-		request := &model.Request{}
-		err = json.Unmarshal(createReq, request)
+		request, err := json.Marshal(createRequest)
 		require.NoError(t, err)
 
 		resp, err := httpPut(t, clientURL+basePath, request)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 
-		didID, err := getID(encodedPayload)
+		didID, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
 		var doc document.Document
@@ -64,9 +59,10 @@ func TestRESTAPI(t *testing.T) {
 		require.Equal(t, didID, doc["id"])
 	})
 	t.Run("Resolve DID doc", func(t *testing.T) {
-		encodedPayload, err := getCreatePayload()
+		createRequest, err := getCreateRequest()
 		require.NoError(t, err)
-		didID, err := getID(encodedPayload)
+
+		didID, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
 		resp, err := httpGet(t, clientURL+basePath+"/"+didID)
@@ -81,12 +77,10 @@ func TestRESTAPI(t *testing.T) {
 
 // httpPut sends a regular POST request to the sidetree-node
 // - If post request has operation "create" then return sidetree document else no response
-func httpPut(t *testing.T, url string, req *model.Request) ([]byte, error) {
+func httpPut(t *testing.T, url string, request []byte) ([]byte, error) {
 	client := &http.Client{}
-	b, err := json.Marshal(req)
-	require.NoError(t, err)
 
-	httpReq, err := http.NewRequest("POST", url, bytes.NewReader(b))
+	httpReq, err := http.NewRequest("POST", url, bytes.NewReader(request))
 	require.NoError(t, err)
 
 	httpReq.Header.Set("Content-Type", "application/did+ld+json")

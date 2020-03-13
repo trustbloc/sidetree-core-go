@@ -15,16 +15,15 @@ type Operation struct {
 
 	//Operation type
 	Type OperationType `json:"type"`
+
 	//ID is full ID for this document - includes namespace + unique suffix
 	ID string `json:"id"`
 
 	//The unique suffix - encoded hash of the original create document
 	UniqueSuffix string `json:"uniqueSuffix"`
 
-	// EncodedProtectedHeader is the encoded protected header
-	EncodedProtectedHeader string `json:"encodedProtectedHeader"`
-	//EncodedPayload  is the encoded operation payload
-	EncodedPayload string `json:"encodedPayload"`
+	// OperationBuffer is the original operation request
+	OperationBuffer []byte `json:"operationBuffer"`
 
 	//Document contains original opaque document
 	Document string `json:"document"`
@@ -70,8 +69,8 @@ const (
 	// OperationTypeUpdate captures "update" operation type
 	OperationTypeUpdate OperationType = "update"
 
-	// OperationTypeDelete captures "delete" operation type
-	OperationTypeDelete OperationType = "delete"
+	// OperationTypeRevoke captures "revoke" operation type
+	OperationTypeRevoke OperationType = "revoke"
 
 	// OperationTypeRecover captures "recover" operation type
 	OperationTypeRecover OperationType = "recover"

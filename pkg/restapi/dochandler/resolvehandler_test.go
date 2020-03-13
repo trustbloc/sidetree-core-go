@@ -25,13 +25,16 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().
 			WithNamespace(namespace)
 
-		createReq, err := getCreateRequest()
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
 		doc, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:           batch.OperationTypeCreate,
-			EncodedPayload: docutil.EncodeToString(createReq),
-			Document:       validDoc,
+			Type:     batch.OperationTypeCreate,
+			ID:       id,
+			Document: validDoc,
 		})
 		require.NoError(t, err)
 
@@ -79,18 +82,21 @@ func TestResolveHandler_Resolve(t *testing.T) {
 	t.Run("Document is no longer available", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 
-		createReq, err := getCreateRequest()
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
 		doc, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:           batch.OperationTypeCreate,
-			EncodedPayload: docutil.EncodeToString(createReq),
-			Document:       validDoc,
+			Type:     batch.OperationTypeCreate,
+			ID:       id,
+			Document: validDoc,
 		})
 		require.NoError(t, err)
 
 		_, err = docHandler.ProcessOperation(&batch.Operation{
-			Type: batch.OperationTypeDelete,
+			Type: batch.OperationTypeRevoke,
 			ID:   doc.ID(),
 		})
 		require.NoError(t, err)

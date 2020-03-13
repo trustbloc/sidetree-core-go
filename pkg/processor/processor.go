@@ -62,7 +62,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 	}
 
 	if rm.Doc == nil {
-		return nil, errors.New("document was deleted")
+		return nil, errors.New("document was revoked")
 	}
 
 	// next apply update ops since last 'full' transaction
@@ -78,7 +78,7 @@ func splitOperations(ops []*batch.Operation) (fullOps, updateOps []*batch.Operat
 	for _, op := range ops {
 		if op.Type == batch.OperationTypeUpdate {
 			updateOps = append(updateOps, op)
-		} else { // Create, Recover, Delete
+		} else { // Create, Recover, Revoke
 			fullOps = append(fullOps, op)
 		}
 	}
@@ -121,8 +121,8 @@ func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *reso
 		return s.applyCreateOperation(operation, rm)
 	case batch.OperationTypeUpdate:
 		return s.applyUpdateOperation(operation, rm)
-	case batch.OperationTypeDelete:
-		return s.applyDeleteOperation(operation, rm)
+	case batch.OperationTypeRevoke:
+		return s.applyRevokeOperation(operation, rm)
 	default:
 		return nil, errors.New("operation type not supported for process operation")
 	}
@@ -183,11 +183,11 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
 }
 
-func (s *OperationProcessor) applyDeleteOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	log.Debugf("[%s] Applying delete operation: %+v", s.name, operation)
+func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	log.Debugf("[%s] Applying revoke operation: %+v", s.name, operation)
 
 	if rm.Doc == nil {
-		return nil, errors.New("delete can only be applied to an existing document")
+		return nil, errors.New("revoke can only be applied to an existing document")
 	}
 
 	err := isValidHash(operation.RecoveryOTP, rm.NextRecoveryOTPHash)
