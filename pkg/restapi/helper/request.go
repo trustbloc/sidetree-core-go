@@ -164,7 +164,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 
 	opData := &model.UpdateOperationData{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		// TODO: Set new patches here
+		DocumentPatch:     info.Patch,
 	}
 
 	opDataBytes, err := docutil.MarshalCanonical(opData)
