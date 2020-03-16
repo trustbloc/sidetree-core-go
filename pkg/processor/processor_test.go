@@ -276,6 +276,29 @@ func TestRevoke_InvalidRecoveryOTP(t *testing.T) {
 	require.Nil(t, doc)
 }
 
+func TestOpsWithTxnGreaterThan(t *testing.T) {
+	op1 := &batch.Operation{
+		TransactionTime:   1,
+		TransactionNumber: 1,
+	}
+
+	op2 := &batch.Operation{
+		TransactionTime:   1,
+		TransactionNumber: 2,
+	}
+
+	ops := []*batch.Operation{op1, op2}
+
+	txns := getOpsWithTxnGreaterThan(ops, 0, 0)
+	require.Equal(t, 2, len(txns))
+
+	txns = getOpsWithTxnGreaterThan(ops, 2, 1)
+	require.Equal(t, 0, len(txns))
+
+	txns = getOpsWithTxnGreaterThan(ops, 1, 1)
+	require.Equal(t, 1, len(txns))
+}
+
 func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
 	patch := map[string]interface{}{
 		"op":    "replace",
@@ -316,6 +339,7 @@ func getRevokeOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 	return &batch.Operation{
 		UniqueSuffix:      uniqueSuffix,
 		Type:              batch.OperationTypeRevoke,
+		TransactionTime:   0,
 		TransactionNumber: uint64(operationNumber),
 		RecoveryOTP:       base64.URLEncoding.EncodeToString([]byte(recoveryOTP)),
 	}

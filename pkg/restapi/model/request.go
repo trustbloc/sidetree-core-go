@@ -59,9 +59,6 @@ type UpdateRequest struct {
 	//The unique suffix of the DID
 	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
-	//An RFC 6902 JSON patch to the current DID Document
-	Patch jsonpatch.Patch
-
 	// One-time password for update operation
 	UpdateOTP string `json:"updateOtp"`
 
@@ -78,8 +75,8 @@ type UpdateOperationData struct {
 	// Hash of the one-time password for the next update operation
 	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
 
-	// Opaque content
-	DocumentPatch string `json:"document"`
+	//An RFC 6902 JSON patch to the current DID Document
+	DocumentPatch jsonpatch.Patch `json:"documentPatch"`
 }
 
 //RevokeRequest is the struct for revoking document

@@ -35,7 +35,7 @@ func (h *UpdateHandler) parseUpdateOperation(request []byte) (*batch.Operation, 
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		UpdateOTP:                    schema.UpdateOTP,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
-		Patch:                        schema.Patch,
+		Patch:                        operationData.DocumentPatch,
 		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
 	}, nil
 }
