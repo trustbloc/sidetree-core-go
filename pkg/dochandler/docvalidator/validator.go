@@ -14,7 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
-const uniqueSuffix = "uniqueSuffix"
+const uniqueSuffix = "didUniqueSuffix"
 
 // Validator is responsible for validating document operations and sidetree rules
 type Validator struct {

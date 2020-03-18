@@ -111,5 +111,5 @@ func getDefaultValidator() *Validator {
 var validDoc = []byte(`{ "name": "John Smith" }`)
 var invalidDoc = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
-var validUpdate = []byte(`{ "uniqueSuffix": "abc" }`)
+var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
