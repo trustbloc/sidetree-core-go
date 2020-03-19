@@ -42,8 +42,8 @@ type PublicKey struct {
 	PublicKeyHex string `json:"publicKeyHex"`
 }
 
-// CreateOperationData contains create operation data
-type CreateOperationData struct {
+// OperationDataSchema contains operation data (used for create and recover)
+type OperationDataSchema struct {
 
 	// Hash of the one-time password for the next update operation
 	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
@@ -63,13 +63,13 @@ type UpdateRequest struct {
 	UpdateOTP string `json:"updateOtp"`
 
 	// JWS signature information
-	SignedOperationDataHash *SignedOperationData `json:"signedOperationDataHash"`
+	SignedOperationDataHash *JWS `json:"signedOperationDataHash"`
 
 	// Encoded JSON object containing update operation data
 	OperationData string `json:"operationData"`
 }
 
-// UpdateOperationData contains create operation data
+// UpdateOperationData contains update operation data
 type UpdateOperationData struct {
 
 	// Hash of the one-time password for the next update operation
@@ -89,27 +89,62 @@ type RevokeRequest struct {
 	// Required: true
 	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
-	// One-time password for recovery operation
+	// the current one-time recovery password
 	// Required: true
 	RecoveryOTP string `json:"recoveryOtp"`
 
 	// JWS Signature information
-	SignedOperationData *SignedOperationData `json:"signedOperationDataHash"`
+	SignedOperationData *JWS `json:"signedOperationData"`
 }
 
-// SignedOperationData contains JWS signature
-type SignedOperationData struct {
-	// protected
+// JWS contains JWS signature
+type JWS struct {
+	// JWS header
 	// Required: true
 	Protected *Header `json:"protected"`
 
-	// Hash of the operation data
+	// JWS encoded JSON object
 	// Required: true
 	Payload string `json:"payload"`
 
 	// JWS signature
 	// Required: true
 	Signature string `json:"signature"`
+}
+
+// SignedOperationDataSchema defines
+type SignedOperationDataSchema struct {
+
+	// Hash of the unsigned operation data
+	OperationDataHash string `json:"operationDataHash"`
+
+	// The new recovery key
+	RecoveryKey PublicKey `json:"recoveryKey"`
+
+	// Hash of the one-time password to be used for the next recovery/revoke
+	NextRecoveryOTPHash string `json:"nextRecoveryOtpHash"`
+}
+
+// RecoverRequest is the struct for document recovery payload
+type RecoverRequest struct {
+	// operation
+	// Required: true
+	Operation OperationType `json:"type"`
+
+	//The unique suffix of the DID
+	// Required: true
+	DidUniqueSuffix string `json:"didUniqueSuffix"`
+
+	// One-time recovery password for this recovery
+	// Required: true
+	RecoveryOTP string `json:"recoveryOtp"`
+
+	// JWS Signature information
+	SignedOperationData *JWS `json:"signedOperationData"`
+
+	// Encoded JSON object containing unsigned portion of the recovery request
+	// Required: true
+	OperationData string `json:"operationData"`
 }
 
 // Protected describes JWS header

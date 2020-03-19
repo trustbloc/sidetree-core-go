@@ -138,6 +138,8 @@ func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *reso
 		return s.applyUpdateOperation(operation, rm)
 	case batch.OperationTypeRevoke:
 		return s.applyRevokeOperation(operation, rm)
+	case batch.OperationTypeRecover:
+		return s.applyRecoverOperation(operation, rm)
 	default:
 		return nil, errors.New("operation type not supported for process operation")
 	}
@@ -218,6 +220,33 @@ func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateOTPHash:              "",
 		NextRecoveryOTPHash:            ""}, nil
+}
+
+func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	log.Debugf("[%s] Applying recover operation: %+v", s.name, operation)
+
+	if rm.Doc == nil {
+		return nil, errors.New("recover can only be applied to an existing document")
+	}
+
+	err := isValidHash(operation.RecoveryOTP, rm.NextRecoveryOTPHash)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := document.FromBytes([]byte(operation.Document))
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Validation of signature and signed data (similar for revoke, update and recover)
+
+	return &resolutionModel{
+		Doc:                            doc,
+		LastOperationTransactionTime:   operation.TransactionTime,
+		LastOperationTransactionNumber: operation.TransactionNumber,
+		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
+		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
 }
 
 func isValidHash(encodedContent, encodedMultihash string) error {

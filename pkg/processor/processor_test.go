@@ -43,7 +43,7 @@ func TestDocumentNotFoundError(t *testing.T) {
 	op := New("test", getDefaultStore())
 	doc, err := op.Resolve(dummyUniqueSuffix)
 	require.Nil(t, doc)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, "uniqueSuffix not found in the store", err.Error())
 }
 
@@ -54,7 +54,7 @@ func TestResolveMockStoreError(t *testing.T) {
 
 	doc, err := p.Resolve(getCreateOperation().UniqueSuffix)
 	require.Nil(t, doc)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, testErr, err)
 }
 
@@ -70,7 +70,7 @@ func TestResolveError(t *testing.T) {
 	p := New("test", store)
 	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.Nil(t, doc)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid character")
 }
 
@@ -107,7 +107,7 @@ func TestUpdateDocument_InvalidOTP(t *testing.T) {
 
 	p := New("test", store) //Storing operation in the test store
 	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
 	require.Nil(t, doc)
 }
@@ -149,7 +149,7 @@ func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Equal(t, "missing create operation", err.Error())
 }
@@ -170,7 +170,7 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(getCreateOperation().UniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Equal(t, "create has to be the first operation", err.Error())
 }
@@ -187,7 +187,7 @@ func TestProcessOperation_InvalidOperationType(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(createOp.UniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Equal(t, "operation type not supported for process operation", err.Error())
 }
@@ -221,7 +221,7 @@ func TestRevoke(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "document was revoked")
 	require.Nil(t, doc)
 }
@@ -240,7 +240,7 @@ func TestConsecutiveRevoke(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "revoke can only be applied to an existing document")
 	require.Nil(t, doc)
 }
@@ -254,7 +254,7 @@ func TestRevoke_DocumentNotFound(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(dummyUniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "revoke can only be applied to an existing document")
 	require.Nil(t, doc)
 }
@@ -271,7 +271,79 @@ func TestRevoke_InvalidRecoveryOTP(t *testing.T) {
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+	require.Nil(t, doc)
+}
+
+func TestRecover(t *testing.T) {
+	store := getDefaultStore()
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	recoverOp := getRecoverOperation(uniqueSuffix, 1)
+	err := store.Put(recoverOp)
+	require.Nil(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NoError(t, err)
+
+	// test for recovered key
+	docBytes, err := doc.Bytes()
+	require.NoError(t, err)
+	require.Contains(t, string(docBytes), "recovered")
+}
+
+func TestConsecutiveRecover(t *testing.T) {
+	store := getDefaultStore()
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	recoverOp := getRecoverOperation(uniqueSuffix, 1)
+	err := store.Put(recoverOp)
+	require.Nil(t, err)
+
+	recoverOp = getRecoverOperation(uniqueSuffix, 2)
+	err = store.Put(recoverOp)
+	require.Nil(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+}
+
+func TestRecoverAfterRevoke(t *testing.T) {
+	store := getDefaultStore()
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	revokeOp := getRevokeOperation(uniqueSuffix, 1)
+	err := store.Put(revokeOp)
+	require.Nil(t, err)
+
+	recoverOp := getRecoverOperation(uniqueSuffix, 2)
+	err = store.Put(recoverOp)
+	require.Nil(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "recover can only be applied to an existing document")
+	require.Nil(t, doc)
+}
+
+func TestRecover_InvalidRecoveryOTP(t *testing.T) {
+	store := getDefaultStore()
+
+	uniqueSuffix := getCreateOperation().UniqueSuffix
+
+	op := getRecoverOperation(uniqueSuffix, 1)
+	op.RecoveryOTP = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	err := store.Put(op)
+	require.NoError(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
 	require.Nil(t, doc)
 }
@@ -347,6 +419,81 @@ func getRevokeOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 	}
 }
 
+func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
+	recoverRequest, err := getDefaultRecoverRequest()
+	if err != nil {
+		panic(err)
+	}
+
+	operationBuffer, err := json.Marshal(recoverRequest)
+	if err != nil {
+		panic(err)
+	}
+
+	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
+	if err != nil {
+		panic(err)
+	}
+
+	nextRecoveryOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryOTP))
+	if err != nil {
+		panic(err)
+	}
+
+	return &batch.Operation{
+		UniqueSuffix:        uniqueSuffix,
+		Type:                batch.OperationTypeRecover,
+		OperationBuffer:     operationBuffer,
+		Document:            recoveredDoc,
+		RecoveryOTP:         base64.URLEncoding.EncodeToString([]byte(recoveryOTP)),
+		NextUpdateOTPHash:   base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
+		NextRecoveryOTPHash: base64.URLEncoding.EncodeToString(nextRecoveryOTPHash),
+		TransactionTime:     0,
+		TransactionNumber:   uint64(operationNumber),
+	}
+}
+
+func getRecoverRequest(opData *model.OperationDataSchema, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
+	operationDataBytes, err := docutil.MarshalCanonical(opData)
+	if err != nil {
+		return nil, err
+	}
+
+	signedOperationDataBytes, err := docutil.MarshalCanonical(signedOpData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.RecoverRequest{
+		Operation:       model.OperationTypeRecover,
+		DidUniqueSuffix: "suffix",
+		OperationData:   docutil.EncodeToString(operationDataBytes),
+		SignedOperationData: &model.JWS{
+			// TODO: JWS encoded
+			Payload: docutil.EncodeToString(signedOperationDataBytes),
+		},
+	}, nil
+}
+
+func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
+	return getRecoverRequest(getRecoverOperationData(), getRecoverSignedOperationData())
+}
+
+func getRecoverSignedOperationData() *model.SignedOperationDataSchema {
+	return &model.SignedOperationDataSchema{
+		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+		OperationDataHash:   computeMultihash("operation"),
+	}
+}
+
+func getRecoverOperationData() *model.OperationDataSchema {
+	return &model.OperationDataSchema{
+		Document:          recoveredDoc,
+		NextUpdateOTPHash: computeMultihash("updateOTP"),
+	}
+}
+
 func getDefaultStore() *mocks.MockOperationStore {
 	store := mocks.NewMockOperationStore(nil)
 
@@ -416,8 +563,8 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getOperationData() *model.CreateOperationData {
-	return &model.CreateOperationData{
+func getOperationData() *model.OperationDataSchema {
+	return &model.OperationDataSchema{
 		Document:          validDoc,
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
@@ -443,6 +590,14 @@ const validDoc = `{
 	"publicKey": [{
 		"controller": "id",
 		"id": "#key-1",
+		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+		"type": "Ed25519VerificationKey2018"
+	}]
+}`
+
+const recoveredDoc = `{
+	"publicKey": [{
+		"id": "#recovered",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
 	}]

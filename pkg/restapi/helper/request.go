@@ -40,8 +40,33 @@ type RevokeRequestInfo struct {
 	// Unique Suffix
 	DidUniqueSuffix string
 
+	// encoded one-time password for revoke operation
+	RecoveryOTP string
+}
+
+//RecoverRequestInfo is the information required to create recover request
+type RecoverRequestInfo struct {
+
+	// Unique Suffix of the did to be recovered
+	DidUniqueSuffix string
+
 	// encoded one-time password for recovery operation
 	RecoveryOTP string
+
+	// the new recovery public key as a HEX string
+	RecoveryKey string
+
+	// opaque content
+	OpaqueDocument string
+
+	// encoded one-time password to be used for the next recovery
+	NextRecoveryOTP string
+
+	// encoded one-time password to be used for the next update
+	NextUpdateOTP string
+
+	// latest hashing algorithm supported by protocol
+	MultihashCode uint
 }
 
 //UpdateRequestInfo is the information required to create update request
@@ -78,7 +103,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	operationData := model.CreateOperationData{
+	operationData := model.OperationDataSchema{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
 		Document:          info.OpaqueDocument,
 	}
@@ -138,6 +163,8 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing did unique suffix")
 	}
 
+	// TODO: Construct signed operation data here and set it in request
+
 	schema := &model.RevokeRequest{
 		Operation:       model.OperationTypeRevoke,
 		DidUniqueSuffix: info.DidUniqueSuffix,
@@ -172,6 +199,8 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	// TODO: Assemble signed operation data hash and add to the request
+
 	schema := &model.UpdateRequest{
 		Operation:       model.OperationTypeUpdate,
 		DidUniqueSuffix: info.DidUniqueSuffix,
@@ -180,4 +209,80 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	return docutil.MarshalCanonical(schema)
+}
+
+// NewRecoverRequest is utility function to create payload for 'recovery' request
+func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
+	err := checkRequiredDataForRecovery(info)
+	if err != nil {
+		return nil, err
+	}
+
+	mhNextUpdateOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextUpdateOTP)
+	if err != nil {
+		return nil, err
+	}
+
+	operationData := model.OperationDataSchema{
+		NextUpdateOTPHash: mhNextUpdateOTPHash,
+		Document:          info.OpaqueDocument,
+	}
+
+	operationDataBytes, err := docutil.MarshalCanonical(operationData)
+	if err != nil {
+		return nil, err
+	}
+
+	mhOperationData, err := docutil.ComputeMultihash(info.MultihashCode, operationDataBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	mhNextRecoveryOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextRecoveryOTP)
+	if err != nil {
+		return nil, err
+	}
+
+	signedSchema := model.SignedOperationDataSchema{
+		OperationDataHash:   docutil.EncodeToString(mhOperationData),
+		RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
+		NextRecoveryOTPHash: mhNextRecoveryOTPHash,
+	}
+
+	signedSchemaBytes, err := docutil.MarshalCanonical(signedSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	signedOperationData := &model.JWS{
+		// TODO: should be JWS encoded, encode for now
+		// TODO: Sign and set protected header here
+		Payload: docutil.EncodeToString(signedSchemaBytes),
+	}
+
+	schema := &model.RecoverRequest{
+		Operation:           model.OperationTypeRecover,
+		DidUniqueSuffix:     info.DidUniqueSuffix,
+		RecoveryOTP:         info.RecoveryOTP,
+		SignedOperationData: signedOperationData,
+		OperationData:       docutil.EncodeToString(operationDataBytes),
+	}
+
+	return docutil.MarshalCanonical(schema)
+}
+
+func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
+	if info.DidUniqueSuffix == "" {
+		return errors.New("missing did unique suffix")
+	}
+
+	if info.OpaqueDocument == "" {
+		return errors.New("missing opaque document")
+	}
+
+	if info.RecoveryKey == "" {
+		return errors.New("missing recovery key")
+	}
+
+	return nil
 }

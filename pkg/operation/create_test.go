@@ -19,6 +19,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
+const invalid = "invalid"
+
 func TestParseCreateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
@@ -42,7 +44,7 @@ func TestParseCreateOperation(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		create.SuffixData = "invalid"
+		create.SuffixData = invalid
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
@@ -55,7 +57,7 @@ func TestParseCreateOperation(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		create.OperationData = "invalid"
+		create.OperationData = invalid
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
@@ -95,7 +97,7 @@ func TestValidateOperationData(t *testing.T) {
 	t.Run("invalid next update OTP", func(t *testing.T) {
 		operationData := getOperationData()
 		operationData.NextUpdateOTPHash = ""
-		err := validateCreateOperationData(operationData, sha2_256)
+		err := validateOperationData(operationData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update OTP hash is not computed with the latest supported hash algorithm")
@@ -103,7 +105,7 @@ func TestValidateOperationData(t *testing.T) {
 	t.Run("missing opaque document", func(t *testing.T) {
 		operationData := getOperationData()
 		operationData.Document = ""
-		err := validateCreateOperationData(operationData, sha2_256)
+		err := validateOperationData(operationData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing opaque document")
@@ -137,8 +139,8 @@ func getCreateRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-func getOperationData() *model.CreateOperationData {
-	return &model.CreateOperationData{
+func getOperationData() *model.OperationDataSchema {
+	return &model.OperationDataSchema{
 		Document:          validDoc,
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
