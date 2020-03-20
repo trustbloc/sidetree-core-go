@@ -4,7 +4,7 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package dochandler
+package operation
 
 import (
 	"encoding/json"
@@ -13,24 +13,27 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
+const sha2_256 = 18
+
 func TestParseRevokeOperation(t *testing.T) {
-	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-	handler := NewUpdateHandler(docHandler)
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+	}
 
 	t.Run("success", func(t *testing.T) {
 		payload, err := getRevokeRequestBytes()
 		require.NoError(t, err)
 
-		op, err := handler.parseRevokeOperation(payload)
+		op, err := ParseRevokeOperation(payload, p)
 		require.NoError(t, err)
 		require.Equal(t, batch.OperationTypeRevoke, op.Type)
 	})
 	t.Run("missing unique suffix", func(t *testing.T) {
-		schema, err := handler.parseRevokeOperation([]byte("{}"))
+		schema, err := ParseRevokeOperation([]byte("{}"), p)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "missing unique suffix")

@@ -4,43 +4,42 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package dochandler
+package operation
 
 import (
 	"encoding/json"
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-func (h *UpdateHandler) parseUpdateOperation(request []byte) (*batch.Operation, error) {
-	schema, err := h.parseUpdateRequest(request)
+// ParseUpdateOperation will parse update operation
+func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Operation, error) {
+	schema, err := parseUpdateRequest(request)
 	if err != nil {
 		return nil, err
 	}
 
-	operationData, err := h.parseUpdateOperationData(schema.OperationData)
+	operationData, err := parseUpdateOperationData(schema.OperationData, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
-
-	id := h.processor.Namespace() + docutil.NamespaceDelimiter + schema.DidUniqueSuffix
 
 	return &batch.Operation{
 		Type:                         batch.OperationTypeUpdate,
 		OperationBuffer:              request,
-		ID:                           id,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		UpdateOTP:                    schema.UpdateOTP,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
 		Patch:                        operationData.DocumentPatch,
-		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
+		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil
 }
 
-func (h *UpdateHandler) parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
+func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	schema := &model.UpdateRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
@@ -49,7 +48,7 @@ func (h *UpdateHandler) parseUpdateRequest(payload []byte) (*model.UpdateRequest
 	return schema, nil
 }
 
-func (h *UpdateHandler) parseUpdateOperationData(encoded string) (*model.UpdateOperationData, error) {
+func parseUpdateOperationData(encoded string, code uint) (*model.UpdateOperationData, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
@@ -61,17 +60,15 @@ func (h *UpdateHandler) parseUpdateOperationData(encoded string) (*model.UpdateO
 		return nil, err
 	}
 
-	if err := h.validateUpdateOperationData(schema); err != nil {
+	if err := validateUpdateOperationData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func (h *UpdateHandler) validateUpdateOperationData(opData *model.UpdateOperationData) error {
+func validateUpdateOperationData(opData *model.UpdateOperationData, code uint) error {
 	// TODO: Add validation of patches
-
-	code := h.processor.Protocol().Current().HashAlgorithmInMultiHashCode
 
 	if !docutil.IsComputedUsingHashAlgorithm(opData.NextUpdateOTPHash, uint64(code)) {
 		return errors.New("next update OTP hash is not computed with the latest supported hash algorithm")

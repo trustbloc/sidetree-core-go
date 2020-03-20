@@ -4,7 +4,7 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package dochandler
+package operation
 
 import (
 	"encoding/json"
@@ -12,48 +12,47 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-func (h *UpdateHandler) parseCreateOperation(request []byte) (*batch.Operation, error) {
-	schema, err := h.parseCreateRequest(request)
+// ParseCreateOperation will parse create operation
+func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Operation, error) {
+	schema, err := parseCreateRequest(request)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixData, err := h.parseSuffixData(schema.SuffixData)
+	code := protocol.HashAlgorithmInMultiHashCode
+
+	suffixData, err := parseSuffixData(schema.SuffixData, code)
 	if err != nil {
 		return nil, err
 	}
 
-	operationData, err := h.parseCreateOperationData(schema.OperationData)
+	operationData, err := parseCreateOperationData(schema.OperationData, code)
 	if err != nil {
 		return nil, err
 	}
-
-	code := h.processor.Protocol().Current().HashAlgorithmInMultiHashCode
 
 	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, code)
 	if err != nil {
 		return nil, err
 	}
 
-	id := h.processor.Namespace() + docutil.NamespaceDelimiter + uniqueSuffix
-
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeCreate,
-		ID:                           id,
 		UniqueSuffix:                 uniqueSuffix,
 		Document:                     operationData.Document,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
 		NextRecoveryOTPHash:          suffixData.NextRecoveryOTPHash,
-		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
+		HashAlgorithmInMultiHashCode: code,
 	}, nil
 }
 
-func (h *UpdateHandler) parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
+func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 	schema := &model.CreateRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
@@ -63,7 +62,7 @@ func (h *UpdateHandler) parseCreateRequest(payload []byte) (*model.CreateRequest
 	return schema, nil
 }
 
-func (h *UpdateHandler) parseCreateOperationData(encoded string) (*model.CreateOperationData, error) {
+func parseCreateOperationData(encoded string, code uint) (*model.CreateOperationData, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
@@ -75,14 +74,14 @@ func (h *UpdateHandler) parseCreateOperationData(encoded string) (*model.CreateO
 		return nil, err
 	}
 
-	if err := h.validateCreateOperationData(schema); err != nil {
+	if err := validateCreateOperationData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func (h *UpdateHandler) parseSuffixData(encoded string) (*model.SuffixDataSchema, error) {
+func parseSuffixData(encoded string, code uint) (*model.SuffixDataSchema, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
@@ -94,19 +93,17 @@ func (h *UpdateHandler) parseSuffixData(encoded string) (*model.SuffixDataSchema
 		return nil, err
 	}
 
-	if err := h.validateSuffixData(schema); err != nil {
+	if err := validateSuffixData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func (h *UpdateHandler) validateCreateOperationData(opData *model.CreateOperationData) error {
+func validateCreateOperationData(opData *model.CreateOperationData, code uint) error {
 	if opData.Document == "" {
 		return errors.New("missing opaque document")
 	}
-
-	code := h.processor.Protocol().Current().HashAlgorithmInMultiHashCode
 
 	if !docutil.IsComputedUsingHashAlgorithm(opData.NextUpdateOTPHash, uint64(code)) {
 		return errors.New("next update OTP hash is not computed with the latest supported hash algorithm")
@@ -115,12 +112,10 @@ func (h *UpdateHandler) validateCreateOperationData(opData *model.CreateOperatio
 	return nil
 }
 
-func (h *UpdateHandler) validateSuffixData(suffixData *model.SuffixDataSchema) error {
+func validateSuffixData(suffixData *model.SuffixDataSchema, code uint) error {
 	if suffixData.RecoveryKey.PublicKeyHex == "" {
 		return errors.New("missing recovery key")
 	}
-
-	code := h.processor.Protocol().Current().HashAlgorithmInMultiHashCode
 
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.NextRecoveryOTPHash, uint64(code)) {
 		return errors.New("next recovery OTP hash is not computed with the latest supported hash algorithm")
