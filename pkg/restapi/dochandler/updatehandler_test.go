@@ -109,6 +109,8 @@ func TestGetOperation(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 	handler := NewUpdateHandler(docHandler)
 
+	const uniqueSuffix = "whatever"
+
 	t.Run("create", func(t *testing.T) {
 		operation, err := getCreateRequestBytes()
 		require.NoError(t, err)
@@ -118,18 +120,20 @@ func TestGetOperation(t *testing.T) {
 		require.NotNil(t, op)
 	})
 	t.Run("update", func(t *testing.T) {
-		operation, err := getUpdateRequestBytes()
+		info := getUpdateRequestInfo(uniqueSuffix)
+		request, err := helper.NewUpdateRequest(info)
 		require.NoError(t, err)
 
-		op, err := handler.getOperation(operation)
+		op, err := handler.getOperation(request)
 		require.NoError(t, err)
 		require.NotNil(t, op)
 	})
 	t.Run("revoke", func(t *testing.T) {
-		operation, err := getRevokeRequestBytes()
+		info := getRevokeRequestInfo(uniqueSuffix)
+		request, err := helper.NewRevokeRequest(info)
 		require.NoError(t, err)
 
-		op, err := handler.getOperation(operation)
+		op, err := handler.getOperation(request)
 		require.NoError(t, err)
 		require.NotNil(t, op)
 	})
@@ -186,7 +190,7 @@ func computeMultihash(data string) string {
 }
 
 func getUnsupportedRequest() []byte {
-	schema := &requestSchema{
+	schema := &operationSchema{
 		Operation: "unsupported",
 	}
 
@@ -196,6 +200,15 @@ func getUnsupportedRequest() []byte {
 	}
 
 	return payload
+}
+
+func getCreateRequestBytes() ([]byte, error) {
+	req, err := getCreateRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(req)
 }
 
 const validDoc = `{

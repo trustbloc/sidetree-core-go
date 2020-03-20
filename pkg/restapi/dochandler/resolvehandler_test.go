@@ -18,6 +18,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 func TestResolveHandler_Resolve(t *testing.T) {
@@ -109,4 +110,37 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		handler.Resolve(rw, req)
 		require.Equal(t, http.StatusGone, rw.Code)
 	})
+}
+
+func getCreateRequest() (*model.CreateRequest, error) {
+	operationDataBytes, err := docutil.MarshalCanonical(getOperationData())
+	if err != nil {
+		return nil, err
+	}
+
+	suffixDataBytes, err := docutil.MarshalCanonical(getSuffixData())
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.CreateRequest{
+		Operation:     model.OperationTypeCreate,
+		OperationData: docutil.EncodeToString(operationDataBytes),
+		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+	}, nil
+}
+
+func getOperationData() *model.CreateOperationData {
+	return &model.CreateOperationData{
+		Document:          validDoc,
+		NextUpdateOTPHash: computeMultihash("updateOTP"),
+	}
+}
+
+func getSuffixData() *model.SuffixDataSchema {
+	return &model.SuffixDataSchema{
+		OperationDataHash:   computeMultihash(validDoc),
+		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+	}
 }

@@ -4,32 +4,30 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package dochandler
+package operation
 
 import (
 	"encoding/json"
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-func (h *UpdateHandler) parseRevokeOperation(request []byte) (*batch.Operation, error) {
+// ParseRevokeOperation will parse revoke operation
+func ParseRevokeOperation(request []byte, protocol protocol.Protocol) (*batch.Operation, error) {
 	schema, err := parseRevokeRequest(request)
 	if err != nil {
 		return nil, err
 	}
 
-	id := h.processor.Namespace() + docutil.NamespaceDelimiter + schema.DidUniqueSuffix
-
 	return &batch.Operation{
 		Type:                         batch.OperationTypeRevoke,
 		OperationBuffer:              request,
-		ID:                           id,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		RecoveryOTP:                  schema.RecoveryOTP,
-		HashAlgorithmInMultiHashCode: h.processor.Protocol().Current().HashAlgorithmInMultiHashCode,
+		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil
 }
 

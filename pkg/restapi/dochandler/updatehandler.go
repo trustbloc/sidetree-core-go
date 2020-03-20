@@ -15,6 +15,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -71,27 +73,39 @@ func (h *UpdateHandler) doUpdate(request []byte) (document.Document, error) {
 	return doc, nil
 }
 
-func (h *UpdateHandler) getOperation(payload []byte) (*batch.Operation, error) {
-	schema := &requestSchema{}
-	err := json.Unmarshal(payload, schema)
+func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, error) {
+	schema := &operationSchema{}
+	err := json.Unmarshal(operationBuffer, schema)
 	if err != nil {
 		return nil, err
 	}
 
+	protocol := h.processor.Protocol().Current()
+
+	var op *batch.Operation
+	var parseErr error
 	switch schema.Operation {
 	case model.OperationTypeCreate:
-		return h.parseCreateOperation(payload)
+		op, parseErr = operation.ParseCreateOperation(operationBuffer, protocol)
 	case model.OperationTypeUpdate:
-		return h.parseUpdateOperation(payload)
+		op, parseErr = operation.ParseUpdateOperation(operationBuffer, protocol)
 	case model.OperationTypeRevoke:
-		return h.parseRevokeOperation(payload)
+		op, parseErr = operation.ParseRevokeOperation(operationBuffer, protocol)
 	default:
 		return nil, fmt.Errorf("operation type [%s] not implemented", schema.Operation)
 	}
+
+	if parseErr != nil {
+		return nil, parseErr
+	}
+
+	op.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + op.UniqueSuffix
+
+	return op, nil
 }
 
-// requestSchema is used to get operation type
-type requestSchema struct {
+// operationSchema is used to get operation type
+type operationSchema struct {
 
 	// operation
 	Operation model.OperationType `json:"type"`
