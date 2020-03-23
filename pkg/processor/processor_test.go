@@ -323,6 +323,7 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 	}
 
 	operation := &batch.Operation{
+		ID:                           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:                 uniqueSuffix,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		Patch:                        jsonPatch,
@@ -337,6 +338,7 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 
 func getRevokeOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
 	return &batch.Operation{
+		ID:                "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:      uniqueSuffix,
 		Type:              batch.OperationTypeRevoke,
 		TransactionTime:   0,
@@ -385,6 +387,7 @@ func getCreateOperation() *batch.Operation {
 
 	return &batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		ID:                           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		OperationBuffer:              operationBuffer,

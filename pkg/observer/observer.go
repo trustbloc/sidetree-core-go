@@ -8,12 +8,12 @@ package observer
 
 import (
 	"encoding/json"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
@@ -41,11 +41,29 @@ type OperationStore interface {
 	Put(ops []*batch.Operation) error
 }
 
+// OperationFilter filters out operations before they are persisted
+type OperationFilter interface {
+	Filter(uniqueSuffix string, ops []*batch.Operation) ([]*batch.Operation, error)
+}
+
+// OperationFilterProvider returns an operation filter for the given namespace
+type OperationFilterProvider interface {
+	Get(namespace string) OperationFilter
+}
+
+// Providers contains all of the providers required by the TxnProcessor
+type Providers struct {
+	Ledger           Ledger
+	DCASClient       DCAS
+	OpStore          OperationStore
+	OpFilterProvider OperationFilterProvider
+}
+
 // Start starts channel observer routines
-func Start(ledger Ledger, dcas DCAS, operationStore OperationStore) {
-	sidetreeTxnChannel := ledger.RegisterForSidetreeTxn()
+func Start(providers *Providers) {
+	sidetreeTxnChannel := providers.Ledger.RegisterForSidetreeTxn()
 	go func(txnsCh <-chan []SidetreeTxn) {
-		processor := NewTxnProcessor(dcas, operationStore)
+		processor := NewTxnProcessor(providers)
 		for {
 			txns, ok := <-txnsCh
 			if !ok {
@@ -66,15 +84,13 @@ func Start(ledger Ledger, dcas DCAS, operationStore OperationStore) {
 
 // TxnProcessor processes Sidetree transactions by persisting them to an operation store
 type TxnProcessor struct {
-	dcas           DCAS
-	operationStore OperationStore
+	*Providers
 }
 
 // NewTxnProcessor returns a new document operation processor
-func NewTxnProcessor(dcas DCAS, opStore OperationStore) *TxnProcessor {
+func NewTxnProcessor(providers *Providers) *TxnProcessor {
 	return &TxnProcessor{
-		dcas:           dcas,
-		operationStore: opStore,
+		Providers: providers,
 	}
 }
 
@@ -82,7 +98,7 @@ func NewTxnProcessor(dcas DCAS, opStore OperationStore) *TxnProcessor {
 func (p *TxnProcessor) Process(sidetreeTxn SidetreeTxn) error {
 	logger.Debugf("processing sidetree txn:%+v", sidetreeTxn)
 
-	content, err := p.dcas.Read(sidetreeTxn.AnchorAddress)
+	content, err := p.DCASClient.Read(sidetreeTxn.AnchorAddress)
 	if err != nil {
 		return errors.Wrapf(err, "failed to retrieve content for anchor: key[%s]", sidetreeTxn.AnchorAddress)
 	}
@@ -98,7 +114,7 @@ func (p *TxnProcessor) Process(sidetreeTxn SidetreeTxn) error {
 }
 
 func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn SidetreeTxn) error {
-	content, err := p.dcas.Read(batchFileAddress)
+	content, err := p.DCASClient.Read(batchFileAddress)
 	if err != nil {
 		return errors.Wrapf(err, "failed to retrieve content for batch: key[%s]", batchFileAddress)
 	}
@@ -109,7 +125,7 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 	}
 
 	logger.Debugf("batch file operations: %s", bf.Operations)
-	ops := make([]*batch.Operation, 0)
+	var ops []*batch.Operation
 	for index, op := range bf.Operations {
 		updatedOp, errUpdateOps := updateOperation(op, uint(index), sidetreeTxn)
 		if errUpdateOps != nil {
@@ -120,9 +136,18 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 		ops = append(ops, updatedOp)
 	}
 
-	err = p.operationStore.Put(ops)
-	if err != nil {
-		return errors.Wrapf(err, "failed to store operation from batch[%s]", batchFileAddress)
+	for suffix, mapping := range mapOperationsByUniqueSuffix(ops) {
+		logger.Debugf("Filtering operations for namespace [%s] and suffix [%s]", mapping.namespace, suffix)
+
+		validOps, err := p.OpFilterProvider.Get(mapping.namespace).Filter(suffix, mapping.operations)
+		if err != nil {
+			return errors.Wrap(err, "error filtering invalid operations")
+		}
+
+		err = p.OpStore.Put(validOps)
+		if err != nil {
+			return errors.Wrapf(err, "failed to store operation from batch[%s]", batchFileAddress)
+		}
 	}
 
 	return nil
@@ -194,4 +219,43 @@ func unmarshalBatchFile(bytes []byte) (*BatchFile, error) {
 		return nil, err
 	}
 	return bf, nil
+}
+
+type operationsMapping struct {
+	namespace  string
+	operations []*batch.Operation
+}
+
+func mapOperationsByUniqueSuffix(ops []*batch.Operation) map[string]*operationsMapping {
+	m := make(map[string]*operationsMapping)
+
+	for _, op := range ops {
+		mapping, ok := m[op.UniqueSuffix]
+		if !ok {
+			ns, err := namespaceFromDocID(op.ID)
+			if err != nil {
+				logger.Infof("Skipping operation since could not get namespace from operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+				continue
+			}
+
+			mapping = &operationsMapping{
+				namespace: ns,
+			}
+
+			m[op.UniqueSuffix] = mapping
+		}
+
+		mapping.operations = append(mapping.operations, op)
+	}
+
+	return m
+}
+
+func namespaceFromDocID(id string) (string, error) {
+	pos := strings.LastIndex(id, ":")
+	if pos == -1 {
+		return "", errors.Errorf("invalid ID [%s]", id)
+	}
+
+	return id[0:pos], nil
 }
