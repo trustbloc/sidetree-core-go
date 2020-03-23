@@ -116,7 +116,7 @@ func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolut
 			return nil, err
 		}
 
-		log.Debugf("After applying op %+v, New doc: %s", op, rm.Doc)
+		log.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
 	}
 
 	return rm, nil
