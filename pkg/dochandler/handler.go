@@ -178,7 +178,7 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, err
 	}
 
-	var opData model.CreateOperationData
+	var opData model.OperationDataSchema
 	err = json.Unmarshal(operationDataBytes, &opData)
 	if err != nil {
 		return nil, err

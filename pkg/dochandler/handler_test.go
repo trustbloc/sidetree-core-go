@@ -345,8 +345,8 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getOperationData() *model.CreateOperationData {
-	return &model.CreateOperationData{
+func getOperationData() *model.OperationDataSchema {
+	return &model.OperationDataSchema{
 		Document:          validDoc,
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}

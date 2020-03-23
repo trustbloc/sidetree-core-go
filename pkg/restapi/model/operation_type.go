@@ -19,4 +19,7 @@ const (
 
 	// OperationTypeRevoke captures enum value "revoke"
 	OperationTypeRevoke OperationType = "revoke"
+
+	// OperationTypeRecover captures enum value "recover"
+	OperationTypeRecover OperationType = "recover"
 )
