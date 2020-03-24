@@ -36,11 +36,14 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
+	// TODO: Handle recovery key
+
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeRecover,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		Document:                     operationData.Document,
+		RecoveryOTP:                  schema.RecoveryOTP,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
 		NextRecoveryOTPHash:          signedOperationData.NextRecoveryOTPHash,
 		HashAlgorithmInMultiHashCode: code,
