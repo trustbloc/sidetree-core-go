@@ -91,6 +91,8 @@ func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, 
 		op, parseErr = operation.ParseUpdateOperation(operationBuffer, protocol)
 	case model.OperationTypeRevoke:
 		op, parseErr = operation.ParseRevokeOperation(operationBuffer, protocol)
+	case model.OperationTypeRecover:
+		op, parseErr = operation.ParseRecoverOperation(operationBuffer, protocol)
 	default:
 		return nil, fmt.Errorf("operation type [%s] not implemented", schema.Operation)
 	}

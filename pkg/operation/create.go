@@ -41,6 +41,8 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
+	// TODO: Handle recovery key
+
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeCreate,
