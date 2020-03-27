@@ -6,7 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 
 package model
 
-import jsonpatch "github.com/evanphx/json-patch"
+import (
+	jsonpatch "github.com/evanphx/json-patch"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
+)
 
 // CreateRequest is the struct for create payload
 type CreateRequest struct {
@@ -42,14 +46,14 @@ type PublicKey struct {
 	PublicKeyHex string `json:"publicKeyHex"`
 }
 
-// OperationDataSchema contains operation data (used for create and recover)
-type OperationDataSchema struct {
+// OperationDataModel contains operation data (patches used for create, recover, update)
+type OperationDataModel struct {
 
 	// Hash of the one-time password for the next update operation
 	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
 
-	// Opaque content
-	Document string `json:"document"`
+	// Patches defines document patches
+	Patches []patch.Patch `json:"patches"`
 }
 
 //UpdateRequest is the struct for update request
@@ -95,21 +99,6 @@ type RevokeRequest struct {
 
 	// JWS Signature information
 	SignedOperationData *JWS `json:"signedOperationData"`
-}
-
-// JWS contains JWS signature
-type JWS struct {
-	// JWS header
-	// Required: true
-	Protected *Header `json:"protected"`
-
-	// JWS encoded JSON object
-	// Required: true
-	Payload string `json:"payload"`
-
-	// JWS signature
-	// Required: true
-	Signature string `json:"signature"`
 }
 
 // SignedOperationDataSchema defines

@@ -19,6 +19,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -453,7 +454,7 @@ func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Opera
 	}
 }
 
-func getRecoverRequest(opData *model.OperationDataSchema, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
+func getRecoverRequest(opData *model.OperationDataModel, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
 	operationDataBytes, err := docutil.MarshalCanonical(opData)
 	if err != nil {
 		return nil, err
@@ -487,9 +488,9 @@ func getRecoverSignedOperationData() *model.SignedOperationDataSchema {
 	}
 }
 
-func getRecoverOperationData() *model.OperationDataSchema {
-	return &model.OperationDataSchema{
-		Document:          recoveredDoc,
+func getRecoverOperationData() *model.OperationDataModel {
+	return &model.OperationDataModel{
+		Patches:           []patch.Patch{patch.NewReplacePatch(recoveredDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }
@@ -563,9 +564,9 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getOperationData() *model.OperationDataSchema {
-	return &model.OperationDataSchema{
-		Document:          validDoc,
+func getOperationData() *model.OperationDataModel {
+	return &model.OperationDataModel{
+		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }

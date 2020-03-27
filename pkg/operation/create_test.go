@@ -8,7 +8,6 @@ package operation
 
 import (
 	"encoding/json"
-
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -102,13 +102,13 @@ func TestValidateOperationData(t *testing.T) {
 		require.Contains(t, err.Error(),
 			"next update OTP hash is not computed with the latest supported hash algorithm")
 	})
-	t.Run("missing opaque document", func(t *testing.T) {
+	t.Run("missing operation patch", func(t *testing.T) {
 		operationData := getOperationData()
-		operationData.Document = ""
+		operationData.Patches = []patch.Patch{}
 		err := validateOperationData(operationData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"missing opaque document")
+			"missing operation patch")
 	})
 }
 
@@ -139,9 +139,9 @@ func getCreateRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-func getOperationData() *model.OperationDataSchema {
-	return &model.OperationDataSchema{
-		Document:          validDoc,
+func getOperationData() *model.OperationDataModel {
+	return &model.OperationDataModel{
+		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }

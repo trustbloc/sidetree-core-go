@@ -8,7 +8,6 @@ package operation
 
 import (
 	"encoding/json"
-
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -53,7 +53,7 @@ func TestParseRecoverOperation(t *testing.T) {
 	})
 	t.Run("validate operation data error", func(t *testing.T) {
 		opData := getOperationData()
-		opData.Document = ""
+		opData.Patches = []patch.Patch{}
 		recoverRequest, err := getRecoverRequest(opData, getSignedOperationData())
 		require.NoError(t, err)
 
@@ -62,7 +62,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing opaque document")
+		require.Contains(t, err.Error(), "missing operation patch")
 		require.Nil(t, op)
 	})
 	t.Run("parse signed operation data error", func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestValidateSignedOperationData(t *testing.T) {
 	})
 }
 
-func getRecoverRequest(opData *model.OperationDataSchema, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
+func getRecoverRequest(opData *model.OperationDataModel, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
 	operationDataBytes, err := docutil.MarshalCanonical(opData)
 	if err != nil {
 		return nil, err
