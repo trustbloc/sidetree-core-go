@@ -6,6 +6,21 @@ SPDX-License-Identifier: Apache-2.0
 
 package model
 
+// JWS contains JWS signature
+type JWS struct {
+	// JWS header
+	// Required: true
+	Protected *Header `json:"protected"`
+
+	// JWS encoded JSON object
+	// Required: true
+	Payload string `json:"payload"`
+
+	// JWS signature
+	// Required: true
+	Signature string `json:"signature"`
+}
+
 // Header is the operation header
 // swagger:model Header
 type Header struct {

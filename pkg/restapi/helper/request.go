@@ -12,6 +12,7 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -103,9 +104,11 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	operationData := model.OperationDataSchema{
+	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
+
+	operationData := model.OperationDataModel{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		Document:          info.OpaqueDocument,
+		Patches:           patches,
 	}
 
 	operationDataBytes, err := docutil.MarshalCanonical(operationData)
@@ -223,9 +226,11 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	operationData := model.OperationDataSchema{
+	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
+
+	operationData := model.OperationDataModel{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		Document:          info.OpaqueDocument,
+		Patches:           patches,
 	}
 
 	operationDataBytes, err := docutil.MarshalCanonical(operationData)

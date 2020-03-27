@@ -22,6 +22,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -345,9 +346,9 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getOperationData() *model.OperationDataSchema {
-	return &model.OperationDataSchema{
-		Document:          validDoc,
+func getOperationData() *model.OperationDataModel {
+	return &model.OperationDataModel{
+		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }

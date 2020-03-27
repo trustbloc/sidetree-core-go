@@ -14,6 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -36,6 +37,8 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
+	document := operationData.Patches[0].GetStringValue(patch.DocumentKey)
+
 	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, code)
 	if err != nil {
 		return nil, err
@@ -47,7 +50,7 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeCreate,
 		UniqueSuffix:                 uniqueSuffix,
-		Document:                     operationData.Document,
+		Document:                     document,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
 		NextRecoveryOTPHash:          suffixData.NextRecoveryOTPHash,
 		HashAlgorithmInMultiHashCode: code,
@@ -64,13 +67,13 @@ func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 	return schema, nil
 }
 
-func parseCreateOperationData(encoded string, code uint) (*model.OperationDataSchema, error) {
+func parseCreateOperationData(encoded string, code uint) (*model.OperationDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.OperationDataSchema{}
+	schema := &model.OperationDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
@@ -102,9 +105,9 @@ func parseSuffixData(encoded string, code uint) (*model.SuffixDataSchema, error)
 	return schema, nil
 }
 
-func validateOperationData(opData *model.OperationDataSchema, code uint) error {
-	if opData.Document == "" {
-		return errors.New("missing opaque document")
+func validateOperationData(opData *model.OperationDataModel, code uint) error {
+	if len(opData.Patches) == 0 {
+		return errors.New("missing operation patch")
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(opData.NextUpdateOTPHash, uint64(code)) {

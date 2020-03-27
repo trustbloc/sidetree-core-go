@@ -29,6 +29,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -178,12 +179,12 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, err
 	}
 
-	var opData model.OperationDataSchema
+	var opData model.OperationDataModel
 	err = json.Unmarshal(operationDataBytes, &opData)
 	if err != nil {
 		return nil, err
 	}
-	initialDocument := opData.Document
+	initialDocument := opData.Patches[0].GetStringValue(patch.DocumentKey)
 
 	// Verify that the document passes both Sidetree and document validation
 	if err = r.validator.IsValidOriginalDocument([]byte(initialDocument)); err != nil {

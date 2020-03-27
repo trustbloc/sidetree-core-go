@@ -14,6 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -36,13 +37,15 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
+	document := operationData.Patches[0].GetStringValue(patch.DocumentKey)
+
 	// TODO: Handle recovery key
 
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeRecover,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
-		Document:                     operationData.Document,
+		Document:                     document,
 		RecoveryOTP:                  schema.RecoveryOTP,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
 		NextRecoveryOTPHash:          signedOperationData.NextRecoveryOTPHash,
@@ -60,13 +63,13 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	return schema, nil
 }
 
-func parseUnsignedOperationData(encoded string, code uint) (*model.OperationDataSchema, error) {
+func parseUnsignedOperationData(encoded string, code uint) (*model.OperationDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.OperationDataSchema{}
+	schema := &model.OperationDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
