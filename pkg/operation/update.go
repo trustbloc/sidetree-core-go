@@ -25,12 +25,12 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	operationData, err := parseUpdateOperationData(schema.OperationData, protocol.HashAlgorithmInMultiHashCode)
+	patchData, err := parseUpdatePatchData(schema.PatchData, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
 
-	patches := operationData.Patches[0].GetStringValue(patch.PatchesKey)
+	patches := patchData.Patches[0].GetStringValue(patch.PatchesKey)
 
 	// TODO: model for operation patch will change with issue-155
 	patch, err := jsonpatch.DecodePatch([]byte(patches))
@@ -43,7 +43,7 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		OperationBuffer:              request,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		UpdateOTP:                    schema.UpdateOTP,
-		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
+		NextUpdateOTPHash:            patchData.NextUpdateOTPHash,
 		Patch:                        patch,
 		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil
@@ -58,19 +58,19 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	return schema, nil
 }
 
-func parseUpdateOperationData(encoded string, code uint) (*model.OperationDataModel, error) {
+func parseUpdatePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.OperationDataModel{}
+	schema := &model.PatchDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateOperationData(schema, code); err != nil {
+	if err := validatePatchData(schema, code); err != nil {
 		return nil, err
 	}
 

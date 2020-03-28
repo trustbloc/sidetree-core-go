@@ -16,20 +16,20 @@ type CreateRequest struct {
 	// Required: true
 	Operation OperationType `json:"type"`
 
-	// Encoded JSON object containing data required for creating suffix
+	// Encoded JSON object containing data used to compute the unique DID suffix
 	// Required: true
 	SuffixData string `json:"suffixData"`
 
-	// Encoded JSON object containing create operation data
+	// Encoded JSON object containing create patch data
 	// Required: true
-	OperationData string `json:"operationData"`
+	PatchData string `json:"patchData"`
 }
 
-// SuffixDataSchema is part of create request
-type SuffixDataSchema struct {
+// SuffixDataModel is part of create request
+type SuffixDataModel struct {
 
-	// Hash of the encoded operation data string
-	OperationDataHash string `json:"operationDataHash"`
+	// Hash of the patch data
+	PatchDataHash string `json:"patchDataHash"`
 
 	// The recovery public key as a HEX string.
 	RecoveryKey PublicKey `json:"recoveryKey"`
@@ -44,8 +44,8 @@ type PublicKey struct {
 	PublicKeyHex string `json:"publicKeyHex"`
 }
 
-// OperationDataModel contains operation data (patches used for create, recover, update)
-type OperationDataModel struct {
+// PatchDataModel contains patch data (patches used for create, recover, update)
+type PatchDataModel struct {
 
 	// Hash of the one-time password for the next update operation
 	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
@@ -65,10 +65,10 @@ type UpdateRequest struct {
 	UpdateOTP string `json:"updateOtp"`
 
 	// JWS signature information
-	SignedOperationDataHash *JWS `json:"signedOperationDataHash"`
+	SignedData *JWS `json:"signedData"`
 
-	// Encoded JSON object containing update operation data
-	OperationData string `json:"operationData"`
+	// Encoded JSON object containing patch data
+	PatchData string `json:"patchData"`
 }
 
 //RevokeRequest is the struct for revoking document
@@ -86,14 +86,14 @@ type RevokeRequest struct {
 	RecoveryOTP string `json:"recoveryOtp"`
 
 	// JWS Signature information
-	SignedOperationData *JWS `json:"signedOperationData"`
+	SignedData *JWS `json:"signedData"`
 }
 
-// SignedOperationDataSchema defines
-type SignedOperationDataSchema struct {
+// SignedDataModel defines
+type SignedDataModel struct {
 
-	// Hash of the unsigned operation data
-	OperationDataHash string `json:"operationDataHash"`
+	// Hash of the unsigned patch data
+	PatchDataHash string `json:"patchDataHash"`
 
 	// The new recovery key
 	RecoveryKey PublicKey `json:"recoveryKey"`
@@ -117,11 +117,11 @@ type RecoverRequest struct {
 	RecoveryOTP string `json:"recoveryOtp"`
 
 	// JWS Signature information
-	SignedOperationData *JWS `json:"signedOperationData"`
+	SignedData *JWS `json:"signedData"`
 
-	// Encoded JSON object containing unsigned portion of the recovery request
+	// Encoded JSON object containing recovery patch data
 	// Required: true
-	OperationData string `json:"operationData"`
+	PatchData string `json:"patchData"`
 }
 
 // Protected describes JWS header

@@ -104,17 +104,17 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 
 	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
 
-	operationData := model.OperationDataModel{
+	patchData := model.PatchDataModel{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
 		Patches:           patches,
 	}
 
-	operationDataBytes, err := docutil.MarshalCanonical(operationData)
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
 
-	mhOperationData, err := docutil.ComputeMultihash(info.MultihashCode, operationDataBytes)
+	mhPatchData, err := docutil.ComputeMultihash(info.MultihashCode, patchDataBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +124,8 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	suffixData := model.SuffixDataSchema{
-		OperationDataHash:   docutil.EncodeToString(mhOperationData),
+	suffixData := model.SuffixDataModel{
+		PatchDataHash:       docutil.EncodeToString(mhPatchData),
 		RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
 		NextRecoveryOTPHash: mhNextRecoveryOTPHash,
 	}
@@ -136,9 +136,9 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.CreateRequest{
-		Operation:     model.OperationTypeCreate,
-		OperationData: docutil.EncodeToString(operationDataBytes),
-		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+		Operation:  model.OperationTypeCreate,
+		PatchData:  docutil.EncodeToString(patchDataBytes),
+		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}
 
 	return docutil.MarshalCanonical(schema)
@@ -164,7 +164,7 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing did unique suffix")
 	}
 
-	// TODO: Construct signed operation data here and set it in request
+	// TODO: Construct signed patch data here and set it in request
 
 	schema := &model.RevokeRequest{
 		Operation:       model.OperationTypeRevoke,
@@ -192,23 +192,23 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 
 	patches := []patch.Patch{patch.NewJSONPatch(info.Patch)}
 
-	opData := &model.OperationDataModel{
+	patchData := &model.PatchDataModel{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
 		Patches:           patches,
 	}
 
-	opDataBytes, err := docutil.MarshalCanonical(opData)
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Assemble signed operation data hash and add to the request
+	// TODO: Assemble signed patch data hash and add to the request
 
 	schema := &model.UpdateRequest{
 		Operation:       model.OperationTypeUpdate,
 		DidUniqueSuffix: info.DidUniqueSuffix,
 		UpdateOTP:       info.UpdateOTP,
-		OperationData:   docutil.EncodeToString(opDataBytes),
+		PatchData:       docutil.EncodeToString(patchDataBytes),
 	}
 
 	return docutil.MarshalCanonical(schema)
@@ -228,17 +228,17 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 
 	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
 
-	operationData := model.OperationDataModel{
+	patchData := model.PatchDataModel{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
 		Patches:           patches,
 	}
 
-	operationDataBytes, err := docutil.MarshalCanonical(operationData)
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
 
-	mhOperationData, err := docutil.ComputeMultihash(info.MultihashCode, operationDataBytes)
+	mhPatchData, err := docutil.ComputeMultihash(info.MultihashCode, patchDataBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -248,29 +248,29 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	signedSchema := model.SignedOperationDataSchema{
-		OperationDataHash:   docutil.EncodeToString(mhOperationData),
+	signedData := model.SignedDataModel{
+		PatchDataHash:       docutil.EncodeToString(mhPatchData),
 		RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
 		NextRecoveryOTPHash: mhNextRecoveryOTPHash,
 	}
 
-	signedSchemaBytes, err := docutil.MarshalCanonical(signedSchema)
+	signedDataBytes, err := docutil.MarshalCanonical(signedData)
 	if err != nil {
 		return nil, err
 	}
 
-	signedOperationData := &model.JWS{
+	jws := &model.JWS{
 		// TODO: should be JWS encoded, encode for now
 		// TODO: Sign and set protected header here
-		Payload: docutil.EncodeToString(signedSchemaBytes),
+		Payload: docutil.EncodeToString(signedDataBytes),
 	}
 
 	schema := &model.RecoverRequest{
-		Operation:           model.OperationTypeRecover,
-		DidUniqueSuffix:     info.DidUniqueSuffix,
-		RecoveryOTP:         info.RecoveryOTP,
-		SignedOperationData: signedOperationData,
-		OperationData:       docutil.EncodeToString(operationDataBytes),
+		Operation:       model.OperationTypeRecover,
+		DidUniqueSuffix: info.DidUniqueSuffix,
+		RecoveryOTP:     info.RecoveryOTP,
+		SignedData:      jws,
+		PatchData:       docutil.EncodeToString(patchDataBytes),
 	}
 
 	return docutil.MarshalCanonical(schema)

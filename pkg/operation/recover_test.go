@@ -38,11 +38,11 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
-	t.Run("parse operation data error", func(t *testing.T) {
+	t.Run("parse patch data error", func(t *testing.T) {
 		recoverRequest, err := getDefaultRecoverRequest()
 		require.NoError(t, err)
 
-		recoverRequest.OperationData = invalid
+		recoverRequest.PatchData = invalid
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
@@ -51,10 +51,10 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "illegal base64 data")
 		require.Nil(t, op)
 	})
-	t.Run("validate operation data error", func(t *testing.T) {
-		opData := getOperationData()
-		opData.Patches = []patch.Patch{}
-		recoverRequest, err := getRecoverRequest(opData, getSignedOperationData())
+	t.Run("validate patch data error", func(t *testing.T) {
+		patchData := getPatchData()
+		patchData.Patches = []patch.Patch{}
+		recoverRequest, err := getRecoverRequest(patchData, getSignedData())
 		require.NoError(t, err)
 
 		request, err := json.Marshal(recoverRequest)
@@ -62,14 +62,14 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing operation patch")
+		require.Contains(t, err.Error(), "missing patches")
 		require.Nil(t, op)
 	})
-	t.Run("parse signed operation data error", func(t *testing.T) {
+	t.Run("parse signed data error", func(t *testing.T) {
 		recoverRequest, err := getDefaultRecoverRequest()
 		require.NoError(t, err)
 
-		recoverRequest.SignedOperationData.Payload = invalid
+		recoverRequest.SignedData.Payload = invalid
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
@@ -78,10 +78,10 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "illegal base64 data")
 		require.Nil(t, op)
 	})
-	t.Run("validate signed operation data error", func(t *testing.T) {
-		signedOpData := getSignedOperationData()
-		signedOpData.RecoveryKey.PublicKeyHex = ""
-		recoverRequest, err := getRecoverRequest(getOperationData(), signedOpData)
+	t.Run("validate signed data error", func(t *testing.T) {
+		signedData := getSignedData()
+		signedData.RecoveryKey.PublicKeyHex = ""
+		recoverRequest, err := getRecoverRequest(getPatchData(), signedData)
 		require.NoError(t, err)
 
 		request, err := json.Marshal(recoverRequest)
@@ -94,38 +94,38 @@ func TestParseRecoverOperation(t *testing.T) {
 	})
 }
 
-func TestValidateSignedOperationData(t *testing.T) {
+func TestValidateSignedData(t *testing.T) {
 	t.Run("missing recovery key", func(t *testing.T) {
-		signed := getSignedOperationData()
+		signed := getSignedData()
 		signed.RecoveryKey.PublicKeyHex = ""
-		err := validateSignedOperationData(signed, sha2_256)
+		err := validateSignedData(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing recovery key")
 	})
-	t.Run("invalid operation data hash", func(t *testing.T) {
-		signed := getSignedOperationData()
-		signed.OperationDataHash = ""
-		err := validateSignedOperationData(signed, sha2_256)
+	t.Run("invalid patch data hash", func(t *testing.T) {
+		signed := getSignedData()
+		signed.PatchDataHash = ""
+		err := validateSignedData(signed, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "operation data hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid next recovery OTP hash", func(t *testing.T) {
-		signed := getSignedOperationData()
+		signed := getSignedData()
 		signed.NextRecoveryOTPHash = ""
-		err := validateSignedOperationData(signed, sha2_256)
+		err := validateSignedData(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery OTP hash is not computed with the latest supported hash algorithm")
 	})
 }
 
-func getRecoverRequest(opData *model.OperationDataModel, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
-	operationDataBytes, err := docutil.MarshalCanonical(opData)
+func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.SignedDataModel) (*model.RecoverRequest, error) {
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
 
-	signedOperationDataBytes, err := docutil.MarshalCanonical(signedOpData)
+	signedDataBytes, err := docutil.MarshalCanonical(signedData)
 	if err != nil {
 		return nil, err
 	}
@@ -133,23 +133,23 @@ func getRecoverRequest(opData *model.OperationDataModel, signedOpData *model.Sig
 	return &model.RecoverRequest{
 		Operation:       model.OperationTypeRecover,
 		DidUniqueSuffix: "suffix",
-		OperationData:   docutil.EncodeToString(operationDataBytes),
-		SignedOperationData: &model.JWS{
+		PatchData:       docutil.EncodeToString(patchDataBytes),
+		SignedData: &model.JWS{
 			// TODO: JWS encoded
-			Payload: docutil.EncodeToString(signedOperationDataBytes),
+			Payload: docutil.EncodeToString(signedDataBytes),
 		},
 	}, nil
 }
 
 func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
-	return getRecoverRequest(getOperationData(), getSignedOperationData())
+	return getRecoverRequest(getPatchData(), getSignedData())
 }
 
-func getSignedOperationData() *model.SignedOperationDataSchema {
-	return &model.SignedOperationDataSchema{
+func getSignedData() *model.SignedDataModel {
+	return &model.SignedDataModel{
 		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
-		OperationDataHash:   computeMultihash("operation"),
+		PatchDataHash:       computeMultihash("operation"),
 	}
 }
 

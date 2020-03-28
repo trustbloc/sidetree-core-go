@@ -454,13 +454,13 @@ func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Opera
 	}
 }
 
-func getRecoverRequest(opData *model.OperationDataModel, signedOpData *model.SignedOperationDataSchema) (*model.RecoverRequest, error) {
-	operationDataBytes, err := docutil.MarshalCanonical(opData)
+func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.SignedDataModel) (*model.RecoverRequest, error) {
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
 
-	signedOperationDataBytes, err := docutil.MarshalCanonical(signedOpData)
+	signedDataBytes, err := docutil.MarshalCanonical(signedData)
 	if err != nil {
 		return nil, err
 	}
@@ -468,28 +468,28 @@ func getRecoverRequest(opData *model.OperationDataModel, signedOpData *model.Sig
 	return &model.RecoverRequest{
 		Operation:       model.OperationTypeRecover,
 		DidUniqueSuffix: "suffix",
-		OperationData:   docutil.EncodeToString(operationDataBytes),
-		SignedOperationData: &model.JWS{
+		PatchData:       docutil.EncodeToString(patchDataBytes),
+		SignedData: &model.JWS{
 			// TODO: JWS encoded
-			Payload: docutil.EncodeToString(signedOperationDataBytes),
+			Payload: docutil.EncodeToString(signedDataBytes),
 		},
 	}, nil
 }
 
 func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
-	return getRecoverRequest(getRecoverOperationData(), getRecoverSignedOperationData())
+	return getRecoverRequest(getRecoverPatchData(), getRecoverSignedData())
 }
 
-func getRecoverSignedOperationData() *model.SignedOperationDataSchema {
-	return &model.SignedOperationDataSchema{
+func getRecoverSignedData() *model.SignedDataModel {
+	return &model.SignedDataModel{
 		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
-		OperationDataHash:   computeMultihash("operation"),
+		PatchDataHash:       computeMultihash("operation"),
 	}
 }
 
-func getRecoverOperationData() *model.OperationDataModel {
-	return &model.OperationDataModel{
+func getRecoverPatchData() *model.PatchDataModel {
+	return &model.PatchDataModel{
 		Patches:           []patch.Patch{patch.NewReplacePatch(recoveredDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
@@ -547,7 +547,7 @@ func getCreateOperation() *batch.Operation {
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	operationDataBytes, err := docutil.MarshalCanonical(getOperationData())
+	patchDataBytes, err := docutil.MarshalCanonical(getPatchData())
 	if err != nil {
 		return nil, err
 	}
@@ -558,22 +558,22 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}
 
 	return &model.CreateRequest{
-		Operation:     model.OperationTypeCreate,
-		OperationData: docutil.EncodeToString(operationDataBytes),
-		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+		Operation:  model.OperationTypeCreate,
+		PatchData:  docutil.EncodeToString(patchDataBytes),
+		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
 
-func getOperationData() *model.OperationDataModel {
-	return &model.OperationDataModel{
+func getPatchData() *model.PatchDataModel {
+	return &model.PatchDataModel{
 		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }
 
-func getSuffixData() *model.SuffixDataSchema {
-	return &model.SuffixDataSchema{
-		OperationDataHash:   computeMultihash(validDoc),
+func getSuffixData() *model.SuffixDataModel {
+	return &model.SuffixDataModel{
+		PatchDataHash:       computeMultihash(validDoc),
 		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
 	}

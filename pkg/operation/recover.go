@@ -27,17 +27,17 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 
 	code := protocol.HashAlgorithmInMultiHashCode
 
-	operationData, err := parseUnsignedOperationData(schema.OperationData, code)
+	patchData, err := parsePatchData(schema.PatchData, code)
 	if err != nil {
 		return nil, err
 	}
 
-	signedOperationData, err := parseSignedOperationData(schema.SignedOperationData.Payload, code)
+	signedData, err := parseSignedData(schema.SignedData.Payload, code)
 	if err != nil {
 		return nil, err
 	}
 
-	document := operationData.Patches[0].GetStringValue(patch.DocumentKey)
+	document := patchData.Patches[0].GetStringValue(patch.DocumentKey)
 
 	// TODO: Handle recovery key
 
@@ -47,8 +47,8 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		Document:                     document,
 		RecoveryOTP:                  schema.RecoveryOTP,
-		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
-		NextRecoveryOTPHash:          signedOperationData.NextRecoveryOTPHash,
+		NextUpdateOTPHash:            patchData.NextUpdateOTPHash,
+		NextRecoveryOTPHash:          signedData.NextRecoveryOTPHash,
 		HashAlgorithmInMultiHashCode: code,
 	}, nil
 }
@@ -63,55 +63,55 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	return schema, nil
 }
 
-func parseUnsignedOperationData(encoded string, code uint) (*model.OperationDataModel, error) {
+func parsePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.OperationDataModel{}
+	schema := &model.PatchDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateOperationData(schema, code); err != nil {
+	if err := validatePatchData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func parseSignedOperationData(encoded string, code uint) (*model.SignedOperationDataSchema, error) {
+func parseSignedData(encoded string, code uint) (*model.SignedDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.SignedOperationDataSchema{}
+	schema := &model.SignedDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateSignedOperationData(schema, code); err != nil {
+	if err := validateSignedData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func validateSignedOperationData(signedOpData *model.SignedOperationDataSchema, code uint) error {
-	if signedOpData.RecoveryKey.PublicKeyHex == "" {
+func validateSignedData(signedData *model.SignedDataModel, code uint) error {
+	if signedData.RecoveryKey.PublicKeyHex == "" {
 		return errors.New("missing recovery key")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedOpData.NextRecoveryOTPHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.NextRecoveryOTPHash, uint64(code)) {
 		return errors.New("next recovery OTP hash is not computed with the latest supported hash algorithm")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedOpData.OperationDataHash, uint64(code)) {
-		return errors.New("operation data hash is not computed with the latest supported hash algorithm")
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.PatchDataHash, uint64(code)) {
+		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
 	}
 
 	return nil
