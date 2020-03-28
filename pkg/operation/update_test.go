@@ -38,10 +38,10 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
 	t.Run("invalid next update OTP", func(t *testing.T) {
-		operationData := getUpdateOperationData()
-		operationData.NextUpdateOTPHash = ""
+		patchData := getUpdatePatchData()
+		patchData.NextUpdateOTPHash = ""
 
-		req, err := getUpdateRequest(operationData)
+		req, err := getUpdateRequest(patchData)
 		require.NoError(t, err)
 		payload, err := json.Marshal(req)
 		require.NoError(t, err)
@@ -54,54 +54,54 @@ func TestParseUpdateOperation(t *testing.T) {
 	})
 }
 
-func TestValidateUpdateOperationData(t *testing.T) {
+func TestValidateUpdatePatchData(t *testing.T) {
 	t.Run("invalid next update OTP", func(t *testing.T) {
-		operationData := getUpdateOperationData()
+		patchData := getUpdatePatchData()
 
-		operationData.NextUpdateOTPHash = ""
-		err := validateOperationData(operationData, sha2_256)
+		patchData.NextUpdateOTPHash = ""
+		err := validatePatchData(patchData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update OTP hash is not computed with the latest supported hash algorithm")
 	})
 }
 
-func TestParseOperationData(t *testing.T) {
+func TestParseUpdatePatchData(t *testing.T) {
 	t.Run("invalid next update OTP", func(t *testing.T) {
-		operationData := getUpdateOperationData()
+		patchData := getUpdatePatchData()
 
-		operationData.NextUpdateOTPHash = ""
-		opDataBytes, err := json.Marshal(operationData)
+		patchData.NextUpdateOTPHash = ""
+		patchDataBytes, err := json.Marshal(patchData)
 		require.NoError(t, err)
 
-		parsed, err := parseUpdateOperationData(docutil.EncodeToString(opDataBytes), sha2_256)
+		parsed, err := parseUpdatePatchData(docutil.EncodeToString(patchDataBytes), sha2_256)
 		require.Error(t, err)
 		require.Nil(t, parsed)
 		require.Contains(t, err.Error(),
 			"next update OTP hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid bytes", func(t *testing.T) {
-		parsed, err := parseUpdateOperationData("invalid", sha2_256)
+		parsed, err := parseUpdatePatchData("invalid", sha2_256)
 		require.Error(t, err)
 		require.Nil(t, parsed)
 		require.Contains(t, err.Error(), "illegal base64 data")
 	})
 }
 
-func getUpdateRequest(opData *model.OperationDataModel) (*model.UpdateRequest, error) {
-	operationDataBytes, err := json.Marshal(opData)
+func getUpdateRequest(patchData *model.PatchDataModel) (*model.UpdateRequest, error) {
+	patchDataBytes, err := json.Marshal(patchData)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.UpdateRequest{
-		Operation:     model.OperationTypeUpdate,
-		OperationData: docutil.EncodeToString(operationDataBytes),
+		Operation: model.OperationTypeUpdate,
+		PatchData: docutil.EncodeToString(patchDataBytes),
 	}, nil
 }
 
 func getDefaultUpdateRequest() (*model.UpdateRequest, error) {
-	return getUpdateRequest(getUpdateOperationData())
+	return getUpdateRequest(getUpdatePatchData())
 }
 
 func getUpdateRequestBytes() ([]byte, error) {
@@ -113,10 +113,10 @@ func getUpdateRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-func getUpdateOperationData() *model.OperationDataModel {
+func getUpdatePatchData() *model.PatchDataModel {
 	jsonPatch := patch.NewJSONPatch(getTestPatch())
 
-	return &model.OperationDataModel{
+	return &model.PatchDataModel{
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 		Patches:           []patch.Patch{jsonPatch},
 	}

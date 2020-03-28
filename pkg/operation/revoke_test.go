@@ -42,10 +42,10 @@ func TestParseRevokeOperation(t *testing.T) {
 
 func getRevokeRequest() *model.RevokeRequest {
 	return &model.RevokeRequest{
-		Operation:           model.OperationTypeRevoke,
-		DidUniqueSuffix:     "did",
-		RecoveryOTP:         "recoveryOTP",
-		SignedOperationData: nil,
+		Operation:       model.OperationTypeRevoke,
+		DidUniqueSuffix: "did",
+		RecoveryOTP:     "recoveryOTP",
+		SignedData:      nil,
 	}
 }
 

@@ -174,17 +174,17 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, err
 	}
 
-	operationDataBytes, err := docutil.DecodeString(createReq.OperationData)
+	patchDataBytes, err := docutil.DecodeString(createReq.PatchData)
 	if err != nil {
 		return nil, err
 	}
 
-	var opData model.OperationDataModel
-	err = json.Unmarshal(operationDataBytes, &opData)
+	var patchData model.PatchDataModel
+	err = json.Unmarshal(patchDataBytes, &patchData)
 	if err != nil {
 		return nil, err
 	}
-	initialDocument := opData.Patches[0].GetStringValue(patch.DocumentKey)
+	initialDocument := patchData.Patches[0].GetStringValue(patch.DocumentKey)
 
 	// Verify that the document passes both Sidetree and document validation
 	if err = r.validator.IsValidOriginalDocument([]byte(initialDocument)); err != nil {

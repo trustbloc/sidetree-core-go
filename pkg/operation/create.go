@@ -32,12 +32,12 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	operationData, err := parseCreateOperationData(schema.OperationData, code)
+	patchData, err := parseCreatePatchData(schema.PatchData, code)
 	if err != nil {
 		return nil, err
 	}
 
-	document := operationData.Patches[0].GetStringValue(patch.DocumentKey)
+	document := patchData.Patches[0].GetStringValue(patch.DocumentKey)
 
 	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, code)
 	if err != nil {
@@ -51,7 +51,7 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		Type:                         batch.OperationTypeCreate,
 		UniqueSuffix:                 uniqueSuffix,
 		Document:                     document,
-		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
+		NextUpdateOTPHash:            patchData.NextUpdateOTPHash,
 		NextRecoveryOTPHash:          suffixData.NextRecoveryOTPHash,
 		HashAlgorithmInMultiHashCode: code,
 	}, nil
@@ -67,32 +67,32 @@ func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 	return schema, nil
 }
 
-func parseCreateOperationData(encoded string, code uint) (*model.OperationDataModel, error) {
+func parseCreatePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.OperationDataModel{}
+	schema := &model.PatchDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateOperationData(schema, code); err != nil {
+	if err := validatePatchData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func parseSuffixData(encoded string, code uint) (*model.SuffixDataSchema, error) {
+func parseSuffixData(encoded string, code uint) (*model.SuffixDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.SuffixDataSchema{}
+	schema := &model.SuffixDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
@@ -105,19 +105,19 @@ func parseSuffixData(encoded string, code uint) (*model.SuffixDataSchema, error)
 	return schema, nil
 }
 
-func validateOperationData(opData *model.OperationDataModel, code uint) error {
-	if len(opData.Patches) == 0 {
-		return errors.New("missing operation patch")
+func validatePatchData(patchData *model.PatchDataModel, code uint) error {
+	if len(patchData.Patches) == 0 {
+		return errors.New("missing patches")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(opData.NextUpdateOTPHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(patchData.NextUpdateOTPHash, uint64(code)) {
 		return errors.New("next update OTP hash is not computed with the latest supported hash algorithm")
 	}
 
 	return nil
 }
 
-func validateSuffixData(suffixData *model.SuffixDataSchema, code uint) error {
+func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
 	if suffixData.RecoveryKey.PublicKeyHex == "" {
 		return errors.New("missing recovery key")
 	}
@@ -126,8 +126,8 @@ func validateSuffixData(suffixData *model.SuffixDataSchema, code uint) error {
 		return errors.New("next recovery OTP hash is not computed with the latest supported hash algorithm")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.OperationDataHash, uint64(code)) {
-		return errors.New("operation data hash is not computed with the latest supported hash algorithm")
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.PatchDataHash, uint64(code)) {
+		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
 	}
 
 	return nil

@@ -53,11 +53,11 @@ func TestParseCreateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "illegal base64 data")
 		require.Nil(t, op)
 	})
-	t.Run("parse operation data error", func(t *testing.T) {
+	t.Run("parse patch data error", func(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		create.OperationData = invalid
+		create.PatchData = invalid
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
@@ -77,12 +77,12 @@ func TestValidateSuffixData(t *testing.T) {
 		require.Contains(t, err.Error(),
 			"missing recovery key")
 	})
-	t.Run("invalid operation data hash", func(t *testing.T) {
+	t.Run("invalid patch data hash", func(t *testing.T) {
 		suffixData := getSuffixData()
-		suffixData.OperationDataHash = ""
+		suffixData.PatchDataHash = ""
 		err := validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "operation data hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid next recovery OTP hash", func(t *testing.T) {
 		suffixData := getSuffixData()
@@ -93,27 +93,27 @@ func TestValidateSuffixData(t *testing.T) {
 	})
 }
 
-func TestValidateOperationData(t *testing.T) {
+func TestValidatePatchData(t *testing.T) {
 	t.Run("invalid next update OTP", func(t *testing.T) {
-		operationData := getOperationData()
-		operationData.NextUpdateOTPHash = ""
-		err := validateOperationData(operationData, sha2_256)
+		patchData := getPatchData()
+		patchData.NextUpdateOTPHash = ""
+		err := validatePatchData(patchData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update OTP hash is not computed with the latest supported hash algorithm")
 	})
-	t.Run("missing operation patch", func(t *testing.T) {
-		operationData := getOperationData()
-		operationData.Patches = []patch.Patch{}
-		err := validateOperationData(operationData, sha2_256)
+	t.Run("missing patches", func(t *testing.T) {
+		patchData := getPatchData()
+		patchData.Patches = []patch.Patch{}
+		err := validatePatchData(patchData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"missing operation patch")
+			"missing patches")
 	})
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	operationDataBytes, err := docutil.MarshalCanonical(getOperationData())
+	patchDataBytes, err := docutil.MarshalCanonical(getPatchData())
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +124,9 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}
 
 	return &model.CreateRequest{
-		Operation:     model.OperationTypeCreate,
-		OperationData: docutil.EncodeToString(operationDataBytes),
-		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+		Operation:  model.OperationTypeCreate,
+		PatchData:  docutil.EncodeToString(patchDataBytes),
+		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
 
@@ -139,16 +139,16 @@ func getCreateRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-func getOperationData() *model.OperationDataModel {
-	return &model.OperationDataModel{
+func getPatchData() *model.PatchDataModel {
+	return &model.PatchDataModel{
 		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }
 
-func getSuffixData() *model.SuffixDataSchema {
-	return &model.SuffixDataSchema{
-		OperationDataHash:   computeMultihash(validDoc),
+func getSuffixData() *model.SuffixDataModel {
+	return &model.SuffixDataModel{
+		PatchDataHash:       computeMultihash(validDoc),
 		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
 	}

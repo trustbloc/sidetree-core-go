@@ -329,7 +329,7 @@ const validDoc = `{
 }`
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	operationDataBytes, err := json.Marshal(getOperationData())
+	patchDataBytes, err := json.Marshal(getPatchData())
 	if err != nil {
 		return nil, err
 	}
@@ -340,22 +340,22 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}
 
 	return &model.CreateRequest{
-		Operation:     model.OperationTypeCreate,
-		OperationData: docutil.EncodeToString(operationDataBytes),
-		SuffixData:    docutil.EncodeToString(suffixDataBytes),
+		Operation:  model.OperationTypeCreate,
+		PatchData:  docutil.EncodeToString(patchDataBytes),
+		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
 
-func getOperationData() *model.OperationDataModel {
-	return &model.OperationDataModel{
+func getPatchData() *model.PatchDataModel {
+	return &model.PatchDataModel{
 		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }
 
-func getSuffixData() *model.SuffixDataSchema {
-	return &model.SuffixDataSchema{
-		OperationDataHash:   computeMultihash(validDoc),
+func getSuffixData() *model.SuffixDataModel {
+	return &model.SuffixDataModel{
+		PatchDataHash:       computeMultihash(validDoc),
 		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
 	}
@@ -370,7 +370,7 @@ func computeMultihash(data string) string {
 }
 
 func getUpdateRequest() (*model.UpdateRequest, error) {
-	operationDataBytes, err := json.Marshal(getUpdateOperationData())
+	patchDataBytes, err := json.Marshal(getUpdatePatchData())
 	if err != nil {
 		return nil, err
 	}
@@ -378,12 +378,12 @@ func getUpdateRequest() (*model.UpdateRequest, error) {
 	return &model.UpdateRequest{
 		Operation:       model.OperationTypeUpdate,
 		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
-		OperationData:   docutil.EncodeToString(operationDataBytes),
+		PatchData:       docutil.EncodeToString(patchDataBytes),
 	}, nil
 }
 
-func getUpdateOperationData() *model.OperationDataModel {
-	return &model.OperationDataModel{
+func getUpdatePatchData() *model.PatchDataModel {
+	return &model.PatchDataModel{
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }
