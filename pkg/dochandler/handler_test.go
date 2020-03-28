@@ -382,8 +382,8 @@ func getUpdateRequest() (*model.UpdateRequest, error) {
 	}, nil
 }
 
-func getUpdateOperationData() *model.UpdateOperationData {
-	return &model.UpdateOperationData{
+func getUpdateOperationData() *model.OperationDataModel {
+	return &model.OperationDataModel{
 		NextUpdateOTPHash: computeMultihash("updateOTP"),
 	}
 }

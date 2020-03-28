@@ -8,9 +8,9 @@ package helper
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -100,10 +100,9 @@ func TestNewRevokeRequest(t *testing.T) {
 	})
 }
 
-func TestNewUpdatePayload(t *testing.T) {
+func TestNewUpdateRequest(t *testing.T) {
 	const didUniqueSuffix = "whatever"
-	patch, err := getTestPatch()
-	require.NoError(t, err)
+	patch := getTestPatch()
 
 	t.Run("missing unique suffix", func(t *testing.T) {
 		info := &UpdateRequestInfo{}
@@ -146,15 +145,13 @@ func TestNewUpdatePayload(t *testing.T) {
 		request, err := NewUpdateRequest(info)
 		require.NoError(t, err)
 		require.NotEmpty(t, request)
+
+		fmt.Println(string(request))
 	})
 }
 
-func getTestPatch() (jsonpatch.Patch, error) {
-	patchJSON := []byte(`[
-		{"op": "replace", "path": "/name", "value": "Jane"}
-	]`)
-
-	return jsonpatch.DecodePatch(patchJSON)
+func getTestPatch() string {
+	return `[{"op": "replace", "path": "/name", "value": "Jane"}]`
 }
 
 func TestNewRecoverRequest(t *testing.T) {

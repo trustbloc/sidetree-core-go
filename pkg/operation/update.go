@@ -8,11 +8,13 @@ package operation
 
 import (
 	"encoding/json"
-	"errors"
+
+	jsonpatch "github.com/evanphx/json-patch"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -28,13 +30,21 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
+	patches := operationData.Patches[0].GetStringValue(patch.PatchesKey)
+
+	// TODO: model for operation patch will change with issue-155
+	patch, err := jsonpatch.DecodePatch([]byte(patches))
+	if err != nil {
+		return nil, err
+	}
+
 	return &batch.Operation{
 		Type:                         batch.OperationTypeUpdate,
 		OperationBuffer:              request,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		UpdateOTP:                    schema.UpdateOTP,
 		NextUpdateOTPHash:            operationData.NextUpdateOTPHash,
-		Patch:                        operationData.DocumentPatch,
+		Patch:                        patch,
 		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil
 }
@@ -48,31 +58,21 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	return schema, nil
 }
 
-func parseUpdateOperationData(encoded string, code uint) (*model.UpdateOperationData, error) {
+func parseUpdateOperationData(encoded string, code uint) (*model.OperationDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.UpdateOperationData{}
+	schema := &model.OperationDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateUpdateOperationData(schema, code); err != nil {
+	if err := validateOperationData(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
-}
-
-func validateUpdateOperationData(opData *model.UpdateOperationData, code uint) error {
-	// TODO: Add validation of patches
-
-	if !docutil.IsComputedUsingHashAlgorithm(opData.NextUpdateOTPHash, uint64(code)) {
-		return errors.New("next update OTP hash is not computed with the latest supported hash algorithm")
-	}
-
-	return nil
 }
