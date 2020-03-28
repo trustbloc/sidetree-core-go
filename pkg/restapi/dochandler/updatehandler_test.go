@@ -16,7 +16,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -199,17 +198,11 @@ func getCreateRequestInfo() *helper.CreateRequestInfo {
 }
 
 func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
-	patchJSON := []byte(`[{"op": "replace", "path": "/name", "value": "value"}]`)
-
-	patch, err := jsonpatch.DecodePatch(patchJSON)
-
-	if err != nil {
-		panic(err)
-	}
+	patchJSON := `[{"op": "replace", "path": "/name", "value": "value"}]`
 
 	return &helper.UpdateRequestInfo{
 		DidUniqueSuffix: uniqueSuffix,
-		Patch:           patch,
+		Patch:           patchJSON,
 		UpdateOTP:       docutil.EncodeToString([]byte(updateOTP)),
 		NextUpdateOTP:   docutil.EncodeToString([]byte(updateOTP)),
 		MultihashCode:   sha2_256,

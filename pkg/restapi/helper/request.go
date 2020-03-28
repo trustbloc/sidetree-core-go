@@ -9,8 +9,6 @@ package helper
 import (
 	"errors"
 
-	jsonpatch "github.com/evanphx/json-patch"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -77,7 +75,7 @@ type UpdateRequestInfo struct {
 	DidUniqueSuffix string
 
 	//An RFC 6902 JSON patch to the current DID Document
-	Patch jsonpatch.Patch
+	Patch string
 
 	// encoded one-time password for update operation
 	UpdateOTP string
@@ -183,7 +181,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing did unique suffix")
 	}
 
-	if info.Patch == nil {
+	if info.Patch == "" {
 		return nil, errors.New("missing update information")
 	}
 
@@ -192,9 +190,11 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	opData := &model.UpdateOperationData{
+	patches := []patch.Patch{patch.NewJSONPatch(info.Patch)}
+
+	opData := &model.OperationDataModel{
 		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		DocumentPatch:     info.Patch,
+		Patches:           patches,
 	}
 
 	opDataBytes, err := docutil.MarshalCanonical(opData)

@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 import (
-	jsonpatch "github.com/evanphx/json-patch"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 
@@ -71,16 +69,6 @@ type UpdateRequest struct {
 
 	// Encoded JSON object containing update operation data
 	OperationData string `json:"operationData"`
-}
-
-// UpdateOperationData contains update operation data
-type UpdateOperationData struct {
-
-	// Hash of the one-time password for the next update operation
-	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
-
-	//An RFC 6902 JSON patch to the current DID Document
-	DocumentPatch jsonpatch.Patch `json:"documentPatch"`
 }
 
 //RevokeRequest is the struct for revoking document
