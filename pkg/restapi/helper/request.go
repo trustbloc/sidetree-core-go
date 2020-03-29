@@ -100,19 +100,8 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing recovery key")
 	}
 
-	mhNextUpdateCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextUpdateRevealValue)
-	if err != nil {
-		return nil, err
-	}
-
 	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
-
-	patchData := model.PatchDataModel{
-		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
-		Patches:                  patches,
-	}
-
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
 	}
@@ -183,19 +172,8 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing update information")
 	}
 
-	mhNextUpdateCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextUpdateRevealValue)
-	if err != nil {
-		return nil, err
-	}
-
 	patches := []patch.Patch{patch.NewJSONPatch(info.Patch)}
-
-	patchData := &model.PatchDataModel{
-		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
-		Patches:                  patches,
-	}
-
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
 	}
@@ -219,19 +197,8 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhNextUpdateCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextUpdateRevealValue)
-	if err != nil {
-		return nil, err
-	}
-
 	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
-
-	patchData := model.PatchDataModel{
-		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
-		Patches:                  patches,
-	}
-
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
 	}
@@ -288,4 +255,18 @@ func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
 	}
 
 	return nil
+}
+
+func getPatchDataBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, error) {
+	mhNextUpdateCommitmentHash, err := getEncodedMultihash(mhCode, reveal)
+	if err != nil {
+		return nil, err
+	}
+
+	patchData := model.PatchDataModel{
+		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
+		Patches:                  patches,
+	}
+
+	return docutil.MarshalCanonical(patchData)
 }
