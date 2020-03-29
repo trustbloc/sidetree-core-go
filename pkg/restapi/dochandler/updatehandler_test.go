@@ -213,7 +213,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 func getRevokeRequestInfo(uniqueSuffix string) *helper.RevokeRequestInfo {
 	return &helper.RevokeRequestInfo{
 		DidUniqueSuffix:     uniqueSuffix,
-		RecoveryRevealValue: docutil.EncodeToString(recoveryReveal),
+		RecoveryRevealValue: recoveryReveal,
 	}
 }
 
