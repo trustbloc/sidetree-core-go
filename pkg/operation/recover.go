@@ -46,9 +46,9 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		Type:                         batch.OperationTypeRecover,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		Document:                     document,
-		RecoveryOTP:                  schema.RecoveryOTP,
-		NextUpdateOTPHash:            patchData.NextUpdateOTPHash,
-		NextRecoveryOTPHash:          signedData.NextRecoveryOTPHash,
+		RecoveryRevealValue:          schema.RecoveryRevealValue,
+		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash:   signedData.NextRecoveryCommitmentHash,
 		HashAlgorithmInMultiHashCode: code,
 	}, nil
 }
@@ -106,8 +106,8 @@ func validateSignedData(signedData *model.SignedDataModel, code uint) error {
 		return errors.New("missing recovery key")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.NextRecoveryOTPHash, uint64(code)) {
-		return errors.New("next recovery OTP hash is not computed with the latest supported hash algorithm")
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.NextRecoveryCommitmentHash, uint64(code)) {
+		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.PatchDataHash, uint64(code)) {

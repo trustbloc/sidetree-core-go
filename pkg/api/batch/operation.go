@@ -47,15 +47,15 @@ type Operation struct {
 	//The index this operation was assigned to in the batch
 	OperationIndex uint `json:"operationIndex"`
 
-	// One-time password for update operation
-	UpdateOTP string `json:"updateOTP"`
-	// One-time password for this recovery/checkpoint/revoke operation
-	RecoveryOTP string `json:"recoveryOTP"`
+	// Reveal value for this update operation
+	UpdateRevealValue string `json:"updateRevealValue"`
+	// Reveal value for this recovery/revoke operation
+	RecoveryRevealValue string `json:"recoveryRevealValue"`
 
-	// Hash of the one-time password for the next update operation
-	NextUpdateOTPHash string `json:"nextUpdateOTPHash"`
-	// Hash of the one-time password for this recovery/checkpoint/revoke operation.
-	NextRecoveryOTPHash string `json:"nextRecoveryOTPHash"`
+	// Hash of reveal value for the next update operation
+	NextUpdateCommitmentHash string `json:"nextUpdateCommitmentHash"`
+	// Hash of reveal value for next recovery/revoke operation
+	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
 }
 
 // OperationType defines valid values for operation type

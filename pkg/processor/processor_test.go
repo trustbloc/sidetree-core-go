@@ -27,8 +27,8 @@ const (
 	sha2_256          = 18
 	dummyUniqueSuffix = "dummy"
 
-	updateOTP   = "updateOTP"
-	recoveryOTP = "recoveryOTP"
+	updateReveal   = "updateReveal"
+	recoveryReveal = "recoveryReveal"
 )
 
 func TestResolve(t *testing.T) {
@@ -97,7 +97,7 @@ func TestUpdateDocument(t *testing.T) {
 	}})
 }
 
-func TestUpdateDocument_InvalidOTP(t *testing.T) {
+func TestUpdateDocument_InvalidRevealValue(t *testing.T) {
 	store := getDefaultStore()
 
 	uniqueSuffix := getCreateOperation().UniqueSuffix
@@ -260,13 +260,13 @@ func TestRevoke_DocumentNotFound(t *testing.T) {
 	require.Nil(t, doc)
 }
 
-func TestRevoke_InvalidRecoveryOTP(t *testing.T) {
+func TestRevoke_InvalidRecoveryRevealValue(t *testing.T) {
 	store := getDefaultStore()
 
 	uniqueSuffix := getCreateOperation().UniqueSuffix
 
 	revokeOp := getRevokeOperation(uniqueSuffix, 1)
-	revokeOp.RecoveryOTP = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	revokeOp.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
 	err := store.Put(revokeOp)
 	require.NoError(t, err)
 
@@ -332,13 +332,13 @@ func TestRecoverAfterRevoke(t *testing.T) {
 	require.Nil(t, doc)
 }
 
-func TestRecover_InvalidRecoveryOTP(t *testing.T) {
+func TestRecover_InvalidRecoveryRevealValue(t *testing.T) {
 	store := getDefaultStore()
 
 	uniqueSuffix := getCreateOperation().UniqueSuffix
 
 	op := getRecoverOperation(uniqueSuffix, 1)
-	op.RecoveryOTP = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	op.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
 	err := store.Put(op)
 	require.NoError(t, err)
 
@@ -390,7 +390,7 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 		panic(err)
 	}
 
-	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+strconv.Itoa(int(operationNumber+1))))
+	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+strconv.Itoa(int(operationNumber+1))))
 	if err != nil {
 		panic(err)
 	}
@@ -402,8 +402,8 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 		Patch:                        jsonPatch,
 		Type:                         batch.OperationTypeUpdate,
 		TransactionNumber:            uint64(operationNumber),
-		UpdateOTP:                    base64.URLEncoding.EncodeToString([]byte(updateOTP + strconv.Itoa(int(operationNumber)))),
-		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
+		UpdateRevealValue:            base64.URLEncoding.EncodeToString([]byte(updateReveal + strconv.Itoa(int(operationNumber)))),
+		NextUpdateCommitmentHash:     base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
 	}
 
 	return operation
@@ -411,12 +411,12 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 
 func getRevokeOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
 	return &batch.Operation{
-		ID:                "did:sidetree:" + uniqueSuffix,
-		UniqueSuffix:      uniqueSuffix,
-		Type:              batch.OperationTypeRevoke,
-		TransactionTime:   0,
-		TransactionNumber: uint64(operationNumber),
-		RecoveryOTP:       base64.URLEncoding.EncodeToString([]byte(recoveryOTP)),
+		ID:                  "did:sidetree:" + uniqueSuffix,
+		UniqueSuffix:        uniqueSuffix,
+		Type:                batch.OperationTypeRevoke,
+		TransactionTime:     0,
+		TransactionNumber:   uint64(operationNumber),
+		RecoveryRevealValue: base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
 	}
 }
 
@@ -431,26 +431,26 @@ func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Opera
 		panic(err)
 	}
 
-	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
+	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+"1"))
 	if err != nil {
 		panic(err)
 	}
 
-	nextRecoveryOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryOTP))
+	nextRecoveryCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryReveal))
 	if err != nil {
 		panic(err)
 	}
 
 	return &batch.Operation{
-		UniqueSuffix:        uniqueSuffix,
-		Type:                batch.OperationTypeRecover,
-		OperationBuffer:     operationBuffer,
-		Document:            recoveredDoc,
-		RecoveryOTP:         base64.URLEncoding.EncodeToString([]byte(recoveryOTP)),
-		NextUpdateOTPHash:   base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
-		NextRecoveryOTPHash: base64.URLEncoding.EncodeToString(nextRecoveryOTPHash),
-		TransactionTime:     0,
-		TransactionNumber:   uint64(operationNumber),
+		UniqueSuffix:               uniqueSuffix,
+		Type:                       batch.OperationTypeRecover,
+		OperationBuffer:            operationBuffer,
+		Document:                   recoveredDoc,
+		RecoveryRevealValue:        base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
+		NextUpdateCommitmentHash:   base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
+		NextRecoveryCommitmentHash: base64.URLEncoding.EncodeToString(nextRecoveryCommitmentHash),
+		TransactionTime:            0,
+		TransactionNumber:          uint64(operationNumber),
 	}
 }
 
@@ -482,16 +482,16 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 
 func getRecoverSignedData() *model.SignedDataModel {
 	return &model.SignedDataModel{
-		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
-		PatchDataHash:       computeMultihash("operation"),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
+		PatchDataHash:              computeMultihash("operation"),
 	}
 }
 
 func getRecoverPatchData() *model.PatchDataModel {
 	return &model.PatchDataModel{
-		Patches:           []patch.Patch{patch.NewReplacePatch(recoveredDoc)},
-		NextUpdateOTPHash: computeMultihash("updateOTP"),
+		Patches:                  []patch.Patch{patch.NewReplacePatch(recoveredDoc)},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
 	}
 }
 
@@ -508,12 +508,12 @@ func getDefaultStore() *mocks.MockOperationStore {
 }
 
 func getCreateOperation() *batch.Operation {
-	nextUpdateOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateOTP+"1"))
+	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+"1"))
 	if err != nil {
 		panic(err)
 	}
 
-	nextRecoveryOTPHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryOTP))
+	nextRecoveryCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryReveal))
 	if err != nil {
 		panic(err)
 	}
@@ -541,8 +541,8 @@ func getCreateOperation() *batch.Operation {
 		OperationBuffer:              operationBuffer,
 		Document:                     validDoc,
 		TransactionNumber:            0,
-		NextUpdateOTPHash:            base64.URLEncoding.EncodeToString(nextUpdateOTPHash),
-		NextRecoveryOTPHash:          base64.URLEncoding.EncodeToString(nextRecoveryOTPHash),
+		NextUpdateCommitmentHash:     base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
+		NextRecoveryCommitmentHash:   base64.URLEncoding.EncodeToString(nextRecoveryCommitmentHash),
 	}
 }
 
@@ -566,16 +566,16 @@ func getCreateRequest() (*model.CreateRequest, error) {
 
 func getPatchData() *model.PatchDataModel {
 	return &model.PatchDataModel{
-		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
-		NextUpdateOTPHash: computeMultihash("updateOTP"),
+		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
 	}
 }
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		PatchDataHash:       computeMultihash(validDoc),
-		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+		PatchDataHash:              computeMultihash(validDoc),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 	}
 }
 

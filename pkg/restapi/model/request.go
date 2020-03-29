@@ -34,8 +34,8 @@ type SuffixDataModel struct {
 	// The recovery public key as a HEX string.
 	RecoveryKey PublicKey `json:"recoveryKey"`
 
-	// Hash of the one-time password for this recovery/checkpoint/revoke operation.
-	NextRecoveryOTPHash string `json:"nextRecoveryOtpHash"`
+	// Commitment hash for the next recovery
+	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
 }
 
 // PublicKey is holder for public key in hex
@@ -47,8 +47,8 @@ type PublicKey struct {
 // PatchDataModel contains patch data (patches used for create, recover, update)
 type PatchDataModel struct {
 
-	// Hash of the one-time password for the next update operation
-	NextUpdateOTPHash string `json:"nextUpdateOtpHash"`
+	// Commitment hash for the next update operation
+	NextUpdateCommitmentHash string `json:"nextUpdateCommitmentHash"`
 
 	// Patches defines document patches
 	Patches []patch.Patch `json:"patches"`
@@ -61,8 +61,8 @@ type UpdateRequest struct {
 	//The unique suffix of the DID
 	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
-	// One-time password for update operation
-	UpdateOTP string `json:"updateOtp"`
+	// Reveal value for this update operation
+	UpdateRevealValue string `json:"updateRevealValue"`
 
 	// JWS signature information
 	SignedData *JWS `json:"signedData"`
@@ -81,9 +81,9 @@ type RevokeRequest struct {
 	// Required: true
 	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
-	// the current one-time recovery password
+	// the current reveal value to use for this request
 	// Required: true
-	RecoveryOTP string `json:"recoveryOtp"`
+	RecoveryRevealValue string `json:"recoveryRevealValue"`
 
 	// JWS Signature information
 	SignedData *JWS `json:"signedData"`
@@ -99,7 +99,7 @@ type SignedDataModel struct {
 	RecoveryKey PublicKey `json:"recoveryKey"`
 
 	// Hash of the one-time password to be used for the next recovery/revoke
-	NextRecoveryOTPHash string `json:"nextRecoveryOtpHash"`
+	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
 }
 
 // RecoverRequest is the struct for document recovery payload
@@ -112,9 +112,9 @@ type RecoverRequest struct {
 	// Required: true
 	DidUniqueSuffix string `json:"didUniqueSuffix"`
 
-	// One-time recovery password for this recovery
+	// The reveal value for this recovery
 	// Required: true
-	RecoveryOTP string `json:"recoveryOtp"`
+	RecoveryRevealValue string `json:"recoveryRevealValue"`
 
 	// JWS Signature information
 	SignedData *JWS `json:"signedData"`

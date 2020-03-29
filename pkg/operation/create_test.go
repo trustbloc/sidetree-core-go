@@ -84,23 +84,23 @@ func TestValidateSuffixData(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
-	t.Run("invalid next recovery OTP hash", func(t *testing.T) {
+	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		suffixData := getSuffixData()
-		suffixData.NextRecoveryOTPHash = ""
+		suffixData.NextRecoveryCommitmentHash = ""
 		err := validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next recovery OTP hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
 func TestValidatePatchData(t *testing.T) {
-	t.Run("invalid next update OTP", func(t *testing.T) {
+	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		patchData := getPatchData()
-		patchData.NextUpdateOTPHash = ""
+		patchData.NextUpdateCommitmentHash = ""
 		err := validatePatchData(patchData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"next update OTP hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("missing patches", func(t *testing.T) {
 		patchData := getPatchData()
@@ -141,16 +141,16 @@ func getCreateRequestBytes() ([]byte, error) {
 
 func getPatchData() *model.PatchDataModel {
 	return &model.PatchDataModel{
-		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
-		NextUpdateOTPHash: computeMultihash("updateOTP"),
+		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
 	}
 }
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		PatchDataHash:       computeMultihash(validDoc),
-		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+		PatchDataHash:              computeMultihash(validDoc),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 	}
 }
 func computeMultihash(data string) string {

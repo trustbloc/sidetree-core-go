@@ -17,17 +17,19 @@ import (
 // CreateRequestInfo contains data for creating create payload
 type CreateRequestInfo struct {
 
-	// opaque content
+	// opaque document content
+	// required
 	OpaqueDocument string
 
 	// the recovery public key as a HEX string
+	// required
 	RecoveryKey string
 
-	// encoded one-time password to be used for the next recovery
-	NextRecoveryOTP string
+	// reveal value to be used for the next recovery
+	NextRecoveryRevealValue []byte
 
-	// encoded one-time password to be used for the next update
-	NextUpdateOTP string
+	// reveal value to be used for the next update
+	NextUpdateRevealValue []byte
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
@@ -39,8 +41,8 @@ type RevokeRequestInfo struct {
 	// Unique Suffix
 	DidUniqueSuffix string
 
-	// encoded one-time password for revoke operation
-	RecoveryOTP string
+	// reveal value for this revoke operation
+	RecoveryRevealValue string
 }
 
 //RecoverRequestInfo is the information required to create recover request
@@ -49,8 +51,8 @@ type RecoverRequestInfo struct {
 	// Unique Suffix of the did to be recovered
 	DidUniqueSuffix string
 
-	// encoded one-time password for recovery operation
-	RecoveryOTP string
+	// reveal value for this recovery operation
+	RecoveryRevealValue []byte
 
 	// the new recovery public key as a HEX string
 	RecoveryKey string
@@ -58,11 +60,11 @@ type RecoverRequestInfo struct {
 	// opaque content
 	OpaqueDocument string
 
-	// encoded one-time password to be used for the next recovery
-	NextRecoveryOTP string
+	// reveal value to be used for the next recovery
+	NextRecoveryRevealValue []byte
 
-	// encoded one-time password to be used for the next update
-	NextUpdateOTP string
+	// reveal value to be used for the next update
+	NextUpdateRevealValue []byte
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
@@ -77,11 +79,12 @@ type UpdateRequestInfo struct {
 	//An RFC 6902 JSON patch to the current DID Document
 	Patch string
 
-	// encoded one-time password for update operation
-	UpdateOTP string
+	// reveal value for this update operation
+	UpdateRevealValue []byte
 
-	// encoded one-time password for the next update operation
-	NextUpdateOTP string
+	// reveal value to be used for the next update
+	// optional if NextUpdateCommitmentHash is provided
+	NextUpdateRevealValue []byte
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
@@ -97,7 +100,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing recovery key")
 	}
 
-	mhNextUpdateOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextUpdateOTP)
+	mhNextUpdateCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextUpdateRevealValue)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +108,8 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
 
 	patchData := model.PatchDataModel{
-		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		Patches:           patches,
+		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
+		Patches:                  patches,
 	}
 
 	patchDataBytes, err := docutil.MarshalCanonical(patchData)
@@ -119,15 +122,15 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhNextRecoveryOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextRecoveryOTP)
+	mhNextRecoveryCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextRecoveryRevealValue)
 	if err != nil {
 		return nil, err
 	}
 
 	suffixData := model.SuffixDataModel{
-		PatchDataHash:       docutil.EncodeToString(mhPatchData),
-		RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
-		NextRecoveryOTPHash: mhNextRecoveryOTPHash,
+		PatchDataHash:              docutil.EncodeToString(mhPatchData),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: info.RecoveryKey},
+		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
 	}
 
 	suffixDataBytes, err := docutil.MarshalCanonical(suffixData)
@@ -144,18 +147,13 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	return docutil.MarshalCanonical(schema)
 }
 
-func getEncodedOTPMultihash(mhCode uint, encodedOTP string) (string, error) {
-	otpBytes, err := docutil.DecodeString(encodedOTP)
+func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
+	hash, err := docutil.ComputeMultihash(mhCode, bytes)
 	if err != nil {
 		return "", err
 	}
 
-	otpHash, err := docutil.ComputeMultihash(mhCode, otpBytes)
-	if err != nil {
-		return "", err
-	}
-
-	return docutil.EncodeToString(otpHash), nil
+	return docutil.EncodeToString(hash), nil
 }
 
 // NewRevokeRequest is utility function to create payload for 'revoke' request
@@ -167,9 +165,9 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 	// TODO: Construct signed patch data here and set it in request
 
 	schema := &model.RevokeRequest{
-		Operation:       model.OperationTypeRevoke,
-		DidUniqueSuffix: info.DidUniqueSuffix,
-		RecoveryOTP:     info.RecoveryOTP,
+		Operation:           model.OperationTypeRevoke,
+		DidUniqueSuffix:     info.DidUniqueSuffix,
+		RecoveryRevealValue: info.RecoveryRevealValue,
 	}
 
 	return docutil.MarshalCanonical(schema)
@@ -185,7 +183,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing update information")
 	}
 
-	mhNextUpdateOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextUpdateOTP)
+	mhNextUpdateCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextUpdateRevealValue)
 	if err != nil {
 		return nil, err
 	}
@@ -193,8 +191,8 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	patches := []patch.Patch{patch.NewJSONPatch(info.Patch)}
 
 	patchData := &model.PatchDataModel{
-		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		Patches:           patches,
+		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
+		Patches:                  patches,
 	}
 
 	patchDataBytes, err := docutil.MarshalCanonical(patchData)
@@ -205,10 +203,10 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	// TODO: Assemble signed patch data hash and add to the request
 
 	schema := &model.UpdateRequest{
-		Operation:       model.OperationTypeUpdate,
-		DidUniqueSuffix: info.DidUniqueSuffix,
-		UpdateOTP:       info.UpdateOTP,
-		PatchData:       docutil.EncodeToString(patchDataBytes),
+		Operation:         model.OperationTypeUpdate,
+		DidUniqueSuffix:   info.DidUniqueSuffix,
+		UpdateRevealValue: docutil.EncodeToString(info.UpdateRevealValue),
+		PatchData:         docutil.EncodeToString(patchDataBytes),
 	}
 
 	return docutil.MarshalCanonical(schema)
@@ -221,7 +219,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhNextUpdateOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextUpdateOTP)
+	mhNextUpdateCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextUpdateRevealValue)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +227,8 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
 
 	patchData := model.PatchDataModel{
-		NextUpdateOTPHash: mhNextUpdateOTPHash,
-		Patches:           patches,
+		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
+		Patches:                  patches,
 	}
 
 	patchDataBytes, err := docutil.MarshalCanonical(patchData)
@@ -243,15 +241,15 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhNextRecoveryOTPHash, err := getEncodedOTPMultihash(info.MultihashCode, info.NextRecoveryOTP)
+	mhNextRecoveryCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextRecoveryRevealValue)
 	if err != nil {
 		return nil, err
 	}
 
 	signedData := model.SignedDataModel{
-		PatchDataHash:       docutil.EncodeToString(mhPatchData),
-		RecoveryKey:         model.PublicKey{PublicKeyHex: info.RecoveryKey},
-		NextRecoveryOTPHash: mhNextRecoveryOTPHash,
+		PatchDataHash:              docutil.EncodeToString(mhPatchData),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: info.RecoveryKey},
+		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
 	}
 
 	signedDataBytes, err := docutil.MarshalCanonical(signedData)
@@ -266,11 +264,11 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.RecoverRequest{
-		Operation:       model.OperationTypeRecover,
-		DidUniqueSuffix: info.DidUniqueSuffix,
-		RecoveryOTP:     info.RecoveryOTP,
-		SignedData:      jws,
-		PatchData:       docutil.EncodeToString(patchDataBytes),
+		Operation:           model.OperationTypeRecover,
+		DidUniqueSuffix:     info.DidUniqueSuffix,
+		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
+		SignedData:          jws,
+		PatchData:           docutil.EncodeToString(patchDataBytes),
 	}
 
 	return docutil.MarshalCanonical(schema)

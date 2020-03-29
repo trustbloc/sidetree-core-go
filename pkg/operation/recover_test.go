@@ -110,12 +110,12 @@ func TestValidateSignedData(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
-	t.Run("invalid next recovery OTP hash", func(t *testing.T) {
+	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		signed := getSignedData()
-		signed.NextRecoveryOTPHash = ""
+		signed.NextRecoveryCommitmentHash = ""
 		err := validateSignedData(signed, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next recovery OTP hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
@@ -147,9 +147,9 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 
 func getSignedData() *model.SignedDataModel {
 	return &model.SignedDataModel{
-		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
-		PatchDataHash:       computeMultihash("operation"),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
+		PatchDataHash:              computeMultihash("operation"),
 	}
 }
 
