@@ -26,13 +26,14 @@ import (
 )
 
 const (
-	namespace   = "sample:sidetree"
-	badRequest  = `bad request`
-	recoveryOTP = "recoveryOTP"
-	updateOTP   = "updateOTP"
+	namespace  = "sample:sidetree"
+	badRequest = `bad request`
 
 	sha2_256 = 18
 )
+
+var recoveryReveal = []byte("recoveryReveal")
+var updateReveal = []byte("updateReveal")
 
 func TestUpdateHandler_Update(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
@@ -175,7 +176,7 @@ func TestGetOperation(t *testing.T) {
 
 		op, err := handlerWithErr.getOperation(request)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next update OTP hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "next update commitment hash is not computed with the latest supported hash algorithm")
 		require.Nil(t, op)
 	})
 	t.Run("unsupported operation type error", func(t *testing.T) {
@@ -189,11 +190,11 @@ func TestGetOperation(t *testing.T) {
 
 func getCreateRequestInfo() *helper.CreateRequestInfo {
 	return &helper.CreateRequestInfo{
-		OpaqueDocument:  validDoc,
-		RecoveryKey:     "HEX",
-		NextRecoveryOTP: docutil.EncodeToString([]byte(recoveryOTP)),
-		NextUpdateOTP:   docutil.EncodeToString([]byte(updateOTP)),
-		MultihashCode:   sha2_256,
+		OpaqueDocument:          validDoc,
+		RecoveryKey:             "HEX",
+		NextRecoveryRevealValue: recoveryReveal,
+		NextUpdateRevealValue:   updateReveal,
+		MultihashCode:           sha2_256,
 	}
 }
 
@@ -201,30 +202,30 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 	patchJSON := `[{"op": "replace", "path": "/name", "value": "value"}]`
 
 	return &helper.UpdateRequestInfo{
-		DidUniqueSuffix: uniqueSuffix,
-		Patch:           patchJSON,
-		UpdateOTP:       docutil.EncodeToString([]byte(updateOTP)),
-		NextUpdateOTP:   docutil.EncodeToString([]byte(updateOTP)),
-		MultihashCode:   sha2_256,
+		DidUniqueSuffix:       uniqueSuffix,
+		Patch:                 patchJSON,
+		UpdateRevealValue:     updateReveal,
+		NextUpdateRevealValue: updateReveal,
+		MultihashCode:         sha2_256,
 	}
 }
 
 func getRevokeRequestInfo(uniqueSuffix string) *helper.RevokeRequestInfo {
 	return &helper.RevokeRequestInfo{
-		DidUniqueSuffix: uniqueSuffix,
-		RecoveryOTP:     docutil.EncodeToString([]byte(recoveryOTP)),
+		DidUniqueSuffix:     uniqueSuffix,
+		RecoveryRevealValue: docutil.EncodeToString(recoveryReveal),
 	}
 }
 
 func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 	return &helper.RecoverRequestInfo{
-		DidUniqueSuffix: uniqueSuffix,
-		OpaqueDocument:  recoverDoc,
-		RecoveryKey:     "HEX",
-		RecoveryOTP:     docutil.EncodeToString([]byte(recoveryOTP)),
-		NextRecoveryOTP: docutil.EncodeToString([]byte("newRecoveryOTP")),
-		NextUpdateOTP:   docutil.EncodeToString([]byte("newUpdateOTP")),
-		MultihashCode:   sha2_256,
+		DidUniqueSuffix:         uniqueSuffix,
+		OpaqueDocument:          recoverDoc,
+		RecoveryKey:             "HEX",
+		RecoveryRevealValue:     recoveryReveal,
+		NextRecoveryRevealValue: []byte("newRecoveryReveal"),
+		NextUpdateRevealValue:   []byte("newUpdateReveal"),
+		MultihashCode:           sha2_256,
 	}
 }
 

@@ -12,8 +12,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 const (
@@ -45,32 +43,6 @@ func TestNewCreateRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
-	})
-	t.Run("next update otp not encoded", func(t *testing.T) {
-		info := &CreateRequestInfo{
-			OpaqueDocument: "{}",
-			RecoveryKey:    "recovery",
-			NextUpdateOTP:  "invalid",
-			MultihashCode:  sha2_256}
-
-		request, err := NewCreateRequest(info)
-		require.Error(t, err)
-		require.Empty(t, request)
-		require.Contains(t, err.Error(), "illegal base64 data")
-	})
-	t.Run("next update otp not encoded", func(t *testing.T) {
-		info := &CreateRequestInfo{
-			OpaqueDocument:  "{}",
-			RecoveryKey:     "recovery",
-			NextUpdateOTP:   docutil.EncodeToString([]byte("updateOTP")),
-			NextRecoveryOTP: "invalid",
-			MultihashCode:   sha2_256,
-		}
-
-		request, err := NewCreateRequest(info)
-		require.Error(t, err)
-		require.Empty(t, request)
-		require.Contains(t, err.Error(), "illegal base64 data")
 	})
 	t.Run("success", func(t *testing.T) {
 		info := &CreateRequestInfo{OpaqueDocument: "{}",
@@ -120,7 +92,6 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing update information")
 	})
-
 	t.Run("multihash not supported", func(t *testing.T) {
 		info := &UpdateRequestInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch}
 
@@ -129,16 +100,6 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
 	})
-
-	t.Run("next update otp not encoded", func(t *testing.T) {
-		info := &UpdateRequestInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch, NextUpdateOTP: "invalid"}
-
-		request, err := NewUpdateRequest(info)
-		require.Error(t, err)
-		require.Empty(t, request)
-		require.Contains(t, err.Error(), "illegal base64 data")
-	})
-
 	t.Run("success", func(t *testing.T) {
 		info := &UpdateRequestInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch, MultihashCode: sha2_256}
 
@@ -190,24 +151,6 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
-	})
-	t.Run("next update otp not encoded", func(t *testing.T) {
-		info := getRecoverRequestInfo()
-		info.NextUpdateOTP = "otp"
-
-		request, err := NewRecoverRequest(info)
-		require.Error(t, err)
-		require.Empty(t, request)
-		require.Contains(t, err.Error(), "illegal base64 data")
-	})
-	t.Run("next recover otp not encoded", func(t *testing.T) {
-		info := getRecoverRequestInfo()
-		info.NextRecoveryOTP = "otp"
-
-		request, err := NewRecoverRequest(info)
-		require.Error(t, err)
-		require.Empty(t, request)
-		require.Contains(t, err.Error(), "illegal base64 data")
 	})
 	t.Run("success", func(t *testing.T) {
 		info := getRecoverRequestInfo()

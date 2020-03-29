@@ -37,9 +37,9 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
-	t.Run("invalid next update OTP", func(t *testing.T) {
+	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		patchData := getUpdatePatchData()
-		patchData.NextUpdateOTPHash = ""
+		patchData.NextUpdateCommitmentHash = ""
 
 		req, err := getUpdateRequest(patchData)
 		require.NoError(t, err)
@@ -50,27 +50,27 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(),
-			"next update OTP hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
 func TestValidateUpdatePatchData(t *testing.T) {
-	t.Run("invalid next update OTP", func(t *testing.T) {
+	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		patchData := getUpdatePatchData()
 
-		patchData.NextUpdateOTPHash = ""
+		patchData.NextUpdateCommitmentHash = ""
 		err := validatePatchData(patchData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"next update OTP hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
 func TestParseUpdatePatchData(t *testing.T) {
-	t.Run("invalid next update OTP", func(t *testing.T) {
+	t.Run("invalid next update commitment", func(t *testing.T) {
 		patchData := getUpdatePatchData()
 
-		patchData.NextUpdateOTPHash = ""
+		patchData.NextUpdateCommitmentHash = ""
 		patchDataBytes, err := json.Marshal(patchData)
 		require.NoError(t, err)
 
@@ -78,7 +78,7 @@ func TestParseUpdatePatchData(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, parsed)
 		require.Contains(t, err.Error(),
-			"next update OTP hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid bytes", func(t *testing.T) {
 		parsed, err := parseUpdatePatchData("invalid", sha2_256)
@@ -117,8 +117,8 @@ func getUpdatePatchData() *model.PatchDataModel {
 	jsonPatch := patch.NewJSONPatch(getTestPatch())
 
 	return &model.PatchDataModel{
-		NextUpdateOTPHash: computeMultihash("updateOTP"),
-		Patches:           []patch.Patch{jsonPatch},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+		Patches:                  []patch.Patch{jsonPatch},
 	}
 }
 

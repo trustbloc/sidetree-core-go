@@ -133,15 +133,15 @@ func getCreateRequest() (*model.CreateRequest, error) {
 
 func getPatchData() *model.PatchDataModel {
 	return &model.PatchDataModel{
-		Patches:           []patch.Patch{patch.NewReplacePatch(validDoc)},
-		NextUpdateOTPHash: computeMultihash("updateOTP"),
+		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
 	}
 }
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		PatchDataHash:       computeMultihash(validDoc),
-		RecoveryKey:         model.PublicKey{PublicKeyHex: "HEX"},
-		NextRecoveryOTPHash: computeMultihash("recoveryOTP"),
+		PatchDataHash:              computeMultihash(validDoc),
+		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 	}
 }

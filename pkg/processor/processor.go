@@ -126,8 +126,8 @@ type resolutionModel struct {
 	Doc                            document.Document
 	LastOperationTransactionTime   uint64
 	LastOperationTransactionNumber uint64
-	NextUpdateOTPHash              string
-	NextRecoveryOTPHash            string
+	NextUpdateCommitmentHash       string
+	NextRecoveryCommitmentHash     string
 }
 
 func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -161,8 +161,8 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
-		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
+		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
 }
 
 func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -172,7 +172,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	err := isValidHash(operation.UpdateOTP, rm.NextUpdateOTPHash)
+	err := isValidHash(operation.UpdateRevealValue, rm.NextUpdateCommitmentHash)
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +198,8 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
-		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
+		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
 }
 
 func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -209,7 +209,7 @@ func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm
 		return nil, errors.New("revoke can only be applied to an existing document")
 	}
 
-	err := isValidHash(operation.RecoveryOTP, rm.NextRecoveryOTPHash)
+	err := isValidHash(operation.RecoveryRevealValue, rm.NextRecoveryCommitmentHash)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +218,8 @@ func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm
 		Doc:                            nil,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateOTPHash:              "",
-		NextRecoveryOTPHash:            ""}, nil
+		NextUpdateCommitmentHash:       "",
+		NextRecoveryCommitmentHash:     ""}, nil
 }
 
 func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -229,7 +229,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	err := isValidHash(operation.RecoveryOTP, rm.NextRecoveryOTPHash)
+	err := isValidHash(operation.RecoveryRevealValue, rm.NextRecoveryCommitmentHash)
 	if err != nil {
 		return nil, err
 	}
@@ -245,8 +245,8 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateOTPHash:              operation.NextUpdateOTPHash,
-		NextRecoveryOTPHash:            operation.NextRecoveryOTPHash}, nil
+		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
 }
 
 func isValidHash(encodedContent, encodedMultihash string) error {

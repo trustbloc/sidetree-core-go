@@ -42,8 +42,8 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		Type:                         batch.OperationTypeUpdate,
 		OperationBuffer:              request,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
-		UpdateOTP:                    schema.UpdateOTP,
-		NextUpdateOTPHash:            patchData.NextUpdateOTPHash,
+		UpdateRevealValue:            schema.UpdateRevealValue,
+		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
 		Patch:                        patch,
 		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil

@@ -51,8 +51,8 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		Type:                         batch.OperationTypeCreate,
 		UniqueSuffix:                 uniqueSuffix,
 		Document:                     document,
-		NextUpdateOTPHash:            patchData.NextUpdateOTPHash,
-		NextRecoveryOTPHash:          suffixData.NextRecoveryOTPHash,
+		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash:   suffixData.NextRecoveryCommitmentHash,
 		HashAlgorithmInMultiHashCode: code,
 	}, nil
 }
@@ -110,8 +110,8 @@ func validatePatchData(patchData *model.PatchDataModel, code uint) error {
 		return errors.New("missing patches")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(patchData.NextUpdateOTPHash, uint64(code)) {
-		return errors.New("next update OTP hash is not computed with the latest supported hash algorithm")
+	if !docutil.IsComputedUsingHashAlgorithm(patchData.NextUpdateCommitmentHash, uint64(code)) {
+		return errors.New("next update commitment hash is not computed with the latest supported hash algorithm")
 	}
 
 	return nil
@@ -122,8 +122,8 @@ func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
 		return errors.New("missing recovery key")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.NextRecoveryOTPHash, uint64(code)) {
-		return errors.New("next recovery OTP hash is not computed with the latest supported hash algorithm")
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.NextRecoveryCommitmentHash, uint64(code)) {
+		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.PatchDataHash, uint64(code)) {

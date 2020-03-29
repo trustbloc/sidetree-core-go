@@ -26,7 +26,7 @@ func ParseRevokeOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		Type:                         batch.OperationTypeRevoke,
 		OperationBuffer:              request,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
-		RecoveryOTP:                  schema.RecoveryOTP,
+		RecoveryRevealValue:          schema.RecoveryRevealValue,
 		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil
 }
