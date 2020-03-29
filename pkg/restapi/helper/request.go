@@ -42,7 +42,7 @@ type RevokeRequestInfo struct {
 	DidUniqueSuffix string
 
 	// reveal value for this revoke operation
-	RecoveryRevealValue string
+	RecoveryRevealValue []byte
 }
 
 //RecoverRequestInfo is the information required to create recover request
@@ -156,7 +156,7 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 	schema := &model.RevokeRequest{
 		Operation:           model.OperationTypeRevoke,
 		DidUniqueSuffix:     info.DidUniqueSuffix,
-		RecoveryRevealValue: info.RecoveryRevealValue,
+		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 	}
 
 	return docutil.MarshalCanonical(schema)
