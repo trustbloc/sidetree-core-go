@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package batch
 
 import (
-	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 // Operation defines an operation
@@ -25,18 +25,14 @@ type Operation struct {
 	// OperationBuffer is the original operation request
 	OperationBuffer []byte `json:"operationBuffer"`
 
-	//Document contains original opaque document
-	Document string `json:"document"`
+	// signed data for the operation
+	SignedData *model.JWS `json:"signedData"`
 
-	//SigningKeyID is the id of the key that was used to sign this encoded payload
-	SigningKeyID string `json:"signingKeyID"`
-	//Signature is the signature of this encoded payload
-	Signature string `json:"signature"`
-	// Signing algorithm
-	SigningAlgorithm string `json:"algorithm"`
+	// operation patch data
+	PatchData *model.PatchDataModel `json:"patchData"`
 
-	//An RFC 6902 JSON patch to the current Document
-	Patch jsonpatch.Patch `json:"patch"`
+	// encoded patch data
+	EncodedPatchData string `json:"encodedPatchData"`
 
 	//HashAlgorithmInMultiHashCode
 	HashAlgorithmInMultiHashCode uint `json:"hashAlgorithmInMultiHashCode"`

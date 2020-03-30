@@ -9,6 +9,8 @@ package mocks
 import (
 	"errors"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/composer"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -73,7 +75,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 		return nil, nil
 	}
 
-	doc, err := document.FromBytes([]byte(operation.Document))
+	doc, err := composer.ApplyPatches(nil, operation.PatchData.Patches)
 	if err != nil {
 		return nil, err
 	}

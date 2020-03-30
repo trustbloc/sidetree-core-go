@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
@@ -152,7 +153,7 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	doc, err := document.FromBytes([]byte(operation.Document))
+	doc, err := composer.ApplyPatches(nil, operation.PatchData.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
 }
 
-func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
 	log.Debugf("[%s] Applying update operation: %+v", s.name, operation)
 
 	if rm.Doc == nil {
@@ -177,19 +178,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, err
 	}
 
-	docBytes, err := rm.Doc.Bytes()
-	if err != nil {
-		return nil, err
-	}
-
-	// since update will be changed to operate on did document instead of bytes
-	// there will be no extra conversions from/to bytes
-	updatedDocBytes, err := operation.Patch.Apply(docBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := document.FromBytes(updatedDocBytes)
+	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +188,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
+		NextRecoveryCommitmentHash:     rm.NextRecoveryCommitmentHash}, nil
 }
 
 func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -222,7 +211,7 @@ func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm
 		NextRecoveryCommitmentHash:     ""}, nil
 }
 
-func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
 	log.Debugf("[%s] Applying recover operation: %+v", s.name, operation)
 
 	if rm.Doc == nil {
@@ -234,7 +223,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, err
 	}
 
-	doc, err := document.FromBytes([]byte(operation.Document))
+	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
 	if err != nil {
 		return nil, err
 	}

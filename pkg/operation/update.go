@@ -9,12 +9,9 @@ package operation
 import (
 	"encoding/json"
 
-	jsonpatch "github.com/evanphx/json-patch"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -30,21 +27,14 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	patches := patchData.Patches[0].GetStringValue(patch.PatchesKey)
-
-	// TODO: model for operation patch will change with issue-155
-	patch, err := jsonpatch.DecodePatch([]byte(patches))
-	if err != nil {
-		return nil, err
-	}
-
 	return &batch.Operation{
 		Type:                         batch.OperationTypeUpdate,
 		OperationBuffer:              request,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
+		PatchData:                    patchData,
+		EncodedPatchData:             schema.PatchData,
 		UpdateRevealValue:            schema.UpdateRevealValue,
 		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
-		Patch:                        patch,
 		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 	}, nil
 }

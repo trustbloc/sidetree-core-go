@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"testing"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
@@ -63,7 +62,9 @@ func TestResolveError(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 
 	createOp := getCreateOperation()
-	createOp.Document = "invalid payload"
+	createOp.PatchData = &model.PatchDataModel{
+		Patches: []patch.Patch{patch.NewJSONPatch("invalid")},
+	}
 
 	err := store.Put(createOp)
 	require.Nil(t, err)
@@ -373,21 +374,19 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 }
 
 func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
-	patch := map[string]interface{}{
+	p := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/publicKey/0/controller",
 		"value": "controller" + strconv.Itoa(int(operationNumber)),
 	}
 
-	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{patch})
+	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{p})
 	if err != nil {
 		panic(err)
 	}
 
-	jsonPatch := jsonpatch.Patch{}
-	err = json.Unmarshal(patchBytes, &jsonPatch)
-	if err != nil {
-		panic(err)
+	patchData := &model.PatchDataModel{
+		Patches: []patch.Patch{patch.NewJSONPatch(string(patchBytes))},
 	}
 
 	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+strconv.Itoa(int(operationNumber+1))))
@@ -399,7 +398,7 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 		ID:                           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:                 uniqueSuffix,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		Patch:                        jsonPatch,
+		PatchData:                    patchData,
 		Type:                         batch.OperationTypeUpdate,
 		TransactionNumber:            uint64(operationNumber),
 		UpdateRevealValue:            base64.URLEncoding.EncodeToString([]byte(updateReveal + strconv.Itoa(int(operationNumber)))),
@@ -445,7 +444,8 @@ func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Opera
 		UniqueSuffix:               uniqueSuffix,
 		Type:                       batch.OperationTypeRecover,
 		OperationBuffer:            operationBuffer,
-		Document:                   recoveredDoc,
+		PatchData:                  getRecoverPatchData(),
+		EncodedPatchData:           recoverRequest.PatchData,
 		RecoveryRevealValue:        base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
 		NextUpdateCommitmentHash:   base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
 		NextRecoveryCommitmentHash: base64.URLEncoding.EncodeToString(nextRecoveryCommitmentHash),
@@ -539,7 +539,8 @@ func getCreateOperation() *batch.Operation {
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		OperationBuffer:              operationBuffer,
-		Document:                     validDoc,
+		PatchData:                    getReplacePatchData(),
+		EncodedPatchData:             createRequest.PatchData,
 		TransactionNumber:            0,
 		NextUpdateCommitmentHash:     base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
 		NextRecoveryCommitmentHash:   base64.URLEncoding.EncodeToString(nextRecoveryCommitmentHash),
@@ -547,7 +548,7 @@ func getCreateOperation() *batch.Operation {
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchDataBytes, err := docutil.MarshalCanonical(getPatchData())
+	patchDataBytes, err := docutil.MarshalCanonical(getReplacePatchData())
 	if err != nil {
 		return nil, err
 	}
@@ -564,7 +565,7 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getPatchData() *model.PatchDataModel {
+func getReplacePatchData() *model.PatchDataModel {
 	return &model.PatchDataModel{
 		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
 		NextUpdateCommitmentHash: computeMultihash("updateReveal"),

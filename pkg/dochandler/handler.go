@@ -27,6 +27,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -101,7 +102,11 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
-		return r.getDoc(operation.ID, operation.Document, false)
+		doc, err := getInitialDocument(operation.PatchData.Patches)
+		if err != nil {
+			return nil, err
+		}
+		return r.getDoc(operation.ID, doc, false)
 	}
 
 	return nil, nil
@@ -168,8 +173,27 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
+	patchData, err := unmarshalPatchData(createReqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	initialDocument, err := getInitialDocument(patchData.Patches)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify that the document passes both Sidetree and document validation
+	if err = r.validator.IsValidOriginalDocument(initialDocument); err != nil {
+		return nil, err
+	}
+
+	return r.getDoc(id, initialDocument, false)
+}
+
+func unmarshalPatchData(req []byte) (*model.PatchDataModel, error) {
 	var createReq model.CreateRequest
-	err = json.Unmarshal(createReqBytes, &createReq)
+	err := json.Unmarshal(req, &createReq)
 	if err != nil {
 		return nil, err
 	}
@@ -184,14 +208,8 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 	if err != nil {
 		return nil, err
 	}
-	initialDocument := patchData.Patches[0].GetStringValue(patch.DocumentKey)
 
-	// Verify that the document passes both Sidetree and document validation
-	if err = r.validator.IsValidOriginalDocument([]byte(initialDocument)); err != nil {
-		return nil, err
-	}
-
-	return r.getDoc(id, initialDocument, false)
+	return &patchData, nil
 }
 
 // helper function to insert id into document and transform document as per document specification
@@ -220,8 +238,8 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 	})
 }
 
-func (r *DocumentHandler) getDoc(id, internal string, published bool) (document.Document, error) {
-	doc, err := document.FromBytes([]byte(internal))
+func (r *DocumentHandler) getDoc(id string, internal []byte, published bool) (document.Document, error) {
+	doc, err := document.FromBytes(internal)
 	if err != nil {
 		return nil, err
 	}
@@ -237,10 +255,19 @@ func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
-		return r.validator.IsValidOriginalDocument([]byte(operation.Document))
+		return r.validateInitialDocument(operation.PatchData.Patches)
 	}
 
 	return r.validator.IsValidPayload(operation.OperationBuffer)
+}
+
+func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
+	doc, err := getInitialDocument(patches)
+	if err != nil {
+		return err
+	}
+
+	return r.validator.IsValidOriginalDocument(doc)
 }
 
 // getUniquePortion fetches unique portion of ID which is string after namespace
@@ -275,4 +302,13 @@ func getParts(params string) (string, string, error) {
 
 	// return did and initial document value
 	return params[0:pos], params[adjustedPos:], nil
+}
+
+func getInitialDocument(patches []patch.Patch) ([]byte, error) {
+	doc, err := composer.ApplyPatches(nil, patches)
+	if err != nil {
+		return nil, err
+	}
+
+	return doc.Bytes()
 }
