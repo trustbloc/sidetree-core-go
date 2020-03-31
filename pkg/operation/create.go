@@ -14,7 +14,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -37,8 +36,6 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	document := patchData.Patches[0].GetStringValue(patch.DocumentKey)
-
 	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, code)
 	if err != nil {
 		return nil, err
@@ -50,7 +47,8 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeCreate,
 		UniqueSuffix:                 uniqueSuffix,
-		Document:                     document,
+		PatchData:                    patchData,
+		EncodedPatchData:             schema.PatchData,
 		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
 		NextRecoveryCommitmentHash:   suffixData.NextRecoveryCommitmentHash,
 		HashAlgorithmInMultiHashCode: code,

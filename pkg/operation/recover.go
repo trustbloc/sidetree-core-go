@@ -14,7 +14,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -37,15 +36,14 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	document := patchData.Patches[0].GetStringValue(patch.DocumentKey)
-
 	// TODO: Handle recovery key
 
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeRecover,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
-		Document:                     document,
+		PatchData:                    patchData,
+		EncodedPatchData:             schema.PatchData,
 		RecoveryRevealValue:          schema.RecoveryRevealValue,
 		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
 		NextRecoveryCommitmentHash:   signedData.NextRecoveryCommitmentHash,

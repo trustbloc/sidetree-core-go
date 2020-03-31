@@ -56,7 +56,22 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	require.NotNil(t, doc)
 }
 
-func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
+func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
+	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	require.NotNil(t, dochandler)
+
+	createOp := getCreateOperation()
+	createOp.PatchData = &model.PatchDataModel{
+		Patches: []patch.Patch{patch.NewReplacePatch("invalid")},
+	}
+
+	doc, err := dochandler.ProcessOperation(createOp)
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "invalid character")
+}
+
+func TestDocumentHandler_ProcessOperation_MazOperationSizeError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
@@ -156,7 +171,7 @@ func TestGetDocErrors(t *testing.T) {
 	const id = "doc:method:abc"
 
 	// scenario: illegal payload (invalid json)
-	doc, err := dochandler.getDoc(id, docutil.EncodeToString([]byte("[test : 123]")), false)
+	doc, err := dochandler.getDoc(id, []byte("[test : 123]"), false)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "invalid character")
@@ -243,6 +258,34 @@ func TestProcessOperation_Update(t *testing.T) {
 	require.Nil(t, doc)
 }
 
+func TestDocumentHandler_UnmarshalPatchData(t *testing.T) {
+	doc, err := unmarshalPatchData([]byte(""))
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "unexpected end of JSON input")
+
+	req, err := getCreateRequest()
+	require.NoError(t, err)
+
+	req.PatchData = "invalid"
+	reqBytes, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	doc, err = unmarshalPatchData(reqBytes)
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "illegal base64 data")
+
+	req.PatchData = docutil.EncodeToString([]byte("invalid"))
+	reqBytes, err = json.Marshal(req)
+	require.NoError(t, err)
+
+	doc, err = unmarshalPatchData(reqBytes)
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "invalid character")
+}
+
 // BatchContext implements batch writer context
 type BatchContext struct {
 	ProtocolClient   *mocks.MockProtocolClient
@@ -310,9 +353,21 @@ func getCreateOperation() *batchapi.Operation {
 		panic(err)
 	}
 
+	patchDataBytes, err := docutil.DecodeString(request.PatchData)
+	if err != nil {
+		panic(err)
+	}
+
+	patchData := &model.PatchDataModel{}
+	err = json.Unmarshal(patchDataBytes, patchData)
+	if err != nil {
+		panic(err)
+	}
+
 	return &batchapi.Operation{
 		OperationBuffer:              payload,
-		Document:                     validDoc,
+		PatchData:                    patchData,
+		EncodedPatchData:             request.PatchData,
 		Type:                         batchapi.OperationTypeCreate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
