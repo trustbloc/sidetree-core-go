@@ -15,8 +15,8 @@ type NoopOperationFilterProvider struct {
 }
 
 // Get returns a noop operation filter
-func (m *NoopOperationFilterProvider) Get(string) OperationFilter {
-	return &noopOperationFilter{}
+func (m *NoopOperationFilterProvider) Get(string) (OperationFilter, error) {
+	return &noopOperationFilter{}, nil
 }
 
 type noopOperationFilter struct {

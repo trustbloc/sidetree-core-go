@@ -21,7 +21,8 @@ func TestNoopOperationFilter_Filter(t *testing.T) {
 	const suffix = "1234"
 	const ns = "did:sidetree"
 
-	f := p.Get(ns)
+	f, err := p.Get(ns)
+	require.NoError(t, err)
 
 	ops := []*batch.Operation{
 		{
