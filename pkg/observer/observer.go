@@ -41,6 +41,11 @@ type OperationStore interface {
 	Put(ops []*batch.Operation) error
 }
 
+// OperationStoreProvider returns an operation store for the given namespace
+type OperationStoreProvider interface {
+	ForNamespace(namespace string) (OperationStore, error)
+}
+
 // OperationFilter filters out operations before they are persisted
 type OperationFilter interface {
 	Filter(uniqueSuffix string, ops []*batch.Operation) ([]*batch.Operation, error)
@@ -48,38 +53,71 @@ type OperationFilter interface {
 
 // OperationFilterProvider returns an operation filter for the given namespace
 type OperationFilterProvider interface {
-	Get(namespace string) OperationFilter
+	Get(namespace string) (OperationFilter, error)
 }
 
 // Providers contains all of the providers required by the TxnProcessor
 type Providers struct {
 	Ledger           Ledger
 	DCASClient       DCAS
-	OpStore          OperationStore
+	OpStoreProvider  OperationStoreProvider
 	OpFilterProvider OperationFilterProvider
 }
 
-// Start starts channel observer routines
-func Start(providers *Providers) {
-	sidetreeTxnChannel := providers.Ledger.RegisterForSidetreeTxn()
-	go func(txnsCh <-chan []SidetreeTxn) {
-		processor := NewTxnProcessor(providers)
-		for {
-			txns, ok := <-txnsCh
+// Observer receives transactions over a channel and processes them by storing them to an operation store
+type Observer struct {
+	*Providers
+
+	processor *TxnProcessor
+	stopCh    chan struct{}
+}
+
+// New returns a new observer
+func New(providers *Providers) *Observer {
+	return &Observer{
+		Providers: providers,
+		stopCh:    make(chan struct{}, 1),
+		processor: NewTxnProcessor(providers),
+	}
+}
+
+// Start starts observer routines
+func (o *Observer) Start() {
+	go o.listen(o.Ledger.RegisterForSidetreeTxn())
+}
+
+// Stop stops the observer
+func (o *Observer) Stop() {
+	o.stopCh <- struct{}{}
+}
+
+func (o *Observer) listen(txnsCh <-chan []SidetreeTxn) {
+	for {
+		select {
+		case <-o.stopCh:
+			logger.Infof("The observer has been stopped. Exiting.")
+			return
+
+		case txns, ok := <-txnsCh:
 			if !ok {
-				logger.Warnf("received close from registerForSidetreeTxn")
+				logger.Warnf("Notification channel was closed. Exiting.")
 				return
 			}
-			for _, txn := range txns {
-				err := processor.Process(txn)
-				if err != nil {
-					logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorAddress, err.Error())
-					continue
-				}
-				logger.Debugf("Successfully processed anchor[%s]", txn.AnchorAddress)
-			}
+
+			o.process(txns)
 		}
-	}(sidetreeTxnChannel)
+	}
+}
+
+func (o *Observer) process(txns []SidetreeTxn) {
+	for _, txn := range txns {
+		err := o.processor.Process(txn)
+		if err != nil {
+			logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorAddress, err.Error())
+			continue
+		}
+		logger.Debugf("Successfully processed anchor[%s]", txn.AnchorAddress)
+	}
 }
 
 // TxnProcessor processes Sidetree transactions by persisting them to an operation store
@@ -139,12 +177,22 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 	for suffix, mapping := range mapOperationsByUniqueSuffix(ops) {
 		logger.Debugf("Filtering operations for namespace [%s] and suffix [%s]", mapping.namespace, suffix)
 
-		validOps, err := p.OpFilterProvider.Get(mapping.namespace).Filter(suffix, mapping.operations)
+		opFilter, err := p.OpFilterProvider.Get(mapping.namespace)
+		if err != nil {
+			return errors.Wrapf(err, "error getting operation filter for namespace [%s]", mapping.namespace)
+		}
+
+		validOps, err := opFilter.Filter(suffix, mapping.operations)
 		if err != nil {
 			return errors.Wrap(err, "error filtering invalid operations")
 		}
 
-		err = p.OpStore.Put(validOps)
+		opStore, err := p.OpStoreProvider.ForNamespace(mapping.namespace)
+		if err != nil {
+			return errors.Wrapf(err, "error getting operation store for namespace [%s]", mapping.namespace)
+		}
+
+		err = opStore.Put(validOps)
 		if err != nil {
 			return errors.Wrapf(err, "failed to store operation from batch[%s]", batchFileAddress)
 		}
