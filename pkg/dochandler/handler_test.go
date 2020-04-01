@@ -60,9 +60,14 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
+	replacePatch, err := patch.NewReplacePatch("{}")
+	require.NoError(t, err)
+	replacePatch["document"] = "invalid"
+
 	createOp := getCreateOperation()
+
 	createOp.PatchData = &model.PatchDataModel{
-		Patches: []patch.Patch{patch.NewReplacePatch("invalid")},
+		Patches: []patch.Patch{replacePatch},
 	}
 
 	doc, err := dochandler.ProcessOperation(createOp)
@@ -384,7 +389,12 @@ const validDoc = `{
 }`
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchDataBytes, err := json.Marshal(getPatchData())
+	patchData, err := getPatchData()
+	if err != nil {
+		return nil, err
+	}
+
+	patchDataBytes, err := json.Marshal(patchData)
 	if err != nil {
 		return nil, err
 	}
@@ -401,11 +411,16 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getPatchData() *model.PatchDataModel {
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+func getPatchData() (*model.PatchDataModel, error) {
+	replacePatch, err := patch.NewReplacePatch(validDoc)
+	if err != nil {
+		return nil, err
 	}
+
+	return &model.PatchDataModel{
+		Patches:                  []patch.Patch{replacePatch},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+	}, nil
 }
 
 func getSuffixData() *model.SuffixDataModel {

@@ -52,7 +52,9 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Nil(t, op)
 	})
 	t.Run("validate patch data error", func(t *testing.T) {
-		patchData := getPatchData()
+		patchData, err := getPatchData()
+		require.NoError(t, err)
+
 		patchData.Patches = []patch.Patch{}
 		recoverRequest, err := getRecoverRequest(patchData, getSignedData())
 		require.NoError(t, err)
@@ -81,7 +83,11 @@ func TestParseRecoverOperation(t *testing.T) {
 	t.Run("validate signed data error", func(t *testing.T) {
 		signedData := getSignedData()
 		signedData.RecoveryKey.PublicKeyHex = ""
-		recoverRequest, err := getRecoverRequest(getPatchData(), signedData)
+
+		patchData, err := getPatchData()
+		require.NoError(t, err)
+
+		recoverRequest, err := getRecoverRequest(patchData, signedData)
 		require.NoError(t, err)
 
 		request, err := json.Marshal(recoverRequest)
@@ -142,7 +148,11 @@ func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.Signed
 }
 
 func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
-	return getRecoverRequest(getPatchData(), getSignedData())
+	patchData, err := getPatchData()
+	if err != nil {
+		return nil, err
+	}
+	return getRecoverRequest(patchData, getSignedData())
 }
 
 func getSignedData() *model.SignedDataModel {

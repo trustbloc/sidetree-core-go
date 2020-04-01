@@ -61,12 +61,16 @@ func TestResolveMockStoreError(t *testing.T) {
 func TestResolveError(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 
+	jsonPatch, err := patch.NewJSONPatch("[]")
+	require.NoError(t, err)
+	jsonPatch["patches"] = "invalid"
+
 	createOp := getCreateOperation()
 	createOp.PatchData = &model.PatchDataModel{
-		Patches: []patch.Patch{patch.NewJSONPatch("invalid")},
+		Patches: []patch.Patch{jsonPatch},
 	}
 
-	err := store.Put(createOp)
+	err = store.Put(createOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
@@ -385,8 +389,13 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 		panic(err)
 	}
 
+	jsonPatch, err := patch.NewJSONPatch(string(patchBytes))
+	if err != nil {
+		panic(err)
+	}
+
 	patchData := &model.PatchDataModel{
-		Patches: []patch.Patch{patch.NewJSONPatch(string(patchBytes))},
+		Patches: []patch.Patch{jsonPatch},
 	}
 
 	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+strconv.Itoa(int(operationNumber+1))))
@@ -440,11 +449,16 @@ func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Opera
 		panic(err)
 	}
 
+	patchData, err := getReplacePatchData(recoveredDoc)
+	if err != nil {
+		panic(err)
+	}
+
 	return &batch.Operation{
 		UniqueSuffix:               uniqueSuffix,
 		Type:                       batch.OperationTypeRecover,
 		OperationBuffer:            operationBuffer,
-		PatchData:                  getRecoverPatchData(),
+		PatchData:                  patchData,
 		EncodedPatchData:           recoverRequest.PatchData,
 		RecoveryRevealValue:        base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
 		NextUpdateCommitmentHash:   base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
@@ -477,7 +491,11 @@ func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.Signed
 }
 
 func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
-	return getRecoverRequest(getRecoverPatchData(), getRecoverSignedData())
+	patchData, err := getReplacePatchData(recoveredDoc)
+	if err != nil {
+		return nil, err
+	}
+	return getRecoverRequest(patchData, getRecoverSignedData())
 }
 
 func getRecoverSignedData() *model.SignedDataModel {
@@ -485,13 +503,6 @@ func getRecoverSignedData() *model.SignedDataModel {
 		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 		PatchDataHash:              computeMultihash("operation"),
-	}
-}
-
-func getRecoverPatchData() *model.PatchDataModel {
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{patch.NewReplacePatch(recoveredDoc)},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
 	}
 }
 
@@ -533,13 +544,18 @@ func getCreateOperation() *batch.Operation {
 		panic(err)
 	}
 
+	patchData, err := getReplacePatchData(validDoc)
+	if err != nil {
+		panic(err)
+	}
+
 	return &batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		ID:                           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		OperationBuffer:              operationBuffer,
-		PatchData:                    getReplacePatchData(),
+		PatchData:                    patchData,
 		EncodedPatchData:             createRequest.PatchData,
 		TransactionNumber:            0,
 		NextUpdateCommitmentHash:     base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
@@ -548,7 +564,12 @@ func getCreateOperation() *batch.Operation {
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchDataBytes, err := docutil.MarshalCanonical(getReplacePatchData())
+	patchData, err := getReplacePatchData(validDoc)
+	if err != nil {
+		return nil, err
+	}
+
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
@@ -565,11 +586,16 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getReplacePatchData() *model.PatchDataModel {
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+func getReplacePatchData(doc string) (*model.PatchDataModel, error) {
+	replace, err := patch.NewReplacePatch(doc)
+	if err != nil {
+		return nil, err
 	}
+
+	return &model.PatchDataModel{
+		Patches:                  []patch.Patch{replace},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+	}, nil
 }
 
 func getSuffixData() *model.SuffixDataModel {

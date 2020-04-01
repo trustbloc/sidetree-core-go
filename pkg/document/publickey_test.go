@@ -38,4 +38,6 @@ func TestPublicKey(t *testing.T) {
 	require.Equal(t, "Hex", pk.PublicKeyHex())
 	require.Equal(t, "Jwk", pk.PublicKeyJWK())
 	require.Equal(t, "otherValue", pk["other"])
+
+	require.NotEmpty(t, pk.JSONLdObject())
 }
