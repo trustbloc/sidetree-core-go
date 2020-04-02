@@ -168,6 +168,65 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		require.Equal(t, p.GetAction(), RemovePublicKeys)
 		require.Equal(t, p.GetStringValue(PublicKeys), ids)
 	})
+	t.Run("error - ids not string array", func(t *testing.T) {
+		const ids = `[0, 1]`
+		p, err := NewRemovePublicKeysPatch(ids)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "cannot unmarshal")
+	})
+}
+
+func TestAddServiceEndpointsPatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		patch, err := FromBytes([]byte(addServiceEndpoints))
+		require.NoError(t, err)
+		require.NotNil(t, patch)
+		require.Equal(t, patch.GetAction(), AddServiceEndpoints)
+	})
+	t.Run("missing service endpoints", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "add-service-endpoints"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "add-service-endpoints patch is missing serviceEndpoints")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		p, err := NewAddServiceEndpointsPatch(testAddServiceEndpoints)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+		require.Equal(t, p.GetAction(), AddServiceEndpoints)
+		require.Equal(t, p.GetStringValue(ServiceEndpointsKey), testAddServiceEndpoints)
+	})
+}
+
+func TestRemoveServiceEndpointsPatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		patch, err := FromBytes([]byte(removeServiceEndpoints))
+		require.NoError(t, err)
+		require.NotNil(t, patch)
+		require.Equal(t, patch.GetAction(), RemoveServiceEndpoints)
+	})
+	t.Run("missing public key ids", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "remove-service-endpoints"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "remove-service-endpoints patch is missing serviceEndpointIds")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		const ids = `["svc1", "svc2"]`
+		p, err := NewRemoveServiceEndpointsPatch(ids)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+		require.Equal(t, p.GetAction(), RemoveServiceEndpoints)
+		require.Equal(t, p.GetStringValue(ServiceEndpointIdsKey), ids)
+	})
+	t.Run("error - ids not string array", func(t *testing.T) {
+		const ids = `[0, 1]`
+		p, err := NewRemoveServiceEndpointsPatch(ids)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "cannot unmarshal")
+	})
 }
 
 func TestBytes(t *testing.T) {
@@ -271,6 +330,40 @@ const testAddPublicKeys = `[
 const removePublicKeysPatch = `{
   "action": "remove-public-keys",
   "publicKeys": ["key1", "key2"]
+}`
+
+const addServiceEndpoints = `{
+  "action": "add-service-endpoints",
+  "serviceEndpoints": [
+    {
+      "id": "sds1",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://hub.my-personal-server.com"
+    },
+    {
+      "id": "sds2",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://some-cloud.com/hub"
+    }
+  ]
+}`
+
+const testAddServiceEndpoints = `[
+    {
+      "id": "sds1",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://hub.my-personal-server.com"
+    },
+    {
+      "id": "sds2",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://some-cloud.com/hub"
+    }
+  ]`
+
+const removeServiceEndpoints = `{
+  "action": "remove-service-endpoints",
+  "serviceEndpointIds": ["sds1", "sds2"]
 }`
 
 const testDoc = `{

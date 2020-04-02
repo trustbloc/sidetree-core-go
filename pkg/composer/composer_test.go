@@ -160,14 +160,145 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
 
-		addPublicKeys, err := patch.NewRemovePublicKeysPatch(removeKeys)
+		removePublicKeys, err := patch.NewRemovePublicKeysPatch(removeKeys)
 		require.NoError(t, err)
-		addPublicKeys["publicKeys"] = invalid
+		removePublicKeys["publicKeys"] = invalid
 
-		doc, err = ApplyPatches(doc, []patch.Patch{addPublicKeys})
+		doc, err = ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "invalid character")
+	})
+	t.Run("success - add and remove same key; doc stays at two keys", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{addPublicKeys})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		removePublicKeys, err := patch.NewRemovePublicKeysPatch(`["key3"]`)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removePublicKeys})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(diddoc.PublicKeys()))
+	})
+}
+
+func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
+	t.Run("succes - add one service to existing two services", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{addServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 3, len(diddoc.Services()))
+	})
+	t.Run("add same service twice - no error; one service added", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{addServices, addServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 3, len(diddoc.Services()))
+	})
+	t.Run("invalid json", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
+		require.NoError(t, err)
+		addServices["serviceEndpoints"] = invalid
+
+		doc, err = ApplyPatches(doc, []patch.Patch{addServices})
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "invalid character")
+	})
+}
+
+func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
+	t.Run("success - remove existing service", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		removeServices, err := patch.NewRemoveServiceEndpointsPatch(`["svc1"]`)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removeServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 1, len(diddoc.Services()))
+	})
+
+	t.Run("success - remove existing and non-existing service", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		removeServices, err := patch.NewRemoveServiceEndpointsPatch(`["svc1", "svc3"]`)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removeServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 1, len(diddoc.Services()))
+	})
+	t.Run("invalid json", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		removeServices, err := patch.NewRemoveServiceEndpointsPatch(removeServices)
+		require.NoError(t, err)
+		removeServices["serviceEndpointIds"] = invalid
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removeServices})
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "invalid character")
+	})
+	t.Run("success - add and remove same service; doc stays at two services", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{addServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		removeServices, err := patch.NewRemoveServiceEndpointsPatch(`["svc3"]`)
+		require.NoError(t, err)
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removeServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(diddoc.Services()))
 	})
 }
 
@@ -209,11 +340,18 @@ const testDoc = `{
 		"type": "Secp256k1VerificationKey2018",
 		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
 	}],
-  	"service": [{
-    	"id":"#vcs",
-    	"type": "VerifiableCredentialService",
-    	"serviceEndpoint": "https://example.com/vc/"
-  }]
+  	"service": [
+    {
+      "id": "svc1",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://hub.my-personal-server.com"
+    },
+    {
+      "id": "svc2",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://some-cloud.com/hub"
+    }
+  ]
 }`
 
 const addKeys = `[{
@@ -224,3 +362,13 @@ const addKeys = `[{
 	}]`
 
 const removeKeys = `["key1", "key2"]`
+
+const addServices = `[
+    {
+      "id": "svc3",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://hub.my-personal-server.com"
+    }
+  ]`
+
+const removeServices = `["svc1", "svc2"]`

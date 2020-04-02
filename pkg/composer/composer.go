@@ -12,6 +12,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -19,6 +20,7 @@ import (
 
 const (
 	jsonldPublicKey = "publicKey"
+	jsonldService   = "service"
 )
 
 // ApplyPatches applies patches to the document
@@ -47,16 +49,23 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 		return applyAddPublicKeys(doc, p.GetStringValue(patch.PublicKeys))
 	case patch.RemovePublicKeys:
 		return applyRemovePublicKeys(doc, p.GetStringValue(patch.PublicKeys))
+	case patch.AddServiceEndpoints:
+		return applyAddServiceEndpoints(doc, p.GetStringValue(patch.ServiceEndpointsKey))
+	case patch.RemoveServiceEndpoints:
+		return applyRemoveServiceEndpoints(doc, p.GetStringValue(patch.ServiceEndpointIdsKey))
 	}
 
 	return nil, fmt.Errorf("action '%s' is not supported", action)
 }
 
 func applyRecover(newDoc string) (document.Document, error) {
+	log.Debugf("applying recover patch: %s", newDoc)
 	return document.FromBytes([]byte(newDoc))
 }
 
 func applyJSON(doc document.Document, patches string) (document.Document, error) {
+	log.Debugf("applying JSON patch: %s", patches)
+
 	jsonPatches, err := jsonpatch.DecodePatch([]byte(patches))
 	if err != nil {
 		return nil, err
@@ -77,6 +86,8 @@ func applyJSON(doc document.Document, patches string) (document.Document, error)
 
 // adds public keys to document
 func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Document, error) {
+	log.Debugf("applying add public keys patch: %s", publicKeys)
+
 	// create an empty did document with public keys
 	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{"%s":%s}`, jsonldPublicKey, publicKeys)))
 	if err != nil {
@@ -100,6 +111,8 @@ func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Docu
 
 // remove public keys from the document
 func applyRemovePublicKeys(doc document.Document, removeKeyIDs string) (document.Document, error) {
+	log.Debugf("applying remove public keys patch: %s", removeKeyIDs)
+
 	var keysToRemove []string
 	err := json.Unmarshal([]byte(removeKeyIDs), &keysToRemove)
 	if err != nil {
@@ -133,6 +146,73 @@ func mapToSlicePK(mapValues map[string]document.PublicKey) []interface{} {
 	var values []interface{}
 	for _, pk := range mapValues {
 		values = append(values, pk.JSONLdObject())
+	}
+
+	return values
+}
+
+// adds service endpoints to document
+func applyAddServiceEndpoints(doc document.Document, serviceEnpoints string) (document.Document, error) {
+	log.Debugf("applying add service endpoints patch: %s", serviceEnpoints)
+
+	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+
+	// create an empty did document with service endpoints
+	svcDocStr := fmt.Sprintf(`{"%s":%s}`, jsonldService, serviceEnpoints)
+
+	svcDoc, err := document.DidDocumentFromBytes([]byte(svcDocStr))
+	if err != nil {
+		return nil, errors.Errorf("services invalid: %s", err.Error())
+	}
+
+	newServices := sliceToMapServices(svcDoc.Services())
+
+	existingServices := diddoc.Services()
+	for _, existing := range existingServices {
+		newServices[existing.ID()] = existing
+	}
+
+	doc[jsonldService] = mapToSliceServices(newServices)
+
+	return doc, nil
+}
+
+func applyRemoveServiceEndpoints(doc document.Document, serviceIDs string) (document.Document, error) {
+	log.Debugf("applying remove service endpoints patch: %s", serviceIDs)
+
+	var servicesToRemove []string
+	err := json.Unmarshal([]byte(serviceIDs), &servicesToRemove)
+	if err != nil {
+		return nil, err
+	}
+
+	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	newServices := sliceToMapServices(diddoc.Services())
+
+	for _, svc := range servicesToRemove {
+		delete(newServices, svc)
+	}
+
+	doc[jsonldService] = mapToSliceServices(newServices)
+
+	return doc, nil
+}
+
+func sliceToMapServices(services []document.Service) map[string]document.Service {
+	// convert slice to map
+	values := make(map[string]document.Service)
+	for _, svc := range services {
+		values[svc.ID()] = svc
+	}
+
+	return values
+}
+
+func mapToSliceServices(mapValues map[string]document.Service) []interface{} {
+	// convert map to slice of values
+	var values []interface{}
+	for _, svc := range mapValues {
+		values = append(values, svc.JSONLdObject())
 	}
 
 	return values
