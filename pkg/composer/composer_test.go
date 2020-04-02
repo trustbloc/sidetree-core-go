@@ -97,6 +97,27 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		diddoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 3, len(diddoc.PublicKeys()))
 	})
+	t.Run("success - add existing public key to document; old one will be replaced", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addPublicKeys, err := patch.NewAddPublicKeysPatch(updateExistingKey)
+		require.NoError(t, err)
+
+		// existing public key will be replaced with new one that has type 'updatedKeyType'
+		doc, err = ApplyPatches(doc, []patch.Patch{addPublicKeys})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		keys := diddoc.PublicKeys()
+		require.Equal(t, 2, len(keys))
+		for _, key := range keys {
+			if key.ID() == "key2" {
+				require.Equal(t, key.Type(), "updatedKeyType")
+			}
+		}
+	})
 	t.Run("add same key twice - no error; one key added", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -193,7 +214,7 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 }
 
 func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
-	t.Run("succes - add one service to existing two services", func(t *testing.T) {
+	t.Run("success - add new service to existing two services", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
 
@@ -206,6 +227,27 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 
 		diddoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 3, len(diddoc.Services()))
+	})
+	t.Run("success - add existing service to document ", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		addServices, err := patch.NewAddServiceEndpointsPatch(updateExistingService)
+		require.NoError(t, err)
+
+		// existing service will be replaced with new one that has type 'updatedService'
+		doc, err = ApplyPatches(doc, []patch.Patch{addServices})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		diddoc := document.DidDocumentFromJSONLDObject(doc)
+		services := diddoc.Services()
+		require.Equal(t, 2, len(services))
+		for _, svc := range services {
+			if svc.ID() == "svc2" {
+				require.Equal(t, svc.Type(), "updatedServiceType")
+			}
+		}
 	})
 	t.Run("add same service twice - no error; one service added", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
@@ -361,12 +403,27 @@ const addKeys = `[{
 		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
 	}]`
 
+const updateExistingKey = `[{
+		"id": "key2",
+		"usage": ["ops"],
+		"type": "updatedKeyType",
+		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
+	}]`
+
 const removeKeys = `["key1", "key2"]`
 
 const addServices = `[
     {
       "id": "svc3",
       "type": "SecureDataStore",
+      "serviceEndpoint": "http://hub.my-personal-server.com"
+    }
+  ]`
+
+const updateExistingService = `[
+    {
+      "id": "svc2",
+      "type": "updatedServiceType",
       "serviceEndpoint": "http://hub.my-personal-server.com"
     }
   ]`

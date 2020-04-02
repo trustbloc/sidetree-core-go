@@ -100,8 +100,11 @@ func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Docu
 
 	existingPublicKeys := diddoc.PublicKeys()
 	for _, existing := range existingPublicKeys {
-		// if key already exists just replace it with old one
-		newPublicKeys[existing.ID()] = existing
+		// NOTE: If a key ID already exists, we will just replace the existing key
+		// so new public keys will retain new version
+		if _, ok := newPublicKeys[existing.ID()]; !ok {
+			newPublicKeys[existing.ID()] = existing
+		}
 	}
 
 	doc[jsonldPublicKey] = mapToSlicePK(newPublicKeys)
@@ -169,7 +172,11 @@ func applyAddServiceEndpoints(doc document.Document, serviceEnpoints string) (do
 
 	existingServices := diddoc.Services()
 	for _, existing := range existingServices {
-		newServices[existing.ID()] = existing
+		// NOTE: If a service ID already exists, we will just replace the existing service
+		// so new service endpoints will retain new version
+		if _, ok := newServices[existing.ID()]; !ok {
+			newServices[existing.ID()] = existing
+		}
 	}
 
 	doc[jsonldService] = mapToSliceServices(newServices)
