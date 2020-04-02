@@ -15,16 +15,21 @@ func NewService(m map[string]interface{}) Service {
 }
 
 // ID is service ID
-func (s *Service) ID() interface{} {
-	return (*s)[jsonldID]
+func (s Service) ID() string {
+	return stringEntry(s[jsonldID])
 }
 
 // Type is service type
-func (s *Service) Type() interface{} {
-	return (*s)[jsonldType]
+func (s Service) Type() interface{} {
+	return s[jsonldType]
 }
 
 // Endpoint is service endpoint
-func (s *Service) Endpoint() interface{} {
-	return (*s)[jsonldServicePoint]
+func (s Service) Endpoint() interface{} {
+	return s[jsonldServicePoint]
+}
+
+// JSONLdObject returns map that represents JSON LD Object
+func (s Service) JSONLdObject() map[string]interface{} {
+	return s
 }

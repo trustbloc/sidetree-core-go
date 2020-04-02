@@ -30,6 +30,12 @@ const (
 	// RemovePublicKeys captures enum value "remove-public-keys"
 	RemovePublicKeys Action = "remove-public-keys"
 
+	//AddServiceEndpoints captures "add-service-endpoints"
+	AddServiceEndpoints Action = "add-service-endpoints"
+
+	//RemoveServiceEndpoints captures "remove-service-endpoints"
+	RemoveServiceEndpoints Action = "remove-service-endpoints"
+
 	// JSONPatch captures enum value "json-patch"
 	JSONPatch Action = "ietf-json-patch"
 )
@@ -47,6 +53,12 @@ const (
 
 	// PublicKeys captures "publicKeys" key
 	PublicKeys Key = "publicKeys"
+
+	//ServiceEndpointsKey captures "serviceEndpoints" key
+	ServiceEndpointsKey Key = "serviceEndpoints"
+
+	//ServiceEndpointIdsKey captures "serviceEndpointIds" key
+	ServiceEndpointIdsKey Key = "serviceEndpointIds"
 
 	// ActionKey captures "action" key
 	ActionKey Key = "action"
@@ -97,9 +109,35 @@ func NewAddPublicKeysPatch(publicKeys string) (Patch, error) {
 
 // NewRemovePublicKeysPatch creates new patch for removing public keys
 func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
+	if err := checkStringArray(publicKeyIds); err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = RemovePublicKeys
 	patch[PublicKeys] = publicKeyIds
+
+	return patch, nil
+}
+
+// NewAddServiceEndpointsPatch creates new patch for adding service endpoints
+func NewAddServiceEndpointsPatch(serviceEndpoints string) (Patch, error) {
+	patch := make(Patch)
+	patch[ActionKey] = AddServiceEndpoints
+	patch[ServiceEndpointsKey] = serviceEndpoints
+
+	return patch, nil
+}
+
+// NewRemoveServiceEndpointsPatch creates new patch for removing service endpoints
+func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
+	if err := checkStringArray(serviceEndpointIds); err != nil {
+		return nil, err
+	}
+
+	patch := make(Patch)
+	patch[ActionKey] = RemoveServiceEndpoints
+	patch[ServiceEndpointIdsKey] = serviceEndpointIds
 
 	return patch, nil
 }
@@ -146,24 +184,17 @@ func (p Patch) Validate() error {
 	action := Action(actionStr)
 	switch action {
 	case Replace:
-		doc, err := p.getRequiredMap(DocumentKey)
-		if err != nil {
-			return err
-		}
-		return validateDocument(document.FromJSONLDObject(doc))
+		return p.validateReplace()
 	case JSONPatch:
-		patches, err := p.getRequiredArray(PatchesKey)
-		if err != nil {
-			return err
-		}
-		patchesBytes, err := json.Marshal(patches)
-		if err != nil {
-			return err
-		}
-		return validatePatches(patchesBytes)
-	case AddPublicKeys, RemovePublicKeys:
-		_, err := p.getRequiredArray(PublicKeys)
-		return err
+		return p.validateJSON()
+	case AddPublicKeys:
+		return p.validateAddPublicKeys()
+	case RemovePublicKeys:
+		return p.validateRemovePublicKeys()
+	case AddServiceEndpoints:
+		return p.validateAddServiceEndpoints()
+	case RemoveServiceEndpoints:
+		return p.validateRemoveServiceEndpoints()
 	}
 
 	return fmt.Errorf("action '%s' is not supported", action)
@@ -235,4 +266,52 @@ func (p Patch) getRequiredArray(key Key) ([]interface{}, error) {
 	}
 
 	return entry.([]interface{}), nil
+}
+
+func (p Patch) validateReplace() error {
+	doc, err := p.getRequiredMap(DocumentKey)
+	if err != nil {
+		return err
+	}
+
+	return validateDocument(document.FromJSONLDObject(doc))
+}
+
+func (p Patch) validateJSON() error {
+	patches, err := p.getRequiredArray(PatchesKey)
+	if err != nil {
+		return err
+	}
+
+	patchesBytes, err := json.Marshal(patches)
+	if err != nil {
+		return err
+	}
+
+	return validatePatches(patchesBytes)
+}
+
+func (p Patch) validateAddPublicKeys() error {
+	_, err := p.getRequiredArray(PublicKeys)
+	return err
+}
+
+func (p Patch) validateRemovePublicKeys() error {
+	_, err := p.getRequiredArray(PublicKeys)
+	return err
+}
+
+func (p Patch) validateAddServiceEndpoints() error {
+	_, err := p.getRequiredArray(ServiceEndpointsKey)
+	return err
+}
+
+func (p Patch) validateRemoveServiceEndpoints() error {
+	_, err := p.getRequiredArray(ServiceEndpointIdsKey)
+	return err
+}
+
+func checkStringArray(arr string) error {
+	var ids []string
+	return json.Unmarshal([]byte(arr), &ids)
 }
