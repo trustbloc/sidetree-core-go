@@ -33,10 +33,13 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
+		patchData, err := getPatchData()
+		require.NoError(t, err)
+
 		doc, err := docHandler.ProcessOperation(&batch.Operation{
 			Type:             batch.OperationTypeCreate,
 			ID:               id,
-			PatchData:        getPatchData(),
+			PatchData:        patchData,
 			EncodedPatchData: create.PatchData,
 		})
 		require.NoError(t, err)
@@ -91,10 +94,13 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
+		patchData, err := getPatchData()
+		require.NoError(t, err)
+
 		doc, err := docHandler.ProcessOperation(&batch.Operation{
 			Type:             batch.OperationTypeCreate,
 			ID:               id,
-			PatchData:        getPatchData(),
+			PatchData:        patchData,
 			EncodedPatchData: create.PatchData,
 		})
 		require.NoError(t, err)
@@ -116,7 +122,12 @@ func TestResolveHandler_Resolve(t *testing.T) {
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchDataBytes, err := docutil.MarshalCanonical(getPatchData())
+	patchData, err := getPatchData()
+	if err != nil {
+		return nil, err
+	}
+
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
 	}
@@ -133,11 +144,16 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getPatchData() *model.PatchDataModel {
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{patch.NewReplacePatch(validDoc)},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+func getPatchData() (*model.PatchDataModel, error) {
+	replace, err := patch.NewReplacePatch(validDoc)
+	if err != nil {
+		return nil, err
 	}
+
+	return &model.PatchDataModel{
+		Patches:                  []patch.Patch{replace},
+		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+	}, nil
 }
 
 func getSuffixData() *model.SuffixDataModel {

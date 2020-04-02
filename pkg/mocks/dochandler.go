@@ -71,11 +71,8 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 		return nil, nil
 	}
 
-	if operation.Type == batch.OperationTypeUpdate {
-		return nil, nil
-	}
-
-	doc, err := composer.ApplyPatches(nil, operation.PatchData.Patches)
+	doc := m.store[operation.ID]
+	doc, err := composer.ApplyPatches(doc, operation.PatchData.Patches)
 	if err != nil {
 		return nil, err
 	}

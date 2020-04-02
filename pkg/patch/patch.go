@@ -11,6 +11,9 @@ import (
 	"errors"
 	"fmt"
 
+	jsonpatch "github.com/evanphx/json-patch"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
@@ -20,6 +23,12 @@ type Action string
 const (
 	// Replace captures enum value "replace"
 	Replace Action = "replace"
+
+	// AddPublicKeys captures enum value "add-public-keys"
+	AddPublicKeys Action = "add-public-keys"
+
+	// RemovePublicKeys captures enum value "remove-public-keys"
+	RemovePublicKeys Action = "remove-public-keys"
 
 	// JSONPatch captures enum value "json-patch"
 	JSONPatch Action = "ietf-json-patch"
@@ -36,6 +45,9 @@ const (
 	// PatchesKey captures "patches" key
 	PatchesKey Key = "patches"
 
+	// PublicKeys captures "publicKeys" key
+	PublicKeys Key = "publicKeys"
+
 	// ActionKey captures "action" key
 	ActionKey Key = "action"
 )
@@ -44,21 +56,52 @@ const (
 type Patch map[Key]interface{}
 
 // NewReplacePatch creates new replace patch
-func NewReplacePatch(document string) Patch {
+func NewReplacePatch(doc string) (Patch, error) {
+	parsed, err := document.FromBytes([]byte(doc))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateDocument(parsed); err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = Replace
-	patch[DocumentKey] = document
+	patch[DocumentKey] = doc
 
-	return patch
+	return patch, nil
 }
 
 // NewJSONPatch creates new generic update patch (will be used for generic updates)
-func NewJSONPatch(patches string) Patch {
+func NewJSONPatch(patches string) (Patch, error) {
+	if err := validatePatches([]byte(patches)); err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = JSONPatch
 	patch[PatchesKey] = patches
 
-	return patch
+	return patch, nil
+}
+
+// NewAddPublicKeysPatch creates new patch for adding public keys
+func NewAddPublicKeysPatch(publicKeys string) (Patch, error) {
+	patch := make(Patch)
+	patch[ActionKey] = AddPublicKeys
+	patch[PublicKeys] = publicKeys
+
+	return patch, nil
+}
+
+// NewRemovePublicKeysPatch creates new patch for removing public keys
+func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
+	patch := make(Patch)
+	patch[ActionKey] = RemovePublicKeys
+	patch[PublicKeys] = publicKeyIds
+
+	return patch, nil
 }
 
 // GetStringValue returns string value for specified key or "" if not found or wrong type
@@ -103,18 +146,27 @@ func (p Patch) Validate() error {
 	action := Action(actionStr)
 	switch action {
 	case Replace:
-		if p.GetValue(DocumentKey) == nil {
-			return fmt.Errorf("%s patch is missing %s", action, DocumentKey)
+		doc, err := p.getRequiredMap(DocumentKey)
+		if err != nil {
+			return err
 		}
+		return validateDocument(document.FromJSONLDObject(doc))
 	case JSONPatch:
-		if p.GetValue(PatchesKey) == nil {
-			return fmt.Errorf("%s patch is missing %s", action, PatchesKey)
+		patches, err := p.getRequiredArray(PatchesKey)
+		if err != nil {
+			return err
 		}
-	default:
-		return fmt.Errorf("action '%s' is not supported", action)
+		patchesBytes, err := json.Marshal(patches)
+		if err != nil {
+			return err
+		}
+		return validatePatches(patchesBytes)
+	case AddPublicKeys, RemovePublicKeys:
+		_, err := p.getRequiredArray(PublicKeys)
+		return err
 	}
 
-	return nil
+	return fmt.Errorf("action '%s' is not supported", action)
 }
 
 // JSONLdObject returns map that represents JSON LD Object
@@ -146,4 +198,41 @@ func stringEntry(entry interface{}) string {
 		return ""
 	}
 	return id
+}
+
+func validateDocument(doc document.Document) error {
+	if doc.ID() != "" {
+		return errors.New("document must NOT have the id property")
+	}
+
+	return nil
+}
+
+func validatePatches(patches []byte) error {
+	_, err := jsonpatch.DecodePatch(patches)
+	if err != nil {
+		return err
+	}
+
+	// TODO: We should probably not allow updating keys and services using this patch #175
+
+	return nil
+}
+
+func (p Patch) getRequiredMap(key Key) (map[string]interface{}, error) {
+	entry := p.GetValue(key)
+	if entry == nil {
+		return nil, fmt.Errorf("%s patch is missing %s", p.GetAction(), key)
+	}
+
+	return entry.(map[string]interface{}), nil
+}
+
+func (p Patch) getRequiredArray(key Key) ([]interface{}, error) {
+	entry := p.GetValue(key)
+	if entry == nil {
+		return nil, fmt.Errorf("%s patch is missing %s", p.GetAction(), key)
+	}
+
+	return entry.([]interface{}), nil
 }

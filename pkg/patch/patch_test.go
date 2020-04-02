@@ -29,7 +29,7 @@ func TestFromBytes(t *testing.T) {
 		require.NotNil(t, jsonld)
 	})
 	t.Run("invalid replace patch", func(t *testing.T) {
-		patch, err := FromBytes([]byte(invalidReplacePatch))
+		patch, err := FromBytes([]byte(`{"action": "replace"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
 		require.Contains(t, err.Error(), "replace patch is missing document")
@@ -71,15 +71,29 @@ func TestReplacePatch(t *testing.T) {
 		require.Equal(t, patch.GetAction(), Replace)
 	})
 	t.Run("missing document", func(t *testing.T) {
-		patch, err := FromBytes([]byte(invalidReplacePatch))
+		patch, err := FromBytes([]byte(`{"action": "replace"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
 		require.Contains(t, err.Error(), "replace patch is missing document")
 	})
 	t.Run("success from new", func(t *testing.T) {
-		p := NewReplacePatch(testDoc)
+		p, err := NewReplacePatch(testDoc)
+		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), Replace)
+		require.Equal(t, p.GetStringValue(DocumentKey), testDoc)
+	})
+	t.Run("error - invalid json", func(t *testing.T) {
+		p, err := NewReplacePatch(`invalid`)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "invalid character")
+	})
+	t.Run("error - document has id", func(t *testing.T) {
+		p, err := NewReplacePatch(`{"id": "abc"}`)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "document must NOT have the id property")
 	})
 }
 
@@ -90,16 +104,69 @@ func TestIETFPatch(t *testing.T) {
 		require.NotNil(t, patch)
 		require.Equal(t, patch.GetAction(), JSONPatch)
 	})
-	t.Run("invalid replace patch", func(t *testing.T) {
-		patch, err := FromBytes([]byte(invalidIETFPatch))
+	t.Run("missing patches", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "ietf-json-patch"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
 		require.Contains(t, err.Error(), "ietf-json-patch patch is missing patches")
 	})
 	t.Run("success from new", func(t *testing.T) {
-		p := NewJSONPatch(patches)
+		p, err := NewJSONPatch(patches)
+		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), JSONPatch)
+		require.Equal(t, p.GetStringValue(PatchesKey), patches)
+	})
+	t.Run("invalid JSON patch provided", func(t *testing.T) {
+		p, err := NewJSONPatch("{}")
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "cannot unmarshal object into Go value of type jsonpatch.Patch")
+	})
+}
+
+func TestAddPublicKeysPatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		patch, err := FromBytes([]byte(addPublicKeysPatch))
+		require.NoError(t, err)
+		require.NotNil(t, patch)
+		require.Equal(t, patch.GetAction(), AddPublicKeys)
+	})
+	t.Run("missing public keys", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "add-public-keys"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "add-public-keys patch is missing publicKeys")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		p, err := NewAddPublicKeysPatch(testAddPublicKeys)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+		require.Equal(t, p.GetAction(), AddPublicKeys)
+		require.Equal(t, p.GetStringValue(PublicKeys), testAddPublicKeys)
+	})
+}
+
+func TestRemovePublicKeysPatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		patch, err := FromBytes([]byte(removePublicKeysPatch))
+		require.NoError(t, err)
+		require.NotNil(t, patch)
+		require.Equal(t, patch.GetAction(), RemovePublicKeys)
+	})
+	t.Run("missing public key ids", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "remove-public-keys"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "remove-public-keys patch is missing publicKeys")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		const ids = `["key1", "key2"]`
+		p, err := NewRemovePublicKeysPatch(ids)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+		require.Equal(t, p.GetAction(), RemovePublicKeys)
+		require.Equal(t, p.GetStringValue(PublicKeys), ids)
 	})
 }
 
@@ -165,10 +232,6 @@ const replacePatch = `{
 	}
 }`
 
-const invalidReplacePatch = `{
-	"action": "replace"
-}`
-
 const ietfPatch = `{
   "action": "ietf-json-patch",
   "patches": [{
@@ -186,8 +249,28 @@ const patches = `[
 	}
 ]`
 
-const invalidIETFPatch = `{
-	"action": "ietf-json-patch"
+const addPublicKeysPatch = `{
+	"action": "add-public-keys",
+	"publicKeys": [{
+		"id": "key1",
+		"usage": ["ops"],
+		"type": "Secp256k1VerificationKey2018",
+		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
+	}]
+}`
+
+const testAddPublicKeys = `[
+	{
+      "id": "key1",
+      "usage": ["ops"],
+      "type": "Secp256k1VerificationKey2018",
+      "publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
+    }
+  ]`
+
+const removePublicKeysPatch = `{
+  "action": "remove-public-keys",
+  "publicKeys": ["key1", "key2"]
 }`
 
 const testDoc = `{

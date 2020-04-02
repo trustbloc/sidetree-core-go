@@ -76,8 +76,8 @@ type UpdateRequestInfo struct {
 	// Unique Suffix
 	DidUniqueSuffix string
 
-	//An RFC 6902 JSON patch to the current DID Document
-	Patch string
+	// Patch is one of standard patch actions
+	Patch patch.Patch
 
 	// reveal value for this update operation
 	UpdateRevealValue []byte
@@ -100,7 +100,12 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing recovery key")
 	}
 
-	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
+	replace, err := patch.NewReplacePatch(info.OpaqueDocument)
+	if err != nil {
+		return nil, err
+	}
+
+	patches := []patch.Patch{replace}
 	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
@@ -168,11 +173,11 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing did unique suffix")
 	}
 
-	if info.Patch == "" {
+	if info.Patch == nil {
 		return nil, errors.New("missing update information")
 	}
 
-	patches := []patch.Patch{patch.NewJSONPatch(info.Patch)}
+	patches := []patch.Patch{info.Patch}
 	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
@@ -197,7 +202,12 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	patches := []patch.Patch{patch.NewReplacePatch(info.OpaqueDocument)}
+	replacePatch, err := patch.NewReplacePatch(info.OpaqueDocument)
+	if err != nil {
+		return nil, err
+	}
+
+	patches := []patch.Patch{replacePatch}
 	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err

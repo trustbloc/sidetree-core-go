@@ -32,6 +32,9 @@ func TestFromBytes(t *testing.T) {
 
 	jsonld := doc.JSONLdObject()
 	require.NotNil(t, jsonld)
+
+	new := FromJSONLDObject(jsonld)
+	require.Equal(t, doc.ID(), new.ID())
 }
 
 func TestFromBytesError(t *testing.T) {

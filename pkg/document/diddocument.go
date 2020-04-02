@@ -37,18 +37,18 @@ const (
 type DIDDocument map[string]interface{}
 
 // ID is identifier for DID subject (what DID Document is about)
-func (doc *DIDDocument) ID() string {
-	return stringEntry((*doc)[jsonldID])
+func (doc DIDDocument) ID() string {
+	return stringEntry(doc[jsonldID])
 }
 
 // Context is the context of did document
-func (doc *DIDDocument) Context() []string {
-	return arrayStringEntry((*doc)[jsonldContext])
+func (doc DIDDocument) Context() []string {
+	return arrayStringEntry(doc[jsonldContext])
 }
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations
-func (doc *DIDDocument) PublicKeys() []PublicKey {
-	entry, ok := (*doc)[jsonldPublicKey]
+func (doc DIDDocument) PublicKeys() []PublicKey {
+	entry, ok := doc[jsonldPublicKey]
 	if !ok {
 		return nil
 	}
@@ -77,8 +77,8 @@ func isValidPublicKey(pubKey map[string]interface{}) bool {
 }
 
 // Services is an array of service endpoints
-func (doc *DIDDocument) Services() []Service {
-	entry, ok := (*doc)[jsonldService]
+func (doc DIDDocument) Services() []Service {
+	entry, ok := doc[jsonldService]
 	if !ok {
 		return nil
 	}
@@ -137,7 +137,7 @@ func DidDocumentFromJSONLDObject(jsonldObject map[string]interface{}) DIDDocumen
 }
 
 // String returns string representation of did document
-func (doc *DIDDocument) String() string {
+func (doc DIDDocument) String() string {
 	s, err := docutil.MarshalIndentCanonical(doc, "", "  ")
 	if err != nil {
 		return "<ERROR marshalling DIDDocument>"
@@ -146,7 +146,7 @@ func (doc *DIDDocument) String() string {
 }
 
 // Bytes returns byte representation of did document
-func (doc *DIDDocument) Bytes() []byte {
+func (doc DIDDocument) Bytes() []byte {
 	s, err := docutil.MarshalCanonical(doc)
 	if err != nil {
 		return []byte("<ERROR marshalling DIDDocument>")

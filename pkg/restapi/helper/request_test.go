@@ -12,11 +12,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 
 const (
 	didUniqueSuffix = "whatever"
-	opaqueDoc       = "doc"
+	opaqueDoc       = "{}"
 	recoveryKey     = "recoveryKey"
 
 	sha2_256 = 18
@@ -74,7 +76,9 @@ func TestNewRevokeRequest(t *testing.T) {
 
 func TestNewUpdateRequest(t *testing.T) {
 	const didUniqueSuffix = "whatever"
-	patch := getTestPatch()
+
+	patch, err := getTestPatch()
+	require.NoError(t, err)
 
 	t.Run("missing unique suffix", func(t *testing.T) {
 		info := &UpdateRequestInfo{}
@@ -111,8 +115,8 @@ func TestNewUpdateRequest(t *testing.T) {
 	})
 }
 
-func getTestPatch() string {
-	return `[{"op": "replace", "path": "/name", "value": "Jane"}]`
+func getTestPatch() (patch.Patch, error) {
+	return patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "Jane"}]`)
 }
 
 func TestNewRecoverRequest(t *testing.T) {

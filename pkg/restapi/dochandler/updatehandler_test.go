@@ -21,6 +21,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -46,6 +47,9 @@ func TestUpdateHandler_Update(t *testing.T) {
 	err = json.Unmarshal(create, &createReq)
 	require.NoError(t, err)
 
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(createReq.SuffixData, sha2_256)
+	require.NoError(t, err)
+
 	id, err := docutil.CalculateID(namespace, createReq.SuffixData, sha2_256)
 	require.NoError(t, err)
 
@@ -64,7 +68,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, len(doc.PublicKeys()), 1)
 	})
 	t.Run("Update", func(t *testing.T) {
-		update, err := helper.NewUpdateRequest(getUpdateRequestInfo(id))
+		update, err := helper.NewUpdateRequest(getUpdateRequestInfo(uniqueSuffix))
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
@@ -84,7 +88,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Recover", func(t *testing.T) {
-		recover, err := helper.NewRecoverRequest(getRecoverRequestInfo(id))
+		recover, err := helper.NewRecoverRequest(getRecoverRequestInfo(uniqueSuffix))
 		require.NoError(t, err)
 
 		fmt.Println(string(recover))
@@ -199,7 +203,10 @@ func getCreateRequestInfo() *helper.CreateRequestInfo {
 }
 
 func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
-	patchJSON := `[{"op": "replace", "path": "/name", "value": "value"}]`
+	patchJSON, err := patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "value"}]`)
+	if err != nil {
+		panic(err)
+	}
 
 	return &helper.UpdateRequestInfo{
 		DidUniqueSuffix:       uniqueSuffix,

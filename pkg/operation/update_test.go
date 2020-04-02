@@ -38,7 +38,8 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
-		patchData := getUpdatePatchData()
+		patchData, err := getUpdatePatchData()
+		require.NoError(t, err)
 		patchData.NextUpdateCommitmentHash = ""
 
 		req, err := getUpdateRequest(patchData)
@@ -56,10 +57,11 @@ func TestParseUpdateOperation(t *testing.T) {
 
 func TestValidateUpdatePatchData(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
-		patchData := getUpdatePatchData()
+		patchData, err := getUpdatePatchData()
+		require.NoError(t, err)
 
 		patchData.NextUpdateCommitmentHash = ""
-		err := validatePatchData(patchData, sha2_256)
+		err = validatePatchData(patchData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the latest supported hash algorithm")
@@ -68,7 +70,8 @@ func TestValidateUpdatePatchData(t *testing.T) {
 
 func TestParseUpdatePatchData(t *testing.T) {
 	t.Run("invalid next update commitment", func(t *testing.T) {
-		patchData := getUpdatePatchData()
+		patchData, err := getUpdatePatchData()
+		require.NoError(t, err)
 
 		patchData.NextUpdateCommitmentHash = ""
 		patchDataBytes, err := json.Marshal(patchData)
@@ -101,7 +104,11 @@ func getUpdateRequest(patchData *model.PatchDataModel) (*model.UpdateRequest, er
 }
 
 func getDefaultUpdateRequest() (*model.UpdateRequest, error) {
-	return getUpdateRequest(getUpdatePatchData())
+	patchData, err := getUpdatePatchData()
+	if err != nil {
+		return nil, err
+	}
+	return getUpdateRequest(patchData)
 }
 
 func getUpdateRequestBytes() ([]byte, error) {
@@ -113,13 +120,16 @@ func getUpdateRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-func getUpdatePatchData() *model.PatchDataModel {
-	jsonPatch := patch.NewJSONPatch(getTestPatch())
+func getUpdatePatchData() (*model.PatchDataModel, error) {
+	jsonPatch, err := patch.NewJSONPatch(getTestPatch())
+	if err != nil {
+		return nil, err
+	}
 
 	return &model.PatchDataModel{
 		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
 		Patches:                  []patch.Patch{jsonPatch},
-	}
+	}, nil
 }
 
 func getTestPatch() string {

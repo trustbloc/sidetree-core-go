@@ -15,41 +15,46 @@ func NewPublicKey(pk map[string]interface{}) PublicKey {
 }
 
 // ID is public key ID
-func (pk *PublicKey) ID() string {
-	return stringEntry((*pk)[jsonldID])
+func (pk PublicKey) ID() string {
+	return stringEntry(pk[jsonldID])
 }
 
 // Type is public key type
-func (pk *PublicKey) Type() string {
-	return stringEntry((*pk)[jsonldType])
+func (pk PublicKey) Type() string {
+	return stringEntry(pk[jsonldType])
 }
 
 // Controller identifies the entity that controls the corresponding private key.
-func (pk *PublicKey) Controller() string {
-	return stringEntry((*pk)[jsonldController])
+func (pk PublicKey) Controller() string {
+	return stringEntry(pk[jsonldController])
 }
 
 //PublicKeyBase64 is value property
-func (pk *PublicKey) PublicKeyBase64() string {
-	return stringEntry((*pk)[jsonldPublicKeyBase64])
+func (pk PublicKey) PublicKeyBase64() string {
+	return stringEntry(pk[jsonldPublicKeyBase64])
 }
 
 // PublicKeyBase58 is value property
-func (pk *PublicKey) PublicKeyBase58() string {
-	return stringEntry((*pk)[jsonldPublicKeyBase58])
+func (pk PublicKey) PublicKeyBase58() string {
+	return stringEntry(pk[jsonldPublicKeyBase58])
 }
 
 // PublicKeyHex is value property
-func (pk *PublicKey) PublicKeyHex() string {
-	return stringEntry((*pk)[jsonldPublicKeyHex])
+func (pk PublicKey) PublicKeyHex() string {
+	return stringEntry(pk[jsonldPublicKeyHex])
 }
 
 // PublicKeyPEM is value property
-func (pk *PublicKey) PublicKeyPEM() string {
-	return stringEntry((*pk)[jsonldPublicKeyPem])
+func (pk PublicKey) PublicKeyPEM() string {
+	return stringEntry(pk[jsonldPublicKeyPem])
 }
 
 // PublicKeyJWK is value property
-func (pk *PublicKey) PublicKeyJWK() string {
-	return stringEntry((*pk)[jsonldPublicKeyJwk])
+func (pk PublicKey) PublicKeyJWK() string {
+	return stringEntry(pk[jsonldPublicKeyJwk])
+}
+
+// JSONLdObject returns map that represents JSON LD Object
+func (pk PublicKey) JSONLdObject() map[string]interface{} {
+	return pk
 }
