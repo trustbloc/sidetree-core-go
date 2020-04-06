@@ -172,6 +172,16 @@ func TestNewRecoverRequest(t *testing.T) {
 	})
 }
 
+func TestSignModel(t *testing.T) {
+	t.Run("marshal error", func(t *testing.T) {
+		ch := make(chan int)
+		request, err := signModel(ch)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "unsupported type: chan int")
+	})
+}
+
 func getRecoverRequestInfo() *RecoverRequestInfo {
 	return &RecoverRequestInfo{
 		DidUniqueSuffix: didUniqueSuffix,
