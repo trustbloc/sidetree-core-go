@@ -31,7 +31,7 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	signedData, err := parseSignedData(schema.SignedData.Payload, code)
+	signedData, err := parseSignedDataForRecovery(schema.SignedData.Payload, code)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +48,7 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
 		NextRecoveryCommitmentHash:   signedData.NextRecoveryCommitmentHash,
 		HashAlgorithmInMultiHashCode: code,
+		SignedData:                   schema.SignedData,
 	}, nil
 }
 
@@ -80,26 +81,26 @@ func parsePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
 	return schema, nil
 }
 
-func parseSignedData(encoded string, code uint) (*model.SignedDataModel, error) {
+func parseSignedDataForRecovery(encoded string, code uint) (*model.RecoverSignedDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.SignedDataModel{}
+	schema := &model.RecoverSignedDataModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateSignedData(schema, code); err != nil {
+	if err := validateSignedDataForRecovery(schema, code); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func validateSignedData(signedData *model.SignedDataModel, code uint) error {
+func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, code uint) error {
 	if signedData.RecoveryKey.PublicKeyHex == "" {
 		return errors.New("missing recovery key")
 	}

@@ -56,7 +56,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.NoError(t, err)
 
 		patchData.Patches = []patch.Patch{}
-		recoverRequest, err := getRecoverRequest(patchData, getSignedData())
+		recoverRequest, err := getRecoverRequest(patchData, getSignedDataForRecovery())
 		require.NoError(t, err)
 
 		request, err := json.Marshal(recoverRequest)
@@ -81,7 +81,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Nil(t, op)
 	})
 	t.Run("validate signed data error", func(t *testing.T) {
-		signedData := getSignedData()
+		signedData := getSignedDataForRecovery()
 		signedData.RecoveryKey.PublicKeyHex = ""
 
 		patchData, err := getPatchData()
@@ -102,30 +102,30 @@ func TestParseRecoverOperation(t *testing.T) {
 
 func TestValidateSignedData(t *testing.T) {
 	t.Run("missing recovery key", func(t *testing.T) {
-		signed := getSignedData()
+		signed := getSignedDataForRecovery()
 		signed.RecoveryKey.PublicKeyHex = ""
-		err := validateSignedData(signed, sha2_256)
+		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing recovery key")
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
-		signed := getSignedData()
+		signed := getSignedDataForRecovery()
 		signed.PatchDataHash = ""
-		err := validateSignedData(signed, sha2_256)
+		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
-		signed := getSignedData()
+		signed := getSignedDataForRecovery()
 		signed.NextRecoveryCommitmentHash = ""
-		err := validateSignedData(signed, sha2_256)
+		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
-func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.SignedDataModel) (*model.RecoverRequest, error) {
+func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
 	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
@@ -152,11 +152,11 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getRecoverRequest(patchData, getSignedData())
+	return getRecoverRequest(patchData, getSignedDataForRecovery())
 }
 
-func getSignedData() *model.SignedDataModel {
-	return &model.SignedDataModel{
+func getSignedDataForRecovery() *model.RecoverSignedDataModel {
+	return &model.RecoverSignedDataModel{
 		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 		PatchDataHash:              computeMultihash("operation"),

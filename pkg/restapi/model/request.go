@@ -89,8 +89,8 @@ type RevokeRequest struct {
 	SignedData *JWS `json:"signedData"`
 }
 
-// SignedDataModel defines
-type SignedDataModel struct {
+// RecoverSignedDataModel defines signed data model for recovery
+type RecoverSignedDataModel struct {
 
 	// Hash of the unsigned patch data
 	PatchDataHash string `json:"patchDataHash"`
@@ -100,6 +100,18 @@ type SignedDataModel struct {
 
 	// Hash of the one-time password to be used for the next recovery/revoke
 	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
+}
+
+// RevokeSignedDataModel defines data model for revoke
+type RevokeSignedDataModel struct {
+
+	//The unique suffix of the DID
+	// Required: true
+	DidUniqueSuffix string `json:"didUniqueSuffix"`
+
+	// the current reveal value to use for this request
+	// Required: true
+	RecoveryRevealValue string `json:"recoveryRevealValue"`
 }
 
 // RecoverRequest is the struct for document recovery payload

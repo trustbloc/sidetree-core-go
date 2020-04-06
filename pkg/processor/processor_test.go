@@ -468,7 +468,7 @@ func getRecoverOperation(uniqueSuffix string, operationNumber uint) *batch.Opera
 	}
 }
 
-func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.SignedDataModel) (*model.RecoverRequest, error) {
+func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
 	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
 		return nil, err
@@ -498,8 +498,8 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 	return getRecoverRequest(patchData, getRecoverSignedData())
 }
 
-func getRecoverSignedData() *model.SignedDataModel {
-	return &model.SignedDataModel{
+func getRecoverSignedData() *model.RecoverSignedDataModel {
+	return &model.RecoverSignedDataModel{
 		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 		PatchDataHash:              computeMultihash("operation"),

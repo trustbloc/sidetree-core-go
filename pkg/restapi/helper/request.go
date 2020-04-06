@@ -156,12 +156,22 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing did unique suffix")
 	}
 
-	// TODO: Construct signed patch data here and set it in request
+	signedDataModel := model.RevokeSignedDataModel{
+		DidUniqueSuffix:     info.DidUniqueSuffix,
+		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
+	}
+
+	// TODO: it should be signed using recovery key, so signer should be recovery key
+	jws, err := signModel(signedDataModel)
+	if err != nil {
+		return nil, err
+	}
 
 	schema := &model.RevokeRequest{
 		Operation:           model.OperationTypeRevoke,
 		DidUniqueSuffix:     info.DidUniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
+		SignedData:          jws,
 	}
 
 	return docutil.MarshalCanonical(schema)
@@ -183,13 +193,22 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO: Assemble signed patch data hash and add to the request
+	mhPatchData, err := getEncodedMultihash(info.MultihashCode, patchDataBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	jws, err := signPayload(mhPatchData)
+	if err != nil {
+		return nil, err
+	}
 
 	schema := &model.UpdateRequest{
 		Operation:         model.OperationTypeUpdate,
 		DidUniqueSuffix:   info.DidUniqueSuffix,
 		UpdateRevealValue: docutil.EncodeToString(info.UpdateRevealValue),
 		PatchData:         docutil.EncodeToString(patchDataBytes),
+		SignedData:        jws,
 	}
 
 	return docutil.MarshalCanonical(schema)
@@ -223,32 +242,47 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	signedData := model.SignedDataModel{
+	signedDataModel := model.RecoverSignedDataModel{
 		PatchDataHash:              docutil.EncodeToString(mhPatchData),
 		RecoveryKey:                model.PublicKey{PublicKeyHex: info.RecoveryKey},
 		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
 	}
 
-	signedDataBytes, err := docutil.MarshalCanonical(signedData)
+	// TODO: it should be signed using recovery key, so signer should be recovery key
+	jws, err := signModel(signedDataModel)
 	if err != nil {
 		return nil, err
-	}
-
-	jws := &model.JWS{
-		// TODO: should be JWS encoded, encode for now
-		// TODO: Sign and set protected header here
-		Payload: docutil.EncodeToString(signedDataBytes),
 	}
 
 	schema := &model.RecoverRequest{
 		Operation:           model.OperationTypeRecover,
 		DidUniqueSuffix:     info.DidUniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
-		SignedData:          jws,
 		PatchData:           docutil.EncodeToString(patchDataBytes),
+		SignedData:          jws,
 	}
 
 	return docutil.MarshalCanonical(schema)
+}
+
+func signModel(data interface{}) (*model.JWS, error) {
+	signedDataBytes, err := docutil.MarshalCanonical(data)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := docutil.EncodeToString(signedDataBytes)
+
+	return signPayload(payload)
+}
+
+// sign payload will sign payload
+// TODO: Add signer here (part of JWS PR)
+func signPayload(payload string) (*model.JWS, error) {
+	return &model.JWS{
+		// TODO: should be JWS encoded, encode for now
+		Payload: payload,
+	}, nil
 }
 
 func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
