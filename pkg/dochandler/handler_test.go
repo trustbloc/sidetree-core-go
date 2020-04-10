@@ -21,6 +21,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
@@ -377,6 +378,7 @@ func getCreateOperation() *batchapi.Operation {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
 		ID:                           namespace + docutil.NamespaceDelimiter + uniqueSuffix,
+		SuffixData:                   getSuffixData(),
 	}
 }
 
@@ -426,7 +428,7 @@ func getPatchData() (*model.PatchDataModel, error) {
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
 		PatchDataHash:              computeMultihash(validDoc),
-		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		RecoveryKey:                &jws.JWK{},
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 	}
 }

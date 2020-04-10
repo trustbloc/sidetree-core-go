@@ -41,8 +41,6 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	// TODO: Handle recovery key
-
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeCreate,
@@ -52,6 +50,7 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
 		NextRecoveryCommitmentHash:   suffixData.NextRecoveryCommitmentHash,
 		HashAlgorithmInMultiHashCode: code,
+		SuffixData:                   suffixData,
 	}, nil
 }
 
@@ -116,7 +115,7 @@ func validatePatchData(patchData *model.PatchDataModel, code uint) error {
 }
 
 func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
-	if suffixData.RecoveryKey.PublicKeyHex == "" {
+	if suffixData.RecoveryKey == nil {
 		return errors.New("missing recovery key")
 	}
 

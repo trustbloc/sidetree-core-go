@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -71,7 +72,7 @@ func TestParseCreateOperation(t *testing.T) {
 func TestValidateSuffixData(t *testing.T) {
 	t.Run("missing recovery key", func(t *testing.T) {
 		suffixData := getSuffixData()
-		suffixData.RecoveryKey.PublicKeyHex = ""
+		suffixData.RecoveryKey = nil
 		err := validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
@@ -163,7 +164,7 @@ func getPatchData() (*model.PatchDataModel, error) {
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
 		PatchDataHash:              computeMultihash(validDoc),
-		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		RecoveryKey:                &jws.JWK{},
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 	}
 }

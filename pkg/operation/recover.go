@@ -101,7 +101,7 @@ func parseSignedDataForRecovery(encoded string, code uint) (*model.RecoverSigned
 }
 
 func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, code uint) error {
-	if signedData.RecoveryKey.PublicKeyHex == "" {
+	if signedData.RecoveryKey == nil {
 		return errors.New("missing recovery key")
 	}
 

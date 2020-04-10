@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/square/go-jose/v3/json"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
 const (
@@ -24,67 +26,12 @@ const (
 
 // JSONWebSignature defines JSON Web Signature (https://tools.ietf.org/html/rfc7515)
 type JSONWebSignature struct {
-	ProtectedHeaders   Headers
-	UnprotectedHeaders Headers
+	ProtectedHeaders   jws.Headers
+	UnprotectedHeaders jws.Headers
 	Payload            []byte
 
 	signature   []byte
-	joseHeaders Headers
-}
-
-// SignatureVerifier makes verification of JSON Web Signature.
-type SignatureVerifier interface {
-	// Verify verifies JWS based on the signing input.
-	Verify(joseHeaders Headers, payload, signingInput, signature []byte) error
-}
-
-// SignatureVerifierFunc is a function wrapper for SignatureVerifier.
-type SignatureVerifierFunc func(joseHeaders Headers, payload, signingInput, signature []byte) error
-
-// Verify verifies JWS signature.
-func (s SignatureVerifierFunc) Verify(joseHeaders Headers, payload, signingInput, signature []byte) error {
-	return s(joseHeaders, payload, signingInput, signature)
-}
-
-// CompositeAlgSigVerifier defines composite signature verifier based on the algorithm
-// taken from JOSE header alg.
-type CompositeAlgSigVerifier struct {
-	verifierByAlg map[string]SignatureVerifier
-}
-
-// AlgSignatureVerifier defines verifier for particular signature algorithm.
-type AlgSignatureVerifier struct {
-	Alg      string
-	Verifier SignatureVerifier
-}
-
-// NewCompositeAlgSigVerifier creates a new CompositeAlgSigVerifier
-func NewCompositeAlgSigVerifier(v AlgSignatureVerifier, vOther ...AlgSignatureVerifier) *CompositeAlgSigVerifier {
-	verifierByAlg := make(map[string]SignatureVerifier, 1+len(vOther))
-	verifierByAlg[v.Alg] = v.Verifier
-
-	for _, v := range vOther {
-		verifierByAlg[v.Alg] = v.Verifier
-	}
-
-	return &CompositeAlgSigVerifier{
-		verifierByAlg: verifierByAlg,
-	}
-}
-
-// Verify verifiers JWS signature.
-func (v *CompositeAlgSigVerifier) Verify(joseHeaders Headers, payload, signingInput, signature []byte) error {
-	alg, ok := joseHeaders.Algorithm()
-	if !ok {
-		return errors.New("'alg' JOSE header is not present")
-	}
-
-	verifier, ok := v.verifierByAlg[alg]
-	if !ok {
-		return fmt.Errorf("no verifier found for %s algorithm", alg)
-	}
-
-	return verifier.Verify(joseHeaders, payload, signingInput, signature)
+	joseHeaders jws.Headers
 }
 
 // Signer defines JWS Signer interface. It makes signing of data and provides custom JWS headers relevant to the signer.
@@ -93,11 +40,11 @@ type Signer interface {
 	Sign(data []byte) ([]byte, error)
 
 	// Headers provides JWS headers. "alg" header must be provided (see https://tools.ietf.org/html/rfc7515#section-4.1)
-	Headers() Headers
+	Headers() jws.Headers
 }
 
 // NewJWS creates JSON Web Signature.
-func NewJWS(protectedHeaders, unprotectedHeaders Headers, payload []byte, signer Signer) (*JSONWebSignature, error) {
+func NewJWS(protectedHeaders, unprotectedHeaders jws.Headers, payload []byte, signer Signer) (*JSONWebSignature, error) {
 	headers := mergeHeaders(protectedHeaders, signer.Headers())
 	jws := &JSONWebSignature{
 		ProtectedHeaders:   headers,
@@ -150,8 +97,8 @@ func (s JSONWebSignature) Signature() []byte {
 	return sCopy
 }
 
-func mergeHeaders(h1, h2 Headers) Headers {
-	h := make(Headers, len(h1)+len(h2))
+func mergeHeaders(h1, h2 jws.Headers) jws.Headers {
+	h := make(jws.Headers, len(h1)+len(h2))
 
 	for k, v := range h2 {
 		h[k] = v
@@ -164,7 +111,7 @@ func mergeHeaders(h1, h2 Headers) Headers {
 	return h
 }
 
-func sign(joseHeaders Headers, payload []byte, signer Signer) ([]byte, error) {
+func sign(joseHeaders jws.Headers, payload []byte, signer Signer) ([]byte, error) {
 	err := checkJWSHeaders(joseHeaders)
 	if err != nil {
 		return nil, fmt.Errorf("check JOSE headers: %w", err)
@@ -198,8 +145,8 @@ func WithJWSDetachedPayload(payload []byte) ParseOpt {
 	}
 }
 
-// ParseJWS parses serialized JWS. Currently only JWS Compact Serialization parsing is supported.
-func ParseJWS(jws string, verifier SignatureVerifier, opts ...ParseOpt) (*JSONWebSignature, error) {
+// ParseJWS parses and validates serialized JWS. Currently only JWS Compact Serialization parsing is supported.
+func ParseJWS(jws string, jwk *jws.JWK, opts ...ParseOpt) (*JSONWebSignature, error) {
 	pOpts := &jwsParseOpts{}
 
 	for _, opt := range opts {
@@ -212,7 +159,7 @@ func ParseJWS(jws string, verifier SignatureVerifier, opts ...ParseOpt) (*JSONWe
 		return nil, errors.New("JWS JSON serialization is not supported")
 	}
 
-	return parseCompacted(jws, verifier, pOpts)
+	return parseCompacted(jws, jwk, pOpts)
 }
 
 // IsCompactJWS checks weather input is a compact JWS (based on https://tools.ietf.org/html/rfc7516#section-9)
@@ -222,7 +169,7 @@ func IsCompactJWS(s string) bool {
 	return len(parts) == jwsPartsCount
 }
 
-func parseCompacted(jwsCompact string, verifier SignatureVerifier, opts *jwsParseOpts) (*JSONWebSignature, error) {
+func parseCompacted(jwsCompact string, jwk *jws.JWK, opts *jwsParseOpts) (*JSONWebSignature, error) {
 	parts := strings.Split(jwsCompact, ".")
 	if len(parts) != jwsPartsCount {
 		return nil, errors.New("invalid JWS compact format")
@@ -248,7 +195,7 @@ func parseCompacted(jwsCompact string, verifier SignatureVerifier, opts *jwsPars
 		return nil, fmt.Errorf("decode base64 signature: %w", err)
 	}
 
-	err = verifier.Verify(joseHeaders, payload, sInput, signature)
+	err = VerifySignature(jwk, signature, sInput)
 	if err != nil {
 		return nil, err
 	}
@@ -274,13 +221,13 @@ func parseCompactedPayload(jwsPayload string, opts *jwsParseOpts) ([]byte, error
 	return payload, nil
 }
 
-func parseCompactedHeaders(parts []string) (Headers, error) {
+func parseCompactedHeaders(parts []string) (jws.Headers, error) {
 	headersBytes, err := base64.RawURLEncoding.DecodeString(parts[jwsHeaderPart])
 	if err != nil {
 		return nil, fmt.Errorf("decode base64 header: %w", err)
 	}
 
-	var joseHeaders Headers
+	var joseHeaders jws.Headers
 
 	err = json.Unmarshal(headersBytes, &joseHeaders)
 	if err != nil {
@@ -295,7 +242,7 @@ func parseCompactedHeaders(parts []string) (Headers, error) {
 	return joseHeaders, nil
 }
 
-func signingInput(headers Headers, payload []byte) ([]byte, error) {
+func signingInput(headers jws.Headers, payload []byte) ([]byte, error) {
 	headersBytes, err := json.Marshal(headers)
 	if err != nil {
 		return nil, fmt.Errorf("serialize JWS headers: %w", err)
@@ -303,7 +250,7 @@ func signingInput(headers Headers, payload []byte) ([]byte, error) {
 
 	hBase64 := true
 
-	if b64, ok := headers[HeaderB64Payload]; ok {
+	if b64, ok := headers[jws.HeaderB64Payload]; ok {
 		if hBase64, ok = b64.(bool); !ok {
 			return nil, errors.New("invalid b64 header")
 		}
@@ -322,23 +269,10 @@ func signingInput(headers Headers, payload []byte) ([]byte, error) {
 	return []byte(fmt.Sprintf("%s.%s", headersStr, payloadStr)), nil
 }
 
-func checkJWSHeaders(headers Headers) error {
-	if _, ok := headers[HeaderAlgorithm]; !ok {
-		return fmt.Errorf("%s JWS header is not defined", HeaderAlgorithm)
+func checkJWSHeaders(headers jws.Headers) error {
+	if _, ok := headers[jws.HeaderAlgorithm]; !ok {
+		return fmt.Errorf("%s JWS header is not defined", jws.HeaderAlgorithm)
 	}
 
 	return nil
-}
-
-func convertMapToValue(vOriginToBeMap, vDest interface{}) error {
-	if _, ok := vOriginToBeMap.(map[string]interface{}); !ok {
-		return errors.New("expected value to be a map")
-	}
-
-	mBytes, err := json.Marshal(vOriginToBeMap)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(mBytes, vDest)
 }

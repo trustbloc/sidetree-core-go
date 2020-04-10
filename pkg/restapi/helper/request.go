@@ -10,9 +10,20 @@ import (
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
+
+// Signer defines JWS Signer interface that will be used to sign required data in Sidetree request
+type Signer interface {
+	// Sign signs data and returns signature value
+	Sign(data []byte) ([]byte, error)
+
+	// Headers provides required JWS protected headers. It provides information about signing key and algorithm.
+	Headers() jws.Headers
+}
 
 // CreateRequestInfo contains data for creating create payload
 type CreateRequestInfo struct {
@@ -23,7 +34,7 @@ type CreateRequestInfo struct {
 
 	// the recovery public key as a HEX string
 	// required
-	RecoveryKey string
+	RecoveryKey *jws.JWK
 
 	// reveal value to be used for the next recovery
 	NextRecoveryRevealValue []byte
@@ -43,6 +54,10 @@ type RevokeRequestInfo struct {
 
 	// reveal value for this revoke operation
 	RecoveryRevealValue []byte
+
+	// Signer that will be used for signing specific subset of request data
+	// Signer for recover operation must be recovery key
+	Signer Signer
 }
 
 //RecoverRequestInfo is the information required to create recover request
@@ -55,7 +70,7 @@ type RecoverRequestInfo struct {
 	RecoveryRevealValue []byte
 
 	// the new recovery public key as a HEX string
-	RecoveryKey string
+	RecoveryKey *jws.JWK
 
 	// opaque content
 	OpaqueDocument string
@@ -68,6 +83,10 @@ type RecoverRequestInfo struct {
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
+
+	// Signer will be used for signing specific subset of request data
+	// Signer for recover operation must be recovery key
+	Signer Signer
 }
 
 //UpdateRequestInfo is the information required to create update request
@@ -88,6 +107,17 @@ type UpdateRequestInfo struct {
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
+
+	// Signer that will be used for signing request specific subset of data
+	Signer Signer
+}
+
+// JWK contains public key in JWK format
+type JWK struct {
+	Kty string
+	Crv string
+	X   string
+	Y   string
 }
 
 // NewCreateRequest is utility function to create payload for 'create' request
@@ -96,7 +126,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing opaque document")
 	}
 
-	if info.RecoveryKey == "" {
+	if info.RecoveryKey == nil {
 		return nil, errors.New("missing recovery key")
 	}
 
@@ -123,7 +153,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 
 	suffixData := model.SuffixDataModel{
 		PatchDataHash:              docutil.EncodeToString(mhPatchData),
-		RecoveryKey:                model.PublicKey{PublicKeyHex: info.RecoveryKey},
+		RecoveryKey:                info.RecoveryKey,
 		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
 	}
 
@@ -161,8 +191,7 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 	}
 
-	// TODO: it should be signed using recovery key, so signer should be recovery key
-	jws, err := signModel(signedDataModel)
+	jws, err := signModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +227,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	jws, err := signPayload(mhPatchData)
+	jws, err := signPayload(mhPatchData, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -244,12 +273,11 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 
 	signedDataModel := model.RecoverSignedDataModel{
 		PatchDataHash:              docutil.EncodeToString(mhPatchData),
-		RecoveryKey:                model.PublicKey{PublicKeyHex: info.RecoveryKey},
+		RecoveryKey:                info.RecoveryKey,
 		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
 	}
 
-	// TODO: it should be signed using recovery key, so signer should be recovery key
-	jws, err := signModel(signedDataModel)
+	jws, err := signModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +293,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	return docutil.MarshalCanonical(schema)
 }
 
-func signModel(data interface{}) (*model.JWS, error) {
+func signModel(data interface{}, signer Signer) (*model.JWS, error) {
 	signedDataBytes, err := docutil.MarshalCanonical(data)
 	if err != nil {
 		return nil, err
@@ -273,15 +301,38 @@ func signModel(data interface{}) (*model.JWS, error) {
 
 	payload := docutil.EncodeToString(signedDataBytes)
 
-	return signPayload(payload)
+	return signPayload(payload, signer)
 }
 
-// sign payload will sign payload
-// TODO: Add signer here (part of JWS PR)
-func signPayload(payload string) (*model.JWS, error) {
+func signPayload(payload string, signer Signer) (*model.JWS, error) {
+	alg, ok := signer.Headers().Algorithm()
+	if !ok || alg == "" {
+		return nil, errors.New("signing algorithm is required")
+	}
+
+	kid, ok := signer.Headers().KeyID()
+	if !ok || kid == "" {
+		return nil, errors.New("signing kid is required")
+	}
+
+	jwsSignature, err := internal.NewJWS(signer.Headers(), nil, []byte(payload), signer)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := jwsSignature.SerializeCompact(false)
+	if err != nil {
+		return nil, err
+	}
+
+	protected := &model.Header{
+		Alg: alg,
+		Kid: kid,
+	}
 	return &model.JWS{
-		// TODO: should be JWS encoded, encode for now
-		Payload: payload,
+		Protected: protected,
+		Signature: signature,
+		Payload:   payload,
 	}, nil
 }
 
@@ -294,7 +345,7 @@ func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
 		return errors.New("missing opaque document")
 	}
 
-	if info.RecoveryKey == "" {
+	if info.RecoveryKey == nil {
 		return errors.New("missing recovery key")
 	}
 

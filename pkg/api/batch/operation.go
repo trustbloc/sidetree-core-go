@@ -31,6 +31,9 @@ type Operation struct {
 	// operation patch data
 	PatchData *model.PatchDataModel `json:"patchData"`
 
+	// suffix data
+	SuffixData *model.SuffixDataModel `json:"suffixData"`
+
 	// encoded patch data
 	EncodedPatchData string `json:"encodedPatchData"`
 
