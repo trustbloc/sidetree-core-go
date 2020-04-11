@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -82,7 +83,7 @@ func TestParseRecoverOperation(t *testing.T) {
 	})
 	t.Run("validate signed data error", func(t *testing.T) {
 		signedData := getSignedDataForRecovery()
-		signedData.RecoveryKey.PublicKeyHex = ""
+		signedData.RecoveryKey = nil
 
 		patchData, err := getPatchData()
 		require.NoError(t, err)
@@ -103,7 +104,7 @@ func TestParseRecoverOperation(t *testing.T) {
 func TestValidateSignedData(t *testing.T) {
 	t.Run("missing recovery key", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
-		signed.RecoveryKey.PublicKeyHex = ""
+		signed.RecoveryKey = nil
 		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
@@ -157,7 +158,7 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 
 func getSignedDataForRecovery() *model.RecoverSignedDataModel {
 	return &model.RecoverSignedDataModel{
-		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		RecoveryKey:                &jws.JWK{},
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 		PatchDataHash:              computeMultihash("operation"),
 	}

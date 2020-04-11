@@ -7,24 +7,36 @@ SPDX-License-Identifier: Apache-2.0
 package helper
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
+	"github.com/trustbloc/sidetree-core-go/pkg/util"
 )
 
 const (
 	didUniqueSuffix = "whatever"
 	opaqueDoc       = "{}"
-	recoveryKey     = "recoveryKey"
+
+	signerErr = "signer error"
 
 	sha2_256 = 18
 )
 
 func TestNewCreateRequest(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	jwk, err := util.GetECPublicKey(privateKey)
+	require.NoError(t, err)
+
 	t.Run("missing opaque document", func(t *testing.T) {
 		request, err := NewCreateRequest(&CreateRequestInfo{})
 		require.Error(t, err)
@@ -39,7 +51,7 @@ func TestNewCreateRequest(t *testing.T) {
 	})
 	t.Run("multihash not supported", func(t *testing.T) {
 		info := &CreateRequestInfo{OpaqueDocument: "{}",
-			RecoveryKey: "recovery"}
+			RecoveryKey: jwk}
 
 		request, err := NewCreateRequest(info)
 		require.Error(t, err)
@@ -48,7 +60,8 @@ func TestNewCreateRequest(t *testing.T) {
 	})
 	t.Run("success", func(t *testing.T) {
 		info := &CreateRequestInfo{OpaqueDocument: "{}",
-			RecoveryKey: "recovery", MultihashCode: sha2_256}
+			RecoveryKey:   jwk,
+			MultihashCode: sha2_256}
 
 		request, err := NewCreateRequest(info)
 		require.NoError(t, err)
@@ -65,8 +78,21 @@ func TestNewRevokeRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
+	t.Run("signing error", func(t *testing.T) {
+		info := &RevokeRequestInfo{DidUniqueSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
+
+		request, err := NewRevokeRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), signerErr)
+	})
 	t.Run("success", func(t *testing.T) {
-		info := &RevokeRequestInfo{DidUniqueSuffix: "whatever"}
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		signer := util.NewECDSASigner(privateKey, "ES256", "recovery")
+
+		info := &RevokeRequestInfo{DidUniqueSuffix: "whatever", Signer: signer}
 
 		request, err := NewRevokeRequest(info)
 		require.NoError(t, err)
@@ -104,14 +130,34 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
 	})
+	t.Run("signing error", func(t *testing.T) {
+		info := &UpdateRequestInfo{
+			DidUniqueSuffix: didUniqueSuffix,
+			Patch:           patch,
+			MultihashCode:   sha2_256,
+			Signer:          NewMockSigner(errors.New(signerErr))}
+
+		request, err := NewUpdateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), signerErr)
+	})
 	t.Run("success", func(t *testing.T) {
-		info := &UpdateRequestInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch, MultihashCode: sha2_256}
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		signer := util.NewECDSASigner(privateKey, "ES256", "key-1")
+
+		info := &UpdateRequestInfo{
+			DidUniqueSuffix: didUniqueSuffix,
+			Patch:           patch,
+			MultihashCode:   sha2_256,
+			Signer:          signer,
+		}
 
 		request, err := NewUpdateRequest(info)
 		require.NoError(t, err)
 		require.NotEmpty(t, request)
-
-		fmt.Println(string(request))
 	})
 }
 
@@ -140,7 +186,7 @@ func TestNewRecoverRequest(t *testing.T) {
 	})
 	t.Run("missing recovery key", func(t *testing.T) {
 		info := getRecoverRequestInfo()
-		info.RecoveryKey = ""
+		info.RecoveryKey = nil
 
 		request, err := NewRecoverRequest(info)
 		require.Error(t, err)
@@ -156,6 +202,16 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
 	})
+	t.Run("signing error", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+		info.Signer = NewMockSigner(errors.New(signerErr))
+
+		request, err := NewRecoverRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), signerErr)
+	})
+
 	t.Run("success", func(t *testing.T) {
 		info := getRecoverRequestInfo()
 
@@ -175,17 +231,114 @@ func TestNewRecoverRequest(t *testing.T) {
 func TestSignModel(t *testing.T) {
 	t.Run("marshal error", func(t *testing.T) {
 		ch := make(chan int)
-		request, err := signModel(ch)
+		request, err := signModel(ch, nil)
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "unsupported type: chan int")
 	})
+	t.Run("success", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		signer := util.NewECDSASigner(privateKey, "ES256", "key-1")
+
+		test := struct {
+			message string
+		}{
+			message: "test",
+		}
+
+		request, err := signModel(test, signer)
+		require.NoError(t, err)
+		require.NotEmpty(t, request)
+	})
+}
+
+func TestSignPayload(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	jwk, err := util.GetECPublicKey(privateKey)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		signer := util.NewECDSASigner(privateKey, "ES256", "key-1")
+
+		message := "test"
+		jwsSignature, err := signPayload(message, signer)
+		require.NoError(t, err)
+		require.NotEmpty(t, jwsSignature)
+
+		_, err = internal.ParseJWS(jwsSignature.Signature, jwk)
+		require.NoError(t, err)
+	})
+	t.Run("signing algorithm required", func(t *testing.T) {
+		signer := util.NewECDSASigner(privateKey, "", "kid")
+
+		jws, err := signPayload("test", signer)
+		require.Error(t, err)
+		require.Empty(t, jws)
+		require.Contains(t, err.Error(), "signing algorithm is required")
+	})
+	t.Run("kid is required", func(t *testing.T) {
+		signer := util.NewECDSASigner(privateKey, "alg", "")
+
+		jws, err := signPayload("test", signer)
+		require.Error(t, err)
+		require.Empty(t, jws)
+		require.Contains(t, err.Error(), "signing kid is required")
+	})
+	t.Run("kid is required", func(t *testing.T) {
+		jws, err := signPayload("", NewMockSigner(errors.New("test error")))
+		require.Error(t, err)
+		require.Empty(t, jws)
+		require.Contains(t, err.Error(), "test error")
+	})
 }
 
 func getRecoverRequestInfo() *RecoverRequestInfo {
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	jwk, err := util.GetECPublicKey(privKey)
+	if err != nil {
+		panic(err)
+	}
+
 	return &RecoverRequestInfo{
 		DidUniqueSuffix: didUniqueSuffix,
 		OpaqueDocument:  opaqueDoc,
-		RecoveryKey:     recoveryKey,
-		MultihashCode:   sha2_256}
+		RecoveryKey:     jwk,
+		MultihashCode:   sha2_256,
+		Signer:          util.NewECDSASigner(privKey, "ES256", "recovery")}
+}
+
+// mockSigner implements signer interface
+type mockSigner struct {
+	Err error
+}
+
+// NewECDSASigner creates new mock signer
+func NewMockSigner(err error) Signer {
+	return &mockSigner{Err: err}
+}
+
+// Headers provides required JWS protected headers. It provides information about signing key and algorithm.
+func (ms *mockSigner) Headers() jws.Headers {
+	headers := make(jws.Headers)
+	headers[jws.HeaderKeyID] = "kid"
+	headers[jws.HeaderAlgorithm] = "alg"
+
+	return headers
+}
+
+// Sign signs msg and returns mock signature value
+func (ms *mockSigner) Sign(msg []byte) ([]byte, error) {
+	if ms.Err != nil {
+		return nil, ms.Err
+	}
+
+	return []byte("signature"), nil
 }

@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,6 +23,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/util"
 )
 
 func TestResolveHandler_Resolve(t *testing.T) {
@@ -157,9 +161,19 @@ func getPatchData() (*model.PatchDataModel, error) {
 }
 
 func getSuffixData() *model.SuffixDataModel {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	recoveryKey, err := util.GetECPublicKey(privateKey)
+	if err != nil {
+		panic(err)
+	}
+
 	return &model.SuffixDataModel{
 		PatchDataHash:              computeMultihash(validDoc),
-		RecoveryKey:                model.PublicKey{PublicKeyHex: "HEX"},
+		RecoveryKey:                recoveryKey,
 		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
 	}
 }

@@ -8,7 +8,6 @@ package jws
 
 import (
 	"crypto/ecdsa"
-	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"testing"
@@ -18,47 +17,6 @@ import (
 	"github.com/square/go-jose/v3/json"
 	"github.com/stretchr/testify/require"
 )
-
-func TestHeaders_GetJWK(t *testing.T) {
-	headers := Headers{}
-
-	pubKey, _, err := ed25519.GenerateKey(rand.Reader)
-	require.NoError(t, err)
-
-	jwk := JWK{
-		JSONWebKey: jose.JSONWebKey{
-			Key:       pubKey,
-			KeyID:     "kid",
-			Algorithm: "EdDSA",
-		},
-	}
-
-	jwkBytes, err := json.Marshal(&jwk)
-	require.NoError(t, err)
-
-	var jwkMap map[string]interface{}
-
-	err = json.Unmarshal(jwkBytes, &jwkMap)
-	require.NoError(t, err)
-
-	headers["jwk"] = jwkMap
-
-	parsedJWK, ok := headers.JWK()
-	require.True(t, ok)
-	require.NotNil(t, parsedJWK)
-
-	// jwk is not present
-	delete(headers, "jwk")
-	parsedJWK, ok = headers.JWK()
-	require.False(t, ok)
-	require.Nil(t, parsedJWK)
-
-	// jwk is not a map
-	headers["jwk"] = "not a map"
-	parsedJWK, ok = headers.JWK()
-	require.False(t, ok)
-	require.Nil(t, parsedJWK)
-}
 
 func TestDecodePublicKey(t *testing.T) {
 	t.Run("Test decode public key success", func(t *testing.T) {

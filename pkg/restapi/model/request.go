@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 import (
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 
@@ -31,8 +32,8 @@ type SuffixDataModel struct {
 	// Hash of the patch data
 	PatchDataHash string `json:"patchDataHash"`
 
-	// The recovery public key as a HEX string.
-	RecoveryKey PublicKey `json:"recoveryKey"`
+	// The recovery public key in JWK format
+	RecoveryKey *jws.JWK `json:"recoveryKey"`
 
 	// Commitment hash for the next recovery
 	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
@@ -96,7 +97,7 @@ type RecoverSignedDataModel struct {
 	PatchDataHash string `json:"patchDataHash"`
 
 	// The new recovery key
-	RecoveryKey PublicKey `json:"recoveryKey"`
+	RecoveryKey *jws.JWK `json:"recoveryKey"`
 
 	// Hash of the one-time password to be used for the next recovery/revoke
 	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`

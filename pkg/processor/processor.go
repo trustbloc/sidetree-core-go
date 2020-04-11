@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
+	"encoding/json"
 	"errors"
 	"sort"
 
@@ -16,6 +17,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
@@ -127,6 +131,7 @@ type resolutionModel struct {
 	LastOperationTransactionNumber uint64
 	NextUpdateCommitmentHash       string
 	NextRecoveryCommitmentHash     string
+	RecoveryKey                    *jws.JWK
 }
 
 func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -161,7 +166,9 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
+		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash,
+		RecoveryKey:                    operation.SuffixData.RecoveryKey,
+	}, nil
 }
 
 func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
@@ -186,7 +193,8 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     rm.NextRecoveryCommitmentHash}, nil
+		NextRecoveryCommitmentHash:     rm.NextRecoveryCommitmentHash,
+		RecoveryKey:                    rm.RecoveryKey}, nil
 }
 
 func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -197,6 +205,11 @@ func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm
 	}
 
 	err := isValidHash(operation.RecoveryRevealValue, rm.NextRecoveryCommitmentHash)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = internal.ParseJWS(operation.SignedData.Signature, rm.RecoveryKey)
 	if err != nil {
 		return nil, err
 	}
@@ -221,19 +234,34 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, err
 	}
 
-	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
+	jwsParts, err := internal.ParseJWS(operation.SignedData.Signature, rm.RecoveryKey)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Validation of signature and signed data (similar for revoke, update and recover)
+	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
+	if err != nil {
+		return nil, err
+	}
+
+	var signedDataModel model.RecoverSignedDataModel
+	err = json.Unmarshal(decoded, &signedDataModel)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
+	if err != nil {
+		return nil, err
+	}
 
 	return &resolutionModel{
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash}, nil
+		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash,
+		RecoveryKey:                    signedDataModel.RecoveryKey}, nil
 }
 
 func isValidHash(encodedContent, encodedMultihash string) error {

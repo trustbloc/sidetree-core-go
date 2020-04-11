@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"errors"
 	"testing"
 
@@ -18,12 +21,15 @@ import (
 
 func TestOperationFilter_Filter(t *testing.T) {
 	t.Run("Store error", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
 		errExpected := errors.New("injected store error")
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 		store.Err = errExpected
 
-		createOp := getCreateOperation()
+		createOp := getCreateOperation(privateKey)
 
 		filter := NewOperationFilter("test", store)
 		validOps, err := filter.Filter(createOp.UniqueSuffix, []*batch.Operation{createOp})
@@ -32,10 +38,13 @@ func TestOperationFilter_Filter(t *testing.T) {
 	})
 
 	t.Run("No create operation error", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp := getCreateOperation()
+		createOp := getCreateOperation(privateKey)
 		updateOp1 := getUpdateOperation(createOp.UniqueSuffix, 1)
 
 		filter := NewOperationFilter("test", store)
@@ -45,10 +54,13 @@ func TestOperationFilter_Filter(t *testing.T) {
 	})
 
 	t.Run("Unique suffix not found in store", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp := getCreateOperation()
+		createOp := getCreateOperation(privateKey)
 
 		updateOp1 := getUpdateOperation(createOp.UniqueSuffix, 1)
 		updateOp2 := getUpdateOperation(createOp.UniqueSuffix, 3)
@@ -63,14 +75,17 @@ func TestOperationFilter_Filter(t *testing.T) {
 	})
 
 	t.Run("Unique suffix exists in store", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp1 := getCreateOperation()
-		err := store.Put(createOp1)
+		createOp1 := getCreateOperation(privateKey)
+		err = store.Put(createOp1)
 		require.Nil(t, err)
 
-		createOp2 := getCreateOperation()
+		createOp2 := getCreateOperation(privateKey)
 		updateOp1 := getUpdateOperation("123456", 1)
 		updateOp2 := getUpdateOperation(createOp1.UniqueSuffix, 1)
 		updateOp3 := getUpdateOperation(createOp1.UniqueSuffix, 3)
@@ -84,16 +99,18 @@ func TestOperationFilter_Filter(t *testing.T) {
 	})
 
 	t.Run("With revoke operation", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp1 := getCreateOperation()
-		err := store.Put(createOp1)
+		createOp1 := getCreateOperation(privateKey)
+		err = store.Put(createOp1)
 		require.Nil(t, err)
 
-		createOp2 := getCreateOperation()
+		createOp2 := getCreateOperation(privateKey)
 		updateOp := getUpdateOperation(createOp1.UniqueSuffix, 1)
-		revokeOp := getRevokeOperation(createOp1.UniqueSuffix, 2)
+		revokeOp := getRevokeOperation(privateKey, createOp1.UniqueSuffix, 2)
 
 		// The create should be discarded (since there's already a create) and update should be discarded since the document was revoked
 		filter := NewOperationFilter("test", store)

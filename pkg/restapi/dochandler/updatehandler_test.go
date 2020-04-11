@@ -8,6 +8,9 @@ package dochandler
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +27,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/util"
 )
 
 const (
@@ -193,9 +197,19 @@ func TestGetOperation(t *testing.T) {
 }
 
 func getCreateRequestInfo() *helper.CreateRequestInfo {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	recoveryKey, err := util.GetECPublicKey(privateKey)
+	if err != nil {
+		panic(err)
+	}
+
 	return &helper.CreateRequestInfo{
 		OpaqueDocument:          validDoc,
-		RecoveryKey:             "HEX",
+		RecoveryKey:             recoveryKey,
 		NextRecoveryRevealValue: recoveryReveal,
 		NextUpdateRevealValue:   updateReveal,
 		MultihashCode:           sha2_256,
@@ -208,31 +222,56 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 		panic(err)
 	}
 
+	curve := elliptic.P256()
+	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
 	return &helper.UpdateRequestInfo{
 		DidUniqueSuffix:       uniqueSuffix,
 		Patch:                 patchJSON,
 		UpdateRevealValue:     updateReveal,
 		NextUpdateRevealValue: updateReveal,
 		MultihashCode:         sha2_256,
+		Signer:                util.NewECDSASigner(privateKey, "ES256", "key-1"),
 	}
 }
 
 func getRevokeRequestInfo(uniqueSuffix string) *helper.RevokeRequestInfo {
+	curve := elliptic.P256()
+	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
 	return &helper.RevokeRequestInfo{
 		DidUniqueSuffix:     uniqueSuffix,
 		RecoveryRevealValue: recoveryReveal,
+		Signer:              util.NewECDSASigner(privateKey, "ES256", "recovery"),
 	}
 }
 
 func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	recoveryKey, err := util.GetECPublicKey(privateKey)
+	if err != nil {
+		panic(err)
+	}
+
 	return &helper.RecoverRequestInfo{
 		DidUniqueSuffix:         uniqueSuffix,
 		OpaqueDocument:          recoverDoc,
-		RecoveryKey:             "HEX",
+		RecoveryKey:             recoveryKey,
 		RecoveryRevealValue:     recoveryReveal,
 		NextRecoveryRevealValue: []byte("newRecoveryReveal"),
 		NextUpdateRevealValue:   []byte("newUpdateReveal"),
 		MultihashCode:           sha2_256,
+		Signer:                  util.NewECDSASigner(privateKey, "ES256", "recovery"),
 	}
 }
 
