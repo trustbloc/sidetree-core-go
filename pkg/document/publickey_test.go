@@ -26,7 +26,6 @@ func TestPublicKey(t *testing.T) {
 		"publicKeyBase64": "Base64",
 		"publicKeyBase58": "Base58",
 		"publicKeyHex":    "Hex",
-		"publicKeyJwk":    "Jwk",
 		"other":           "otherValue",
 	})
 	require.Equal(t, "did:example:123456789abcdefghi#keys-1", pk.ID())
@@ -36,8 +35,24 @@ func TestPublicKey(t *testing.T) {
 	require.Equal(t, "Base64", pk.PublicKeyBase64())
 	require.Equal(t, "Base58", pk.PublicKeyBase58())
 	require.Equal(t, "Hex", pk.PublicKeyHex())
-	require.Equal(t, "Jwk", pk.PublicKeyJWK())
 	require.Equal(t, "otherValue", pk["other"])
+	require.Empty(t, pk.Usage())
+	require.Empty(t, pk.PublicKeyJWK())
 
 	require.NotEmpty(t, pk.JSONLdObject())
+
+	pk = NewPublicKey(map[string]interface{}{
+		"publicKeyJwk": map[string]interface{}{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		},
+	})
+
+	jwk := pk.PublicKeyJWK()
+	require.Equal(t, "kty", jwk.Kty())
+	require.Equal(t, "crv", jwk.Crv())
+	require.Equal(t, "x", jwk.X())
+	require.Equal(t, "y", jwk.Y())
 }

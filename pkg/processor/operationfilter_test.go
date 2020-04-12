@@ -29,7 +29,8 @@ func TestOperationFilter_Filter(t *testing.T) {
 		store.Validate = false
 		store.Err = errExpected
 
-		createOp := getCreateOperation(privateKey)
+		createOp, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
 
 		filter := NewOperationFilter("test", store)
 		validOps, err := filter.Filter(createOp.UniqueSuffix, []*batch.Operation{createOp})
@@ -44,8 +45,11 @@ func TestOperationFilter_Filter(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp := getCreateOperation(privateKey)
-		updateOp1 := getUpdateOperation(createOp.UniqueSuffix, 1)
+		createOp, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
+
+		updateOp1, err := getUpdateOperation(privateKey, createOp.UniqueSuffix, 1)
+		require.NoError(t, err)
 
 		filter := NewOperationFilter("test", store)
 		validOps, err := filter.Filter(createOp.UniqueSuffix, []*batch.Operation{updateOp1})
@@ -60,10 +64,13 @@ func TestOperationFilter_Filter(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp := getCreateOperation(privateKey)
+		createOp, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
 
-		updateOp1 := getUpdateOperation(createOp.UniqueSuffix, 1)
-		updateOp2 := getUpdateOperation(createOp.UniqueSuffix, 3)
+		updateOp1, err := getUpdateOperation(privateKey, createOp.UniqueSuffix, 1)
+		require.NoError(t, err)
+		updateOp2, err := getUpdateOperation(privateKey, createOp.UniqueSuffix, 3)
+		require.NoError(t, err)
 
 		// The second update should be discarded
 		filter := NewOperationFilter("test", store)
@@ -81,14 +88,19 @@ func TestOperationFilter_Filter(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp1 := getCreateOperation(privateKey)
+		createOp1, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
 		err = store.Put(createOp1)
 		require.Nil(t, err)
 
-		createOp2 := getCreateOperation(privateKey)
-		updateOp1 := getUpdateOperation("123456", 1)
-		updateOp2 := getUpdateOperation(createOp1.UniqueSuffix, 1)
-		updateOp3 := getUpdateOperation(createOp1.UniqueSuffix, 3)
+		createOp2, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
+		updateOp1, err := getUpdateOperation(privateKey, "123456", 1)
+		require.NoError(t, err)
+		updateOp2, err := getUpdateOperation(privateKey, createOp1.UniqueSuffix, 1)
+		require.NoError(t, err)
+		updateOp3, err := getUpdateOperation(privateKey, createOp1.UniqueSuffix, 3)
+		require.NoError(t, err)
 
 		// The create operation and first and third update should be discarded
 		filter := NewOperationFilter("test", store)
@@ -104,13 +116,18 @@ func TestOperationFilter_Filter(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp1 := getCreateOperation(privateKey)
+		createOp1, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
+
 		err = store.Put(createOp1)
 		require.Nil(t, err)
 
-		createOp2 := getCreateOperation(privateKey)
-		updateOp := getUpdateOperation(createOp1.UniqueSuffix, 1)
-		revokeOp := getRevokeOperation(privateKey, createOp1.UniqueSuffix, 2)
+		createOp2, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
+		updateOp, err := getUpdateOperation(privateKey, createOp1.UniqueSuffix, 1)
+		require.NoError(t, err)
+		revokeOp, err := getRevokeOperation(privateKey, createOp1.UniqueSuffix, 2)
+		require.NoError(t, err)
 
 		// The create should be discarded (since there's already a create) and update should be discarded since the document was revoked
 		filter := NewOperationFilter("test", store)

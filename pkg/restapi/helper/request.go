@@ -112,14 +112,6 @@ type UpdateRequestInfo struct {
 	Signer Signer
 }
 
-// JWK contains public key in JWK format
-type JWK struct {
-	Kty string
-	Crv string
-	X   string
-	Y   string
-}
-
 // NewCreateRequest is utility function to create payload for 'create' request
 func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	if info.OpaqueDocument == "" {
@@ -141,7 +133,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhPatchData, err := docutil.ComputeMultihash(info.MultihashCode, patchDataBytes)
+	mhPatchData, err := getEncodedMultihash(info.MultihashCode, patchDataBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +144,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	}
 
 	suffixData := model.SuffixDataModel{
-		PatchDataHash:              docutil.EncodeToString(mhPatchData),
+		PatchDataHash:              mhPatchData,
 		RecoveryKey:                info.RecoveryKey,
 		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
 	}

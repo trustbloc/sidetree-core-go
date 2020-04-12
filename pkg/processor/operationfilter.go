@@ -118,3 +118,13 @@ func contains(ops []*batch.Operation, op *batch.Operation) bool {
 
 	return false
 }
+
+func containsString(arr []string, value string) bool {
+	for _, str := range arr {
+		if str == value {
+			return true
+		}
+	}
+
+	return false
+}
