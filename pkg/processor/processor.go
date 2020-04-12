@@ -23,7 +23,10 @@ import (
 )
 
 // recovery key ID
-const recoveryKID = "recovery"
+const (
+	recoveryKID       = "recovery"
+	operationsKeyType = "ops"
+)
 
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
 // It uses operation store client to retrieve all operations that are related to requested document.
@@ -238,7 +241,7 @@ func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, er
 }
 
 func validateSigningKey(pk document.PublicKey) error {
-	if !containsString(pk.Usage(), "ops") {
+	if !containsString(pk.Usage(), operationsKeyType) {
 		return errors.New("signing public key is not an operations key")
 	}
 

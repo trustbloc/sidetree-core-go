@@ -4,12 +4,16 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package util
+package ecsigner
 
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
+	"errors"
+
+	"github.com/btcsuite/btcd/btcec"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
@@ -21,8 +25,8 @@ type Signer struct {
 	privateKey *ecdsa.PrivateKey
 }
 
-// NewECDSASigner created new ecdsa signer
-func NewECDSASigner(privKey *ecdsa.PrivateKey, alg, kid string) *Signer {
+// New creates new ECDSA signer
+func New(privKey *ecdsa.PrivateKey, alg, kid string) *Signer {
 	return &Signer{privateKey: privKey, kid: kid, alg: alg}
 }
 
@@ -37,7 +41,11 @@ func (signer *Signer) Headers() jws.Headers {
 
 // Sign signs msg and returns signature value
 func (signer *Signer) Sign(msg []byte) ([]byte, error) {
-	hasher := crypto.SHA256.New()
+	if signer.privateKey == nil {
+		return nil, errors.New("private key not provided")
+	}
+
+	hasher := getHasher(signer.privateKey.Curve).New()
 
 	_, err := hasher.Write(msg)
 	if err != nil {
@@ -67,4 +75,19 @@ func copyPadded(source []byte, size int) []byte {
 	copy(dest[size-len(source):], source)
 
 	return dest
+}
+
+func getHasher(curve elliptic.Curve) crypto.Hash {
+	switch curve {
+	case elliptic.P256():
+		return crypto.SHA256
+	case elliptic.P384():
+		return crypto.SHA384
+	case elliptic.P521():
+		return crypto.SHA512
+	case btcec.S256():
+		return crypto.SHA256
+	default:
+		return crypto.SHA256
+	}
 }

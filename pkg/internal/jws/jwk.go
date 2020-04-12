@@ -11,7 +11,6 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -19,11 +18,11 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/square/go-jose/v3"
+	"github.com/square/go-jose/v3/json"
 	"golang.org/x/crypto/ed25519"
 )
 
 const (
-	secp256k1Alg  = "ES256K"
 	secp256k1Crv  = "secp256k1"
 	secp256k1Kty  = "EC"
 	secp256k1Size = 32
@@ -40,7 +39,7 @@ type JWK struct {
 
 // PublicKeyBytes converts a public key to bytes.
 func (j *JWK) PublicKeyBytes() ([]byte, error) {
-	if isSecp256k1(j.Algorithm, j.Kty, j.Crv) {
+	if isSecp256k1(j.Kty, j.Crv) {
 		var ecPubKey *ecdsa.PublicKey
 
 		ecPubKey, ok := j.Key.(*ecdsa.PublicKey)
@@ -79,7 +78,7 @@ func (j *JWK) UnmarshalJSON(jwkBytes []byte) error {
 		return fmt.Errorf("unable to read JWK: %w", marshalErr)
 	}
 
-	if isSecp256k1(key.Alg, key.Kty, key.Crv) {
+	if isSecp256k1(key.Kty, key.Crv) {
 		jwk, err := unmarshalSecp256k1(&key)
 		if err != nil {
 			return fmt.Errorf("unable to read JWK: %w", err)
@@ -105,16 +104,15 @@ func (j *JWK) UnmarshalJSON(jwkBytes []byte) error {
 
 // MarshalJSON serializes the given key to its JSON representation.
 func (j *JWK) MarshalJSON() ([]byte, error) {
-	if isSecp256k1(j.Algorithm, j.Kty, j.Crv) {
+	if isSecp256k1(j.Kty, j.Crv) {
 		return marshalSecp256k1(j)
 	}
 
 	return (&j.JSONWebKey).MarshalJSON()
 }
 
-func isSecp256k1(alg, kty, crv string) bool {
-	return strings.EqualFold(alg, secp256k1Alg) ||
-		(strings.EqualFold(kty, secp256k1Kty) && strings.EqualFold(crv, secp256k1Crv))
+func isSecp256k1(kty, crv string) bool {
+	return strings.EqualFold(kty, secp256k1Kty) && strings.EqualFold(crv, secp256k1Crv)
 }
 
 func unmarshalSecp256k1(jwk *jsonWebKey) (*JWK, error) {
@@ -269,6 +267,14 @@ func (b *byteBuffer) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+func (b *byteBuffer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.base64())
+}
+
+func (b *byteBuffer) base64() string {
+	return base64.RawURLEncoding.EncodeToString(b.data)
 }
 
 func (b byteBuffer) bigInt() *big.Int {

@@ -8,6 +8,7 @@ package jws
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/base64"
@@ -19,7 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/util"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/edsigner"
 )
 
 func TestHeaders_GetKeyID(t *testing.T) {
@@ -130,13 +132,13 @@ func TestParseJWS(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	jwk, err := util.GetECPublicKey(privateKey)
+	jwk, err := getPublicKeyJWK(&privateKey.PublicKey)
 	require.NoError(t, err)
 
 	corruptedBased64 := "XXXXXaGVsbG8="
 
-	signer := util.NewECDSASigner(privateKey, "ES256", "key-1")
-	jws, err := NewJWS(jws.Headers{"alg": "EdSDA", "typ": "JWT"}, nil, []byte("payload"),
+	signer := ecsigner.New(privateKey, "ES256", "key-1")
+	jws, err := NewJWS(signer.Headers(), nil, []byte("payload"),
 		signer)
 	require.NoError(t, err)
 
@@ -212,8 +214,29 @@ func TestParseJWS(t *testing.T) {
 	jwk.Kty = "type"
 	parsedJWS, err = ParseJWS(jwsCompact, jwk)
 	require.Error(t, err)
-	require.EqualError(t, err, "unsupported key type: type")
+	require.Contains(t, err.Error(), "key type is not supported for verifying signature")
 	require.Nil(t, parsedJWS)
+}
+
+func TestParseJWS_ED25519(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	jwk, err := getPublicKeyJWK(publicKey)
+	require.NoError(t, err)
+
+	signer := edsigner.New(privateKey, "EdDSA", "key-1")
+	jws, err := NewJWS(signer.Headers(), nil, []byte("payload"), signer)
+	require.NoError(t, err)
+
+	jwsCompact, err := jws.SerializeCompact(false)
+	require.NoError(t, err)
+	require.NotEmpty(t, jwsCompact)
+
+	parsedJWS, err := ParseJWS(jwsCompact, jwk)
+	require.NoError(t, err)
+	require.NotNil(t, parsedJWS)
+	require.Equal(t, jws, parsedJWS)
 }
 
 func TestIsCompactJWS(t *testing.T) {
