@@ -22,6 +22,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
+// recovery key ID
+const recoveryKID = "recovery"
+
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
 // It uses operation store client to retrieve all operations that are related to requested document.
 type OperationProcessor struct {
@@ -183,6 +186,23 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, err
 	}
 
+	signingKID := operation.SignedData.Protected.Kid
+
+	var signingPublicKey *jws.JWK
+	if signingKID == recoveryKID {
+		signingPublicKey = rm.RecoveryKey
+	} else {
+		signingPublicKey, err = getSigningPublicKeyFromDoc(rm.Doc, signingKID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = internal.ParseJWS(operation.SignedData.Signature, signingPublicKey)
+	if err != nil {
+		return nil, err
+	}
+
 	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
 	if err != nil {
 		return nil, err
@@ -195,6 +215,50 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
 		NextRecoveryCommitmentHash:     rm.NextRecoveryCommitmentHash,
 		RecoveryKey:                    rm.RecoveryKey}, nil
+}
+
+func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, error) {
+	pk, err := findPublicKey(doc, kid)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateSigningKey(pk); err != nil {
+		return nil, err
+	}
+
+	jwk := pk.PublicKeyJWK()
+
+	return &jws.JWK{
+		Kty: jwk.Kty(),
+		Crv: jwk.Crv(),
+		X:   jwk.X(),
+		Y:   jwk.Y(),
+	}, nil
+}
+
+func validateSigningKey(pk document.PublicKey) error {
+	if !containsString(pk.Usage(), "ops") {
+		return errors.New("signing public key is not an operations key")
+	}
+
+	jwk := pk.PublicKeyJWK()
+	if jwk == nil {
+		return errors.New("signing public key has to be in JWK format")
+	}
+
+	return nil
+}
+
+func findPublicKey(doc document.Document, kid string) (document.PublicKey, error) {
+	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	for _, pk := range didDoc.PublicKeys() {
+		if pk.ID() == kid {
+			return pk, nil
+		}
+	}
+
+	return nil, errors.New("signing public key not found in the document")
 }
 
 func (s *OperationProcessor) applyRevokeOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {

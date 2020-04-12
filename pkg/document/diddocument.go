@@ -31,6 +31,9 @@ const (
 	jsonldPublicKeyHex    = "publicKeyHex"
 	jsonldPublicKeyPem    = "publicKeyPem"
 	jsonldPublicKeyJwk    = "publicKeyJwk"
+
+	// key usage
+	jsonldPublicKeyUsage = "usage"
 )
 
 // DIDDocument Defines DID Document data structure used by Sidetree for basic type safety checks.

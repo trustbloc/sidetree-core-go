@@ -13,13 +13,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-
+	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -41,11 +42,11 @@ func TestResolve(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	store, _ := getDefaultStore(privateKey)
+	store, uniqueSuffix := getDefaultStore(privateKey)
 
 	op := New("test", store)
 
-	doc, err := op.Resolve(getCreateOperation(privateKey).UniqueSuffix)
+	doc, err := op.Resolve(uniqueSuffix)
 
 	require.Nil(t, err)
 	require.NotNil(t, doc)
@@ -65,14 +66,11 @@ func TestDocumentNotFoundError(t *testing.T) {
 }
 
 func TestResolveMockStoreError(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
 	testErr := errors.New("test store error")
 	store := mocks.NewMockOperationStore(testErr)
 	p := New("test", store)
 
-	doc, err := p.Resolve(getCreateOperation(privateKey).UniqueSuffix)
+	doc, err := p.Resolve("suffix")
 	require.Nil(t, doc)
 	require.Error(t, err)
 	require.Equal(t, testErr, err)
@@ -88,7 +86,8 @@ func TestResolveError(t *testing.T) {
 	require.NoError(t, err)
 	jsonPatch["patches"] = "invalid"
 
-	createOp := getCreateOperation(privateKey)
+	createOp, err := getCreateOperation(privateKey)
+	require.NoError(t, err)
 	createOp.PatchData = &model.PatchDataModel{
 		Patches: []patch.Patch{jsonPatch},
 	}
@@ -109,7 +108,8 @@ func TestUpdateDocument(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	updateOp := getUpdateOperation(uniqueSuffix, 1)
+	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+	require.Nil(t, err)
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -132,7 +132,8 @@ func TestUpdateDocument_InvalidRevealValue(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	updateOp := getUpdateOperation(uniqueSuffix, 77)
+	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 77)
+	require.Nil(t, err)
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -149,11 +150,13 @@ func TestConsecutiveUpdates(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	updateOp := getUpdateOperation(uniqueSuffix, 1)
+	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+	require.Nil(t, err)
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
-	updateOp = getUpdateOperation(uniqueSuffix, 2)
+	updateOp, err = getUpdateOperation(privateKey, uniqueSuffix, 2)
+	require.Nil(t, err)
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -170,15 +173,119 @@ func TestConsecutiveUpdates(t *testing.T) {
 	}})
 }
 
+func TestUpdate_InvalidSignature(t *testing.T) {
+	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	store, uniqueSuffix := getDefaultStore(recoveryKey)
+
+	// sign recover operation with different recovery key (than one used in create)
+	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	revokeOp, err := getUpdateOperation(differentRecoveryKey, uniqueSuffix, 1)
+	require.NoError(t, err)
+
+	err = store.Put(revokeOp)
+	require.NoError(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "ecdsa: invalid signature")
+	require.Nil(t, doc)
+}
+
+func TestUpdate_PublicKeyInDocument(t *testing.T) {
+	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	store := mocks.NewMockOperationStore(nil)
+
+	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	publicKey, err := util.GetECPublicKey(updateKey)
+	require.NoError(t, err)
+
+	publicKeyBytes, err := json.Marshal(publicKey)
+	require.NoError(t, err)
+
+	const keyID = "public-key"
+	opaque := fmt.Sprintf(docTemplate, keyID, string(publicKeyBytes))
+
+	// get and store create operation
+	createOp, err := getCreateOperationWithDoc(recoveryKey, opaque)
+	require.NoError(t, err)
+	err = store.Put(createOp)
+	require.Nil(t, err)
+
+	s := util.NewECDSASigner(updateKey, "ES256", keyID)
+	updateOp, err := getUpdateOperationWithSigner(s, createOp.UniqueSuffix, 1)
+	require.NoError(t, err)
+
+	err = store.Put(updateOp)
+	require.NoError(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(createOp.UniqueSuffix)
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+}
+
+func TestUpdateDocument_SigningKeyNotInDocument(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	store, uniqueSuffix := getDefaultStore(privateKey)
+
+	s := util.NewECDSASigner(privateKey, "ES256", "some-key")
+	updateOp, err := getUpdateOperationWithSigner(s, uniqueSuffix, 1)
+	require.NoError(t, err)
+
+	err = store.Put(updateOp)
+	require.Nil(t, err)
+
+	p := New("test", store)
+	doc, err := p.Resolve(uniqueSuffix)
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "signing public key not found in the document")
+}
+
+func TestUpdateDocument_ValidateSigningKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	err := validateSigningKey(pk)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "signing public key is not an operations key")
+
+	pk["usage"] = []string{"ops"}
+	err = validateSigningKey(pk)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "signing public key has to be in JWK format")
+
+	jwk := map[string]interface{}{
+		"kty": "kty",
+		"crv": "crv",
+		"x":   "x",
+		"y":   "y",
+	}
+
+	pk["publicKeyJwk"] = jwk
+	err = validateSigningKey(pk)
+	require.NoError(t, err)
+}
+
 func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
 	store := mocks.NewMockOperationStore(nil)
 
-	uniqueSuffix := getCreateOperation(privateKey).UniqueSuffix
+	uniqueSuffix := "uniqueSuffix"
 
-	updateOp := getUpdateOperation(uniqueSuffix, 1)
+	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+	require.Nil(t, err)
 	err = store.Put(updateOp)
 	require.Nil(t, err)
 
@@ -196,7 +303,8 @@ func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	store.Validate = false
 
-	createOp := getCreateOperation(privateKey)
+	createOp, err := getCreateOperation(privateKey)
+	require.NoError(t, err)
 
 	// store create operation
 	err = store.Put(createOp)
@@ -219,7 +327,9 @@ func TestProcessOperation_InvalidOperationType(t *testing.T) {
 
 	store := mocks.NewMockOperationStore(nil)
 
-	createOp := getCreateOperation(privateKey)
+	createOp, err := getCreateOperation(privateKey)
+	require.NoError(t, err)
+
 	createOp.Type = "invalid"
 
 	// store create operation
@@ -258,7 +368,9 @@ func TestRevoke(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
+
 	err = store.Put(revokeOp)
 	require.Nil(t, err)
 
@@ -275,11 +387,13 @@ func TestConsecutiveRevoke(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	err = store.Put(revokeOp)
 	require.Nil(t, err)
 
-	revokeOp = getRevokeOperation(privateKey, uniqueSuffix, 2)
+	revokeOp, err = getRevokeOperation(privateKey, uniqueSuffix, 2)
+	require.NoError(t, err)
 	err = store.Put(revokeOp)
 	require.Nil(t, err)
 
@@ -296,7 +410,8 @@ func TestRevoke_DocumentNotFound(t *testing.T) {
 
 	store, _ := getDefaultStore(privateKey)
 
-	revokeOp := getRevokeOperation(privateKey, dummyUniqueSuffix, 0)
+	revokeOp, err := getRevokeOperation(privateKey, dummyUniqueSuffix, 0)
+	require.NoError(t, err)
 	err = store.Put(revokeOp)
 	require.Nil(t, err)
 
@@ -313,7 +428,8 @@ func TestRevoke_InvalidRecoveryRevealValue(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	revokeOp.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
 	err = store.Put(revokeOp)
 	require.NoError(t, err)
@@ -335,7 +451,8 @@ func TestRevoke_InvalidSignature(t *testing.T) {
 	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	revokeOp := getRevokeOperation(differentRecoveryKey, uniqueSuffix, 1)
+	revokeOp, err := getRevokeOperation(differentRecoveryKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	err = store.Put(revokeOp)
 	require.NoError(t, err)
 
@@ -352,7 +469,8 @@ func TestRecover(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	recoverOp := getRecoverOperation(privateKey, uniqueSuffix, 1)
+	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	err = store.Put(recoverOp)
 	require.Nil(t, err)
 
@@ -372,11 +490,13 @@ func TestConsecutiveRecover(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	recoverOp := getRecoverOperation(privateKey, uniqueSuffix, 1)
+	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	err = store.Put(recoverOp)
 	require.Nil(t, err)
 
-	recoverOp = getRecoverOperation(privateKey, uniqueSuffix, 2)
+	recoverOp, err = getRecoverOperation(privateKey, uniqueSuffix, 2)
+	require.NoError(t, err)
 	err = store.Put(recoverOp)
 	require.Nil(t, err)
 
@@ -396,7 +516,8 @@ func TestRecover_InvalidSignature(t *testing.T) {
 	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	recoverOp := getRecoverOperation(differentRecoveryKey, uniqueSuffix, 1)
+	recoverOp, err := getRecoverOperation(differentRecoveryKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	err = store.Put(recoverOp)
 	require.Nil(t, err)
 
@@ -415,11 +536,13 @@ func TestRecoverAfterRevoke(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	err = store.Put(revokeOp)
 	require.Nil(t, err)
 
-	recoverOp := getRecoverOperation(privateKey, uniqueSuffix, 2)
+	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 2)
+	require.NoError(t, err)
 	err = store.Put(recoverOp)
 	require.Nil(t, err)
 
@@ -436,7 +559,8 @@ func TestRecover_InvalidRecoveryRevealValue(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	op := getRecoverOperation(privateKey, uniqueSuffix, 1)
+	op, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
+	require.NoError(t, err)
 	op.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
 	err = store.Put(op)
 	require.NoError(t, err)
@@ -471,7 +595,7 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 	require.Equal(t, 1, len(txns))
 }
 
-func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operation {
+func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/publicKey/0/controller",
@@ -480,21 +604,31 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 
 	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{p})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	jsonPatch, err := patch.NewJSONPatch(string(patchBytes))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
+	updateRevealValue := base64.URLEncoding.EncodeToString([]byte(updateReveal + strconv.Itoa(int(operationNumber))))
+
+	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + strconv.Itoa(int(operationNumber+1))))
 
 	patchData := &model.PatchDataModel{
-		Patches: []patch.Patch{jsonPatch},
+		NextUpdateCommitmentHash: nextUpdateCommitmentHash,
+		Patches:                  []patch.Patch{jsonPatch},
 	}
 
-	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+strconv.Itoa(int(operationNumber+1))))
+	patchDataBytes, err := docutil.MarshalCanonical(patchData)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+
+	jws, err := signPayload(getEncodedMultihash(patchDataBytes), s)
+	if err != nil {
+		return nil, err
 	}
 
 	operation := &batch.Operation{
@@ -504,14 +638,21 @@ func getUpdateOperation(uniqueSuffix string, operationNumber uint) *batch.Operat
 		PatchData:                    patchData,
 		Type:                         batch.OperationTypeUpdate,
 		TransactionNumber:            uint64(operationNumber),
-		UpdateRevealValue:            base64.URLEncoding.EncodeToString([]byte(updateReveal + strconv.Itoa(int(operationNumber)))),
-		NextUpdateCommitmentHash:     base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
+		UpdateRevealValue:            updateRevealValue,
+		NextUpdateCommitmentHash:     nextUpdateCommitmentHash,
+		SignedData:                   jws,
 	}
 
-	return operation
+	return operation, nil
 }
 
-func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) *batch.Operation {
+func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
+	s := util.NewECDSASigner(privateKey, "ES256", "recovery")
+
+	return getUpdateOperationWithSigner(s, uniqueSuffix, operationNumber)
+}
+
+func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	signedDataModel := model.RevokeSignedDataModel{
 		DidUniqueSuffix:     uniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString([]byte("recovery")),
@@ -521,7 +662,7 @@ func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 
 	jws, err := signModel(signedDataModel, s)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &batch.Operation{
@@ -532,33 +673,27 @@ func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 		TransactionNumber:   uint64(operationNumber),
 		RecoveryRevealValue: base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
 		SignedData:          jws,
-	}
+	}, nil
 }
 
-func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) *batch.Operation {
+func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	recoverRequest, err := getDefaultRecoverRequest(privateKey)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	operationBuffer, err := json.Marshal(recoverRequest)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+"1"))
-	if err != nil {
-		panic(err)
-	}
+	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + "1"))
 
-	nextRecoveryCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryReveal))
-	if err != nil {
-		panic(err)
-	}
+	nextRecoveryCommitmentHash := getEncodedMultihash([]byte(recoveryReveal))
 
 	patchData, err := getReplacePatchData(recoveredDoc)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &batch.Operation{
@@ -569,11 +704,11 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 		EncodedPatchData:           recoverRequest.PatchData,
 		SignedData:                 recoverRequest.SignedData,
 		RecoveryRevealValue:        base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
-		NextUpdateCommitmentHash:   base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
-		NextRecoveryCommitmentHash: base64.URLEncoding.EncodeToString(nextRecoveryCommitmentHash),
+		NextUpdateCommitmentHash:   nextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash: nextRecoveryCommitmentHash,
 		TransactionTime:            0,
 		TransactionNumber:          uint64(operationNumber),
-	}
+	}, nil
 }
 
 func getRecoverRequest(privateKey *ecdsa.PrivateKey, patchDataModel *model.PatchDataModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
@@ -600,29 +735,38 @@ func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverReque
 	if err != nil {
 		return nil, err
 	}
-	return getRecoverRequest(privateKey, patchData, getRecoverSignedData(privateKey))
+
+	recoverSignedData, err := getRecoverSignedData(privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return getRecoverRequest(privateKey, patchData, recoverSignedData)
 }
 
-func getRecoverSignedData(privateKey *ecdsa.PrivateKey) *model.RecoverSignedDataModel {
+func getRecoverSignedData(privateKey *ecdsa.PrivateKey) (*model.RecoverSignedDataModel, error) {
 	jwk, err := util.GetECPublicKey(privateKey)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &model.RecoverSignedDataModel{
 		RecoveryKey:                jwk,
-		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
-		PatchDataHash:              computeMultihash("operation"),
-	}
+		NextRecoveryCommitmentHash: getEncodedMultihash([]byte("recoveryReveal")),
+		PatchDataHash:              getEncodedMultihash([]byte("operation")),
+	}, nil
 }
 
 func getDefaultStore(privateKey *ecdsa.PrivateKey) (*mocks.MockOperationStore, string) {
 	store := mocks.NewMockOperationStore(nil)
 
-	createOp := getCreateOperation(privateKey)
+	createOp, err := getCreateOperation(privateKey)
+	if err != nil {
+		panic(err)
+	}
 
 	// store default create operation
-	err := store.Put(createOp)
+	err = store.Put(createOp)
 	if err != nil {
 		panic(err)
 	}
@@ -630,38 +774,35 @@ func getDefaultStore(privateKey *ecdsa.PrivateKey) (*mocks.MockOperationStore, s
 	return store, createOp.UniqueSuffix
 }
 
-func getCreateOperation(privateKey *ecdsa.PrivateKey) *batch.Operation {
-	nextUpdateCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(updateReveal+"1"))
-	if err != nil {
-		panic(err)
-	}
+func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch.Operation, error) {
+	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + "1"))
 
-	nextRecoveryCommitmentHash, err := docutil.ComputeMultihash(sha2_256, []byte(recoveryReveal))
-	if err != nil {
-		panic(err)
-	}
+	nextRecoveryCommitmentHash := getEncodedMultihash([]byte(recoveryReveal))
 
 	createRequest, err := getCreateRequest(privateKey)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	operationBuffer, err := json.Marshal(createRequest)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	uniqueSuffix, err := docutil.CalculateUniqueSuffix(createRequest.SuffixData, sha2_256)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	patchData, err := getReplacePatchData(validDoc)
+	patchData, err := getReplacePatchData(doc)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	suffixData := getSuffixData(privateKey)
+	suffixData, err := getSuffixData(privateKey)
+	if err != nil {
+		return nil, err
+	}
 
 	return &batch.Operation{
 		HashAlgorithmInMultiHashCode: sha2_256,
@@ -673,9 +814,13 @@ func getCreateOperation(privateKey *ecdsa.PrivateKey) *batch.Operation {
 		EncodedPatchData:             createRequest.PatchData,
 		SuffixData:                   suffixData,
 		TransactionNumber:            0,
-		NextUpdateCommitmentHash:     base64.URLEncoding.EncodeToString(nextUpdateCommitmentHash),
-		NextRecoveryCommitmentHash:   base64.URLEncoding.EncodeToString(nextRecoveryCommitmentHash),
-	}
+		NextUpdateCommitmentHash:     nextUpdateCommitmentHash,
+		NextRecoveryCommitmentHash:   nextRecoveryCommitmentHash,
+	}, nil
+}
+
+func getCreateOperation(privateKey *ecdsa.PrivateKey) (*batch.Operation, error) {
+	return getCreateOperationWithDoc(privateKey, validDoc)
 }
 
 func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {
@@ -689,7 +834,12 @@ func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error
 		return nil, err
 	}
 
-	suffixDataBytes, err := docutil.MarshalCanonical(getSuffixData(privateKey))
+	suffixData, err := getSuffixData(privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	suffixDataBytes, err := docutil.MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -709,25 +859,25 @@ func getReplacePatchData(doc string) (*model.PatchDataModel, error) {
 
 	return &model.PatchDataModel{
 		Patches:                  []patch.Patch{replace},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+		NextUpdateCommitmentHash: getEncodedMultihash([]byte("updateReveal")),
 	}, nil
 }
 
-func getSuffixData(privateKey *ecdsa.PrivateKey) *model.SuffixDataModel {
+func getSuffixData(privateKey *ecdsa.PrivateKey) (*model.SuffixDataModel, error) {
 	jwk, err := util.GetECPublicKey(privateKey)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &model.SuffixDataModel{
-		PatchDataHash:              computeMultihash(validDoc),
+		PatchDataHash:              getEncodedMultihash([]byte(validDoc)),
 		RecoveryKey:                jwk,
-		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
-	}
+		NextRecoveryCommitmentHash: getEncodedMultihash([]byte("recoveryReveal")),
+	}, nil
 }
 
-func computeMultihash(data string) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+func getEncodedMultihash(data []byte) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}
@@ -792,4 +942,15 @@ const recoveredDoc = `{
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
 	}]
+}`
+
+const docTemplate = `{
+  "publicKey": [
+	{
+  		"id": "%s",
+  		"type": "JwsVerificationKey2020",
+		"usage": ["ops"],
+  		"publicKeyJwk": %s
+	}
+  ]
 }`

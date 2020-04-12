@@ -50,8 +50,22 @@ func (pk PublicKey) PublicKeyPEM() string {
 }
 
 // PublicKeyJWK is value property
-func (pk PublicKey) PublicKeyJWK() string {
-	return stringEntry(pk[jsonldPublicKeyJwk])
+func (pk PublicKey) PublicKeyJWK() JWK {
+	entry, ok := pk[jsonldPublicKeyJwk]
+	if !ok {
+		return nil
+	}
+
+	json, ok := entry.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	return NewJWK(json)
+}
+
+// Usage describes key usage
+func (pk PublicKey) Usage() []string {
+	return arrayStringEntry(pk[jsonldPublicKeyUsage])
 }
 
 // JSONLdObject returns map that represents JSON LD Object
