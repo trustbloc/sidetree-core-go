@@ -9,6 +9,7 @@ package jws
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"encoding/json"
 	"errors"
@@ -32,9 +33,41 @@ func VerifySignature(jwk *jws.JWK, signature, msg []byte) error {
 	switch jwk.Kty {
 	case "EC":
 		return verifyECSignature(jwk, signature, msg)
+	case "OKP":
+		return verifyEd25519Signature(jwk, signature, msg)
 	default:
-		return fmt.Errorf("unsupported key type: %s", jwk.Kty)
+		return fmt.Errorf("'%s' key type is not supported for verifying signature", jwk.Kty)
 	}
+}
+
+func verifyEd25519Signature(jwk *jws.JWK, signature, msg []byte) error {
+	jsonBytes, err := json.Marshal(jwk)
+	if err != nil {
+		return err
+	}
+
+	var internalJWK JWK
+	err = internalJWK.UnmarshalJSON(jsonBytes)
+	if err != nil {
+		return err
+	}
+
+	pubKey, ok := internalJWK.Key.(ed25519.PublicKey)
+	if !ok {
+		return errors.New("unexpected public key type for ed25519")
+	}
+
+	// ed25519 panics if key size is wrong
+	if len(pubKey) != ed25519.PublicKeySize {
+		return errors.New("ed25519: invalid key")
+	}
+
+	verified := ed25519.Verify(pubKey, msg, signature)
+	if !verified {
+		return errors.New("ed25519: invalid signature")
+	}
+
+	return nil
 }
 
 func verifyECSignature(jwk *jws.JWK, signature, msg []byte) error {

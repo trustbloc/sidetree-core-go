@@ -27,7 +27,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-	"github.com/trustbloc/sidetree-core-go/pkg/util"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 const (
@@ -205,7 +206,7 @@ func TestUpdate_PublicKeyInDocument(t *testing.T) {
 	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	publicKey, err := util.GetECPublicKey(updateKey)
+	publicKey, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
 	require.NoError(t, err)
 
 	publicKeyBytes, err := json.Marshal(publicKey)
@@ -220,7 +221,7 @@ func TestUpdate_PublicKeyInDocument(t *testing.T) {
 	err = store.Put(createOp)
 	require.Nil(t, err)
 
-	s := util.NewECDSASigner(updateKey, "ES256", keyID)
+	s := ecsigner.New(updateKey, "ES256", keyID)
 	updateOp, err := getUpdateOperationWithSigner(s, createOp.UniqueSuffix, 1)
 	require.NoError(t, err)
 
@@ -239,7 +240,7 @@ func TestUpdateDocument_SigningKeyNotInDocument(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	s := util.NewECDSASigner(privateKey, "ES256", "some-key")
+	s := ecsigner.New(privateKey, "ES256", "some-key")
 	updateOp, err := getUpdateOperationWithSigner(s, uniqueSuffix, 1)
 	require.NoError(t, err)
 
@@ -647,7 +648,7 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 }
 
 func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
-	s := util.NewECDSASigner(privateKey, "ES256", "recovery")
+	s := ecsigner.New(privateKey, "ES256", "recovery")
 
 	return getUpdateOperationWithSigner(s, uniqueSuffix, operationNumber)
 }
@@ -658,7 +659,7 @@ func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 		RecoveryRevealValue: docutil.EncodeToString([]byte("recovery")),
 	}
 
-	s := util.NewECDSASigner(privateKey, "ES256", "recovery")
+	s := ecsigner.New(privateKey, "ES256", "recovery")
 
 	jws, err := signModel(signedDataModel, s)
 	if err != nil {
@@ -717,7 +718,7 @@ func getRecoverRequest(privateKey *ecdsa.PrivateKey, patchDataModel *model.Patch
 		return nil, err
 	}
 
-	jws, err := signModel(signedDataModel, util.NewECDSASigner(privateKey, "ES256", "recovery"))
+	jws, err := signModel(signedDataModel, ecsigner.New(privateKey, "ES256", "recovery"))
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +746,7 @@ func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverReque
 }
 
 func getRecoverSignedData(privateKey *ecdsa.PrivateKey) (*model.RecoverSignedDataModel, error) {
-	jwk, err := util.GetECPublicKey(privateKey)
+	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -864,7 +865,7 @@ func getReplacePatchData(doc string) (*model.PatchDataModel, error) {
 }
 
 func getSuffixData(privateKey *ecdsa.PrivateKey) (*model.SuffixDataModel, error) {
-	jwk, err := util.GetECPublicKey(privateKey)
+	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}

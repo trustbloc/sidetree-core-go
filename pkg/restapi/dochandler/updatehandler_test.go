@@ -27,7 +27,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-	"github.com/trustbloc/sidetree-core-go/pkg/util"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 const (
@@ -202,7 +203,7 @@ func getCreateRequestInfo() *helper.CreateRequestInfo {
 		panic(err)
 	}
 
-	recoveryKey, err := util.GetECPublicKey(privateKey)
+	recoveryKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		panic(err)
 	}
@@ -234,7 +235,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 		UpdateRevealValue:     updateReveal,
 		NextUpdateRevealValue: updateReveal,
 		MultihashCode:         sha2_256,
-		Signer:                util.NewECDSASigner(privateKey, "ES256", "key-1"),
+		Signer:                ecsigner.New(privateKey, "ES256", "key-1"),
 	}
 }
 
@@ -248,7 +249,7 @@ func getRevokeRequestInfo(uniqueSuffix string) *helper.RevokeRequestInfo {
 	return &helper.RevokeRequestInfo{
 		DidUniqueSuffix:     uniqueSuffix,
 		RecoveryRevealValue: recoveryReveal,
-		Signer:              util.NewECDSASigner(privateKey, "ES256", "recovery"),
+		Signer:              ecsigner.New(privateKey, "ES256", "recovery"),
 	}
 }
 
@@ -258,7 +259,7 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 		panic(err)
 	}
 
-	recoveryKey, err := util.GetECPublicKey(privateKey)
+	recoveryKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		panic(err)
 	}
@@ -271,7 +272,7 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 		NextRecoveryRevealValue: []byte("newRecoveryReveal"),
 		NextUpdateRevealValue:   []byte("newUpdateReveal"),
 		MultihashCode:           sha2_256,
-		Signer:                  util.NewECDSASigner(privateKey, "ES256", "recovery"),
+		Signer:                  ecsigner.New(privateKey, "ES256", "recovery"),
 	}
 }
 

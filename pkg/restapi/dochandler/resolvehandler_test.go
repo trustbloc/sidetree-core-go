@@ -23,7 +23,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-	"github.com/trustbloc/sidetree-core-go/pkg/util"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 func TestResolveHandler_Resolve(t *testing.T) {
@@ -166,7 +166,7 @@ func getSuffixData() *model.SuffixDataModel {
 		panic(err)
 	}
 
-	recoveryKey, err := util.GetECPublicKey(privateKey)
+	recoveryKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		panic(err)
 	}
