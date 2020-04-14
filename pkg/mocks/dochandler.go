@@ -66,7 +66,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 		return nil, m.err
 	}
 
-	if operation.Type == batch.OperationTypeRevoke {
+	if operation.Type == batch.OperationTypeDeactivate {
 		m.store[operation.ID] = nil
 		return nil, nil
 	}
@@ -94,7 +94,7 @@ func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (document.Doc
 	}
 
 	if m.store[idOrDocument] == nil {
-		return nil, errors.New("was revoked")
+		return nil, errors.New("was deactivated")
 	}
 
 	return m.store[idOrDocument], nil

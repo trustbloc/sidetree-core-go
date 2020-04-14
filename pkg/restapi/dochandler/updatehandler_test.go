@@ -82,12 +82,12 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
-	t.Run("Revoke", func(t *testing.T) {
-		revoke, err := helper.NewRevokeRequest(getRevokeRequestInfo(id))
+	t.Run("Deactivate", func(t *testing.T) {
+		deactivate, err := helper.NewDeactivateRequest(getDeactivateRequestInfo(id))
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(revoke))
+		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(deactivate))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
@@ -153,9 +153,9 @@ func TestGetOperation(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, op)
 	})
-	t.Run("revoke", func(t *testing.T) {
-		info := getRevokeRequestInfo(uniqueSuffix)
-		request, err := helper.NewRevokeRequest(info)
+	t.Run("deactivate", func(t *testing.T) {
+		info := getDeactivateRequestInfo(uniqueSuffix)
+		request, err := helper.NewDeactivateRequest(info)
 		require.NoError(t, err)
 
 		op, err := handler.getOperation(request)
@@ -239,14 +239,14 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 	}
 }
 
-func getRevokeRequestInfo(uniqueSuffix string) *helper.RevokeRequestInfo {
+func getDeactivateRequestInfo(uniqueSuffix string) *helper.DeactivateRequestInfo {
 	curve := elliptic.P256()
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		panic(err)
 	}
 
-	return &helper.RevokeRequestInfo{
+	return &helper.DeactivateRequestInfo{
 		DidUniqueSuffix:     uniqueSuffix,
 		RecoveryRevealValue: recoveryReveal,
 		Signer:              ecsigner.New(privateKey, "ES256", "recovery"),

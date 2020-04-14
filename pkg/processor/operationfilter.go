@@ -61,7 +61,7 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 
 	var validUpdateOps []*batch.Operation
 	if rm.Doc == nil {
-		log.Debugf("[%s] Document was revoked [%s]", s.name, uniqueSuffix)
+		log.Debugf("[%s] Document was deactivated [%s]", s.name, uniqueSuffix)
 	} else {
 		// next apply update ops since last 'full' transaction
 		validUpdateOps, _ = s.getValidOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber), rm)

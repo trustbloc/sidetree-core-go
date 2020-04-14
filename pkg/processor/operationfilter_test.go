@@ -110,7 +110,7 @@ func TestOperationFilter_Filter(t *testing.T) {
 		require.True(t, validOps[0] == updateOp2)
 	})
 
-	t.Run("With revoke operation", func(t *testing.T) {
+	t.Run("With deactivate operation", func(t *testing.T) {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err)
 		store := mocks.NewMockOperationStore(nil)
@@ -126,14 +126,14 @@ func TestOperationFilter_Filter(t *testing.T) {
 		require.NoError(t, err)
 		updateOp, err := getUpdateOperation(privateKey, createOp1.UniqueSuffix, 1)
 		require.NoError(t, err)
-		revokeOp, err := getRevokeOperation(privateKey, createOp1.UniqueSuffix, 2)
+		deactivateOp, err := getDeactivateOperation(privateKey, createOp1.UniqueSuffix, 2)
 		require.NoError(t, err)
 
-		// The create should be discarded (since there's already a create) and update should be discarded since the document was revoked
+		// The create should be discarded (since there's already a create) and update should be discarded since the document was deactivated
 		filter := NewOperationFilter("test", store)
-		validOps, err := filter.Filter(createOp1.UniqueSuffix, []*batch.Operation{createOp2, updateOp, revokeOp})
+		validOps, err := filter.Filter(createOp1.UniqueSuffix, []*batch.Operation{createOp2, updateOp, deactivateOp})
 		require.NoError(t, err)
 		require.Len(t, validOps, 1)
-		require.True(t, validOps[0] == revokeOp)
+		require.True(t, validOps[0] == deactivateOp)
 	})
 }

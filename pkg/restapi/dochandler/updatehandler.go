@@ -89,8 +89,8 @@ func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, 
 		op, parseErr = operation.ParseCreateOperation(operationBuffer, protocol)
 	case model.OperationTypeUpdate:
 		op, parseErr = operation.ParseUpdateOperation(operationBuffer, protocol)
-	case model.OperationTypeRevoke:
-		op, parseErr = operation.ParseRevokeOperation(operationBuffer, protocol)
+	case model.OperationTypeDeactivate:
+		op, parseErr = operation.ParseDeactivateOperation(operationBuffer, protocol)
 	case model.OperationTypeRecover:
 		op, parseErr = operation.ParseRecoverOperation(operationBuffer, protocol)
 	default:
