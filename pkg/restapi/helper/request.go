@@ -46,13 +46,13 @@ type CreateRequestInfo struct {
 	MultihashCode uint
 }
 
-//RevokeRequestInfo is the information required to create revoke request
-type RevokeRequestInfo struct {
+//DeactivateRequestInfo is the information required to create deactivate request
+type DeactivateRequestInfo struct {
 
 	// Unique Suffix
 	DidUniqueSuffix string
 
-	// reveal value for this revoke operation
+	// reveal value for this deactivate operation
 	RecoveryRevealValue []byte
 
 	// Signer that will be used for signing specific subset of request data
@@ -172,13 +172,13 @@ func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
 	return docutil.EncodeToString(hash), nil
 }
 
-// NewRevokeRequest is utility function to create payload for 'revoke' request
-func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
+// NewDeactivateRequest is utility function to create payload for 'deactivate' request
+func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	if info.DidUniqueSuffix == "" {
 		return nil, errors.New("missing did unique suffix")
 	}
 
-	signedDataModel := model.RevokeSignedDataModel{
+	signedDataModel := model.DeactivateSignedDataModel{
 		DidUniqueSuffix:     info.DidUniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 	}
@@ -188,8 +188,8 @@ func NewRevokeRequest(info *RevokeRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	schema := &model.RevokeRequest{
-		Operation:           model.OperationTypeRevoke,
+	schema := &model.DeactivateRequest{
+		Operation:           model.OperationTypeDeactivate,
 		DidUniqueSuffix:     info.DidUniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 		SignedData:          jws,

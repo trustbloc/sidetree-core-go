@@ -110,7 +110,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = docHandler.ProcessOperation(&batch.Operation{
-			Type: batch.OperationTypeRevoke,
+			Type: batch.OperationTypeDeactivate,
 			ID:   doc.ID(),
 		})
 		require.NoError(t, err)

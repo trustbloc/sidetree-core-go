@@ -72,8 +72,8 @@ type UpdateRequest struct {
 	PatchData string `json:"patchData"`
 }
 
-//RevokeRequest is the struct for revoking document
-type RevokeRequest struct {
+//DeactivateRequest is the struct for deactivating document
+type DeactivateRequest struct {
 	// operation
 	// Required: true
 	Operation OperationType `json:"type"`
@@ -99,12 +99,12 @@ type RecoverSignedDataModel struct {
 	// The new recovery key
 	RecoveryKey *jws.JWK `json:"recoveryKey"`
 
-	// Hash of the one-time password to be used for the next recovery/revoke
+	// Hash of the one-time password to be used for the next recovery/deactivate
 	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
 }
 
-// RevokeSignedDataModel defines data model for revoke
-type RevokeSignedDataModel struct {
+// DeactivateSignedDataModel defines data model for deactivate
+type DeactivateSignedDataModel struct {
 
 	//The unique suffix of the DID
 	// Required: true

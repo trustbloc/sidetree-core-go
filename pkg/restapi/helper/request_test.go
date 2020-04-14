@@ -70,19 +70,19 @@ func TestNewCreateRequest(t *testing.T) {
 	})
 }
 
-func TestNewRevokeRequest(t *testing.T) {
+func TestNewDeactivateRequest(t *testing.T) {
 	t.Run("missing unique suffix", func(t *testing.T) {
-		info := &RevokeRequestInfo{}
+		info := &DeactivateRequestInfo{}
 
-		request, err := NewRevokeRequest(info)
+		request, err := NewDeactivateRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
 	t.Run("signing error", func(t *testing.T) {
-		info := &RevokeRequestInfo{DidUniqueSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
+		info := &DeactivateRequestInfo{DidUniqueSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
 
-		request, err := NewRevokeRequest(info)
+		request, err := NewDeactivateRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), signerErr)
@@ -93,9 +93,9 @@ func TestNewRevokeRequest(t *testing.T) {
 
 		signer := ecsigner.New(privateKey, "ES256", "recovery")
 
-		info := &RevokeRequestInfo{DidUniqueSuffix: "whatever", Signer: signer}
+		info := &DeactivateRequestInfo{DidUniqueSuffix: "whatever", Signer: signer}
 
-		request, err := NewRevokeRequest(info)
+		request, err := NewDeactivateRequest(info)
 		require.NoError(t, err)
 		require.NotEmpty(t, request)
 	})

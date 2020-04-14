@@ -62,7 +62,7 @@ func (o *ResolveHandler) doResolve(id string) (document.Document, error) {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, common.NewHTTPError(http.StatusNotFound, errors.New("document not found"))
 		}
-		if strings.Contains(err.Error(), "was revoked") {
+		if strings.Contains(err.Error(), "was deactivated") {
 			return nil, common.NewHTTPError(http.StatusGone, errors.New("document is no longer available"))
 		}
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)

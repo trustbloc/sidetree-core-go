@@ -16,20 +16,20 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// ParseRevokeOperation will parse revoke operation
-func ParseRevokeOperation(request []byte, p protocol.Protocol) (*batch.Operation, error) {
-	schema, err := parseRevokeRequest(request)
+// ParseDeactivateOperation will parse deactivate operation
+func ParseDeactivateOperation(request []byte, p protocol.Protocol) (*batch.Operation, error) {
+	schema, err := parseDeactivateRequest(request)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = parseSignedDataForRevoke(schema)
+	_, err = parseSignedDataForDeactivate(schema)
 	if err != nil {
 		return nil, err
 	}
 
 	return &batch.Operation{
-		Type:                         batch.OperationTypeRevoke,
+		Type:                         batch.OperationTypeDeactivate,
 		OperationBuffer:              request,
 		UniqueSuffix:                 schema.DidUniqueSuffix,
 		RecoveryRevealValue:          schema.RecoveryRevealValue,
@@ -38,21 +38,21 @@ func ParseRevokeOperation(request []byte, p protocol.Protocol) (*batch.Operation
 	}, nil
 }
 
-func parseRevokeRequest(payload []byte) (*model.RevokeRequest, error) {
-	schema := &model.RevokeRequest{}
+func parseDeactivateRequest(payload []byte) (*model.DeactivateRequest, error) {
+	schema := &model.DeactivateRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateRevokeRequest(schema); err != nil {
+	if err := validateDeactivateRequest(schema); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func validateRevokeRequest(req *model.RevokeRequest) error {
+func validateDeactivateRequest(req *model.DeactivateRequest) error {
 	if req.DidUniqueSuffix == "" {
 		return errors.New("missing unique suffix")
 	}
@@ -60,24 +60,24 @@ func validateRevokeRequest(req *model.RevokeRequest) error {
 	return nil
 }
 
-func parseSignedDataForRevoke(req *model.RevokeRequest) (*model.RevokeSignedDataModel, error) {
+func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.DeactivateSignedDataModel, error) {
 	bytes, err := docutil.DecodeString(req.SignedData.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	signedData := &model.RevokeSignedDataModel{}
+	signedData := &model.DeactivateSignedDataModel{}
 	err = json.Unmarshal(bytes, signedData)
 	if err != nil {
 		return nil, err
 	}
 
 	if signedData.RecoveryRevealValue != req.RecoveryRevealValue {
-		return nil, errors.New("signed recovery reveal mismatch for revoke")
+		return nil, errors.New("signed recovery reveal mismatch for deactivate")
 	}
 
 	if signedData.DidUniqueSuffix != req.DidUniqueSuffix {
-		return nil, errors.New("signed did suffix mismatch for revoke")
+		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 
 	return signedData, nil

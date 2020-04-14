@@ -48,12 +48,12 @@ type Operation struct {
 
 	// Reveal value for this update operation
 	UpdateRevealValue string `json:"updateRevealValue"`
-	// Reveal value for this recovery/revoke operation
+	// Reveal value for this recovery/deactivate operation
 	RecoveryRevealValue string `json:"recoveryRevealValue"`
 
 	// Hash of reveal value for the next update operation
 	NextUpdateCommitmentHash string `json:"nextUpdateCommitmentHash"`
-	// Hash of reveal value for next recovery/revoke operation
+	// Hash of reveal value for next recovery/deactivate operation
 	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
 }
 
@@ -68,8 +68,8 @@ const (
 	// OperationTypeUpdate captures "update" operation type
 	OperationTypeUpdate OperationType = "update"
 
-	// OperationTypeRevoke captures "revoke" operation type
-	OperationTypeRevoke OperationType = "revoke"
+	// OperationTypeDeactivate captures "deactivate" operation type
+	OperationTypeDeactivate OperationType = "deactivate"
 
 	// OperationTypeRecover captures "recover" operation type
 	OperationTypeRecover OperationType = "recover"

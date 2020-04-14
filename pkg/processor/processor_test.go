@@ -184,10 +184,10 @@ func TestUpdate_InvalidSignature(t *testing.T) {
 	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	revokeOp, err := getUpdateOperation(differentRecoveryKey, uniqueSuffix, 1)
+	updateOp, err := getUpdateOperation(differentRecoveryKey, uniqueSuffix, 1)
 	require.NoError(t, err)
 
-	err = store.Put(revokeOp)
+	err = store.Put(updateOp)
 	require.NoError(t, err)
 
 	p := New("test", store)
@@ -363,76 +363,76 @@ func TestIsValidHashErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
 }
 
-func TestRevoke(t *testing.T) {
+func TestDeactivate(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
 	require.NoError(t, err)
 
-	err = store.Put(revokeOp)
+	err = store.Put(deactivateOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "document was revoked")
+	require.Contains(t, err.Error(), "document was deactivated")
 	require.Nil(t, doc)
 }
 
-func TestConsecutiveRevoke(t *testing.T) {
+func TestConsecutiveDeactivate(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
 	require.NoError(t, err)
-	err = store.Put(revokeOp)
+	err = store.Put(deactivateOp)
 	require.Nil(t, err)
 
-	revokeOp, err = getRevokeOperation(privateKey, uniqueSuffix, 2)
+	deactivateOp, err = getDeactivateOperation(privateKey, uniqueSuffix, 2)
 	require.NoError(t, err)
-	err = store.Put(revokeOp)
+	err = store.Put(deactivateOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
 	doc, err := p.Resolve(uniqueSuffix)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "revoke can only be applied to an existing document")
+	require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
 	require.Nil(t, doc)
 }
 
-func TestRevoke_DocumentNotFound(t *testing.T) {
+func TestDeactivate_DocumentNotFound(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
 	store, _ := getDefaultStore(privateKey)
 
-	revokeOp, err := getRevokeOperation(privateKey, dummyUniqueSuffix, 0)
+	deactivateOp, err := getDeactivateOperation(privateKey, dummyUniqueSuffix, 0)
 	require.NoError(t, err)
-	err = store.Put(revokeOp)
+	err = store.Put(deactivateOp)
 	require.Nil(t, err)
 
 	p := New("test", store)
 	doc, err := p.Resolve(dummyUniqueSuffix)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "revoke can only be applied to an existing document")
+	require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
 	require.Nil(t, doc)
 }
 
-func TestRevoke_InvalidRecoveryRevealValue(t *testing.T) {
+func TestDeactivate_InvalidRecoveryRevealValue(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
 	require.NoError(t, err)
-	revokeOp.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
-	err = store.Put(revokeOp)
+	deactivateOp.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	err = store.Put(deactivateOp)
 	require.NoError(t, err)
 
 	p := New("test", store)
@@ -442,7 +442,7 @@ func TestRevoke_InvalidRecoveryRevealValue(t *testing.T) {
 	require.Nil(t, doc)
 }
 
-func TestRevoke_InvalidSignature(t *testing.T) {
+func TestDeactivate_InvalidSignature(t *testing.T) {
 	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
@@ -452,9 +452,9 @@ func TestRevoke_InvalidSignature(t *testing.T) {
 	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	revokeOp, err := getRevokeOperation(differentRecoveryKey, uniqueSuffix, 1)
+	deactivateOp, err := getDeactivateOperation(differentRecoveryKey, uniqueSuffix, 1)
 	require.NoError(t, err)
-	err = store.Put(revokeOp)
+	err = store.Put(deactivateOp)
 	require.NoError(t, err)
 
 	p := New("test", store)
@@ -529,7 +529,7 @@ func TestRecover_InvalidSignature(t *testing.T) {
 	require.Contains(t, err.Error(), "ecdsa: invalid signature")
 }
 
-func TestRecoverAfterRevoke(t *testing.T) {
+func TestRecoverAfterDeactivate(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
@@ -537,9 +537,9 @@ func TestRecoverAfterRevoke(t *testing.T) {
 
 	store, uniqueSuffix := getDefaultStore(privateKey)
 
-	revokeOp, err := getRevokeOperation(privateKey, uniqueSuffix, 1)
+	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
 	require.NoError(t, err)
-	err = store.Put(revokeOp)
+	err = store.Put(deactivateOp)
 	require.Nil(t, err)
 
 	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 2)
@@ -653,8 +653,8 @@ func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 	return getUpdateOperationWithSigner(s, uniqueSuffix, operationNumber)
 }
 
-func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
-	signedDataModel := model.RevokeSignedDataModel{
+func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
+	signedDataModel := model.DeactivateSignedDataModel{
 		DidUniqueSuffix:     uniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString([]byte("recovery")),
 	}
@@ -669,7 +669,7 @@ func getRevokeOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 	return &batch.Operation{
 		ID:                  "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:        uniqueSuffix,
-		Type:                batch.OperationTypeRevoke,
+		Type:                batch.OperationTypeDeactivate,
 		TransactionTime:     0,
 		TransactionNumber:   uint64(operationNumber),
 		RecoveryRevealValue: base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),

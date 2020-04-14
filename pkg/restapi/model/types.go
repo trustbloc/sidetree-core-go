@@ -17,8 +17,8 @@ const (
 	// OperationTypeUpdate captures enum value "update"
 	OperationTypeUpdate OperationType = "update"
 
-	// OperationTypeRevoke captures enum value "revoke"
-	OperationTypeRevoke OperationType = "revoke"
+	// OperationTypeDeactivate captures enum value "deactivate"
+	OperationTypeDeactivate OperationType = "deactivate"
 
 	// OperationTypeRecover captures enum value "recover"
 	OperationTypeRecover OperationType = "recover"
