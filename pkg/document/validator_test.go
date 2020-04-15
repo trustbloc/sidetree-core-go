@@ -112,21 +112,21 @@ func TestValidateOperationsKey(t *testing.T) {
 
 func TestIsAuthenticationKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsAuthenticationKey(pk)
+	ok := IsAuthenticationKey(pk.Usage())
 	require.False(t, ok)
 
 	pk["usage"] = []interface{}{auth}
-	ok = IsAuthenticationKey(pk)
+	ok = IsAuthenticationKey(pk.Usage())
 	require.True(t, ok)
 }
 
 func TestIsGeneralKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsGeneralKey(pk)
+	ok := IsGeneralKey(pk.Usage())
 	require.False(t, ok)
 
 	pk["usage"] = []interface{}{general}
-	ok = IsGeneralKey(pk)
+	ok = IsGeneralKey(pk.Usage())
 	require.True(t, ok)
 }
 
