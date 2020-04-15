@@ -110,6 +110,26 @@ func TestValidateOperationsKey(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestIsAuthenticationKey(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{})
+	ok := IsAuthenticationKey(pk)
+	require.False(t, ok)
+
+	pk["usage"] = []interface{}{auth}
+	ok = IsAuthenticationKey(pk)
+	require.True(t, ok)
+}
+
+func TestIsGeneralKey(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{})
+	ok := IsGeneralKey(pk)
+	require.False(t, ok)
+
+	pk["usage"] = []interface{}{general}
+	ok = IsGeneralKey(pk)
+	require.True(t, ok)
+}
+
 const noUsage = `{
   "publicKey": [
     {
@@ -117,7 +137,6 @@ const noUsage = `{
       "type": "JwsVerificationKey2020",
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
@@ -134,7 +153,6 @@ const wrongUsage = `{
       "usage": ["invalid"],
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
@@ -151,7 +169,6 @@ const tooMuchUsage = `{
       "usage": ["ops", "general", "auth", "other"],
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
@@ -177,7 +194,6 @@ const noID = `{
       "usage": ["ops"],
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
@@ -194,7 +210,6 @@ const invalidKeyType = `{
       "usage": ["general"],
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
@@ -211,7 +226,6 @@ const duplicateID = `{
       "usage": ["ops"],
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
@@ -223,7 +237,6 @@ const duplicateID = `{
       "usage": ["ops"],
       "publicKeyJwk": {
         "kty": "EC",
-        "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"

@@ -14,12 +14,9 @@ import (
 )
 
 const (
-	didUniqueSuffix = "didUniqueSuffix"
-	didContext      = "https://w3id.org/did/v1"
-	didContextKey   = "@context"
-
-	controllerKey = "controller"
-	idKey         = "id"
+	didUniqueSuffix      = "didUniqueSuffix"
+	didContext           = "https://w3id.org/did/v1"
+	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
 )
 
 // Validator is responsible for validating did operations and sidetree rules
@@ -97,22 +94,92 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 
 // TransformDocument takes internal representation of document and transforms it to required representation
 func (v *Validator) TransformDocument(doc document.Document) (document.Document, error) {
-	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	internal := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
-	// add context to did document
-	diddoc[didContextKey] = []interface{}{didContext}
+	// start with empty document
+	external := document.DidDocumentFromJSONLDObject(make(document.DIDDocument))
+
+	// add context and id
+	external[document.ContextProperty] = []interface{}{didContext}
+	external[document.IDProperty] = internal.ID()
+
+	result := &document.ResolutionResult{
+		Context:        didResolutionContext,
+		DIDDocument:    external,
+		MethodMetadata: document.MethodMetadata{},
+	}
+
+	// add keys
+	processKeys(internal, result)
+
+	// add services
+	processServices(internal, result)
+
+	// TODO: Return resolution result - will be done is separate PR
+	return result.DIDDocument.JSONLdObject(), nil
+}
+
+// processServices will process services and add them to external document
+func processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) *document.ResolutionResult {
+	if len(internal.Services()) == 0 {
+		return resolutionResult
+	}
+
+	// add did to service id
+	for _, sv := range internal.Services() {
+		sv[document.IDProperty] = internal.ID() + "#" + sv.ID()
+	}
+
+	resolutionResult.DIDDocument[document.ServiceProperty] = internal.Services()
+
+	return resolutionResult
+}
+
+// processKeys will process keys according to Sidetree rules bellow and add them to external document
+// -- general: the key is to be included in the publicKeys section of the resolved DID Document.
+// -- auth: the key is to be included in the authentication section of the resolved DID Document as follows:
+// If the general usage value IS NOT present in the usage array,
+// the key descriptor object will be included directly in the authentication section of the resolved DID Document.
+// If the general usage value IS present in the usage array,
+// the key descriptor object will be directly included in the publicKeys section of the resolved DID Document,
+// and included by reference in the authentication section.
+// -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) *document.ResolutionResult {
+	var authentication []interface{}
+	var publicKeys []document.PublicKey
+	var operationPublicKeys []document.PublicKey
 
 	// add controller to public key
-	for _, pk := range diddoc.PublicKeys() {
-		pk[controllerKey] = diddoc[idKey]
+	for _, pk := range internal.PublicKeys() {
+		pk[document.ControllerProperty] = internal[document.IDProperty]
 		// add did to key id
-		pk[idKey] = diddoc[idKey].(string) + "#" + pk[idKey].(string)
+		pk[document.IDProperty] = internal.ID() + "#" + pk.ID()
+
+		if document.IsOperationsKey(pk) {
+			operationPublicKeys = append(operationPublicKeys, pk)
+		}
+
+		if document.IsGeneralKey(pk) {
+			publicKeys = append(publicKeys, pk)
+			// add into authentication by reference if has auth and has general
+			if document.IsAuthenticationKey(pk) {
+				authentication = append(authentication, pk.ID())
+			}
+		} else if document.IsAuthenticationKey(pk) {
+			authentication = append(authentication, pk)
+		}
 	}
 
-	for _, sv := range diddoc.Services() {
-		// add did to service id
-		sv[idKey] = diddoc[idKey].(string) + "#" + sv[idKey].(string)
+	if len(publicKeys) > 0 {
+		resolutionResult.DIDDocument[document.PublicKeyProperty] = publicKeys
 	}
 
-	return diddoc.JSONLdObject(), nil
+	if len(authentication) > 0 {
+		resolutionResult.DIDDocument[document.AuthenticationProperty] = authentication
+	}
+
+	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
+	// TODO: Add recovery key from did state to resolution result
+
+	return resolutionResult
 }

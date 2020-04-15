@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package didvalidator
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -129,18 +130,28 @@ func TestTransformDocument(t *testing.T) {
 	// document to be transformed has to have 'id' field
 	// this field is added by sidetree protocol for any document
 	const testID = "doc:abc:123"
-	doc[idKey] = testID
+	doc[document.IDProperty] = testID
 
 	v := getDefaultValidator()
 
 	transformed, err := v.TransformDocument(doc)
 	require.NoError(t, err)
 
-	didDoc := document.DidDocumentFromJSONLDObject(transformed.JSONLdObject())
+	jsonTransformed, err := json.Marshal(transformed)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
 	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
 	require.Contains(t, didDoc.PublicKeys()[0].ID(), testID)
 	require.Contains(t, didDoc.Services()[0].ID(), testID)
 	require.Equal(t, didContext, didDoc.Context()[0])
+
+	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general"}
+	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
+
+	expectedAuthenticationKeys := []string{"master", "dual-auth-general", "auth-only"}
+	require.Equal(t, len(expectedAuthenticationKeys), len(didDoc.Authentication()))
 }
 
 func getDefaultValidator() *Validator {

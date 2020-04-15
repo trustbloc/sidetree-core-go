@@ -16,7 +16,7 @@ func NewService(m map[string]interface{}) Service {
 
 // ID is service ID
 func (s Service) ID() string {
-	return stringEntry(s[jsonldID])
+	return stringEntry(s[IDProperty])
 }
 
 // Type is service type
