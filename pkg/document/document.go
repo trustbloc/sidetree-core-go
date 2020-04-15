@@ -12,7 +12,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
-const jsonldID = "id"
+// IDProperty describes id key
+const IDProperty = "id"
 
 // Document defines generic document data structure
 type Document map[string]interface{}
@@ -35,7 +36,7 @@ func FromJSONLDObject(jsonldObject map[string]interface{}) Document {
 
 // ID is document identifier
 func (doc Document) ID() string {
-	return stringEntry(doc[jsonldID])
+	return stringEntry(doc[IDProperty])
 }
 
 // GetStringValue returns string value for specified key or "" if not found or wrong type

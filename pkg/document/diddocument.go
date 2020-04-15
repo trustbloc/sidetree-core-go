@@ -13,15 +13,24 @@ import (
 )
 
 const (
-	jsonldContext = "@context"
 
-	jsonldType = "type"
+	// ContextProperty defines key for context property
+	ContextProperty = "@context"
 
-	jsonldService      = "service"
+	// ServiceProperty defines key for service property
+	ServiceProperty = "service"
+
+	// PublicKeyProperty defines key for public key property
+	PublicKeyProperty = "publicKey"
+
+	// AuthenticationProperty defines key for authentication property
+	AuthenticationProperty = "authentication"
+
+	// ControllerProperty defines key for controller
+	ControllerProperty = "controller"
+
+	jsonldType         = "type"
 	jsonldServicePoint = "serviceEndpoint"
-
-	jsonldPublicKey  = "publicKey"
-	jsonldController = "controller"
 
 	// various public key encodings
 	jsonldPublicKeyBase64 = "publicKeyBase64"
@@ -39,17 +48,17 @@ type DIDDocument map[string]interface{}
 
 // ID is identifier for DID subject (what DID Document is about)
 func (doc DIDDocument) ID() string {
-	return stringEntry(doc[jsonldID])
+	return stringEntry(doc[IDProperty])
 }
 
 // Context is the context of did document
 func (doc DIDDocument) Context() []string {
-	return stringArray(doc[jsonldContext])
+	return stringArray(doc[ContextProperty])
 }
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations
 func (doc DIDDocument) PublicKeys() []PublicKey {
-	entry, ok := doc[jsonldPublicKey]
+	entry, ok := doc[PublicKeyProperty]
 	if !ok {
 		return nil
 	}
@@ -72,7 +81,7 @@ func (doc DIDDocument) PublicKeys() []PublicKey {
 
 // Services is an array of service endpoints
 func (doc DIDDocument) Services() []Service {
-	entry, ok := doc[jsonldService]
+	entry, ok := doc[ServiceProperty]
 	if !ok {
 		return nil
 	}
@@ -98,6 +107,11 @@ func (doc DIDDocument) JSONLdObject() map[string]interface{} {
 	return doc
 }
 
+// Authentication return authentication array (mixture of strings and objects)
+func (doc DIDDocument) Authentication() []interface{} {
+	return interfaceArray(doc[AuthenticationProperty])
+}
+
 // DIDDocumentFromReader creates an instance of DIDDocument by reading a JSON document from Reader
 func DIDDocumentFromReader(r io.Reader) (DIDDocument, error) {
 	data, err := ioutil.ReadAll(r)
@@ -121,4 +135,18 @@ func DidDocumentFromBytes(data []byte) (DIDDocument, error) {
 // DidDocumentFromJSONLDObject creates an instance of DIDDocument from json ld object
 func DidDocumentFromJSONLDObject(jsonldObject map[string]interface{}) DIDDocument {
 	return jsonldObject
+}
+
+// interfaceArray
+func interfaceArray(entry interface{}) []interface{} {
+	if entry == nil {
+		return nil
+	}
+
+	entries, ok := entry.([]interface{})
+	if !ok {
+		return nil
+	}
+
+	return entries
 }

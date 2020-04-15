@@ -16,7 +16,7 @@ func NewPublicKey(pk map[string]interface{}) PublicKey {
 
 // ID is public key ID
 func (pk PublicKey) ID() string {
-	return stringEntry(pk[jsonldID])
+	return stringEntry(pk[IDProperty])
 }
 
 // Type is public key type
@@ -26,7 +26,7 @@ func (pk PublicKey) Type() string {
 
 // Controller identifies the entity that controls the corresponding private key.
 func (pk PublicKey) Controller() string {
-	return stringEntry(pk[jsonldController])
+	return stringEntry(pk[ControllerProperty])
 }
 
 //PublicKeyBase64 is value property

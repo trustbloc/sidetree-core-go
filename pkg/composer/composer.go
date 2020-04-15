@@ -18,11 +18,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 
-const (
-	jsonldPublicKey = "publicKey"
-	jsonldService   = "service"
-)
-
 // ApplyPatches applies patches to the document
 func ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
 	var err error
@@ -89,7 +84,7 @@ func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Docu
 	log.Debugf("applying add public keys patch: %s", publicKeys)
 
 	// create an empty did document with public keys
-	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{"%s":%s}`, jsonldPublicKey, publicKeys)))
+	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{"%s":%s}`, document.PublicKeyProperty, publicKeys)))
 	if err != nil {
 		return nil, errors.Errorf("public keys invalid: %s", err.Error())
 	}
@@ -107,7 +102,7 @@ func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Docu
 		}
 	}
 
-	doc[jsonldPublicKey] = mapToSlicePK(newPublicKeys)
+	doc[document.PublicKeyProperty] = mapToSlicePK(newPublicKeys)
 
 	return doc, nil
 }
@@ -129,7 +124,7 @@ func applyRemovePublicKeys(doc document.Document, removeKeyIDs string) (document
 		delete(newPublicKeys, key)
 	}
 
-	doc[jsonldPublicKey] = mapToSlicePK(newPublicKeys)
+	doc[document.PublicKeyProperty] = mapToSlicePK(newPublicKeys)
 
 	return doc, nil
 }
@@ -161,7 +156,7 @@ func applyAddServiceEndpoints(doc document.Document, serviceEnpoints string) (do
 	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
 	// create an empty did document with service endpoints
-	svcDocStr := fmt.Sprintf(`{"%s":%s}`, jsonldService, serviceEnpoints)
+	svcDocStr := fmt.Sprintf(`{"%s":%s}`, document.ServiceProperty, serviceEnpoints)
 
 	svcDoc, err := document.DidDocumentFromBytes([]byte(svcDocStr))
 	if err != nil {
@@ -179,7 +174,7 @@ func applyAddServiceEndpoints(doc document.Document, serviceEnpoints string) (do
 		}
 	}
 
-	doc[jsonldService] = mapToSliceServices(newServices)
+	doc[document.ServiceProperty] = mapToSliceServices(newServices)
 
 	return doc, nil
 }
@@ -200,7 +195,7 @@ func applyRemoveServiceEndpoints(doc document.Document, serviceIDs string) (docu
 		delete(newServices, svc)
 	}
 
-	doc[jsonldService] = mapToSliceServices(newServices)
+	doc[document.ServiceProperty] = mapToSliceServices(newServices)
 
 	return doc, nil
 }

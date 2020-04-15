@@ -91,8 +91,22 @@ func ValidateOperationsKey(pubKey PublicKey) error {
 
 // IsOperationsKey returns true if key is an operations key
 func IsOperationsKey(pubKey PublicKey) bool {
+	return isUsageKey(pubKey, ops)
+}
+
+// IsGeneralKey returns true if key is a general key
+func IsGeneralKey(pubKey PublicKey) bool {
+	return isUsageKey(pubKey, general)
+}
+
+// IsAuthenticationKey returns true if key is an authentication key
+func IsAuthenticationKey(pubKey PublicKey) bool {
+	return isUsageKey(pubKey, auth)
+}
+
+func isUsageKey(pubKey PublicKey, mode string) bool {
 	for _, usage := range pubKey.Usage() {
-		if usage == ops {
+		if usage == mode {
 			return true
 		}
 	}
@@ -100,6 +114,10 @@ func IsOperationsKey(pubKey PublicKey) bool {
 	return false
 }
 
+// The object MUST include a usage property, and its value MUST be an array that includes one or more of the following:
+// - ops: the key is allowed to generate DID operations for the DID.
+// - general: the key is to be included in the publicKeys section of the resolved DID Document.
+// - auth: the key is to be included in the authentication section of the resolved DID Document
 func validateKeyUsage(pubKey PublicKey) error {
 	if len(pubKey.Usage()) == 0 {
 		return fmt.Errorf("key '%s' is missing usage", pubKey.ID())
