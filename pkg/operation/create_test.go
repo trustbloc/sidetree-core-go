@@ -178,7 +178,7 @@ func computeMultihash(data string) string {
 
 const validDoc = `{
 	"publicKey": [{
-		"id": "#key-1",
+		"id": "key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
 	}]

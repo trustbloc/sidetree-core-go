@@ -65,7 +65,7 @@ func (pk PublicKey) PublicKeyJWK() JWK {
 
 // Usage describes key usage
 func (pk PublicKey) Usage() []string {
-	return arrayStringEntry(pk[jsonldPublicKeyUsage])
+	return stringArray(pk[jsonldPublicKeyUsage])
 }
 
 // JSONLdObject returns map that represents JSON LD Object

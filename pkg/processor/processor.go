@@ -24,8 +24,7 @@ import (
 
 // recovery key ID
 const (
-	recoveryKID       = "recovery"
-	operationsKeyType = "ops"
+	recoveryKID = "recovery"
 )
 
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
@@ -226,7 +225,7 @@ func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, er
 		return nil, err
 	}
 
-	if err := validateSigningKey(pk); err != nil {
+	if err := document.ValidateOperationsKey(pk); err != nil {
 		return nil, err
 	}
 
@@ -238,19 +237,6 @@ func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, er
 		X:   jwk.X(),
 		Y:   jwk.Y(),
 	}, nil
-}
-
-func validateSigningKey(pk document.PublicKey) error {
-	if !containsString(pk.Usage(), operationsKeyType) {
-		return errors.New("signing public key is not an operations key")
-	}
-
-	jwk := pk.PublicKeyJWK()
-	if jwk == nil {
-		return errors.New("signing public key has to be in JWK format")
-	}
-
-	return nil
 }
 
 func findPublicKey(doc document.Document, kid string) (document.PublicKey, error) {

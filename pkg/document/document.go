@@ -64,24 +64,24 @@ func stringEntry(entry interface{}) string {
 	return id
 }
 
-func arrayStringEntry(entry interface{}) []string {
+// stringArray
+func stringArray(entry interface{}) []string {
 	if entry == nil {
 		return nil
 	}
 
-	strArr, ok := entry.([]string)
-	if ok {
-		return strArr
-	}
-
-	typedEntry, ok := entry.([]interface{})
+	entries, ok := entry.([]interface{})
 	if !ok {
 		return nil
 	}
 
 	var result []string
-	for _, e := range typedEntry {
-		result = append(result, stringEntry(e))
+
+	for _, e := range entries {
+		if e != nil {
+			result = append(result, stringEntry(e))
+		}
 	}
+
 	return result
 }

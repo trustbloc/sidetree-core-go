@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -121,7 +120,7 @@ func TestUpdateDocument(t *testing.T) {
 	//updated instance value inside service end point through a json patch
 	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
 		"controller":      "controller1",
-		"id":              "#key-1",
+		"id":              "key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type":            "Ed25519VerificationKey2018",
 	}})
@@ -168,7 +167,7 @@ func TestConsecutiveUpdates(t *testing.T) {
 	//patched twice instance replaced from did:bar:456 to did:sidetree:updateid0  and then to did:sidetree:updateid1
 	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
 		"controller":      "controller2",
-		"id":              "#key-1",
+		"id":              "key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type":            "Ed25519VerificationKey2018",
 	}})
@@ -252,29 +251,6 @@ func TestUpdateDocument_SigningKeyNotInDocument(t *testing.T) {
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "signing public key not found in the document")
-}
-
-func TestUpdateDocument_ValidateSigningKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	err := validateSigningKey(pk)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "signing public key is not an operations key")
-
-	pk["usage"] = []string{"ops"}
-	err = validateSigningKey(pk)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "signing public key has to be in JWK format")
-
-	jwk := map[string]interface{}{
-		"kty": "kty",
-		"crv": "crv",
-		"x":   "x",
-		"y":   "y",
-	}
-
-	pk["publicKeyJwk"] = jwk
-	err = validateSigningKey(pk)
-	require.NoError(t, err)
 }
 
 func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
@@ -931,7 +907,7 @@ func signPayload(payload string, signer helper.Signer) (*model.JWS, error) {
 const validDoc = `{
 	"publicKey": [{
 		"controller": "id",
-		"id": "#key-1",
+		"id": "key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
 	}]
@@ -939,7 +915,7 @@ const validDoc = `{
 
 const recoveredDoc = `{
 	"publicKey": [{
-		"id": "#recovered",
+		"id": "recovered",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
 	}]

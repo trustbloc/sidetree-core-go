@@ -309,7 +309,7 @@ func getCreateRequestBytes() ([]byte, error) {
 const validDoc = `{
 	"created": "2019-09-23T14:16:59.261024-04:00",
 	"publicKey": [{
-		"id": "#key-1",
+		"id": "key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "Ed25519VerificationKey2018"
 	}],
@@ -318,7 +318,7 @@ const validDoc = `{
 
 const recoverDoc = `{
 	"publicKey": [{
-		"id": "#recoverKey",
+		"id": "recoverKey",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
 		"type": "recoverKeyType"
 	}]

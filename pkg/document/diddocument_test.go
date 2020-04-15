@@ -23,22 +23,16 @@ func TestValid(t *testing.T) {
 	publicKeys := doc.PublicKeys()
 	require.Equal(t, []PublicKey{
 		{
-			"id":   "#key1",
-			"type": "Secp256k1VerificationKey2018",
+			"id":    "key1",
+			"type":  "JwsVerificationKey2020",
+			"usage": []interface{}{"ops", "general"},
 			"publicKeyJwk": map[string]interface{}{
-				"kty":                        "EC",
-				"kid":                        "key1",
-				"crv":                        "P-256K",
-				"x":                          "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-				"y":                          "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc",
-				"use":                        "verify",
-				"defaultEncryptionAlgorithm": "none",
+				"kty": "EC",
+				"kid": "key1",
+				"crv": "P-256K",
+				"x":   "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+				"y":   "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc",
 			},
-		},
-		{
-			"id":           "#key2",
-			"type":         "RsaVerificationKey2018",
-			"publicKeyPem": "-----BEGIN PUBLIC KEY.2.END PUBLIC KEY-----",
 		},
 	}, publicKeys)
 
@@ -55,34 +49,16 @@ func TestValid(t *testing.T) {
 		},
 	}, services)
 
-	str := doc.String()
-	require.NotEmpty(t, str)
-
-	bytes := doc.Bytes()
-	require.NotEmpty(t, bytes)
-
 	jsonld := doc.JSONLdObject()
 	require.NotNil(t, jsonld)
+
+	require.Empty(t, doc.Context())
 }
 
 func TestEmptyDoc(t *testing.T) {
 	var bytes = []byte(`{ "@context": "https://w3id.org/did/v1" }`)
 
 	doc, err := DidDocumentFromBytes(bytes)
-	require.Nil(t, err)
-	require.NotNil(t, doc)
-
-	publicKeys := doc.PublicKeys()
-	require.Equal(t, 0, len(publicKeys))
-
-	services := doc.Services()
-	require.Equal(t, 0, len(services))
-}
-
-func TestMissingInfo(t *testing.T) {
-	r := reader(t, "testdata/missing-info.json")
-
-	doc, err := DIDDocumentFromReader(r)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 

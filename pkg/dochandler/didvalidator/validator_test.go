@@ -39,13 +39,9 @@ func TestIsValidOriginalDocument(t *testing.T) {
 func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 	v := getDefaultValidator()
 
-	err := v.IsValidOriginalDocument(noPublicKeyDoc)
+	err := v.IsValidOriginalDocument(pubKeyNoID)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "document must contain at least one public key")
-
-	err = v.IsValidOriginalDocument(pubKeyNotFragmentDoc)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "public key id is either absent or not starting with #")
+	require.Contains(t, err.Error(), "public key id is missing")
 
 	err = v.IsValidOriginalDocument(pubKeyWithController)
 	require.NotNil(t, err)
@@ -143,6 +139,7 @@ func TestTransformDocument(t *testing.T) {
 	didDoc := document.DidDocumentFromJSONLDObject(transformed.JSONLdObject())
 	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
 	require.Contains(t, didDoc.PublicKeys()[0].ID(), testID)
+	require.Contains(t, didDoc.Services()[0].ID(), testID)
 	require.Equal(t, didContext, didDoc.Context()[0])
 }
 
@@ -156,9 +153,10 @@ func reader(t *testing.T, filename string) io.Reader {
 	return f
 }
 
-var noPublicKeyDoc = []byte(`{  "name": "John Smith" }`)
-var docWithContext = []byte(`{ "@context": ["https://w3id.org/did/v1"], "publicKey": [{"id": "#key1", "type": "type"}] }`)
-var pubKeyNotFragmentDoc = []byte(`{ "publicKey": [{"id": "key1", "type": "type"}]}`)
+var docWithContext = []byte(`{ "@context": ["https://w3id.org/did/v1"], 
+"publicKey": [{"id": "key1", "type": "JwsVerificationKey2020", "usage": ["general"]}] 
+}`)
+var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
 var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
@@ -167,7 +165,7 @@ var invalidUpdate = []byte(`{ "patch": "" }`)
 var pubKeyWithController = []byte(`{
   "publicKey": [
     {
-      "id": "#keys-1",
+      "id": "keys-1",
       "type": "Secp256k1VerificationKey2018",
       "controller": "did:example:123456789abcdefghi",
       "publicKeyBase58": "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"
