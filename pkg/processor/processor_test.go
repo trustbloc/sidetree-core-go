@@ -106,24 +106,58 @@ func TestUpdateDocument(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+	t.Run("Success", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
-	require.Nil(t, err)
-	err = store.Put(updateOp)
-	require.Nil(t, err)
+		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+		err = store.Put(updateOp)
+		require.Nil(t, err)
 
-	p := New("test", store) //Storing operation in the test store
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Nil(t, err)
+		p := New("test", store) //Storing operation in the test store
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
 
-	//updated instance value inside service end point through a json patch
-	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
-		"controller":      "controller1",
-		"id":              "key-1",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type":            "Ed25519VerificationKey2018",
-	}})
+		//updated instance value inside service end point through a json patch
+		require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
+			"controller":      "controller1",
+			"id":              "key-1",
+			"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
+			"type":            "Ed25519VerificationKey2018",
+		}})
+	})
+
+	t.Run("Missing signed data -> error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		updateOp.SignedData = nil
+
+		err = store.Put(updateOp)
+		require.NoError(t, err)
+
+		p := New("test", store) //Storing operation in the test store
+		_, err = p.Resolve(uniqueSuffix)
+		require.Error(t, err, "missing protected section of signedData")
+	})
+
+	t.Run("Missing protected section of signed data -> error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		updateOp.SignedData.Protected = nil
+
+		err = store.Put(updateOp)
+		require.NoError(t, err)
+
+		p := New("test", store) //Storing operation in the test store
+		_, err = p.Resolve(uniqueSuffix)
+		require.Error(t, err, "missing protected section of signedData")
+	})
 }
 
 func TestUpdateDocument_InvalidRevealValue(t *testing.T) {

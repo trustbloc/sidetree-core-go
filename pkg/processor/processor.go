@@ -183,6 +183,14 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, errors.New("update cannot be first operation")
 	}
 
+	if operation.SignedData == nil {
+		return nil, errors.New("missing signedData")
+	}
+
+	if operation.SignedData.Protected == nil {
+		return nil, errors.New("missing protected section of signedData")
+	}
+
 	err := isValidHash(operation.UpdateRevealValue, rm.NextUpdateCommitmentHash)
 	if err != nil {
 		return nil, err
