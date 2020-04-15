@@ -279,7 +279,7 @@ const replacePatch = `{
 	"action": "replace",
 	"document": {
 		"authentication": [{
-			"id": "#keys-1",
+			"id": "keys-1",
 			"type": "RsaVerificationKey2018",
 			"publicKeyPem": "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
   		}],
@@ -368,7 +368,7 @@ const removeServiceEndpoints = `{
 
 const testDoc = `{
   "authentication": [{
-    "id": "#keys-1",
+    "id": "keys-1",
     "type": "RsaVerificationKey2018",
     "publicKeyPem": "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
   }],

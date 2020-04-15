@@ -1,0 +1,119 @@
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package document
+
+import (
+	"errors"
+	"fmt"
+)
+
+const (
+	// ops defines key usage as operations key
+	ops = "ops"
+	// auth defines key usage as authentication key
+	auth = "auth"
+	// general defines key usage as general key
+	general = "general"
+
+	jwsVerificationKey2020            = "JwsVerificationKey2020"
+	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
+)
+
+var allowedOps = map[string]string{
+	ops:     ops,
+	auth:    auth,
+	general: general,
+}
+
+var allowedKeyTypes = map[string]string{
+	jwsVerificationKey2020:            jwsVerificationKey2020,
+	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
+}
+
+// ValidatePublicKeys validates public keys
+func ValidatePublicKeys(pubKeys []PublicKey) error {
+	ids := make(map[string]string)
+
+	// the expected fields are id, usage, type and jwk
+	for _, pubKey := range pubKeys {
+		kid := pubKey.ID()
+		if kid == "" {
+			return errors.New("public key id is missing")
+		}
+
+		if _, ok := ids[kid]; ok {
+			return fmt.Errorf("duplicate public key id: %s", kid)
+		}
+		ids[kid] = kid
+
+		// controller field is not allowed to be filled in by the client
+		if pubKey.Controller() != "" {
+			return errors.New("controller is not allowed")
+		}
+
+		if err := validateKeyUsage(pubKey); err != nil {
+			return err
+		}
+
+		if IsOperationsKey(pubKey) {
+			if err := ValidateOperationsKey(pubKey); err != nil {
+				return err
+			}
+		}
+
+		if _, ok := allowedKeyTypes[pubKey.Type()]; !ok {
+			return fmt.Errorf("invalid key type: %s", pubKey.Type())
+		}
+	}
+
+	return nil
+}
+
+// ValidateOperationsKey validates operation key
+func ValidateOperationsKey(pubKey PublicKey) error {
+	if !IsOperationsKey(pubKey) {
+		return fmt.Errorf("key '%s' is not an operations key", pubKey.ID())
+	}
+
+	jwk := pubKey.PublicKeyJWK()
+	if jwk == nil {
+		return errors.New("operations key has to be in JWK format")
+	}
+
+	// TODO: Add JWK validation
+
+	return nil
+}
+
+// IsOperationsKey returns true if key is an operations key
+func IsOperationsKey(pubKey PublicKey) bool {
+	for _, usage := range pubKey.Usage() {
+		if usage == ops {
+			return true
+		}
+	}
+
+	return false
+}
+
+func validateKeyUsage(pubKey PublicKey) error {
+	if len(pubKey.Usage()) == 0 {
+		return fmt.Errorf("key '%s' is missing usage", pubKey.ID())
+	}
+
+	if len(pubKey.Usage()) > len(allowedOps) {
+		return fmt.Errorf("public key usage exceeds maximum length: %d", len(allowedOps))
+	}
+
+	for _, usage := range pubKey.Usage() {
+		if _, ok := allowedOps[usage]; !ok {
+			return fmt.Errorf("invalid usage: %s", usage)
+		}
+	}
+
+	return nil
+}

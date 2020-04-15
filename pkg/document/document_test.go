@@ -77,11 +77,11 @@ func TestStringEntry(t *testing.T) {
 }
 
 func TestArrayStringEntry(t *testing.T) {
-	arr := arrayStringEntry(nil)
+	arr := stringArray(nil)
 	require.Nil(t, arr)
 
 	// not a array
-	arr = arrayStringEntry("hello")
+	arr = stringArray("hello")
 	require.Nil(t, arr)
 }
 

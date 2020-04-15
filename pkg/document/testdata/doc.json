@@ -1,22 +1,16 @@
 {
   "publicKey": [
     {
-      "id": "#key1",
-      "type": "Secp256k1VerificationKey2018",
+      "id": "key1",
+      "type": "JwsVerificationKey2020",
+      "usage": ["ops", "general"],
       "publicKeyJwk": {
         "kty": "EC",
         "kid": "key1",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc",
-        "use": "verify",
-        "defaultEncryptionAlgorithm": "none"
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
       }
-    },
-    {
-      "id": "#key2",
-      "type": "RsaVerificationKey2018",
-      "publicKeyPem": "-----BEGIN PUBLIC KEY.2.END PUBLIC KEY-----"
     }
   ],
   "service": [

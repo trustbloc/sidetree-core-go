@@ -8,7 +8,6 @@ package didvalidator
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -80,8 +79,8 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 		return errors.New("document must NOT have the id property")
 	}
 
-	// Sidetree rule: The document must contain at least 1 entry in the publicKey array property
-	if err := validatePublicKeys(didDoc); err != nil {
+	// Sidetree rule: validate public keys
+	if err := document.ValidatePublicKeys(didDoc.PublicKeys()); err != nil {
 		return err
 	}
 
@@ -101,37 +100,19 @@ func (v *Validator) TransformDocument(doc document.Document) (document.Document,
 	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
 	// add context to did document
-	diddoc[didContextKey] = []string{didContext}
+	diddoc[didContextKey] = []interface{}{didContext}
 
 	// add controller to public key
 	for _, pk := range diddoc.PublicKeys() {
 		pk[controllerKey] = diddoc[idKey]
-		// add did to key
-		pk[idKey] = diddoc[idKey].(string) + pk[idKey].(string)
+		// add did to key id
+		pk[idKey] = diddoc[idKey].(string) + "#" + pk[idKey].(string)
+	}
+
+	for _, sv := range diddoc.Services() {
+		// add did to service id
+		sv[idKey] = diddoc[idKey].(string) + "#" + sv[idKey].(string)
 	}
 
 	return diddoc.JSONLdObject(), nil
-}
-
-func validatePublicKeys(didDoc document.DIDDocument) error {
-	// The document must contain at least 1 entry in the publicKey array property
-	publicKeyArray := didDoc.PublicKeys()
-	if len(publicKeyArray) == 0 {
-		return errors.New("document must contain at least one public key")
-	}
-
-	// The id property of a publickey element must be specified and be a fragment (e.g. #key1).
-	for _, pubKey := range publicKeyArray {
-		i := strings.Index(pubKey.ID(), "#")
-		if pubKey.ID() == "" || i != 0 {
-			return errors.New("public key id is either absent or not starting with #")
-		}
-
-		// Controller field is not allowed to be filled in by the client
-		if pubKey.Controller() != "" {
-			return errors.New("controller is not allowed")
-		}
-	}
-
-	return nil
 }

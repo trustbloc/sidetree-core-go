@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 const (
@@ -46,7 +44,7 @@ func (doc DIDDocument) ID() string {
 
 // Context is the context of did document
 func (doc DIDDocument) Context() []string {
-	return arrayStringEntry(doc[jsonldContext])
+	return stringArray(doc[jsonldContext])
 }
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations
@@ -64,19 +62,12 @@ func (doc DIDDocument) PublicKeys() []PublicKey {
 	var result []PublicKey
 	for _, e := range typedEntry {
 		emap, ok := e.(map[string]interface{})
-		if !ok || !isValidPublicKey(emap) {
+		if !ok {
 			continue
 		}
 		result = append(result, NewPublicKey(emap))
 	}
 	return result
-}
-
-func isValidPublicKey(pubKey map[string]interface{}) bool {
-	if isEmpty(pubKey[jsonldID]) || isEmpty(pubKey[jsonldType]) {
-		return false
-	}
-	return true
 }
 
 // Services is an array of service endpoints
@@ -94,19 +85,12 @@ func (doc DIDDocument) Services() []Service {
 	var result []Service
 	for _, e := range typedEntry {
 		emap, ok := e.(map[string]interface{})
-		if !ok || !isValidService(emap) {
+		if !ok {
 			continue
 		}
 		result = append(result, NewService(emap))
 	}
 	return result
-}
-
-func isValidService(service map[string]interface{}) bool {
-	if isEmpty(service[jsonldID]) || isEmpty(service[jsonldType]) || service[jsonldServicePoint] == nil {
-		return false
-	}
-	return true
 }
 
 // JSONLdObject returns map that represents JSON LD Object
@@ -137,26 +121,4 @@ func DidDocumentFromBytes(data []byte) (DIDDocument, error) {
 // DidDocumentFromJSONLDObject creates an instance of DIDDocument from json ld object
 func DidDocumentFromJSONLDObject(jsonldObject map[string]interface{}) DIDDocument {
 	return jsonldObject
-}
-
-// String returns string representation of did document
-func (doc DIDDocument) String() string {
-	s, err := docutil.MarshalIndentCanonical(doc, "", "  ")
-	if err != nil {
-		return "<ERROR marshalling DIDDocument>"
-	}
-	return string(s)
-}
-
-// Bytes returns byte representation of did document
-func (doc DIDDocument) Bytes() []byte {
-	s, err := docutil.MarshalCanonical(doc)
-	if err != nil {
-		return []byte("<ERROR marshalling DIDDocument>")
-	}
-	return s
-}
-
-func isEmpty(entry interface{}) bool {
-	return stringEntry(entry) == ""
 }
