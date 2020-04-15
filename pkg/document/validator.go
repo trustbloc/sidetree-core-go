@@ -59,7 +59,7 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 			return err
 		}
 
-		if IsOperationsKey(pubKey) {
+		if IsOperationsKey(pubKey.Usage()) {
 			if err := ValidateOperationsKey(pubKey); err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 
 // ValidateOperationsKey validates operation key
 func ValidateOperationsKey(pubKey PublicKey) error {
-	if !IsOperationsKey(pubKey) {
+	if !IsOperationsKey(pubKey.Usage()) {
 		return fmt.Errorf("key '%s' is not an operations key", pubKey.ID())
 	}
 
@@ -90,22 +90,22 @@ func ValidateOperationsKey(pubKey PublicKey) error {
 }
 
 // IsOperationsKey returns true if key is an operations key
-func IsOperationsKey(pubKey PublicKey) bool {
-	return isUsageKey(pubKey, ops)
+func IsOperationsKey(usages []string) bool {
+	return isUsageKey(usages, ops)
 }
 
 // IsGeneralKey returns true if key is a general key
-func IsGeneralKey(pubKey PublicKey) bool {
-	return isUsageKey(pubKey, general)
+func IsGeneralKey(usages []string) bool {
+	return isUsageKey(usages, general)
 }
 
 // IsAuthenticationKey returns true if key is an authentication key
-func IsAuthenticationKey(pubKey PublicKey) bool {
-	return isUsageKey(pubKey, auth)
+func IsAuthenticationKey(usages []string) bool {
+	return isUsageKey(usages, auth)
 }
 
-func isUsageKey(pubKey PublicKey, mode string) bool {
-	for _, usage := range pubKey.Usage() {
+func isUsageKey(usages []string, mode string) bool {
+	for _, usage := range usages {
 		if usage == mode {
 			return true
 		}

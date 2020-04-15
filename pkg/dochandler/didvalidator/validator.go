@@ -155,17 +155,21 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		// add did to key id
 		pk[document.IDProperty] = internal.ID() + "#" + pk.ID()
 
-		if document.IsOperationsKey(pk) {
+		usages := pk.Usage()
+		// remove usage property from external document
+		delete(pk, document.UsageProperty)
+
+		if document.IsOperationsKey(usages) {
 			operationPublicKeys = append(operationPublicKeys, pk)
 		}
 
-		if document.IsGeneralKey(pk) {
+		if document.IsGeneralKey(usages) {
 			publicKeys = append(publicKeys, pk)
 			// add into authentication by reference if has auth and has general
-			if document.IsAuthenticationKey(pk) {
+			if document.IsAuthenticationKey(usages) {
 				authentication = append(authentication, pk.ID())
 			}
-		} else if document.IsAuthenticationKey(pk) {
+		} else if document.IsAuthenticationKey(usages) {
 			authentication = append(authentication, pk)
 		}
 	}

@@ -29,6 +29,9 @@ const (
 	// ControllerProperty defines key for controller
 	ControllerProperty = "controller"
 
+	// UsageProperty describes key usage property
+	UsageProperty = "usage"
+
 	jsonldType         = "type"
 	jsonldServicePoint = "serviceEndpoint"
 
@@ -38,9 +41,6 @@ const (
 	jsonldPublicKeyHex    = "publicKeyHex"
 	jsonldPublicKeyPem    = "publicKeyPem"
 	jsonldPublicKeyJwk    = "publicKeyJwk"
-
-	// key usage
-	jsonldPublicKeyUsage = "usage"
 )
 
 // DIDDocument Defines DID Document data structure used by Sidetree for basic type safety checks.
