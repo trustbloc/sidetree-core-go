@@ -48,7 +48,7 @@ func New(name string, store OperationStoreClient) *OperationProcessor {
 // Resolve document based on the given unique suffix
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123"
-func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, error) {
+func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionResult, error) {
 	ops, err := s.store.Get(uniqueSuffix)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,12 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (document.Document, er
 		return nil, err
 	}
 
-	return rm.Doc, nil
+	return &document.ResolutionResult{
+		Document: rm.Doc,
+		MethodMetadata: document.MethodMetadata{
+			RecoveryKey: rm.RecoveryKey,
+		},
+	}, nil
 }
 
 func splitOperations(ops []*batch.Operation) (fullOps, updateOps []*batch.Operation) {

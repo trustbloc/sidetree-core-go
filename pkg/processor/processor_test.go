@@ -115,11 +115,11 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		p := New("test", store) //Storing operation in the test store
-		doc, err := p.Resolve(uniqueSuffix)
+		result, err := p.Resolve(uniqueSuffix)
 		require.Nil(t, err)
 
 		//updated instance value inside service end point through a json patch
-		require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
+		require.Equal(t, result.Document["publicKey"], []interface{}{map[string]interface{}{
 			"controller":      "controller1",
 			"id":              "key-1",
 			"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
@@ -195,11 +195,11 @@ func TestConsecutiveUpdates(t *testing.T) {
 	require.Nil(t, err)
 
 	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
+	result, err := p.Resolve(uniqueSuffix)
 	require.Nil(t, err)
 
 	//patched twice instance replaced from did:bar:456 to did:sidetree:updateid0  and then to did:sidetree:updateid1
-	require.Equal(t, doc["publicKey"], []interface{}{map[string]interface{}{
+	require.Equal(t, result.Document["publicKey"], []interface{}{map[string]interface{}{
 		"controller":      "controller2",
 		"id":              "key-1",
 		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
@@ -486,11 +486,11 @@ func TestRecover(t *testing.T) {
 	require.Nil(t, err)
 
 	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
+	result, err := p.Resolve(uniqueSuffix)
 	require.NoError(t, err)
 
 	// test for recovered key
-	docBytes, err := doc.Bytes()
+	docBytes, err := result.Document.Bytes()
 	require.NoError(t, err)
 	require.Contains(t, string(docBytes), "recovered")
 }

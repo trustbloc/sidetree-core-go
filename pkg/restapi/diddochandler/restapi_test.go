@@ -54,9 +54,9 @@ func TestRESTAPI(t *testing.T) {
 		didID, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
-		var doc document.Document
-		require.NoError(t, json.Unmarshal(resp, &doc))
-		require.Equal(t, didID, doc["id"])
+		var result document.ResolutionResult
+		require.NoError(t, json.Unmarshal(resp, &result))
+		require.Equal(t, didID, result.Document["id"])
 	})
 	t.Run("Resolve DID doc", func(t *testing.T) {
 		createRequest, err := getCreateRequest()
@@ -69,9 +69,11 @@ func TestRESTAPI(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 
-		var doc document.Document
-		require.NoError(t, json.Unmarshal(resp, &doc))
-		require.Equal(t, didID, doc["id"])
+		var result document.ResolutionResult
+		err = json.Unmarshal(resp, &result)
+		require.NoError(t, err)
+
+		require.Equal(t, didID, result.Document["id"])
 	})
 }
 

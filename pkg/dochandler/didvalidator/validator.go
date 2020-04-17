@@ -93,7 +93,7 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 }
 
 // TransformDocument takes internal representation of document and transforms it to required representation
-func (v *Validator) TransformDocument(doc document.Document) (document.Document, error) {
+func (v *Validator) TransformDocument(doc document.Document) (*document.ResolutionResult, error) {
 	internal := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
 	// start with empty document
@@ -105,7 +105,7 @@ func (v *Validator) TransformDocument(doc document.Document) (document.Document,
 
 	result := &document.ResolutionResult{
 		Context:        didResolutionContext,
-		DIDDocument:    external,
+		Document:       external.JSONLdObject(),
 		MethodMetadata: document.MethodMetadata{},
 	}
 
@@ -115,14 +115,13 @@ func (v *Validator) TransformDocument(doc document.Document) (document.Document,
 	// add services
 	processServices(internal, result)
 
-	// TODO: Return resolution result - will be done is separate PR
-	return result.DIDDocument.JSONLdObject(), nil
+	return result, nil
 }
 
 // processServices will process services and add them to external document
-func processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) *document.ResolutionResult {
+func processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
 	if len(internal.Services()) == 0 {
-		return resolutionResult
+		return
 	}
 
 	// add did to service id
@@ -130,9 +129,7 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 		sv[document.IDProperty] = internal.ID() + "#" + sv.ID()
 	}
 
-	resolutionResult.DIDDocument[document.ServiceProperty] = internal.Services()
-
-	return resolutionResult
+	resolutionResult.Document[document.ServiceProperty] = internal.Services()
 }
 
 // processKeys will process keys according to Sidetree rules bellow and add them to external document
@@ -144,7 +141,7 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // the key descriptor object will be directly included in the publicKeys section of the resolved DID Document,
 // and included by reference in the authentication section.
 // -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) *document.ResolutionResult {
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
 	var authentication []interface{}
 	var publicKeys []document.PublicKey
 	var operationPublicKeys []document.PublicKey
@@ -175,15 +172,12 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 	}
 
 	if len(publicKeys) > 0 {
-		resolutionResult.DIDDocument[document.PublicKeyProperty] = publicKeys
+		resolutionResult.Document[document.PublicKeyProperty] = publicKeys
 	}
 
 	if len(authentication) > 0 {
-		resolutionResult.DIDDocument[document.AuthenticationProperty] = authentication
+		resolutionResult.Document[document.AuthenticationProperty] = authentication
 	}
 
 	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
-	// TODO: Add recovery key from did state to resolution result
-
-	return resolutionResult
 }

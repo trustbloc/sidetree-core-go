@@ -77,6 +77,43 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 }
 
 // TransformDocument takes internal representation of document and transforms it to required representation
-func (v *Validator) TransformDocument(document document.Document) (document.Document, error) {
-	return document, nil
+func (v *Validator) TransformDocument(internal document.Document) (*document.ResolutionResult, error) {
+	resolutionResult := &document.ResolutionResult{
+		Document:       internal,
+		MethodMetadata: document.MethodMetadata{},
+	}
+
+	processKeys(internal, resolutionResult)
+
+	return resolutionResult, nil
+}
+
+// generic documents will most likely only contain operation keys
+// operation keys are not part of external document but resolution result
+func processKeys(internal document.Document, resolutionResult *document.ResolutionResult) {
+	var operationPublicKeys []document.PublicKey
+
+	var nonOperationsKeys []document.PublicKey
+	for _, pk := range internal.PublicKeys() {
+		pk[document.ControllerProperty] = internal[document.IDProperty]
+		// add did to key id
+		pk[document.IDProperty] = internal.ID() + "#" + pk.ID()
+
+		usages := pk.Usage()
+		delete(pk, document.UsageProperty)
+
+		if document.IsOperationsKey(usages) {
+			operationPublicKeys = append(operationPublicKeys, pk)
+		} else {
+			nonOperationsKeys = append(nonOperationsKeys, pk)
+		}
+	}
+
+	if len(nonOperationsKeys) > 0 {
+		internal[document.PublicKeyProperty] = nonOperationsKeys
+	} else {
+		delete(internal, document.PublicKeyProperty)
+	}
+
+	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
 }

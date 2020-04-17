@@ -26,5 +26,6 @@
         ]
       }
     }
-  ]
+  ],
+  "authentication": ["whatever"]
 }

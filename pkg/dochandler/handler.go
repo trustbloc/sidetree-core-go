@@ -30,13 +30,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
-	keyID        = "id"
-	keyPublished = "published"
+	keyID = "id"
 )
 
 // DocumentHandler implements document handler
@@ -50,7 +49,7 @@ type DocumentHandler struct {
 
 // OperationProcessor is an interface which resolves the document based on the ID
 type OperationProcessor interface {
-	Resolve(uniqueSuffix string) (document.Document, error)
+	Resolve(uniqueSuffix string) (*document.ResolutionResult, error)
 }
 
 // BatchWriter is an interface to add an operation to the batch
@@ -62,7 +61,7 @@ type BatchWriter interface {
 type DocumentValidator interface {
 	IsValidOriginalDocument(payload []byte) error
 	IsValidPayload(payload []byte) error
-	TransformDocument(document document.Document) (document.Document, error)
+	TransformDocument(doc document.Document) (*document.ResolutionResult, error)
 }
 
 // New creates a new requestHandler with the context
@@ -87,7 +86,7 @@ func (r *DocumentHandler) Protocol() protocol.Client {
 }
 
 //ProcessOperation validates operation and adds it to the batch
-func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document.Document, error) {
+func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error) {
 	// perform validation for operation request
 	if err := r.validateOperation(operation); err != nil {
 		log.Warnf("Failed to validate operation: %s", err.Error())
@@ -102,14 +101,27 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
-		doc, err := getInitialDocument(operation.PatchData.Patches)
-		if err != nil {
-			return nil, err
-		}
-		return r.getDoc(operation.ID, doc, false)
+		return r.getCreateResponse(operation)
 	}
 
 	return nil, nil
+}
+
+func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*document.ResolutionResult, error) {
+	doc, err := getInitialDocument(operation.PatchData.Patches)
+	if err != nil {
+		return nil, err
+	}
+
+	externalResult, err := r.transformToExternalDoc(doc, operation.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	externalResult.MethodMetadata.Published = false
+	externalResult.MethodMetadata.RecoveryKey = operation.SuffixData.RecoveryKey
+
+	return externalResult, nil
 }
 
 // ResolveDocument fetches the latest DID Document of a DID. Two forms of string can be passed in the URI:
@@ -123,7 +135,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (document
 // If the DID Document cannot be found, the encoded DID Document given in the initial-values DID parameter is used
 // to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to
 // the same validation as an original DID Document in a create operation
-func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (document.Document, error) {
+func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.ResolutionResult, error) {
 	if !strings.HasPrefix(idOrInitialDoc, r.namespace+docutil.NamespaceDelimiter) {
 		return nil, errors.New("must start with configured namespace")
 	}
@@ -153,16 +165,25 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (document.Docum
 	return nil, err
 }
 
-func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (document.Document, error) {
-	doc, err := r.processor.Resolve(uniquePortion)
+func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.ResolutionResult, error) {
+	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
 		log.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 		return nil, err
 	}
-	return r.transformDoc(doc, r.namespace+docutil.NamespaceDelimiter+uniquePortion, true)
+
+	externalResult, err := r.transformToExternalDoc(internalResult.Document, r.namespace+docutil.NamespaceDelimiter+uniquePortion)
+	if err != nil {
+		return nil, err
+	}
+
+	externalResult.MethodMetadata.Published = true
+	externalResult.MethodMetadata.RecoveryKey = internalResult.MethodMetadata.RecoveryKey
+
+	return externalResult, nil
 }
 
-func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string) (document.Document, error) {
+func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string) (*document.ResolutionResult, error) {
 	createReqBytes, err := docutil.DecodeString(encodedCreateReq)
 	if err != nil {
 		return nil, err
@@ -173,56 +194,33 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
-	patchData, err := unmarshalPatchData(createReqBytes)
+	op, err := operation.ParseCreateOperation(createReqBytes, r.protocol.Current())
 	if err != nil {
 		return nil, err
 	}
 
-	initialDocument, err := getInitialDocument(patchData.Patches)
-	if err != nil {
+	op.ID = r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
+	if id != op.ID {
+		return nil, errors.New("provided did doesn't match did created from create request")
+	}
+
+	if err := r.validateInitialDocument(op.PatchData.Patches); err != nil {
 		return nil, err
 	}
 
-	// Verify that the document passes both Sidetree and document validation
-	if err = r.validator.IsValidOriginalDocument(initialDocument); err != nil {
-		return nil, err
-	}
-
-	return r.getDoc(id, initialDocument, false)
+	return r.getCreateResponse(op)
 }
 
-func unmarshalPatchData(req []byte) (*model.PatchDataModel, error) {
-	var createReq model.CreateRequest
-	err := json.Unmarshal(req, &createReq)
-	if err != nil {
-		return nil, err
+// helper function to transform internal into external document and return resolution result
+func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id string) (*document.ResolutionResult, error) {
+	if internal == nil {
+		return nil, errors.New("internal document is nil")
 	}
 
-	patchDataBytes, err := docutil.DecodeString(createReq.PatchData)
-	if err != nil {
-		return nil, err
-	}
+	// apply id to document so it can be added to all keys and services
+	internal[keyID] = id
 
-	var patchData model.PatchDataModel
-	err = json.Unmarshal(patchDataBytes, &patchData)
-	if err != nil {
-		return nil, err
-	}
-
-	return &patchData, nil
-}
-
-// helper function to insert id into document and transform document as per document specification
-func (r *DocumentHandler) transformDoc(doc document.Document, id string, published bool) (document.Document, error) {
-	if doc == nil {
-		return nil, nil
-	}
-
-	// apply id to document
-	doc[keyID] = id
-	doc[keyPublished] = published
-
-	return r.validator.TransformDocument(doc)
+	return r.validator.TransformDocument(internal)
 }
 
 // helper namespace for adding operations to the batch
@@ -236,15 +234,6 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 		UniqueSuffix: operation.UniqueSuffix,
 		Data:         opBytes,
 	})
-}
-
-func (r *DocumentHandler) getDoc(id string, internal []byte, published bool) (document.Document, error) {
-	doc, err := document.FromBytes(internal)
-	if err != nil {
-		return nil, err
-	}
-
-	return r.transformDoc(doc, id, published)
 }
 
 // validateOperation validates the operation
@@ -267,7 +256,12 @@ func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
 		return err
 	}
 
-	return r.validator.IsValidOriginalDocument(doc)
+	docBytes, err := json.Marshal(doc)
+	if err != nil {
+		return err
+	}
+
+	return r.validator.IsValidOriginalDocument(docBytes)
 }
 
 // getUniquePortion fetches unique portion of ID which is string after namespace
@@ -304,11 +298,6 @@ func getParts(params string) (string, string, error) {
 	return params[0:pos], params[adjustedPos:], nil
 }
 
-func getInitialDocument(patches []patch.Patch) ([]byte, error) {
-	doc, err := composer.ApplyPatches(nil, patches)
-	if err != nil {
-		return nil, err
-	}
-
-	return doc.Bytes()
+func getInitialDocument(patches []patch.Patch) (document.Document, error) {
+	return composer.ApplyPatches(nil, patches)
 }

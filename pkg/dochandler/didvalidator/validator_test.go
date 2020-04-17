@@ -134,10 +134,10 @@ func TestTransformDocument(t *testing.T) {
 
 	v := getDefaultValidator()
 
-	transformed, err := v.TransformDocument(doc)
+	result, err := v.TransformDocument(doc)
 	require.NoError(t, err)
 
-	jsonTransformed, err := json.Marshal(transformed)
+	jsonTransformed, err := json.Marshal(result.Document)
 	require.NoError(t, err)
 
 	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)

@@ -53,8 +53,10 @@ func TestUpdateHandler_Update(t *testing.T) {
 		body, err := ioutil.ReadAll(rw.Body)
 		require.NoError(t, err)
 
-		doc, err := document.DidDocumentFromBytes(body)
-		require.Contains(t, doc.ID(), id)
+		var result document.ResolutionResult
+		err = json.Unmarshal(body, &result)
+
+		require.Contains(t, result.Document.ID(), id)
 	})
 }
 

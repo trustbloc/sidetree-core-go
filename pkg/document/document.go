@@ -39,6 +39,11 @@ func (doc Document) ID() string {
 	return stringEntry(doc[IDProperty])
 }
 
+// PublicKeys in generic document are used for managing operation keys
+func (doc Document) PublicKeys() []PublicKey {
+	return parsePublicKeys(doc[PublicKeyProperty])
+}
+
 // GetStringValue returns string value for specified key or "" if not found or wrong type
 func (doc Document) GetStringValue(key string) string {
 	return stringEntry(doc[key])

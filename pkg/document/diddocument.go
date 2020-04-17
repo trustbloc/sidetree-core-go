@@ -58,8 +58,12 @@ func (doc DIDDocument) Context() []string {
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations
 func (doc DIDDocument) PublicKeys() []PublicKey {
-	entry, ok := doc[PublicKeyProperty]
-	if !ok {
+	return parsePublicKeys(doc[PublicKeyProperty])
+}
+
+// helper function for parsing public keys
+func parsePublicKeys(entry interface{}) []PublicKey {
+	if entry == nil {
 		return nil
 	}
 
