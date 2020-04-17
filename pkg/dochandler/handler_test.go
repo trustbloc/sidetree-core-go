@@ -102,9 +102,9 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	docID := getCreateOperation().ID
 
 	// scenario: not found in the store
-	doc, err := dochandler.ResolveDocument(docID)
+	result, err := dochandler.ResolveDocument(docID)
 	require.NotNil(t, err)
-	require.Nil(t, doc)
+	require.Nil(t, result)
 	require.Contains(t, err.Error(), "not found")
 
 	// insert document in the store
@@ -112,21 +112,21 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Nil(t, err)
 
 	// scenario: resolved document (success)
-	doc, err = dochandler.ResolveDocument(docID)
+	result, err = dochandler.ResolveDocument(docID)
 	require.Nil(t, err)
-	require.NotNil(t, doc)
-	require.Equal(t, true, doc.JSONLdObject()[keyPublished])
+	require.NotNil(t, result)
+	require.Equal(t, true, result.MethodMetadata.Published)
 
 	// scenario: invalid namespace
-	doc, err = dochandler.ResolveDocument("doc:invalid:")
+	result, err = dochandler.ResolveDocument("doc:invalid:")
 	require.NotNil(t, err)
-	require.Nil(t, doc)
+	require.Nil(t, result)
 	require.Contains(t, err.Error(), "must start with configured namespace")
 
 	// scenario: invalid id
-	doc, err = dochandler.ResolveDocument(namespace + docutil.NamespaceDelimiter)
+	result, err = dochandler.ResolveDocument(namespace + docutil.NamespaceDelimiter)
 	require.NotNil(t, err)
-	require.Nil(t, doc)
+	require.Nil(t, result)
 	require.Contains(t, err.Error(), "unique portion is empty")
 }
 
@@ -138,19 +138,32 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 	encodedRequest := docutil.EncodeToString(getCreateOperation().OperationBuffer)
 
-	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + encodedRequest)
-	require.NotNil(t, doc)
-	require.Equal(t, false, doc.JSONLdObject()[keyPublished])
+	result, err := dochandler.ResolveDocument(docID + initialValuesParam + encodedRequest)
+	require.NotNil(t, result)
+	require.Equal(t, false, result.MethodMetadata.Published)
 
-	doc, err = dochandler.ResolveDocument(docID + initialValuesParam)
+	result, err = dochandler.ResolveDocument(docID + initialValuesParam)
 	require.NotNil(t, err)
-	require.Nil(t, doc)
+	require.Nil(t, result)
 	require.Contains(t, err.Error(), "initial values is present but empty")
 
-	doc, err = dochandler.ResolveDocument(docID + initialValuesParam + "payload")
+	// create request not encoded
+	result, err = dochandler.ResolveDocument(docID + initialValuesParam + "payload")
 	require.NotNil(t, err)
-	require.Nil(t, doc)
+	require.Nil(t, result)
 	require.Contains(t, err.Error(), "illegal base64 data")
+
+	// invalid create request - not json
+	result, err = dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString([]byte("payload")))
+	require.NotNil(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "invalid character")
+
+	// did doesn't match the one created by parsing original create request
+	result, err = dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialValuesParam + encodedRequest)
+	require.NotNil(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "provided did doesn't match did created from create request")
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
@@ -164,48 +177,25 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 
 	docID := getCreateOperation().ID
 
-	doc, err := dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString(getCreateOperation().OperationBuffer))
+	result, err := dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString(getCreateOperation().OperationBuffer))
 	require.NotNil(t, err)
-	require.Nil(t, doc)
+	require.Nil(t, result)
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
 }
 
-func TestGetDocErrors(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
-	require.NotNil(t, dochandler)
-
-	const id = "doc:method:abc"
-
-	// scenario: illegal payload (invalid json)
-	doc, err := dochandler.getDoc(id, []byte("[test : 123]"), false)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "invalid character")
-
-	// modify handler's protocol client multihash code in order to cause error
-	protocol := mocks.NewMockProtocolClient()
-	protocol.Protocol.HashAlgorithmInMultiHashCode = 999
-	dochandler.protocol = protocol
-}
-
-func TestApplyID(t *testing.T) {
+func TestTransformToExternalDocument(t *testing.T) {
 	dochandler := getDocumentHandler(nil)
 
-	doc, err := dochandler.transformDoc(nil, "abc", false)
-	require.NoError(t, err)
-	require.Nil(t, doc)
+	result, err := dochandler.transformToExternalDoc(nil, "abc")
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "internal document is nil")
 
-	doc = document.Document{}
-	doc, err = dochandler.transformDoc(doc, "abc", true)
+	doc := document.Document{}
+	result, err = dochandler.transformToExternalDoc(doc, "abc")
 	require.NoError(t, err)
-	require.Equal(t, "abc", doc[keyID])
-	require.Equal(t, true, doc[keyPublished])
-
-	doc = document.Document{}
-	doc, err = dochandler.transformDoc(doc, "abc", false)
-	require.NoError(t, err)
-	require.Equal(t, "abc", doc[keyID])
-	require.Equal(t, false, doc[keyPublished])
+	require.NotNil(t, result)
+	require.Equal(t, "abc", result.Document[keyID])
 }
 
 func TestGetUniquePortion(t *testing.T) {
@@ -262,34 +252,6 @@ func TestProcessOperation_Update(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(getUpdateOperation())
 	require.Nil(t, err)
 	require.Nil(t, doc)
-}
-
-func TestDocumentHandler_UnmarshalPatchData(t *testing.T) {
-	doc, err := unmarshalPatchData([]byte(""))
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "unexpected end of JSON input")
-
-	req, err := getCreateRequest()
-	require.NoError(t, err)
-
-	req.PatchData = "invalid"
-	reqBytes, err := json.Marshal(req)
-	require.NoError(t, err)
-
-	doc, err = unmarshalPatchData(reqBytes)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "illegal base64 data")
-
-	req.PatchData = docutil.EncodeToString([]byte("invalid"))
-	reqBytes, err = json.Marshal(req)
-	require.NoError(t, err)
-
-	doc, err = unmarshalPatchData(reqBytes)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "invalid character")
 }
 
 // BatchContext implements batch writer context

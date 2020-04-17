@@ -25,7 +25,7 @@ import (
 type Processor interface {
 	Namespace() string
 	Protocol() protocol.Client
-	ProcessOperation(operation *batch.Operation) (document.Document, error)
+	ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error)
 }
 
 // UpdateHandler handles the creation and update of documents
@@ -56,7 +56,7 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func (h *UpdateHandler) doUpdate(request []byte) (document.Document, error) {
+func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, error) {
 	operation, err := h.getOperation(request)
 	if err != nil {
 		logger.Errorf("Error: %s", err)
@@ -64,13 +64,13 @@ func (h *UpdateHandler) doUpdate(request []byte) (document.Document, error) {
 	}
 
 	// operation has been validated, now process it
-	doc, err := h.processor.ProcessOperation(operation)
+	result, err := h.processor.ProcessOperation(operation)
 	if err != nil {
 		logger.Errorf("Error: %s", err)
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return doc, nil
+	return result, nil
 }
 
 func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, error) {

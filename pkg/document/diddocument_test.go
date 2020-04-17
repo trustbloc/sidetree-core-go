@@ -53,6 +53,7 @@ func TestValid(t *testing.T) {
 	require.NotNil(t, jsonld)
 
 	require.Empty(t, doc.Context())
+	require.Equal(t, "whatever", doc.Authentication()[0])
 }
 
 func TestEmptyDoc(t *testing.T) {
@@ -67,6 +68,9 @@ func TestEmptyDoc(t *testing.T) {
 
 	services := doc.Services()
 	require.Equal(t, 0, len(services))
+
+	authentication := doc.Authentication()
+	require.Equal(t, 0, len(authentication))
 }
 
 func TestInvalidLists(t *testing.T) {

@@ -92,16 +92,24 @@ func TestIsValidPayload_StoreErrors(t *testing.T) {
 	require.Equal(t, err, storeErr)
 }
 
-func TestTransofrmDocument(t *testing.T) {
+func TestTransformDocument(t *testing.T) {
 	doc, err := document.FromBytes(validDoc)
 	require.NoError(t, err)
 
 	v := getDefaultValidator()
 
 	// there is no transformation for generic doc for now
-	transformed, err := v.TransformDocument(doc)
+	result, err := v.TransformDocument(doc)
 	require.NoError(t, err)
-	require.Equal(t, doc, transformed)
+	require.Equal(t, doc, result.Document)
+
+	// test document with operation keys
+	doc, err = document.FromBytes([]byte(validDocWithOpsKeys))
+	require.NoError(t, err)
+	result, err = v.TransformDocument(doc)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(result.MethodMetadata.OperationPublicKeys))
+	require.Equal(t, 0, len(result.Document.PublicKeys()))
 }
 
 func getDefaultValidator() *Validator {
@@ -113,3 +121,26 @@ var invalidDoc = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
+
+const validDocWithOpsKeys = `
+{
+  "id" : "doc:method:abc",
+  "publicKey": [
+    {
+      "id": "update-key",
+      "type": "JwsVerificationKey2020",
+      "usage": ["ops"],
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ],
+  "other": [
+    {
+      "name": "name"
+    }
+  ]
+}`

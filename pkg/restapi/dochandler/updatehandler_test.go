@@ -68,7 +68,11 @@ func TestUpdateHandler_Update(t *testing.T) {
 		body, err := ioutil.ReadAll(rw.Body)
 		require.NoError(t, err)
 
-		doc, err := document.DidDocumentFromBytes(body)
+		var result document.ResolutionResult
+		err = json.Unmarshal(body, &result)
+		require.NoError(t, err)
+
+		doc := result.Document
 		require.Equal(t, id, doc.ID())
 		require.Equal(t, len(doc.PublicKeys()), 1)
 	})

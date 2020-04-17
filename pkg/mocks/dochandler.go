@@ -61,7 +61,7 @@ func (m *MockDocumentHandler) Protocol() protocol.Client {
 }
 
 // ProcessOperation mocks process operation
-func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (document.Document, error) {
+func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -81,11 +81,13 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (docu
 
 	m.store[operation.ID] = doc
 
-	return doc, nil
+	return &document.ResolutionResult{
+		Document: doc,
+	}, nil
 }
 
 //ResolveDocument mocks resolve document
-func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (document.Document, error) {
+func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -97,7 +99,9 @@ func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (document.Doc
 		return nil, errors.New("was deactivated")
 	}
 
-	return m.store[idOrDocument], nil
+	return &document.ResolutionResult{
+		Document: m.store[idOrDocument],
+	}, nil
 }
 
 // helper function to insert ID into document

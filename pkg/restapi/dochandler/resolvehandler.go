@@ -23,7 +23,7 @@ var logger = logrus.New()
 // Resolver resolves documents
 type Resolver interface {
 	Namespace() string
-	ResolveDocument(idOrDocument string) (document.Document, error)
+	ResolveDocument(idOrDocument string) (*document.ResolutionResult, error)
 }
 
 // ResolveHandler resolves generic documents
@@ -47,11 +47,11 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)
 		return
 	}
-	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response)
+	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Document)
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func (o *ResolveHandler) doResolve(id string) (document.Document, error) {
+func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error) {
 	if !strings.HasPrefix(id, o.resolver.Namespace()) {
 		logger.Errorf("DID ID [%s] does not start with supported namespace [%s]", id, o.resolver.Namespace())
 		return nil, common.NewHTTPError(http.StatusBadRequest, errors.New("must start with supported namespace"))

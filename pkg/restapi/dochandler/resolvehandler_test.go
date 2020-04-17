@@ -40,7 +40,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		patchData, err := getPatchData()
 		require.NoError(t, err)
 
-		doc, err := docHandler.ProcessOperation(&batch.Operation{
+		result, err := docHandler.ProcessOperation(&batch.Operation{
 			Type:             batch.OperationTypeCreate,
 			ID:               id,
 			PatchData:        patchData,
@@ -48,7 +48,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		getID = func(req *http.Request) string { return doc.ID() }
+		getID = func(req *http.Request) string { return result.Document.ID() }
 		handler := NewResolveHandler(docHandler)
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -101,7 +101,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		patchData, err := getPatchData()
 		require.NoError(t, err)
 
-		doc, err := docHandler.ProcessOperation(&batch.Operation{
+		result, err := docHandler.ProcessOperation(&batch.Operation{
 			Type:             batch.OperationTypeCreate,
 			ID:               id,
 			PatchData:        patchData,
@@ -111,11 +111,11 @@ func TestResolveHandler_Resolve(t *testing.T) {
 
 		_, err = docHandler.ProcessOperation(&batch.Operation{
 			Type: batch.OperationTypeDeactivate,
-			ID:   doc.ID(),
+			ID:   result.Document.ID(),
 		})
 		require.NoError(t, err)
 
-		getID = func(req *http.Request) string { return doc.ID() }
+		getID = func(req *http.Request) string { return result.Document.ID() }
 		handler := NewResolveHandler(docHandler)
 
 		rw := httptest.NewRecorder()
