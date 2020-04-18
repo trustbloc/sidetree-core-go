@@ -26,6 +26,9 @@ const (
 	// AuthenticationProperty defines key for authentication property
 	AuthenticationProperty = "authentication"
 
+	// AssertionMethodProperty defines key for assertion method property
+	AssertionMethodProperty = "assertionMethod"
+
 	// ControllerProperty defines key for controller
 	ControllerProperty = "controller"
 
@@ -111,9 +114,14 @@ func (doc DIDDocument) JSONLdObject() map[string]interface{} {
 	return doc
 }
 
-// Authentication return authentication array (mixture of strings and objects)
+// Authentication returns authentication array (mixture of strings and objects)
 func (doc DIDDocument) Authentication() []interface{} {
 	return interfaceArray(doc[AuthenticationProperty])
+}
+
+// AssertionMethod returns assertion method array (mixture of strings and objects)
+func (doc DIDDocument) AssertionMethod() []interface{} {
+	return interfaceArray(doc[AssertionMethodProperty])
 }
 
 // DIDDocumentFromReader creates an instance of DIDDocument by reading a JSON document from Reader

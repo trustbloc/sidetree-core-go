@@ -147,11 +147,14 @@ func TestTransformDocument(t *testing.T) {
 	require.Contains(t, didDoc.Services()[0].ID(), testID)
 	require.Equal(t, didContext, didDoc.Context()[0])
 
-	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general"}
+	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general", "dual-assertion-general"}
 	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
 
 	expectedAuthenticationKeys := []string{"master", "dual-auth-general", "auth-only"}
 	require.Equal(t, len(expectedAuthenticationKeys), len(didDoc.Authentication()))
+
+	expectedAssertionMethodKeys := []string{"master", "dual-assertion-general", "assertion-only"}
+	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethod()))
 }
 
 func getDefaultValidator() *Validator {
