@@ -16,6 +16,8 @@ const (
 	ops = "ops"
 	// auth defines key usage as authentication key
 	auth = "auth"
+	// assertion defines key usage as assertion key
+	assertion = "assertion"
 	// general defines key usage as general key
 	general = "general"
 
@@ -25,9 +27,10 @@ const (
 )
 
 var allowedOps = map[string]string{
-	ops:     ops,
-	auth:    auth,
-	general: general,
+	ops:       ops,
+	auth:      auth,
+	general:   general,
+	assertion: assertion,
 }
 
 var allowedKeyTypes = map[string]string{
@@ -105,6 +108,11 @@ func IsGeneralKey(usages []string) bool {
 // IsAuthenticationKey returns true if key is an authentication key
 func IsAuthenticationKey(usages []string) bool {
 	return isUsageKey(usages, auth)
+}
+
+// IsAssertionKey returns true if key is an assertion key
+func IsAssertionKey(usages []string) bool {
+	return isUsageKey(usages, assertion)
 }
 
 func isUsageKey(usages []string, mode string) bool {

@@ -3,7 +3,7 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "usage": ["ops", "general", "auth"],
+      "usage": ["ops", "general", "auth", "assertion"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -37,6 +37,28 @@
       "id": "auth-only",
       "type": "JwsVerificationKey2020",
       "usage": ["auth"],
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    },
+    {
+      "id": "dual-assertion-general",
+      "type": "JwsVerificationKey2020",
+      "usage": ["assertion", "general"],
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    },
+    {
+      "id": "assertion-only",
+      "type": "JwsVerificationKey2020",
+      "usage": ["assertion"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",

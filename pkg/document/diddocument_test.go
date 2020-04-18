@@ -71,6 +71,9 @@ func TestEmptyDoc(t *testing.T) {
 
 	authentication := doc.Authentication()
 	require.Equal(t, 0, len(authentication))
+
+	assertionMethod := doc.AssertionMethod()
+	require.Equal(t, 0, len(assertionMethod))
 }
 
 func TestInvalidLists(t *testing.T) {

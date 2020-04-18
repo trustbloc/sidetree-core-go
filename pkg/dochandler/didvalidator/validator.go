@@ -140,17 +140,22 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // If the general usage value IS present in the usage array,
 // the key descriptor object will be directly included in the publicKeys section of the resolved DID Document,
 // and included by reference in the authentication section.
+// -- assertion: the key MUST be included in the assertionMethod section of the resolved DID Document
+// (same rules as for auth)
 // -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) { //nolint: gocyclo
 	var authentication []interface{}
+	var assertionMethod []interface{}
+
 	var publicKeys []document.PublicKey
 	var operationPublicKeys []document.PublicKey
 
 	// add controller to public key
 	for _, pk := range internal.PublicKeys() {
 		pk[document.ControllerProperty] = internal[document.IDProperty]
-		// add did to key id
-		pk[document.IDProperty] = internal.ID() + "#" + pk.ID()
+		// construct relative DID URL for inclusion in authentication and assertion method
+		relativeID := "#" + pk.ID()
+		pk[document.IDProperty] = internal.ID() + relativeID
 
 		usages := pk.Usage()
 		// remove usage property from external document
@@ -162,12 +167,19 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 
 		if document.IsGeneralKey(usages) {
 			publicKeys = append(publicKeys, pk)
-			// add into authentication by reference if has auth and has general
+
+			// add into authentication by reference if the key has both auth and general usage
 			if document.IsAuthenticationKey(usages) {
-				authentication = append(authentication, pk.ID())
+				authentication = append(authentication, relativeID)
+			}
+			// add into assertionMethod by reference if the key has both assertion and general usage
+			if document.IsAssertionKey(usages) {
+				assertionMethod = append(assertionMethod, relativeID)
 			}
 		} else if document.IsAuthenticationKey(usages) {
 			authentication = append(authentication, pk)
+		} else if document.IsAssertionKey(usages) {
+			assertionMethod = append(assertionMethod, pk)
 		}
 	}
 
@@ -177,6 +189,10 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 
 	if len(authentication) > 0 {
 		resolutionResult.Document[document.AuthenticationProperty] = authentication
+	}
+
+	if len(assertionMethod) > 0 {
+		resolutionResult.Document[document.AssertionMethodProperty] = assertionMethod
 	}
 
 	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
