@@ -31,7 +31,7 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	patchData, err := parseCreatePatchData(schema.PatchData, code)
+	delta, err := parseCreateDelta(schema.Delta, code)
 	if err != nil {
 		return nil, err
 	}
@@ -45,10 +45,10 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeCreate,
 		UniqueSuffix:                 uniqueSuffix,
-		PatchData:                    patchData,
-		EncodedPatchData:             schema.PatchData,
-		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:   suffixData.NextRecoveryCommitmentHash,
+		Delta:                        delta,
+		EncodedDelta:                 schema.Delta,
+		UpdateCommitment:             delta.UpdateCommitment,
+		RecoveryCommitment:           suffixData.RecoveryCommitment,
 		HashAlgorithmInMultiHashCode: code,
 		SuffixData:                   suffixData,
 	}, nil
@@ -64,19 +64,19 @@ func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 	return schema, nil
 }
 
-func parseCreatePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
+func parseCreateDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.PatchDataModel{}
+	schema := &model.DeltaModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validatePatchData(schema, code); err != nil {
+	if err := validateDelta(schema, code); err != nil {
 		return nil, err
 	}
 
@@ -102,12 +102,12 @@ func parseSuffixData(encoded string, code uint) (*model.SuffixDataModel, error) 
 	return schema, nil
 }
 
-func validatePatchData(patchData *model.PatchDataModel, code uint) error {
-	if len(patchData.Patches) == 0 {
+func validateDelta(delta *model.DeltaModel, code uint) error {
+	if len(delta.Patches) == 0 {
 		return errors.New("missing patches")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(patchData.NextUpdateCommitmentHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(code)) {
 		return errors.New("next update commitment hash is not computed with the latest supported hash algorithm")
 	}
 
@@ -119,11 +119,11 @@ func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
 		return errors.New("missing recovery key")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.NextRecoveryCommitmentHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(code)) {
 		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.PatchDataHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(code)) {
 		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
 	}
 

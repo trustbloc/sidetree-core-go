@@ -108,7 +108,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 }
 
 func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*document.ResolutionResult, error) {
-	doc, err := getInitialDocument(operation.PatchData.Patches)
+	doc, err := getInitialDocument(operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string
 		return nil, errors.New("provided did doesn't match did created from create request")
 	}
 
-	if err := r.validateInitialDocument(op.PatchData.Patches); err != nil {
+	if err := r.validateInitialDocument(op.Delta.Patches); err != nil {
 		return nil, err
 	}
 
@@ -244,7 +244,7 @@ func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
-		return r.validateInitialDocument(operation.PatchData.Patches)
+		return r.validateInitialDocument(operation.Delta.Patches)
 	}
 
 	return r.validator.IsValidPayload(operation.OperationBuffer)

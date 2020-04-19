@@ -58,7 +58,7 @@ func TestParseCreateOperation(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		create.PatchData = invalid
+		create.Delta = invalid
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
@@ -80,37 +80,37 @@ func TestValidateSuffixData(t *testing.T) {
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		suffixData := getSuffixData()
-		suffixData.PatchDataHash = ""
+		suffixData.DeltaHash = ""
 		err := validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		suffixData := getSuffixData()
-		suffixData.NextRecoveryCommitmentHash = ""
+		suffixData.RecoveryCommitment = ""
 		err := validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
-func TestValidatePatchData(t *testing.T) {
+func TestValidatedelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
-		patchData, err := getPatchData()
+		delta, err := getDelta()
 		require.NoError(t, err)
 
-		patchData.NextUpdateCommitmentHash = ""
-		err = validatePatchData(patchData, sha2_256)
+		delta.UpdateCommitment = ""
+		err = validateDelta(delta, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("missing patches", func(t *testing.T) {
-		patchData, err := getPatchData()
+		delta, err := getDelta()
 		require.NoError(t, err)
 
-		patchData.Patches = []patch.Patch{}
-		err = validatePatchData(patchData, sha2_256)
+		delta.Patches = []patch.Patch{}
+		err = validateDelta(delta, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing patches")
@@ -118,12 +118,12 @@ func TestValidatePatchData(t *testing.T) {
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchData, err := getPatchData()
+	delta, err := getDelta()
 	if err != nil {
 		return nil, err
 	}
 
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	deltaBytes, err := docutil.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func getCreateRequest() (*model.CreateRequest, error) {
 
 	return &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		PatchData:  docutil.EncodeToString(patchDataBytes),
+		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
@@ -149,23 +149,23 @@ func getCreateRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-func getPatchData() (*model.PatchDataModel, error) {
+func getDelta() (*model.DeltaModel, error) {
 	replacePatch, err := patch.NewReplacePatch(validDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{replacePatch},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+	return &model.DeltaModel{
+		Patches:          []patch.Patch{replacePatch},
+		UpdateCommitment: computeMultihash("updateReveal"),
 	}, nil
 }
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		PatchDataHash:              computeMultihash(validDoc),
-		RecoveryKey:                &jws.JWK{},
-		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
+		DeltaHash:          computeMultihash(validDoc),
+		RecoveryKey:        &jws.JWK{},
+		RecoveryCommitment: computeMultihash("recoveryReveal"),
 	}
 }
 func computeMultihash(data string) string {

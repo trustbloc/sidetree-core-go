@@ -31,7 +31,7 @@ func ParseDeactivateOperation(request []byte, p protocol.Protocol) (*batch.Opera
 	return &batch.Operation{
 		Type:                         batch.OperationTypeDeactivate,
 		OperationBuffer:              request,
-		UniqueSuffix:                 schema.DidUniqueSuffix,
+		UniqueSuffix:                 schema.DidSuffix,
 		RecoveryRevealValue:          schema.RecoveryRevealValue,
 		HashAlgorithmInMultiHashCode: p.HashAlgorithmInMultiHashCode,
 		SignedData:                   schema.SignedData,
@@ -53,7 +53,7 @@ func parseDeactivateRequest(payload []byte) (*model.DeactivateRequest, error) {
 }
 
 func validateDeactivateRequest(req *model.DeactivateRequest) error {
-	if req.DidUniqueSuffix == "" {
+	if req.DidSuffix == "" {
 		return errors.New("missing unique suffix")
 	}
 
@@ -76,7 +76,7 @@ func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.Deactiva
 		return nil, errors.New("signed recovery reveal mismatch for deactivate")
 	}
 
-	if signedData.DidUniqueSuffix != req.DidUniqueSuffix {
+	if signedData.DidSuffix != req.DidSuffix {
 		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 

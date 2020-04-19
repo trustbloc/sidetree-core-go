@@ -67,7 +67,7 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	createOp.PatchData = &model.PatchDataModel{
+	createOp.Delta = &model.DeltaModel{
 		Patches: []patch.Patch{replacePatch},
 	}
 
@@ -321,21 +321,21 @@ func getCreateOperation() *batchapi.Operation {
 		panic(err)
 	}
 
-	patchDataBytes, err := docutil.DecodeString(request.PatchData)
+	deltaBytes, err := docutil.DecodeString(request.Delta)
 	if err != nil {
 		panic(err)
 	}
 
-	patchData := &model.PatchDataModel{}
-	err = json.Unmarshal(patchDataBytes, patchData)
+	delta := &model.DeltaModel{}
+	err = json.Unmarshal(deltaBytes, delta)
 	if err != nil {
 		panic(err)
 	}
 
 	return &batchapi.Operation{
 		OperationBuffer:              payload,
-		PatchData:                    patchData,
-		EncodedPatchData:             request.PatchData,
+		Delta:                        delta,
+		EncodedDelta:                 request.Delta,
 		Type:                         batchapi.OperationTypeCreate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
@@ -353,12 +353,12 @@ const validDoc = `{
 }`
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchData, err := getPatchData()
+	delta, err := getdelta()
 	if err != nil {
 		return nil, err
 	}
 
-	patchDataBytes, err := json.Marshal(patchData)
+	deltaBytes, err := json.Marshal(delta)
 	if err != nil {
 		return nil, err
 	}
@@ -370,28 +370,28 @@ func getCreateRequest() (*model.CreateRequest, error) {
 
 	return &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		PatchData:  docutil.EncodeToString(patchDataBytes),
+		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
 
-func getPatchData() (*model.PatchDataModel, error) {
+func getdelta() (*model.DeltaModel, error) {
 	replacePatch, err := patch.NewReplacePatch(validDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{replacePatch},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+	return &model.DeltaModel{
+		Patches:          []patch.Patch{replacePatch},
+		UpdateCommitment: computeMultihash("updateReveal"),
 	}, nil
 }
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		PatchDataHash:              computeMultihash(validDoc),
-		RecoveryKey:                &jws.JWK{},
-		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
+		DeltaHash:          computeMultihash(validDoc),
+		RecoveryKey:        &jws.JWK{},
+		RecoveryCommitment: computeMultihash("recoveryReveal"),
 	}
 }
 
@@ -404,21 +404,21 @@ func computeMultihash(data string) string {
 }
 
 func getUpdateRequest() (*model.UpdateRequest, error) {
-	patchDataBytes, err := json.Marshal(getUpdatePatchData())
+	deltaBytes, err := json.Marshal(getUpdatedelta())
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.UpdateRequest{
-		Operation:       model.OperationTypeUpdate,
-		DidUniqueSuffix: getCreateOperation().UniqueSuffix,
-		PatchData:       docutil.EncodeToString(patchDataBytes),
+		Operation: model.OperationTypeUpdate,
+		DidSuffix: getCreateOperation().UniqueSuffix,
+		Delta:     docutil.EncodeToString(deltaBytes),
 	}, nil
 }
 
-func getUpdatePatchData() *model.PatchDataModel {
-	return &model.PatchDataModel{
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+func getUpdatedelta() *model.DeltaModel {
+	return &model.DeltaModel{
+		UpdateCommitment: computeMultihash("updateReveal"),
 	}
 }
 
@@ -437,7 +437,7 @@ func getUpdateOperation() *batchapi.Operation {
 		OperationBuffer:              payload,
 		Type:                         batchapi.OperationTypeUpdate,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 request.DidUniqueSuffix,
-		ID:                           namespace + docutil.NamespaceDelimiter + request.DidUniqueSuffix,
+		UniqueSuffix:                 request.DidSuffix,
+		ID:                           namespace + docutil.NamespaceDelimiter + request.DidSuffix,
 	}
 }

@@ -72,7 +72,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*doc
 	}
 
 	doc := m.store[operation.ID]
-	doc, err := composer.ApplyPatches(doc, operation.PatchData.Patches)
+	doc, err := composer.ApplyPatches(doc, operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}

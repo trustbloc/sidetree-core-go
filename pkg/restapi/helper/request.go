@@ -49,8 +49,8 @@ type CreateRequestInfo struct {
 //DeactivateRequestInfo is the information required to create deactivate request
 type DeactivateRequestInfo struct {
 
-	// Unique Suffix
-	DidUniqueSuffix string
+	// DID Suffix of the document to be deactivated
+	DidSuffix string
 
 	// reveal value for this deactivate operation
 	RecoveryRevealValue []byte
@@ -63,8 +63,8 @@ type DeactivateRequestInfo struct {
 //RecoverRequestInfo is the information required to create recover request
 type RecoverRequestInfo struct {
 
-	// Unique Suffix of the did to be recovered
-	DidUniqueSuffix string
+	// DID Suffix of the document to be recovered
+	DidSuffix string
 
 	// reveal value for this recovery operation
 	RecoveryRevealValue []byte
@@ -92,8 +92,8 @@ type RecoverRequestInfo struct {
 //UpdateRequestInfo is the information required to create update request
 type UpdateRequestInfo struct {
 
-	// Unique Suffix
-	DidUniqueSuffix string
+	// DID Suffix of the document to be updated
+	DidSuffix string
 
 	// Patch is one of standard patch actions
 	Patch patch.Patch
@@ -128,12 +128,12 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	}
 
 	patches := []patch.Patch{replace}
-	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
+	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
 	}
 
-	mhPatchData, err := getEncodedMultihash(info.MultihashCode, patchDataBytes)
+	mhDelta, err := getEncodedMultihash(info.MultihashCode, deltaBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -144,9 +144,9 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	}
 
 	suffixData := model.SuffixDataModel{
-		PatchDataHash:              mhPatchData,
-		RecoveryKey:                info.RecoveryKey,
-		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
+		DeltaHash:          mhDelta,
+		RecoveryKey:        info.RecoveryKey,
+		RecoveryCommitment: mhNextRecoveryCommitmentHash,
 	}
 
 	suffixDataBytes, err := docutil.MarshalCanonical(suffixData)
@@ -156,7 +156,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 
 	schema := &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		PatchData:  docutil.EncodeToString(patchDataBytes),
+		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}
 
@@ -174,12 +174,12 @@ func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
 
 // NewDeactivateRequest is utility function to create payload for 'deactivate' request
 func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
-	if info.DidUniqueSuffix == "" {
+	if info.DidSuffix == "" {
 		return nil, errors.New("missing did unique suffix")
 	}
 
 	signedDataModel := model.DeactivateSignedDataModel{
-		DidUniqueSuffix:     info.DidUniqueSuffix,
+		DidSuffix:           info.DidSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 	}
 
@@ -190,7 +190,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 
 	schema := &model.DeactivateRequest{
 		Operation:           model.OperationTypeDeactivate,
-		DidUniqueSuffix:     info.DidUniqueSuffix,
+		DidSuffix:           info.DidSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 		SignedData:          jws,
 	}
@@ -200,7 +200,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 
 // NewUpdateRequest is utility function to create payload for 'update' request
 func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
-	if info.DidUniqueSuffix == "" {
+	if info.DidSuffix == "" {
 		return nil, errors.New("missing did unique suffix")
 	}
 
@@ -209,26 +209,26 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	patches := []patch.Patch{info.Patch}
-	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
+	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
 	}
 
-	mhPatchData, err := getEncodedMultihash(info.MultihashCode, patchDataBytes)
+	mhDelta, err := getEncodedMultihash(info.MultihashCode, deltaBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	jws, err := signPayload(mhPatchData, info.Signer)
+	jws, err := signPayload(mhDelta, info.Signer)
 	if err != nil {
 		return nil, err
 	}
 
 	schema := &model.UpdateRequest{
 		Operation:         model.OperationTypeUpdate,
-		DidUniqueSuffix:   info.DidUniqueSuffix,
+		DidSuffix:         info.DidSuffix,
 		UpdateRevealValue: docutil.EncodeToString(info.UpdateRevealValue),
-		PatchData:         docutil.EncodeToString(patchDataBytes),
+		Delta:             docutil.EncodeToString(deltaBytes),
 		SignedData:        jws,
 	}
 
@@ -248,12 +248,12 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	patches := []patch.Patch{replacePatch}
-	patchDataBytes, err := getPatchDataBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
+	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err
 	}
 
-	mhPatchData, err := docutil.ComputeMultihash(info.MultihashCode, patchDataBytes)
+	mhDelta, err := docutil.ComputeMultihash(info.MultihashCode, deltaBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -264,9 +264,9 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	signedDataModel := model.RecoverSignedDataModel{
-		PatchDataHash:              docutil.EncodeToString(mhPatchData),
-		RecoveryKey:                info.RecoveryKey,
-		NextRecoveryCommitmentHash: mhNextRecoveryCommitmentHash,
+		DeltaHash:          docutil.EncodeToString(mhDelta),
+		RecoveryKey:        info.RecoveryKey,
+		RecoveryCommitment: mhNextRecoveryCommitmentHash,
 	}
 
 	jws, err := signModel(signedDataModel, info.Signer)
@@ -276,9 +276,9 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 
 	schema := &model.RecoverRequest{
 		Operation:           model.OperationTypeRecover,
-		DidUniqueSuffix:     info.DidUniqueSuffix,
+		DidSuffix:           info.DidSuffix,
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
-		PatchData:           docutil.EncodeToString(patchDataBytes),
+		Delta:               docutil.EncodeToString(deltaBytes),
 		SignedData:          jws,
 	}
 
@@ -329,7 +329,7 @@ func signPayload(payload string, signer Signer) (*model.JWS, error) {
 }
 
 func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
-	if info.DidUniqueSuffix == "" {
+	if info.DidSuffix == "" {
 		return errors.New("missing did unique suffix")
 	}
 
@@ -344,16 +344,16 @@ func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
 	return nil
 }
 
-func getPatchDataBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, error) {
+func getDeltaBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, error) {
 	mhNextUpdateCommitmentHash, err := getEncodedMultihash(mhCode, reveal)
 	if err != nil {
 		return nil, err
 	}
 
-	patchData := model.PatchDataModel{
-		NextUpdateCommitmentHash: mhNextUpdateCommitmentHash,
-		Patches:                  patches,
+	delta := model.DeltaModel{
+		UpdateCommitment: mhNextUpdateCommitmentHash,
+		Patches:          patches,
 	}
 
-	return docutil.MarshalCanonical(patchData)
+	return docutil.MarshalCanonical(delta)
 }

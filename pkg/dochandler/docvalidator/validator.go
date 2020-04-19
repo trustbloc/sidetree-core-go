@@ -14,7 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
-const uniqueSuffix = "didUniqueSuffix"
+const didSuffix = "did_suffix"
 
 // Validator is responsible for validating document operations and sidetree rules
 type Validator struct {
@@ -43,7 +43,7 @@ func (v *Validator) IsValidPayload(payload []byte) error {
 		return err
 	}
 
-	uniqueSuffix := doc.GetStringValue(uniqueSuffix)
+	uniqueSuffix := doc.GetStringValue(didSuffix)
 	if uniqueSuffix == "" {
 		return errors.New("missing unique suffix")
 	}

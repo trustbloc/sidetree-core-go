@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	didUniqueSuffix = "whatever"
-	opaqueDoc       = "{}"
+	didSuffix = "whatever"
+	opaqueDoc = "{}"
 
 	signerErr = "signer error"
 
@@ -80,7 +80,7 @@ func TestNewDeactivateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
 	t.Run("signing error", func(t *testing.T) {
-		info := &DeactivateRequestInfo{DidUniqueSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
+		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
 
 		request, err := NewDeactivateRequest(info)
 		require.Error(t, err)
@@ -93,7 +93,7 @@ func TestNewDeactivateRequest(t *testing.T) {
 
 		signer := ecsigner.New(privateKey, "ES256", "recovery")
 
-		info := &DeactivateRequestInfo{DidUniqueSuffix: "whatever", Signer: signer}
+		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: signer}
 
 		request, err := NewDeactivateRequest(info)
 		require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestNewDeactivateRequest(t *testing.T) {
 }
 
 func TestNewUpdateRequest(t *testing.T) {
-	const didUniqueSuffix = "whatever"
+	const didSuffix = "whatever"
 
 	patch, err := getTestPatch()
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
 	t.Run("missing json patch", func(t *testing.T) {
-		info := &UpdateRequestInfo{DidUniqueSuffix: didUniqueSuffix}
+		info := &UpdateRequestInfo{DidSuffix: didSuffix}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -124,7 +124,7 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "missing update information")
 	})
 	t.Run("multihash not supported", func(t *testing.T) {
-		info := &UpdateRequestInfo{DidUniqueSuffix: didUniqueSuffix, Patch: patch}
+		info := &UpdateRequestInfo{DidSuffix: didSuffix, Patch: patch}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -133,10 +133,10 @@ func TestNewUpdateRequest(t *testing.T) {
 	})
 	t.Run("signing error", func(t *testing.T) {
 		info := &UpdateRequestInfo{
-			DidUniqueSuffix: didUniqueSuffix,
-			Patch:           patch,
-			MultihashCode:   sha2_256,
-			Signer:          NewMockSigner(errors.New(signerErr))}
+			DidSuffix:     didSuffix,
+			Patch:         patch,
+			MultihashCode: sha2_256,
+			Signer:        NewMockSigner(errors.New(signerErr))}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -150,10 +150,10 @@ func TestNewUpdateRequest(t *testing.T) {
 		signer := ecsigner.New(privateKey, "ES256", "key-1")
 
 		info := &UpdateRequestInfo{
-			DidUniqueSuffix: didUniqueSuffix,
-			Patch:           patch,
-			MultihashCode:   sha2_256,
-			Signer:          signer,
+			DidSuffix:     didSuffix,
+			Patch:         patch,
+			MultihashCode: sha2_256,
+			Signer:        signer,
 		}
 
 		request, err := NewUpdateRequest(info)
@@ -169,7 +169,7 @@ func getTestPatch() (patch.Patch, error) {
 func TestNewRecoverRequest(t *testing.T) {
 	t.Run("missing unique suffix", func(t *testing.T) {
 		info := getRecoverRequestInfo()
-		info.DidUniqueSuffix = ""
+		info.DidSuffix = ""
 
 		request, err := NewRecoverRequest(info)
 		require.Error(t, err)
@@ -225,7 +225,7 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, "recover", request["type"])
-		require.Equal(t, didUniqueSuffix, request["didUniqueSuffix"])
+		require.Equal(t, didSuffix, request["did_suffix"])
 	})
 }
 
@@ -309,11 +309,11 @@ func getRecoverRequestInfo() *RecoverRequestInfo {
 	}
 
 	return &RecoverRequestInfo{
-		DidUniqueSuffix: didUniqueSuffix,
-		OpaqueDocument:  opaqueDoc,
-		RecoveryKey:     jwk,
-		MultihashCode:   sha2_256,
-		Signer:          ecsigner.New(privKey, "ES256", "recovery")}
+		DidSuffix:      didSuffix,
+		OpaqueDocument: opaqueDoc,
+		RecoveryKey:    jwk,
+		MultihashCode:  sha2_256,
+		Signer:         ecsigner.New(privKey, "ES256", "recovery")}
 }
 
 // mockSigner implements signer interface

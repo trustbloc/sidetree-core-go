@@ -87,7 +87,7 @@ func TestResolveError(t *testing.T) {
 
 	createOp, err := getCreateOperation(privateKey)
 	require.NoError(t, err)
-	createOp.PatchData = &model.PatchDataModel{
+	createOp.Delta = &model.DeltaModel{
 		Patches: []patch.Patch{jsonPatch},
 	}
 
@@ -626,17 +626,17 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 
 	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + strconv.Itoa(int(operationNumber+1))))
 
-	patchData := &model.PatchDataModel{
-		NextUpdateCommitmentHash: nextUpdateCommitmentHash,
-		Patches:                  []patch.Patch{jsonPatch},
+	delta := &model.DeltaModel{
+		UpdateCommitment: nextUpdateCommitmentHash,
+		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	deltaBytes, err := docutil.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
 
-	jws, err := signPayload(getEncodedMultihash(patchDataBytes), s)
+	jws, err := signPayload(getEncodedMultihash(deltaBytes), s)
 	if err != nil {
 		return nil, err
 	}
@@ -645,11 +645,11 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 		ID:                           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:                 uniqueSuffix,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		PatchData:                    patchData,
+		Delta:                        delta,
 		Type:                         batch.OperationTypeUpdate,
 		TransactionNumber:            uint64(operationNumber),
 		UpdateRevealValue:            updateRevealValue,
-		NextUpdateCommitmentHash:     nextUpdateCommitmentHash,
+		UpdateCommitment:             nextUpdateCommitmentHash,
 		SignedData:                   jws,
 	}
 
@@ -664,7 +664,7 @@ func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 
 func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	signedDataModel := model.DeactivateSignedDataModel{
-		DidUniqueSuffix:     uniqueSuffix,
+		DidSuffix:           uniqueSuffix,
 		RecoveryRevealValue: docutil.EncodeToString([]byte("recovery")),
 	}
 
@@ -701,28 +701,28 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 
 	nextRecoveryCommitmentHash := getEncodedMultihash([]byte(recoveryReveal))
 
-	patchData, err := getReplacePatchData(recoveredDoc)
+	delta, err := getReplaceDelta(recoveredDoc)
 	if err != nil {
 		return nil, err
 	}
 
 	return &batch.Operation{
-		UniqueSuffix:               uniqueSuffix,
-		Type:                       batch.OperationTypeRecover,
-		OperationBuffer:            operationBuffer,
-		PatchData:                  patchData,
-		EncodedPatchData:           recoverRequest.PatchData,
-		SignedData:                 recoverRequest.SignedData,
-		RecoveryRevealValue:        docutil.EncodeToString([]byte(recoveryReveal)),
-		NextUpdateCommitmentHash:   nextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash: nextRecoveryCommitmentHash,
-		TransactionTime:            0,
-		TransactionNumber:          uint64(operationNumber),
+		UniqueSuffix:        uniqueSuffix,
+		Type:                batch.OperationTypeRecover,
+		OperationBuffer:     operationBuffer,
+		Delta:               delta,
+		EncodedDelta:        recoverRequest.Delta,
+		SignedData:          recoverRequest.SignedData,
+		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
+		UpdateCommitment:    nextUpdateCommitmentHash,
+		RecoveryCommitment:  nextRecoveryCommitmentHash,
+		TransactionTime:     0,
+		TransactionNumber:   uint64(operationNumber),
 	}, nil
 }
 
-func getRecoverRequest(privateKey *ecdsa.PrivateKey, patchDataModel *model.PatchDataModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
-	patchDataBytes, err := docutil.MarshalCanonical(patchDataModel)
+func getRecoverRequest(privateKey *ecdsa.PrivateKey, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
+	deltaBytes, err := docutil.MarshalCanonical(deltaModel)
 	if err != nil {
 		return nil, err
 	}
@@ -733,15 +733,15 @@ func getRecoverRequest(privateKey *ecdsa.PrivateKey, patchDataModel *model.Patch
 	}
 
 	return &model.RecoverRequest{
-		Operation:       model.OperationTypeRecover,
-		DidUniqueSuffix: "suffix",
-		PatchData:       docutil.EncodeToString(patchDataBytes),
-		SignedData:      jws,
+		Operation:  model.OperationTypeRecover,
+		DidSuffix:  "suffix",
+		Delta:      docutil.EncodeToString(deltaBytes),
+		SignedData: jws,
 	}, nil
 }
 
 func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverRequest, error) {
-	patchData, err := getReplacePatchData(recoveredDoc)
+	delta, err := getReplaceDelta(recoveredDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -751,7 +751,7 @@ func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverReque
 		return nil, err
 	}
 
-	return getRecoverRequest(privateKey, patchData, recoverSignedData)
+	return getRecoverRequest(privateKey, delta, recoverSignedData)
 }
 
 func getRecoverSignedData(privateKey *ecdsa.PrivateKey) (*model.RecoverSignedDataModel, error) {
@@ -761,9 +761,9 @@ func getRecoverSignedData(privateKey *ecdsa.PrivateKey) (*model.RecoverSignedDat
 	}
 
 	return &model.RecoverSignedDataModel{
-		RecoveryKey:                jwk,
-		NextRecoveryCommitmentHash: getEncodedMultihash([]byte("recoveryReveal")),
-		PatchDataHash:              getEncodedMultihash([]byte("operation")),
+		RecoveryKey:        jwk,
+		RecoveryCommitment: getEncodedMultihash([]byte("recoveryReveal")),
+		DeltaHash:          getEncodedMultihash([]byte("operation")),
 	}, nil
 }
 
@@ -804,7 +804,7 @@ func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch
 		return nil, err
 	}
 
-	patchData, err := getReplacePatchData(doc)
+	delta, err := getReplaceDelta(doc)
 	if err != nil {
 		return nil, err
 	}
@@ -820,12 +820,12 @@ func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch
 		UniqueSuffix:                 uniqueSuffix,
 		Type:                         batch.OperationTypeCreate,
 		OperationBuffer:              operationBuffer,
-		PatchData:                    patchData,
-		EncodedPatchData:             createRequest.PatchData,
+		Delta:                        delta,
+		EncodedDelta:                 createRequest.Delta,
 		SuffixData:                   suffixData,
 		TransactionNumber:            0,
-		NextUpdateCommitmentHash:     nextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:   nextRecoveryCommitmentHash,
+		UpdateCommitment:             nextUpdateCommitmentHash,
+		RecoveryCommitment:           nextRecoveryCommitmentHash,
 	}, nil
 }
 
@@ -834,12 +834,12 @@ func getCreateOperation(privateKey *ecdsa.PrivateKey) (*batch.Operation, error) 
 }
 
 func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {
-	patchData, err := getReplacePatchData(validDoc)
+	delta, err := getReplaceDelta(validDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	deltaBytes, err := docutil.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
@@ -856,20 +856,20 @@ func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error
 
 	return &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		PatchData:  docutil.EncodeToString(patchDataBytes),
+		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
 
-func getReplacePatchData(doc string) (*model.PatchDataModel, error) {
+func getReplaceDelta(doc string) (*model.DeltaModel, error) {
 	replace, err := patch.NewReplacePatch(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{replace},
-		NextUpdateCommitmentHash: getEncodedMultihash([]byte("updateReveal")),
+	return &model.DeltaModel{
+		Patches:          []patch.Patch{replace},
+		UpdateCommitment: getEncodedMultihash([]byte("updateReveal")),
 	}, nil
 }
 
@@ -880,9 +880,9 @@ func getSuffixData(privateKey *ecdsa.PrivateKey) (*model.SuffixDataModel, error)
 	}
 
 	return &model.SuffixDataModel{
-		PatchDataHash:              getEncodedMultihash([]byte(validDoc)),
-		RecoveryKey:                jwk,
-		NextRecoveryCommitmentHash: getEncodedMultihash([]byte("recoveryReveal")),
+		DeltaHash:          getEncodedMultihash([]byte(validDoc)),
+		RecoveryKey:        jwk,
+		RecoveryCommitment: getEncodedMultihash([]byte("recoveryReveal")),
 	}, nil
 }
 

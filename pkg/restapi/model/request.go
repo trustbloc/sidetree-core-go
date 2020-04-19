@@ -17,39 +17,33 @@ type CreateRequest struct {
 	// Required: true
 	Operation OperationType `json:"type"`
 
-	// Encoded JSON object containing data used to compute the unique DID suffix
+	// Encoded suffix data object
 	// Required: true
-	SuffixData string `json:"suffixData"`
+	SuffixData string `json:"suffix_data"`
 
-	// Encoded JSON object containing create patch data
+	// Encoded delta object
 	// Required: true
-	PatchData string `json:"patchData"`
+	Delta string `json:"delta"`
 }
 
 // SuffixDataModel is part of create request
 type SuffixDataModel struct {
 
-	// Hash of the patch data
-	PatchDataHash string `json:"patchDataHash"`
+	// Hash of the delta object
+	DeltaHash string `json:"delta_hash"`
 
-	// The recovery public key in JWK format
-	RecoveryKey *jws.JWK `json:"recoveryKey"`
+	// Initial recovery public key in JWK format
+	RecoveryKey *jws.JWK `json:"recovery_key"`
 
-	// Commitment hash for the next recovery
-	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
+	// Initial recovery commitment
+	RecoveryCommitment string `json:"recovery_commitment"`
 }
 
-// PublicKey is holder for public key in hex
-type PublicKey struct {
-	// public key as a HEX string.
-	PublicKeyHex string `json:"publicKeyHex"`
-}
-
-// PatchDataModel contains patch data (patches used for create, recover, update)
-type PatchDataModel struct {
+// DeltaModel contains patch data (patches used for create, recover, update)
+type DeltaModel struct {
 
 	// Commitment hash for the next update operation
-	NextUpdateCommitmentHash string `json:"nextUpdateCommitmentHash"`
+	UpdateCommitment string `json:"update_commitment"`
 
 	// Patches defines document patches
 	Patches []patch.Patch `json:"patches"`
@@ -59,17 +53,17 @@ type PatchDataModel struct {
 type UpdateRequest struct {
 	Operation OperationType `json:"type"`
 
-	//The unique suffix of the DID
-	DidUniqueSuffix string `json:"didUniqueSuffix"`
+	//The suffix of the DID
+	DidSuffix string `json:"did_suffix"`
 
 	// Reveal value for this update operation
-	UpdateRevealValue string `json:"updateRevealValue"`
+	UpdateRevealValue string `json:"update_reveal_value"`
 
 	// JWS signature information
-	SignedData *JWS `json:"signedData"`
+	SignedData *JWS `json:"signed_data"`
 
-	// Encoded JSON object containing patch data
-	PatchData string `json:"patchData"`
+	// Encoded delta object
+	Delta string `json:"delta"`
 }
 
 //DeactivateRequest is the struct for deactivating document
@@ -78,41 +72,41 @@ type DeactivateRequest struct {
 	// Required: true
 	Operation OperationType `json:"type"`
 
-	//The unique suffix of the DID
+	//The suffix of the DID
 	// Required: true
-	DidUniqueSuffix string `json:"didUniqueSuffix"`
+	DidSuffix string `json:"did_suffix"`
 
 	// the current reveal value to use for this request
 	// Required: true
-	RecoveryRevealValue string `json:"recoveryRevealValue"`
+	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
 	// JWS Signature information
-	SignedData *JWS `json:"signedData"`
+	SignedData *JWS `json:"signed_data"`
 }
 
 // RecoverSignedDataModel defines signed data model for recovery
 type RecoverSignedDataModel struct {
 
-	// Hash of the unsigned patch data
-	PatchDataHash string `json:"patchDataHash"`
+	// Hash of the unsigned delta object
+	DeltaHash string `json:"delta_hash"`
 
 	// The new recovery key
-	RecoveryKey *jws.JWK `json:"recoveryKey"`
+	RecoveryKey *jws.JWK `json:"recovery_key"`
 
-	// Hash of the one-time password to be used for the next recovery/deactivate
-	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
+	// Recovery commitment be used for the next recovery/deactivate
+	RecoveryCommitment string `json:"recovery_commitment"`
 }
 
 // DeactivateSignedDataModel defines data model for deactivate
 type DeactivateSignedDataModel struct {
 
-	//The unique suffix of the DID
+	//The suffix of the DID
 	// Required: true
-	DidUniqueSuffix string `json:"didUniqueSuffix"`
+	DidSuffix string `json:"did_suffix"`
 
 	// the current reveal value to use for this request
 	// Required: true
-	RecoveryRevealValue string `json:"recoveryRevealValue"`
+	RecoveryRevealValue string `json:"recovery_reveal_value"`
 }
 
 // RecoverRequest is the struct for document recovery payload
@@ -121,20 +115,20 @@ type RecoverRequest struct {
 	// Required: true
 	Operation OperationType `json:"type"`
 
-	//The unique suffix of the DID
+	//The suffix of the DID
 	// Required: true
-	DidUniqueSuffix string `json:"didUniqueSuffix"`
+	DidSuffix string `json:"did_suffix"`
 
 	// The reveal value for this recovery
 	// Required: true
-	RecoveryRevealValue string `json:"recoveryRevealValue"`
+	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
 	// JWS Signature information
-	SignedData *JWS `json:"signedData"`
+	SignedData *JWS `json:"signed_data"`
 
-	// Encoded JSON object containing recovery patch data
+	// Encoded delta object
 	// Required: true
-	PatchData string `json:"patchData"`
+	Delta string `json:"delta"`
 }
 
 // Protected describes JWS header
