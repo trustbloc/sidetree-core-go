@@ -151,7 +151,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	result, err = dochandler.ResolveDocument(docID + initialValuesParam + "payload")
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "illegal base64 data")
+	require.Contains(t, err.Error(), "invalid character")
 
 	// invalid create request - not json
 	result, err = dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString([]byte("payload")))

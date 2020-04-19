@@ -58,7 +58,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 
 		op, err := ParseDeactivateOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "illegal base64 data")
+		require.Contains(t, err.Error(), "invalid character")
 		require.Nil(t, op)
 	})
 	t.Run("parse signed data error - invalid JSON", func(t *testing.T) {

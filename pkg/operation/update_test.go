@@ -87,7 +87,7 @@ func TestParseUpdatePatchData(t *testing.T) {
 		parsed, err := parseUpdatePatchData("invalid", sha2_256)
 		require.Error(t, err)
 		require.Nil(t, parsed)
-		require.Contains(t, err.Error(), "illegal base64 data")
+		require.Contains(t, err.Error(), "invalid character")
 	})
 }
 

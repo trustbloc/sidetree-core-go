@@ -49,7 +49,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "illegal base64 data")
+		require.Contains(t, err.Error(), "invalid character")
 		require.Nil(t, op)
 	})
 	t.Run("validate patch data error", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "illegal base64 data")
+		require.Contains(t, err.Error(), "invalid character")
 		require.Nil(t, op)
 	})
 	t.Run("validate signed data error", func(t *testing.T) {

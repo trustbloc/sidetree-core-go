@@ -51,7 +51,7 @@ func TestParseCreateOperation(t *testing.T) {
 
 		op, err := ParseCreateOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "illegal base64 data")
+		require.Contains(t, err.Error(), "invalid character")
 		require.Nil(t, op)
 	})
 	t.Run("parse patch data error", func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestParseCreateOperation(t *testing.T) {
 
 		op, err := ParseCreateOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "illegal base64 data")
+		require.Contains(t, err.Error(), "invalid character")
 		require.Nil(t, op)
 	})
 }

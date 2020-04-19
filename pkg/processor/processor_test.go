@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -441,7 +440,7 @@ func TestDeactivate_InvalidRecoveryRevealValue(t *testing.T) {
 
 	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
 	require.NoError(t, err)
-	deactivateOp.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	deactivateOp.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
 	err = store.Put(deactivateOp)
 	require.NoError(t, err)
 
@@ -572,7 +571,7 @@ func TestRecover_InvalidRecoveryRevealValue(t *testing.T) {
 
 	op, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
 	require.NoError(t, err)
-	op.RecoveryRevealValue = base64.URLEncoding.EncodeToString([]byte("invalid"))
+	op.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
 	err = store.Put(op)
 	require.NoError(t, err)
 
@@ -623,7 +622,7 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 		return nil, err
 	}
 
-	updateRevealValue := base64.URLEncoding.EncodeToString([]byte(updateReveal + strconv.Itoa(int(operationNumber))))
+	updateRevealValue := docutil.EncodeToString([]byte(updateReveal + strconv.Itoa(int(operationNumber))))
 
 	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + strconv.Itoa(int(operationNumber+1))))
 
@@ -682,7 +681,7 @@ func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, o
 		Type:                batch.OperationTypeDeactivate,
 		TransactionTime:     0,
 		TransactionNumber:   uint64(operationNumber),
-		RecoveryRevealValue: base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
+		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
 		SignedData:          jws,
 	}, nil
 }
@@ -714,7 +713,7 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 		PatchData:                  patchData,
 		EncodedPatchData:           recoverRequest.PatchData,
 		SignedData:                 recoverRequest.SignedData,
-		RecoveryRevealValue:        base64.URLEncoding.EncodeToString([]byte(recoveryReveal)),
+		RecoveryRevealValue:        docutil.EncodeToString([]byte(recoveryReveal)),
 		NextUpdateCommitmentHash:   nextUpdateCommitmentHash,
 		NextRecoveryCommitmentHash: nextRecoveryCommitmentHash,
 		TransactionTime:            0,
