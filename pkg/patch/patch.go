@@ -51,14 +51,14 @@ const (
 	// PatchesKey captures "patches" key
 	PatchesKey Key = "patches"
 
-	// PublicKeys captures "publicKeys" key
-	PublicKeys Key = "publicKeys"
+	// PublicKeys captures "public_keys" key
+	PublicKeys Key = "public_keys"
 
-	//ServiceEndpointsKey captures "serviceEndpoints" key
-	ServiceEndpointsKey Key = "serviceEndpoints"
+	//ServiceEndpointsKey captures "service_endpoints" key
+	ServiceEndpointsKey Key = "service_endpoints"
 
-	//ServiceEndpointIdsKey captures "serviceEndpointIds" key
-	ServiceEndpointIdsKey Key = "serviceEndpointIds"
+	//ServiceEndpointIdsKey captures "ids" key
+	ServiceEndpointIdsKey Key = "ids"
 
 	// ActionKey captures "action" key
 	ActionKey Key = "action"
@@ -80,7 +80,7 @@ func NewReplacePatch(doc string) (Patch, error) {
 
 	patch := make(Patch)
 	patch[ActionKey] = Replace
-	patch[DocumentKey] = doc
+	patch[DocumentKey] = parsed.JSONLdObject()
 
 	return patch, nil
 }
@@ -91,60 +91,81 @@ func NewJSONPatch(patches string) (Patch, error) {
 		return nil, err
 	}
 
+	var generic []interface{}
+	err := json.Unmarshal([]byte(patches), &generic)
+	if err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = JSONPatch
-	patch[PatchesKey] = patches
+	patch[PatchesKey] = generic
 
 	return patch, nil
 }
 
 // NewAddPublicKeysPatch creates new patch for adding public keys
 func NewAddPublicKeysPatch(publicKeys string) (Patch, error) {
+	pubKeys, err := getPublicKeys(publicKeys)
+	if err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = AddPublicKeys
-	patch[PublicKeys] = publicKeys
+	patch[PublicKeys] = pubKeys
 
 	return patch, nil
 }
 
 // NewRemovePublicKeysPatch creates new patch for removing public keys
 func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
-	if err := checkStringArray(publicKeyIds); err != nil {
-		return nil, err
+	ids, err := getStringArray(publicKeyIds)
+	if err != nil {
+		return nil, fmt.Errorf("public key ids not string array: %s", err.Error())
+	}
+
+	if len(ids) == 0 {
+		return nil, errors.New("missing public key ids")
 	}
 
 	patch := make(Patch)
 	patch[ActionKey] = RemovePublicKeys
-	patch[PublicKeys] = publicKeyIds
+	patch[PublicKeys] = getGenericArray(ids)
 
 	return patch, nil
 }
 
 // NewAddServiceEndpointsPatch creates new patch for adding service endpoints
 func NewAddServiceEndpointsPatch(serviceEndpoints string) (Patch, error) {
+	services, err := getServices(serviceEndpoints)
+	if err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = AddServiceEndpoints
-	patch[ServiceEndpointsKey] = serviceEndpoints
+	patch[ServiceEndpointsKey] = services
 
 	return patch, nil
 }
 
 // NewRemoveServiceEndpointsPatch creates new patch for removing service endpoints
 func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
-	if err := checkStringArray(serviceEndpointIds); err != nil {
-		return nil, err
+	ids, err := getStringArray(serviceEndpointIds)
+	if err != nil {
+		return nil, fmt.Errorf("service ids not string array: %s", err.Error())
+	}
+
+	if len(ids) == 0 {
+		return nil, errors.New("missing service ids")
 	}
 
 	patch := make(Patch)
 	patch[ActionKey] = RemoveServiceEndpoints
-	patch[ServiceEndpointIdsKey] = serviceEndpointIds
+	patch[ServiceEndpointIdsKey] = getGenericArray(ids)
 
 	return patch, nil
-}
-
-// GetStringValue returns string value for specified key or "" if not found or wrong type
-func (p Patch) GetStringValue(key Key) string {
-	return stringEntry(p[key])
 }
 
 // GetValue returns value for specified key or nil if not found
@@ -170,18 +191,11 @@ func (p Patch) Bytes() ([]byte, error) {
 
 // Validate validates patch
 func (p Patch) Validate() error {
-	entry := p.GetValue(ActionKey)
-	if entry == nil {
-		return errors.New("patch is missing action property")
+	action, err := p.parseAction()
+	if err != nil {
+		return err
 	}
 
-	actionStr, ok := entry.(string)
-	if !ok {
-		return errors.New("action is not string value")
-	}
-
-	// action is valid string; now validate other keys
-	action := Action(actionStr)
 	switch action {
 	case Replace:
 		return p.validateReplace()
@@ -236,7 +250,7 @@ func validateDocument(doc document.Document) error {
 		return errors.New("document must NOT have the id property")
 	}
 
-	return nil
+	return document.ValidatePublicKeys(doc.PublicKeys())
 }
 
 func validatePatches(patches []byte) error {
@@ -250,13 +264,63 @@ func validatePatches(patches []byte) error {
 	return nil
 }
 
+func getPublicKeys(publicKeys string) (interface{}, error) {
+	// create an empty did document with public keys
+	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{"%s":%s}`, document.PublicKeyProperty, publicKeys)))
+	if err != nil {
+		return nil, fmt.Errorf("public keys invalid: %s", err.Error())
+	}
+
+	pubKeys := pkDoc.PublicKeys()
+	err = document.ValidatePublicKeys(pubKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return pkDoc[document.PublicKeyProperty], nil
+}
+
+func getServices(serviceEndpoints string) (interface{}, error) {
+	// create an empty did document with service endpoints
+	svcDocStr := fmt.Sprintf(`{"%s":%s}`, document.ServiceProperty, serviceEndpoints)
+	svcDoc, err := document.DidDocumentFromBytes([]byte(svcDocStr))
+	if err != nil {
+		return nil, fmt.Errorf("services invalid: %s", err.Error())
+	}
+
+	// Add service validation here similar to public keys
+
+	return svcDoc[document.ServiceProperty], nil
+}
+
+func (p *Patch) parseAction() (Action, error) {
+	entry := p.GetValue(ActionKey)
+	if entry == nil {
+		return "", errors.New("patch is missing action property")
+	}
+
+	switch v := entry.(type) {
+	case Action:
+		return v, nil
+	case string:
+		return Action(v), nil
+	default:
+		return "", fmt.Errorf("action type not supported: %s", v)
+	}
+}
+
 func (p Patch) getRequiredMap(key Key) (map[string]interface{}, error) {
 	entry := p.GetValue(key)
 	if entry == nil {
 		return nil, fmt.Errorf("%s patch is missing %s", p.GetAction(), key)
 	}
 
-	return entry.(map[string]interface{}), nil
+	required, ok := entry.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("unexpected interface for document")
+	}
+
+	return required, nil
 }
 
 func (p Patch) getRequiredArray(key Key) ([]interface{}, error) {
@@ -265,7 +329,16 @@ func (p Patch) getRequiredArray(key Key) ([]interface{}, error) {
 		return nil, fmt.Errorf("%s patch is missing %s", p.GetAction(), key)
 	}
 
-	return entry.([]interface{}), nil
+	arr, ok := entry.([]interface{})
+	if !ok {
+		return nil, errors.New("expected array of interfaces")
+	}
+
+	if len(arr) == 0 {
+		return nil, errors.New("required array is empty")
+	}
+
+	return arr, nil
 }
 
 func (p Patch) validateReplace() error {
@@ -293,7 +366,12 @@ func (p Patch) validateJSON() error {
 
 func (p Patch) validateAddPublicKeys() error {
 	_, err := p.getRequiredArray(PublicKeys)
-	return err
+	if err != nil {
+		return err
+	}
+
+	publicKeys := document.ParsePublicKeys(p.GetValue(PublicKeys))
+	return document.ValidatePublicKeys(publicKeys)
 }
 
 func (p Patch) validateRemovePublicKeys() error {
@@ -311,7 +389,20 @@ func (p Patch) validateRemoveServiceEndpoints() error {
 	return err
 }
 
-func checkStringArray(arr string) error {
-	var ids []string
-	return json.Unmarshal([]byte(arr), &ids)
+func getStringArray(arr string) ([]string, error) {
+	var values []string
+	err := json.Unmarshal([]byte(arr), &values)
+	if err != nil {
+		return nil, err
+	}
+
+	return values, nil
+}
+
+func getGenericArray(arr []string) []interface{} {
+	var values []interface{}
+	for _, v := range arr {
+		values = append(values, v)
+	}
+	return values
 }

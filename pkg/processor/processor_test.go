@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -98,7 +99,7 @@ func TestResolveError(t *testing.T) {
 	doc, err := p.Resolve(createOp.UniqueSuffix)
 	require.Nil(t, doc)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid character")
+	require.Contains(t, err.Error(), "expected array")
 }
 
 func TestUpdateDocument(t *testing.T) {
@@ -117,13 +118,10 @@ func TestUpdateDocument(t *testing.T) {
 		result, err := p.Resolve(uniqueSuffix)
 		require.Nil(t, err)
 
-		//updated instance value inside service end point through a json patch
-		require.Equal(t, result.Document["publicKey"], []interface{}{map[string]interface{}{
-			"controller":      "controller1",
-			"id":              "key-1",
-			"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-			"type":            "Ed25519VerificationKey2018",
-		}})
+		didDoc := document.FromJSONLDObject(result.Document)
+
+		//updated instance value inside public key via json patch
+		require.Equal(t, "special1", didDoc.PublicKeys()[0].JWK().Kty())
 	})
 
 	t.Run("Missing signed data -> error", func(t *testing.T) {
@@ -197,13 +195,10 @@ func TestConsecutiveUpdates(t *testing.T) {
 	result, err := p.Resolve(uniqueSuffix)
 	require.Nil(t, err)
 
-	//patched twice instance replaced from did:bar:456 to did:sidetree:updateid0  and then to did:sidetree:updateid1
-	require.Equal(t, result.Document["publicKey"], []interface{}{map[string]interface{}{
-		"controller":      "controller2",
-		"id":              "key-1",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type":            "Ed25519VerificationKey2018",
-	}})
+	didDoc := document.FromJSONLDObject(result.Document)
+
+	// double updated instance value inside public key via json patch
+	require.Equal(t, "special2", didDoc.PublicKeys()[0].JWK().Kty())
 }
 
 func TestUpdate_InvalidSignature(t *testing.T) {
@@ -608,8 +603,8 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
-		"path":  "/publicKey/0/controller",
-		"value": "controller" + strconv.Itoa(int(operationNumber)),
+		"path":  "/publicKey/0/jwk/kty",
+		"value": "special" + strconv.Itoa(int(operationNumber)),
 	}
 
 	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{p})
@@ -939,18 +934,29 @@ func signPayload(payload string, signer helper.Signer) (*model.JWS, error) {
 
 const validDoc = `{
 	"publicKey": [{
-		"controller": "id",
-		"id": "key-1",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type": "Ed25519VerificationKey2018"
+		  "id": "key1",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops", "general"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
 	}]
 }`
 
 const recoveredDoc = `{
 	"publicKey": [{
-		"id": "recovered",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type": "Ed25519VerificationKey2018"
+		  "id": "recovered",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops", "general"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
 	}]
 }`
 
@@ -960,7 +966,7 @@ const docTemplate = `{
   		"id": "%s",
   		"type": "JwsVerificationKey2020",
 		"usage": ["ops"],
-  		"publicKeyJwk": %s
+  		"jwk": %s
 	}
   ]
 }`

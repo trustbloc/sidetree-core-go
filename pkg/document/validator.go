@@ -26,6 +26,9 @@ const (
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
 	ed25519VerificationKey2018        = "Ed25519VerificationKey2018"
+
+	maxJwkProperties       = 4
+	maxPublicKeyProperties = 4
 )
 
 var allowedOps = map[string]string{
@@ -54,15 +57,14 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 			return errors.New("public key id is missing")
 		}
 
+		if len(pubKey) != maxPublicKeyProperties {
+			return errors.New("invalid number of public key properties")
+		}
+
 		if _, ok := ids[kid]; ok {
 			return fmt.Errorf("duplicate public key id: %s", kid)
 		}
 		ids[kid] = kid
-
-		// controller field is not allowed to be filled in by the client
-		if pubKey.Controller() != "" {
-			return errors.New("controller is not allowed")
-		}
 
 		if err := validateKeyUsage(pubKey); err != nil {
 			return err
@@ -77,6 +79,10 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 		if _, ok := allowedKeyTypes[pubKey.Type()]; !ok {
 			return fmt.Errorf("invalid key type: %s", pubKey.Type())
 		}
+
+		if err := ValidateJWK(pubKey.JWK()); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -88,12 +94,34 @@ func ValidateOperationsKey(pubKey PublicKey) error {
 		return fmt.Errorf("key '%s' is not an operations key", pubKey.ID())
 	}
 
-	jwk := pubKey.PublicKeyJWK()
+	return ValidateJWK(pubKey.JWK())
+}
+
+// ValidateJWK validates JWK
+func ValidateJWK(jwk JWK) error {
 	if jwk == nil {
-		return errors.New("operations key has to be in JWK format")
+		return errors.New("key has to be in JWK format")
 	}
 
-	// TODO: Add JWK validation
+	if len(jwk) != maxJwkProperties {
+		return errors.New("invalid number of JWK properties")
+	}
+
+	if jwk.Crv() == "" {
+		return errors.New("JWK crv is missing")
+	}
+
+	if jwk.Kty() == "" {
+		return errors.New("JWK kty is missing")
+	}
+
+	if jwk.X() == "" {
+		return errors.New("JWK x is missing")
+	}
+
+	if jwk.Y() == "" {
+		return errors.New("JWK y is missing")
+	}
 
 	return nil
 }

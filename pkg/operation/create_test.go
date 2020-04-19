@@ -177,9 +177,17 @@ func computeMultihash(data string) string {
 }
 
 const validDoc = `{
-	"publicKey": [{
-		"id": "key-1",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type": "Ed25519VerificationKey2018"
-	}]
+	"publicKey": [
+		{
+		  "id": "key1",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops", "general"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
+		}
+	]
 }`

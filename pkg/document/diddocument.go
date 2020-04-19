@@ -38,15 +38,16 @@ const (
 	// UsageProperty describes key usage property
 	UsageProperty = "usage"
 
-	jsonldType         = "type"
-	jsonldServicePoint = "serviceEndpoint"
+	// PublicKeyJwkProperty describes external public key JWK
+	PublicKeyJwkProperty = "publicKeyJwk"
 
-	// various public key encodings
-	jsonldPublicKeyBase64 = "publicKeyBase64"
-	jsonldPublicKeyBase58 = "publicKeyBase58"
-	jsonldPublicKeyHex    = "publicKeyHex"
-	jsonldPublicKeyPem    = "publicKeyPem"
-	jsonldPublicKeyJwk    = "publicKeyJwk"
+	// JwkProperty describes internal public key JWK
+	JwkProperty = "jwk"
+
+	// TypeProperty describes type
+	TypeProperty = "type"
+
+	jsonldServicePoint = "serviceEndpoint"
 )
 
 // DIDDocument Defines DID Document data structure used by Sidetree for basic type safety checks.
@@ -59,16 +60,16 @@ func (doc DIDDocument) ID() string {
 
 // Context is the context of did document
 func (doc DIDDocument) Context() []string {
-	return stringArray(doc[ContextProperty])
+	return StringArray(doc[ContextProperty])
 }
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations
 func (doc DIDDocument) PublicKeys() []PublicKey {
-	return parsePublicKeys(doc[PublicKeyProperty])
+	return ParsePublicKeys(doc[PublicKeyProperty])
 }
 
-// helper function for parsing public keys
-func parsePublicKeys(entry interface{}) []PublicKey {
+// ParsePublicKeys is helper function for parsing public keys
+func ParsePublicKeys(entry interface{}) []PublicKey {
 	if entry == nil {
 		return nil
 	}
@@ -91,8 +92,12 @@ func parsePublicKeys(entry interface{}) []PublicKey {
 
 // Services is an array of service endpoints
 func (doc DIDDocument) Services() []Service {
-	entry, ok := doc[ServiceProperty]
-	if !ok {
+	return ParseServices(doc[ServiceProperty])
+}
+
+// ParseServices is utility for parsing array of service endpoints
+func ParseServices(entry interface{}) []Service {
+	if entry == nil {
 		return nil
 	}
 

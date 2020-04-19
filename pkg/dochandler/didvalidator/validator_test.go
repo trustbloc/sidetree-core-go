@@ -46,7 +46,7 @@ func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 
 	err = v.IsValidOriginalDocument(pubKeyWithController)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "controller is not allowed")
+	require.Contains(t, err.Error(), "invalid number of public key properties")
 }
 
 func TestIsValidOriginalDocument_ContextProvidedError(t *testing.T) {
@@ -146,6 +146,8 @@ func TestTransformDocument(t *testing.T) {
 	require.Contains(t, didDoc.PublicKeys()[0].ID(), testID)
 	require.Contains(t, didDoc.Services()[0].ID(), testID)
 	require.Equal(t, didContext, didDoc.Context()[0])
+	require.Empty(t, didDoc.PublicKeys()[0].JWK())
+	require.NotEmpty(t, didDoc.PublicKeys()[0].PublicKeyJwk())
 
 	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general", "dual-assertion-general",
 		"dual-agreement-general"}
@@ -171,9 +173,21 @@ func reader(t *testing.T, filename string) io.Reader {
 	return f
 }
 
-var docWithContext = []byte(`{ "@context": ["https://w3id.org/did/v1"], 
-"publicKey": [{"id": "key1", "type": "JwsVerificationKey2020", "usage": ["general"]}] 
+var docWithContext = []byte(`{ 
+	"@context": ["https://w3id.org/did/v1"], 
+	"publicKey": [{
+      	"id": "key-1",
+      	"type": "JwsVerificationKey2020",
+      	"usage": ["ops", "general"],
+		"jwk": {
+			"kty": "EC",
+        	"crv": "P-256K",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+    }] 
 }`)
+
 var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
 var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
@@ -181,12 +195,16 @@ var validUpdate = []byte(`{ "did_suffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
 
 var pubKeyWithController = []byte(`{
-  "publicKey": [
-    {
-      "id": "keys-1",
-      "type": "Secp256k1VerificationKey2018",
+  "publicKey": [{
+      "id": "key-1",
+      "type": "JwsVerificationKey2020",
       "controller": "did:example:123456789abcdefghi",
-      "publicKeyBase58": "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"
-    }
-  ]
+      "usage": ["ops", "general"],
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+	}]
 }`)

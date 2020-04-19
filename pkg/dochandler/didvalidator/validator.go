@@ -120,16 +120,21 @@ func (v *Validator) TransformDocument(doc document.Document) (*document.Resoluti
 
 // processServices will process services and add them to external document
 func processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
-	if len(internal.Services()) == 0 {
-		return
-	}
+	var services []document.Service
 
 	// add did to service id
 	for _, sv := range internal.Services() {
-		sv[document.IDProperty] = internal.ID() + "#" + sv.ID()
+		externalService := make(document.Service)
+		externalService[document.IDProperty] = internal.ID() + "#" + sv.ID()
+		externalService[document.TypeProperty] = sv.Type()
+		externalService[document.PublicKeyJwkProperty] = sv.Endpoint()
+
+		services = append(services, externalService)
 	}
 
-	resolutionResult.Document[document.ServiceProperty] = internal.Services()
+	if len(services) > 0 {
+		resolutionResult.Document[document.ServiceProperty] = services
+	}
 }
 
 // processKeys will process keys according to Sidetree rules bellow and add them to external document
@@ -155,21 +160,22 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 
 	// add controller to public key
 	for _, pk := range internal.PublicKeys() {
-		pk[document.ControllerProperty] = internal[document.IDProperty]
 		// construct relative DID URL for inclusion in authentication and assertion method
 		relativeID := "#" + pk.ID()
-		pk[document.IDProperty] = internal.ID() + relativeID
+
+		externalPK := make(document.PublicKey)
+		externalPK[document.IDProperty] = internal.ID() + relativeID
+		externalPK[document.TypeProperty] = pk.Type()
+		externalPK[document.ControllerProperty] = internal[document.IDProperty]
+		externalPK[document.PublicKeyJwkProperty] = pk.JWK()
 
 		usages := pk.Usage()
-		// remove usage property from external document
-		delete(pk, document.UsageProperty)
-
 		if document.IsOperationsKey(usages) {
-			operationPublicKeys = append(operationPublicKeys, pk)
+			operationPublicKeys = append(operationPublicKeys, externalPK)
 		}
 
 		if document.IsGeneralKey(usages) {
-			publicKeys = append(publicKeys, pk)
+			publicKeys = append(publicKeys, externalPK)
 
 			// add into authentication by reference if the key has both auth and general usage
 			if document.IsAuthenticationKey(usages) {
@@ -184,11 +190,11 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 				agreementKey = append(agreementKey, relativeID)
 			}
 		} else if document.IsAuthenticationKey(usages) {
-			authentication = append(authentication, pk)
+			authentication = append(authentication, externalPK)
 		} else if document.IsAssertionKey(usages) {
-			assertionMethod = append(assertionMethod, pk)
+			assertionMethod = append(assertionMethod, externalPK)
 		} else if document.IsAgreementKey(usages) {
-			agreementKey = append(agreementKey, pk)
+			agreementKey = append(agreementKey, externalPK)
 		}
 	}
 
