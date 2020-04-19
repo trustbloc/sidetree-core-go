@@ -173,7 +173,7 @@ var docWithContext = []byte(`{ "@context": ["https://w3id.org/did/v1"],
 var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
 var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
-var validUpdate = []byte(`{ "didUniqueSuffix": "abc" }`)
+var validUpdate = []byte(`{ "did_suffix": "abc" }`)
 var invalidUpdate = []byte(`{ "patch": "" }`)
 
 var pubKeyWithController = []byte(`{

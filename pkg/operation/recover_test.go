@@ -43,7 +43,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		recoverRequest, err := getDefaultRecoverRequest()
 		require.NoError(t, err)
 
-		recoverRequest.PatchData = invalid
+		recoverRequest.Delta = invalid
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
@@ -53,11 +53,11 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Nil(t, op)
 	})
 	t.Run("validate patch data error", func(t *testing.T) {
-		patchData, err := getPatchData()
+		delta, err := getDelta()
 		require.NoError(t, err)
 
-		patchData.Patches = []patch.Patch{}
-		recoverRequest, err := getRecoverRequest(patchData, getSignedDataForRecovery())
+		delta.Patches = []patch.Patch{}
+		recoverRequest, err := getRecoverRequest(delta, getSignedDataForRecovery())
 		require.NoError(t, err)
 
 		request, err := json.Marshal(recoverRequest)
@@ -85,10 +85,10 @@ func TestParseRecoverOperation(t *testing.T) {
 		signedData := getSignedDataForRecovery()
 		signedData.RecoveryKey = nil
 
-		patchData, err := getPatchData()
+		delta, err := getDelta()
 		require.NoError(t, err)
 
-		recoverRequest, err := getRecoverRequest(patchData, signedData)
+		recoverRequest, err := getRecoverRequest(delta, signedData)
 		require.NoError(t, err)
 
 		request, err := json.Marshal(recoverRequest)
@@ -112,22 +112,22 @@ func TestValidateSignedData(t *testing.T) {
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
-		signed.PatchDataHash = ""
+		signed.DeltaHash = ""
 		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
-		signed.NextRecoveryCommitmentHash = ""
+		signed.RecoveryCommitment = ""
 		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
 	})
 }
 
-func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
+	deltaBytes, err := docutil.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
@@ -138,9 +138,9 @@ func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.Recove
 	}
 
 	return &model.RecoverRequest{
-		Operation:       model.OperationTypeRecover,
-		DidUniqueSuffix: "suffix",
-		PatchData:       docutil.EncodeToString(patchDataBytes),
+		Operation: model.OperationTypeRecover,
+		DidSuffix: "suffix",
+		Delta:     docutil.EncodeToString(deltaBytes),
 		SignedData: &model.JWS{
 			// TODO: JWS encoded
 			Payload: docutil.EncodeToString(signedDataBytes),
@@ -149,18 +149,18 @@ func getRecoverRequest(patchData *model.PatchDataModel, signedData *model.Recove
 }
 
 func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
-	patchData, err := getPatchData()
+	delta, err := getDelta()
 	if err != nil {
 		return nil, err
 	}
-	return getRecoverRequest(patchData, getSignedDataForRecovery())
+	return getRecoverRequest(delta, getSignedDataForRecovery())
 }
 
 func getSignedDataForRecovery() *model.RecoverSignedDataModel {
 	return &model.RecoverSignedDataModel{
-		RecoveryKey:                &jws.JWK{},
-		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
-		PatchDataHash:              computeMultihash("operation"),
+		RecoveryKey:        &jws.JWK{},
+		RecoveryCommitment: computeMultihash("recoveryReveal"),
+		DeltaHash:          computeMultihash("operation"),
 	}
 }
 

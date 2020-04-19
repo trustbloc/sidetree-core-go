@@ -139,8 +139,8 @@ type resolutionModel struct {
 	Doc                            document.Document
 	LastOperationTransactionTime   uint64
 	LastOperationTransactionNumber uint64
-	NextUpdateCommitmentHash       string
-	NextRecoveryCommitmentHash     string
+	UpdateCommitment               string
+	RecoveryCommitment             string
 	RecoveryKey                    *jws.JWK
 }
 
@@ -166,7 +166,7 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	doc, err := composer.ApplyPatches(nil, operation.PatchData.Patches)
+	doc, err := composer.ApplyPatches(nil, operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -175,8 +175,8 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash,
+		UpdateCommitment:               operation.UpdateCommitment,
+		RecoveryCommitment:             operation.RecoveryCommitment,
 		RecoveryKey:                    operation.SuffixData.RecoveryKey,
 	}, nil
 }
@@ -196,7 +196,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, errors.New("missing protected section of signedData")
 	}
 
-	err := isValidHash(operation.UpdateRevealValue, rm.NextUpdateCommitmentHash)
+	err := isValidHash(operation.UpdateRevealValue, rm.UpdateCommitment)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, err
 	}
 
-	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
+	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -227,8 +227,8 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     rm.NextRecoveryCommitmentHash,
+		UpdateCommitment:               operation.UpdateCommitment,
+		RecoveryCommitment:             rm.RecoveryCommitment,
 		RecoveryKey:                    rm.RecoveryKey}, nil
 }
 
@@ -270,7 +270,7 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
-	err := isValidHash(operation.RecoveryRevealValue, rm.NextRecoveryCommitmentHash)
+	err := isValidHash(operation.RecoveryRevealValue, rm.RecoveryCommitment)
 	if err != nil {
 		return nil, err
 	}
@@ -284,8 +284,8 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		Doc:                            nil,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateCommitmentHash:       "",
-		NextRecoveryCommitmentHash:     ""}, nil
+		UpdateCommitment:               "",
+		RecoveryCommitment:             ""}, nil
 }
 
 func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
@@ -295,7 +295,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	err := isValidHash(operation.RecoveryRevealValue, rm.NextRecoveryCommitmentHash)
+	err := isValidHash(operation.RecoveryRevealValue, rm.RecoveryCommitment)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, err
 	}
 
-	doc, err := composer.ApplyPatches(rm.Doc, operation.PatchData.Patches)
+	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -325,8 +325,8 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		NextUpdateCommitmentHash:       operation.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:     operation.NextRecoveryCommitmentHash,
+		UpdateCommitment:               operation.UpdateCommitment,
+		RecoveryCommitment:             operation.RecoveryCommitment,
 		RecoveryKey:                    signedDataModel.RecoveryKey}, nil
 }
 

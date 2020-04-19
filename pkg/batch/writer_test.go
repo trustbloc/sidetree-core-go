@@ -374,6 +374,6 @@ func (h *mockOpsHandler) CreateBatchFile(operations [][]byte) ([]byte, error) {
 }
 
 // CreateAnchorFile mocks creating anchor file bytes
-func (h *mockOpsHandler) CreateAnchorFile(didUniqueSuffixes []string, batchAddress string) ([]byte, error) {
+func (h *mockOpsHandler) CreateAnchorFile(didSuffixes []string, batchAddress string) ([]byte, error) {
 	return nil, nil
 }

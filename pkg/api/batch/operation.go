@@ -28,14 +28,14 @@ type Operation struct {
 	// signed data for the operation
 	SignedData *model.JWS `json:"signedData"`
 
-	// operation patch data
-	PatchData *model.PatchDataModel `json:"patchData"`
+	// operation delta
+	Delta *model.DeltaModel `json:"delta"`
 
 	// suffix data
 	SuffixData *model.SuffixDataModel `json:"suffixData"`
 
-	// encoded patch data
-	EncodedPatchData string `json:"encodedPatchData"`
+	// encoded delta
+	EncodedDelta string `json:"encodedDelta"`
 
 	//HashAlgorithmInMultiHashCode
 	HashAlgorithmInMultiHashCode uint `json:"hashAlgorithmInMultiHashCode"`
@@ -52,9 +52,9 @@ type Operation struct {
 	RecoveryRevealValue string `json:"recoveryRevealValue"`
 
 	// Hash of reveal value for the next update operation
-	NextUpdateCommitmentHash string `json:"nextUpdateCommitmentHash"`
+	UpdateCommitment string `json:"updateCommitment"`
 	// Hash of reveal value for next recovery/deactivate operation
-	NextRecoveryCommitmentHash string `json:"nextRecoveryCommitmentHash"`
+	RecoveryCommitment string `json:"recoveryCommitment"`
 }
 
 // OperationType defines valid values for operation type

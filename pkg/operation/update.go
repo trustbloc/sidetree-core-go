@@ -22,7 +22,7 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	patchData, err := parseUpdatePatchData(schema.PatchData, protocol.HashAlgorithmInMultiHashCode)
+	delta, err := parseUpdateDelta(schema.Delta, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
@@ -30,11 +30,11 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 	return &batch.Operation{
 		Type:                         batch.OperationTypeUpdate,
 		OperationBuffer:              request,
-		UniqueSuffix:                 schema.DidUniqueSuffix,
-		PatchData:                    patchData,
-		EncodedPatchData:             schema.PatchData,
+		UniqueSuffix:                 schema.DidSuffix,
+		Delta:                        delta,
+		EncodedDelta:                 schema.Delta,
 		UpdateRevealValue:            schema.UpdateRevealValue,
-		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
+		UpdateCommitment:             delta.UpdateCommitment,
 		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
 		SignedData:                   schema.SignedData,
 	}, nil
@@ -49,19 +49,19 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	return schema, nil
 }
 
-func parseUpdatePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
+func parseUpdateDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.PatchDataModel{}
+	schema := &model.DeltaModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validatePatchData(schema, code); err != nil {
+	if err := validateDelta(schema, code); err != nil {
 		return nil, err
 	}
 

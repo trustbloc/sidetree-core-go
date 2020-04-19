@@ -37,14 +37,14 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
-		patchData, err := getPatchData()
+		delta, err := getDelta()
 		require.NoError(t, err)
 
 		result, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:             batch.OperationTypeCreate,
-			ID:               id,
-			PatchData:        patchData,
-			EncodedPatchData: create.PatchData,
+			Type:         batch.OperationTypeCreate,
+			ID:           id,
+			Delta:        delta,
+			EncodedDelta: create.Delta,
 		})
 		require.NoError(t, err)
 
@@ -98,14 +98,14 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
-		patchData, err := getPatchData()
+		delta, err := getDelta()
 		require.NoError(t, err)
 
 		result, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:             batch.OperationTypeCreate,
-			ID:               id,
-			PatchData:        patchData,
-			EncodedPatchData: create.PatchData,
+			Type:         batch.OperationTypeCreate,
+			ID:           id,
+			Delta:        delta,
+			EncodedDelta: create.Delta,
 		})
 		require.NoError(t, err)
 
@@ -126,12 +126,12 @@ func TestResolveHandler_Resolve(t *testing.T) {
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	patchData, err := getPatchData()
+	delta, err := getDelta()
 	if err != nil {
 		return nil, err
 	}
 
-	patchDataBytes, err := docutil.MarshalCanonical(patchData)
+	deltaBytes, err := docutil.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
@@ -143,20 +143,20 @@ func getCreateRequest() (*model.CreateRequest, error) {
 
 	return &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		PatchData:  docutil.EncodeToString(patchDataBytes),
+		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
 }
 
-func getPatchData() (*model.PatchDataModel, error) {
+func getDelta() (*model.DeltaModel, error) {
 	replace, err := patch.NewReplacePatch(validDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.PatchDataModel{
-		Patches:                  []patch.Patch{replace},
-		NextUpdateCommitmentHash: computeMultihash("updateReveal"),
+	return &model.DeltaModel{
+		Patches:          []patch.Patch{replace},
+		UpdateCommitment: computeMultihash("updateReveal"),
 	}, nil
 }
 
@@ -172,8 +172,8 @@ func getSuffixData() *model.SuffixDataModel {
 	}
 
 	return &model.SuffixDataModel{
-		PatchDataHash:              computeMultihash(validDoc),
-		RecoveryKey:                recoveryKey,
-		NextRecoveryCommitmentHash: computeMultihash("recoveryReveal"),
+		DeltaHash:          computeMultihash(validDoc),
+		RecoveryKey:        recoveryKey,
+		RecoveryCommitment: computeMultihash("recoveryReveal"),
 	}
 }

@@ -234,7 +234,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 	}
 
 	return &helper.UpdateRequestInfo{
-		DidUniqueSuffix:       uniqueSuffix,
+		DidSuffix:             uniqueSuffix,
 		Patch:                 patchJSON,
 		UpdateRevealValue:     updateReveal,
 		NextUpdateRevealValue: updateReveal,
@@ -251,7 +251,7 @@ func getDeactivateRequestInfo(uniqueSuffix string) *helper.DeactivateRequestInfo
 	}
 
 	return &helper.DeactivateRequestInfo{
-		DidUniqueSuffix:     uniqueSuffix,
+		DidSuffix:           uniqueSuffix,
 		RecoveryRevealValue: recoveryReveal,
 		Signer:              ecsigner.New(privateKey, "ES256", "recovery"),
 	}
@@ -269,7 +269,7 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 	}
 
 	return &helper.RecoverRequestInfo{
-		DidUniqueSuffix:         uniqueSuffix,
+		DidSuffix:               uniqueSuffix,
 		OpaqueDocument:          recoverDoc,
 		RecoveryKey:             recoveryKey,
 		RecoveryRevealValue:     recoveryReveal,

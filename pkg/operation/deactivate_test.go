@@ -76,7 +76,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 	})
 	t.Run("validate signed data error - did suffix mismatch", func(t *testing.T) {
 		signedData := getSignedDataForDeactivate()
-		signedData.DidUniqueSuffix = "different"
+		signedData.DidSuffix = "different"
 
 		recoverRequest, err := getDeactivateRequest(signedData)
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.D
 
 	return &model.DeactivateRequest{
 		Operation:           model.OperationTypeDeactivate,
-		DidUniqueSuffix:     "did",
+		DidSuffix:           "did",
 		RecoveryRevealValue: "recoveryReveal",
 		SignedData:          jws,
 	}, nil
@@ -130,7 +130,7 @@ func getDefaultDeactivateRequest() (*model.DeactivateRequest, error) {
 
 func getSignedDataForDeactivate() *model.DeactivateSignedDataModel {
 	return &model.DeactivateSignedDataModel{
-		DidUniqueSuffix:     "did",
+		DidSuffix:           "did",
 		RecoveryRevealValue: "recoveryReveal",
 	}
 }

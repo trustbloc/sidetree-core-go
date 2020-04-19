@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	didUniqueSuffix      = "didUniqueSuffix"
+	didSuffix            = "did_suffix"
 	didContext           = "https://w3id.org/did/v1"
 	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
 )
@@ -46,13 +46,13 @@ func (v *Validator) IsValidPayload(payload []byte) error {
 		return err
 	}
 
-	didUniqueSuffix := doc.GetStringValue(didUniqueSuffix)
-	if didUniqueSuffix == "" {
+	didSuffix := doc.GetStringValue(didSuffix)
+	if didSuffix == "" {
 		return errors.New("missing did unique suffix")
 	}
 
 	// did document has to exist in the store for all operations except for create
-	docs, err := v.store.Get(didUniqueSuffix)
+	docs, err := v.store.Get(didSuffix)
 	if err != nil {
 		return err
 	}

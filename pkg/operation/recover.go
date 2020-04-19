@@ -26,7 +26,7 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 
 	code := protocol.HashAlgorithmInMultiHashCode
 
-	patchData, err := parsePatchData(schema.PatchData, code)
+	delta, err := parseDelta(schema.Delta, code)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +41,12 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeRecover,
-		UniqueSuffix:                 schema.DidUniqueSuffix,
-		PatchData:                    patchData,
-		EncodedPatchData:             schema.PatchData,
+		UniqueSuffix:                 schema.DidSuffix,
+		Delta:                        delta,
+		EncodedDelta:                 schema.Delta,
 		RecoveryRevealValue:          schema.RecoveryRevealValue,
-		NextUpdateCommitmentHash:     patchData.NextUpdateCommitmentHash,
-		NextRecoveryCommitmentHash:   signedData.NextRecoveryCommitmentHash,
+		UpdateCommitment:             delta.UpdateCommitment,
+		RecoveryCommitment:           signedData.RecoveryCommitment,
 		HashAlgorithmInMultiHashCode: code,
 		SignedData:                   schema.SignedData,
 	}, nil
@@ -62,19 +62,19 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	return schema, nil
 }
 
-func parsePatchData(encoded string, code uint) (*model.PatchDataModel, error) {
+func parseDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := &model.PatchDataModel{}
+	schema := &model.DeltaModel{}
 	err = json.Unmarshal(bytes, schema)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validatePatchData(schema, code); err != nil {
+	if err := validateDelta(schema, code); err != nil {
 		return nil, err
 	}
 
@@ -105,11 +105,11 @@ func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, cod
 		return errors.New("missing recovery key")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.NextRecoveryCommitmentHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, uint64(code)) {
 		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.PatchDataHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, uint64(code)) {
 		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
 	}
 
