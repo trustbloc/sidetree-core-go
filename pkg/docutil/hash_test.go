@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package docutil
 
 import (
-	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -43,7 +42,7 @@ func TestIsSupportedMultihash(t *testing.T) {
 	require.False(t, supported)
 
 	// scenario: base64 encoded, however not multihash
-	supported = IsSupportedMultihash(base64.URLEncoding.EncodeToString(sample))
+	supported = IsSupportedMultihash(EncodeToString(sample))
 	require.False(t, supported)
 
 	// scenario: valid encoded multihash
@@ -51,7 +50,7 @@ func TestIsSupportedMultihash(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, hash)
 
-	key := base64.URLEncoding.EncodeToString(hash)
+	key := EncodeToString(hash)
 	supported = IsSupportedMultihash(key)
 	require.True(t, supported)
 }
@@ -61,7 +60,7 @@ func TestIsComputedUsingHashAlgorithm(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, hash)
 
-	key := base64.URLEncoding.EncodeToString(hash)
+	key := EncodeToString(hash)
 	ok := IsComputedUsingHashAlgorithm(key, sha2_256)
 	require.True(t, ok)
 
