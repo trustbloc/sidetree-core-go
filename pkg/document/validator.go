@@ -18,6 +18,8 @@ const (
 	auth = "auth"
 	// assertion defines key usage as assertion key
 	assertion = "assertion"
+	// assertion defines key usage as assertion key
+	agreement = "agreement"
 	// general defines key usage as general key
 	general = "general"
 
@@ -31,6 +33,7 @@ var allowedOps = map[string]string{
 	auth:      auth,
 	general:   general,
 	assertion: assertion,
+	agreement: agreement,
 }
 
 var allowedKeyTypes = map[string]string{
@@ -113,6 +116,11 @@ func IsAuthenticationKey(usages []string) bool {
 // IsAssertionKey returns true if key is an assertion key
 func IsAssertionKey(usages []string) bool {
 	return isUsageKey(usages, assertion)
+}
+
+// IsAgreementKey returns true if key is an agreement key
+func IsAgreementKey(usages []string) bool {
+	return isUsageKey(usages, agreement)
 }
 
 func isUsageKey(usages []string, mode string) bool {

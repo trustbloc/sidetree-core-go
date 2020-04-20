@@ -142,10 +142,13 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // and included by reference in the authentication section.
 // -- assertion: the key MUST be included in the assertionMethod section of the resolved DID Document
 // (same rules as for auth)
+// -- agreement: the key MUST be included in the keyAgreement section of the resolved DID Document
+// (same rules as for auth)
 // -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) { //nolint: gocyclo
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) { //nolint: gocyclo,funlen
 	var authentication []interface{}
 	var assertionMethod []interface{}
+	var agreementKey []interface{}
 
 	var publicKeys []document.PublicKey
 	var operationPublicKeys []document.PublicKey
@@ -176,10 +179,16 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 			if document.IsAssertionKey(usages) {
 				assertionMethod = append(assertionMethod, relativeID)
 			}
+			// add into keyAgreement by reference if the key has both agreement and general usage
+			if document.IsAgreementKey(usages) {
+				agreementKey = append(agreementKey, relativeID)
+			}
 		} else if document.IsAuthenticationKey(usages) {
 			authentication = append(authentication, pk)
 		} else if document.IsAssertionKey(usages) {
 			assertionMethod = append(assertionMethod, pk)
+		} else if document.IsAgreementKey(usages) {
+			agreementKey = append(agreementKey, pk)
 		}
 	}
 
@@ -193,6 +202,10 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 
 	if len(assertionMethod) > 0 {
 		resolutionResult.Document[document.AssertionMethodProperty] = assertionMethod
+	}
+
+	if len(agreementKey) > 0 {
+		resolutionResult.Document[document.AgreementKeyProperty] = agreementKey
 	}
 
 	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
