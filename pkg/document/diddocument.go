@@ -29,6 +29,9 @@ const (
 	// AssertionMethodProperty defines key for assertion method property
 	AssertionMethodProperty = "assertionMethod"
 
+	// AgreementKeyProperty defines key for agreement key property
+	AgreementKeyProperty = "agreementKey"
+
 	// ControllerProperty defines key for controller
 	ControllerProperty = "controller"
 
@@ -122,6 +125,11 @@ func (doc DIDDocument) Authentication() []interface{} {
 // AssertionMethod returns assertion method array (mixture of strings and objects)
 func (doc DIDDocument) AssertionMethod() []interface{} {
 	return interfaceArray(doc[AssertionMethodProperty])
+}
+
+// AgreementKey returns agreement method array (mixture of strings and objects)
+func (doc DIDDocument) AgreementKey() []interface{} {
+	return interfaceArray(doc[AgreementKeyProperty])
 }
 
 // DIDDocumentFromReader creates an instance of DIDDocument by reading a JSON document from Reader

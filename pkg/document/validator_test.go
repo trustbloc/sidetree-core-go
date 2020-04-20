@@ -130,6 +130,16 @@ func TestIsAssertionKey(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestIsAgreementKey(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{})
+	ok := IsAgreementKey(pk.Usage())
+	require.False(t, ok)
+
+	pk["usage"] = []interface{}{agreement}
+	ok = IsAgreementKey(pk.Usage())
+	require.True(t, ok)
+}
+
 func TestIsGeneralKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
 	ok := IsGeneralKey(pk.Usage())
@@ -176,7 +186,7 @@ const tooMuchUsage = `{
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops", "general", "auth", "assertion", "other"],
+      "usage": ["ops", "general", "auth", "assertion", "agreement", "other"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",

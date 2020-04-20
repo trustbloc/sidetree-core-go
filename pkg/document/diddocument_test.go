@@ -74,6 +74,9 @@ func TestEmptyDoc(t *testing.T) {
 
 	assertionMethod := doc.AssertionMethod()
 	require.Equal(t, 0, len(assertionMethod))
+
+	agreementKey := doc.AgreementKey()
+	require.Equal(t, 0, len(agreementKey))
 }
 
 func TestInvalidLists(t *testing.T) {
