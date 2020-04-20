@@ -242,7 +242,7 @@ func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, er
 		return nil, err
 	}
 
-	jwk := pk.PublicKeyJWK()
+	jwk := pk.JWK()
 
 	return &jws.JWK{
 		Kty: jwk.Kty(),

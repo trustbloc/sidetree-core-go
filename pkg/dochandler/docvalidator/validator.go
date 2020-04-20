@@ -95,17 +95,19 @@ func processKeys(internal document.Document, resolutionResult *document.Resoluti
 
 	var nonOperationsKeys []document.PublicKey
 	for _, pk := range internal.PublicKeys() {
-		pk[document.ControllerProperty] = internal[document.IDProperty]
-		// add did to key id
-		pk[document.IDProperty] = internal.ID() + "#" + pk.ID()
+		relativeID := "#" + pk.ID()
+
+		externalPK := make(document.PublicKey)
+		externalPK[document.IDProperty] = internal.ID() + relativeID
+		externalPK[document.TypeProperty] = pk.Type()
+		externalPK[document.ControllerProperty] = internal[document.IDProperty]
+		externalPK[document.PublicKeyJwkProperty] = pk.JWK()
 
 		usages := pk.Usage()
-		delete(pk, document.UsageProperty)
-
 		if document.IsOperationsKey(usages) {
-			operationPublicKeys = append(operationPublicKeys, pk)
+			operationPublicKeys = append(operationPublicKeys, externalPK)
 		} else {
-			nonOperationsKeys = append(nonOperationsKeys, pk)
+			nonOperationsKeys = append(nonOperationsKeys, externalPK)
 		}
 	}
 

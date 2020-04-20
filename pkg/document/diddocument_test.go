@@ -26,9 +26,8 @@ func TestValid(t *testing.T) {
 			"id":    "key1",
 			"type":  "JwsVerificationKey2020",
 			"usage": []interface{}{"ops", "general"},
-			"publicKeyJwk": map[string]interface{}{
+			"jwk": map[string]interface{}{
 				"kty": "EC",
-				"kid": "key1",
 				"crv": "P-256K",
 				"x":   "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
 				"y":   "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc",

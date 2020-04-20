@@ -140,13 +140,16 @@ func getID(suffixData string) (string, error) {
 	return docutil.CalculateID(namespace, suffixData, sha2_256)
 }
 
-const validDoc = `{	
-	"created": "2019-09-23T14:16:59.261024-04:00",
+const validDoc = `{
 	"publicKey": [{
-		"controller": "id",
-		"id": "did:method:abc#key-1",
-		"publicKeyBase58": "GY4GunSXBPBfhLCzDL7iGmP5dR3sBDCJZkkaGK8VgYQf",
-		"type": "Ed25519VerificationKey2018"
-	}],
-	"updated": "2019-09-23T14:16:59.261024-04:00"
+		  "id": "key1",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops", "general"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
+	}]
 }`

@@ -4,7 +4,7 @@
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
       "usage": ["ops", "general", "auth", "assertion", "agreement"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -15,7 +15,7 @@
       "id": "ops-only",
       "type": "JwsVerificationKey2020",
       "usage": ["ops"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -26,7 +26,7 @@
       "id": "dual-auth-general",
       "type": "JwsVerificationKey2020",
       "usage": ["auth", "general"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -37,7 +37,7 @@
       "id": "auth-only",
       "type": "JwsVerificationKey2020",
       "usage": ["auth"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -48,7 +48,7 @@
       "id": "dual-assertion-general",
       "type": "JwsVerificationKey2020",
       "usage": ["assertion", "general"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -59,7 +59,7 @@
       "id": "assertion-only",
       "type": "JwsVerificationKey2020",
       "usage": ["assertion"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -70,7 +70,7 @@
       "id": "dual-agreement-general",
       "type": "JwsVerificationKey2020",
       "usage": ["agreement", "general"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -81,7 +81,7 @@
       "id": "agreement-only",
       "type": "JwsVerificationKey2020",
       "usage": ["agreement"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -92,7 +92,7 @@
       "id": "general-only",
       "type": "JwsVerificationKey2020",
       "usage": ["general"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",

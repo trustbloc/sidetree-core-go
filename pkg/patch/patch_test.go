@@ -49,17 +49,17 @@ func TestActionValidation(t *testing.T) {
 		require.Nil(t, patch)
 		require.Contains(t, err.Error(), "patch is missing action property")
 	})
-	t.Run("action is not string", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": 10}`))
-		require.Error(t, err)
-		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "action is not string value")
-	})
 	t.Run("action not supported", func(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "invalid"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
 		require.Equal(t, err.Error(), "action 'invalid' is not supported")
+	})
+	t.Run("action not supported", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": 0}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "action type not supported")
 	})
 }
 
@@ -77,11 +77,14 @@ func TestReplacePatch(t *testing.T) {
 		require.Contains(t, err.Error(), "replace patch is missing document")
 	})
 	t.Run("success from new", func(t *testing.T) {
+		doc, err := document.FromBytes([]byte(testDoc))
+		require.NoError(t, err)
+
 		p, err := NewReplacePatch(testDoc)
 		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), Replace)
-		require.Equal(t, p.GetStringValue(DocumentKey), testDoc)
+		require.Equal(t, p.GetValue(DocumentKey), doc.JSONLdObject())
 	})
 	t.Run("error - invalid json", func(t *testing.T) {
 		p, err := NewReplacePatch(`invalid`)
@@ -115,7 +118,7 @@ func TestIETFPatch(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), JSONPatch)
-		require.Equal(t, p.GetStringValue(PatchesKey), patches)
+		require.NotEmpty(t, p.GetValue(PatchesKey))
 	})
 	t.Run("invalid JSON patch provided", func(t *testing.T) {
 		p, err := NewJSONPatch("{}")
@@ -136,14 +139,14 @@ func TestAddPublicKeysPatch(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "add-public-keys"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "add-public-keys patch is missing publicKeys")
+		require.Contains(t, err.Error(), "add-public-keys patch is missing public_keys")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		p, err := NewAddPublicKeysPatch(testAddPublicKeys)
 		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), AddPublicKeys)
-		require.Equal(t, p.GetStringValue(PublicKeys), testAddPublicKeys)
+		require.NotNil(t, p.GetValue(PublicKeys))
 	})
 }
 
@@ -158,7 +161,7 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "remove-public-keys"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "remove-public-keys patch is missing publicKeys")
+		require.Contains(t, err.Error(), "remove-public-keys patch is missing public_keys")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		const ids = `["key1", "key2"]`
@@ -166,7 +169,14 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), RemovePublicKeys)
-		require.Equal(t, p.GetStringValue(PublicKeys), ids)
+		require.NotNil(t, p.GetValue(PublicKeys))
+	})
+	t.Run("empty public key ids", func(t *testing.T) {
+		const ids = `[]`
+		p, err := NewRemovePublicKeysPatch(ids)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "missing public key ids")
 	})
 	t.Run("error - ids not string array", func(t *testing.T) {
 		const ids = `[0, 1]`
@@ -188,14 +198,14 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "add-service-endpoints"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "add-service-endpoints patch is missing serviceEndpoints")
+		require.Contains(t, err.Error(), "add-service-endpoints patch is missing service_endpoints")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		p, err := NewAddServiceEndpointsPatch(testAddServiceEndpoints)
 		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), AddServiceEndpoints)
-		require.Equal(t, p.GetStringValue(ServiceEndpointsKey), testAddServiceEndpoints)
+		require.NotEmpty(t, p.GetValue(ServiceEndpointsKey))
 	})
 }
 
@@ -210,7 +220,7 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "remove-service-endpoints"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "remove-service-endpoints patch is missing serviceEndpointIds")
+		require.Contains(t, err.Error(), "remove-service-endpoints patch is missing ids")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		const ids = `["svc1", "svc2"]`
@@ -218,7 +228,14 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, p)
 		require.Equal(t, p.GetAction(), RemoveServiceEndpoints)
-		require.Equal(t, p.GetStringValue(ServiceEndpointIdsKey), ids)
+		require.NotEmpty(t, p.GetValue(ServiceEndpointIdsKey))
+	})
+	t.Run("empty service ids", func(t *testing.T) {
+		const ids = `[]`
+		p, err := NewRemoveServiceEndpointsPatch(ids)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "missing service ids")
 	})
 	t.Run("error - ids not string array", func(t *testing.T) {
 		const ids = `[0, 1]`
@@ -278,13 +295,8 @@ func TestStringEntry(t *testing.T) {
 const replacePatch = `{
 	"action": "replace",
 	"document": {
-		"authentication": [{
-			"id": "keys-1",
-			"type": "RsaVerificationKey2018",
-			"publicKeyPem": "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
-  		}],
 		"service": [{
-			"id":"#vcs",
+			"id":"vcs",
 			"type": "VerifiableCredentialService",
 			"serviceEndpoint": "https://example.com/vc/"
 		}]
@@ -310,31 +322,39 @@ const patches = `[
 
 const addPublicKeysPatch = `{
 	"action": "add-public-keys",
-	"publicKeys": [{
+	"public_keys": [{
 		"id": "key1",
-		"usage": ["ops"],
-		"type": "Secp256k1VerificationKey2018",
-		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
+		"type": "JwsVerificationKey2020",
+		"usage": ["ops", "general"],
+		"jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
 	}]
 }`
 
-const testAddPublicKeys = `[
-	{
-      "id": "key1",
-      "usage": ["ops"],
-      "type": "Secp256k1VerificationKey2018",
-      "publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
-    }
-  ]`
+const testAddPublicKeys = `[{
+	"id": "key1",
+	"type": "JwsVerificationKey2020",
+	"usage": ["ops", "general"],
+	"jwk": {
+		"kty": "EC",
+		"crv": "P-256K",
+		"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+		"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
+	}]`
 
 const removePublicKeysPatch = `{
   "action": "remove-public-keys",
-  "publicKeys": ["key1", "key2"]
+  "public_keys": ["key1", "key2"]
 }`
 
 const addServiceEndpoints = `{
   "action": "add-service-endpoints",
-  "serviceEndpoints": [
+  "service_endpoints": [
     {
       "id": "sds1",
       "type": "SecureDataStore",
@@ -363,17 +383,12 @@ const testAddServiceEndpoints = `[
 
 const removeServiceEndpoints = `{
   "action": "remove-service-endpoints",
-  "serviceEndpointIds": ["sds1", "sds2"]
+  "ids": ["sds1", "sds2"]
 }`
 
 const testDoc = `{
-  "authentication": [{
-    "id": "keys-1",
-    "type": "RsaVerificationKey2018",
-    "publicKeyPem": "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
-  }],
   "service": [{
-    "id":"#vcs",
+    "id":"vcs",
     "type": "VerifiableCredentialService",
     "serviceEndpoint": "https://example.com/vc/"
   }]

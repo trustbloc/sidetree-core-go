@@ -21,7 +21,7 @@ func (s Service) ID() string {
 
 // Type is service type
 func (s Service) Type() interface{} {
-	return s[jsonldType]
+	return s[TypeProperty]
 }
 
 // Endpoint is service endpoint

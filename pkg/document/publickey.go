@@ -21,7 +21,7 @@ func (pk PublicKey) ID() string {
 
 // Type is public key type
 func (pk PublicKey) Type() string {
-	return stringEntry(pk[jsonldType])
+	return stringEntry(pk[TypeProperty])
 }
 
 // Controller identifies the entity that controls the corresponding private key.
@@ -29,29 +29,23 @@ func (pk PublicKey) Controller() string {
 	return stringEntry(pk[ControllerProperty])
 }
 
-//PublicKeyBase64 is value property
-func (pk PublicKey) PublicKeyBase64() string {
-	return stringEntry(pk[jsonldPublicKeyBase64])
+// JWK is value property of internal keys
+func (pk PublicKey) JWK() JWK {
+	entry, ok := pk[JwkProperty]
+	if !ok {
+		return nil
+	}
+
+	json, ok := entry.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	return NewJWK(json)
 }
 
-// PublicKeyBase58 is value property
-func (pk PublicKey) PublicKeyBase58() string {
-	return stringEntry(pk[jsonldPublicKeyBase58])
-}
-
-// PublicKeyHex is value property
-func (pk PublicKey) PublicKeyHex() string {
-	return stringEntry(pk[jsonldPublicKeyHex])
-}
-
-// PublicKeyPEM is value property
-func (pk PublicKey) PublicKeyPEM() string {
-	return stringEntry(pk[jsonldPublicKeyPem])
-}
-
-// PublicKeyJWK is value property
-func (pk PublicKey) PublicKeyJWK() JWK {
-	entry, ok := pk[jsonldPublicKeyJwk]
+// PublicKeyJwk is value property for JWK
+func (pk PublicKey) PublicKeyJwk() JWK {
+	entry, ok := pk[PublicKeyJwkProperty]
 	if !ok {
 		return nil
 	}
@@ -65,7 +59,7 @@ func (pk PublicKey) PublicKeyJWK() JWK {
 
 // Usage describes key usage
 func (pk PublicKey) Usage() []string {
-	return stringArray(pk[UsageProperty])
+	return StringArray(pk[UsageProperty])
 }
 
 // JSONLdObject returns map that represents JSON LD Object

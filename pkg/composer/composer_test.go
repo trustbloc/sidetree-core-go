@@ -66,7 +66,7 @@ func TestApplyPatches_JSON(t *testing.T) {
 		doc, err = ApplyPatches(doc, []patch.Patch{ietf})
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "expected array")
 	})
 	t.Run("invalid operation", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
@@ -114,7 +114,7 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		require.Equal(t, 2, len(keys))
 		for _, key := range keys {
 			if key.ID() == "key2" {
-				require.Equal(t, key.Type(), "updatedKeyType")
+				require.Equal(t, 1, len(key.Usage()))
 			}
 		}
 	})
@@ -138,12 +138,12 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 
 		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
 		require.NoError(t, err)
-		addPublicKeys["publicKeys"] = invalid
+		addPublicKeys["public_keys"] = invalid
 
 		doc, err = ApplyPatches(doc, []patch.Patch{addPublicKeys})
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "expected array of interfaces")
 	})
 }
 
@@ -159,8 +159,8 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
-		diddoc := document.DidDocumentFromJSONLDObject(doc)
-		require.Equal(t, 1, len(diddoc.PublicKeys()))
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 1, len(didDoc.PublicKeys()))
 	})
 
 	t.Run("success - remove existing and non-existing keys", func(t *testing.T) {
@@ -183,12 +183,12 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 
 		removePublicKeys, err := patch.NewRemovePublicKeysPatch(removeKeys)
 		require.NoError(t, err)
-		removePublicKeys["publicKeys"] = invalid
+		removePublicKeys["public_keys"] = invalid
 
 		doc, err = ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "expected array")
 	})
 	t.Run("success - add and remove same key; doc stays at two keys", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
@@ -269,12 +269,12 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 
 		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
 		require.NoError(t, err)
-		addServices["serviceEndpoints"] = invalid
+		addServices["service_endpoints"] = invalid
 
 		doc, err = ApplyPatches(doc, []patch.Patch{addServices})
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "expected array")
 	})
 }
 
@@ -314,12 +314,12 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 
 		removeServices, err := patch.NewRemoveServiceEndpointsPatch(removeServices)
 		require.NoError(t, err)
-		removeServices["serviceEndpointIds"] = invalid
+		removeServices["ids"] = invalid
 
 		doc, err = ApplyPatches(doc, []patch.Patch{removeServices})
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "expected array")
 	})
 	t.Run("success - add and remove same service; doc stays at two services", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
@@ -370,18 +370,30 @@ const patches = `[
 ]`
 
 const testDoc = `{
-	"publicKey": [{
-		"id": "key1",
-		"usage": ["ops"],
-		"type": "Secp256k1VerificationKey2018",
-		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
-	},
-	{
-		"id": "key2",
-		"usage": ["ops"],
-		"type": "Secp256k1VerificationKey2018",
-		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
-	}],
+	"publicKey": [
+		{
+		  "id": "key1",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
+		},
+		{
+		  "id": "key2",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops", "general"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
+		}
+	],
   	"service": [
     {
       "id": "svc1",
@@ -397,17 +409,27 @@ const testDoc = `{
 }`
 
 const addKeys = `[{
-		"id": "key3",
-		"usage": ["ops"],
-		"type": "Secp256k1VerificationKey2018",
-		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
-	}]`
+		  "id": "key3",
+		  "type": "JwsVerificationKey2020",
+		  "usage": ["ops", "general"],
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
+		}]`
 
 const updateExistingKey = `[{
-		"id": "key2",
-		"usage": ["ops"],
-		"type": "updatedKeyType",
-		"publicKeyHex": "02b97c30de767f084ce3080168ee293053ba33b235d7116a3263d29f1450936b71"
+	"id": "key2",
+	"type": "JwsVerificationKey2020",
+	"usage": ["ops"],
+	"jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
 	}]`
 
 const removeKeys = `["key1", "key2"]`

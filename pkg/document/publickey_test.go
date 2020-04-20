@@ -19,29 +19,46 @@ func TestPublicKey(t *testing.T) {
 	require.Empty(t, pk.Controller())
 
 	pk = NewPublicKey(map[string]interface{}{
-		"id":              "did:example:123456789abcdefghi#keys-1",
-		"type":            "RsaVerificationKey2018",
-		"controller":      "did:example:123456789abcdefghi",
-		"publicKeyPem":    "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----",
-		"publicKeyBase64": "Base64",
-		"publicKeyBase58": "Base58",
-		"publicKeyHex":    "Hex",
-		"other":           "otherValue",
+		"id":         "did:example:123456789abcdefghi#keys-1",
+		"type":       "JwsVerificationKey2020",
+		"controller": "did:example:123456789abcdefghi",
 	})
 	require.Equal(t, "did:example:123456789abcdefghi#keys-1", pk.ID())
-	require.Equal(t, "RsaVerificationKey2018", pk.Type())
+	require.Equal(t, "JwsVerificationKey2020", pk.Type())
 	require.Equal(t, "did:example:123456789abcdefghi", pk.Controller())
-	require.Equal(t, "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----", pk.PublicKeyPEM())
-	require.Equal(t, "Base64", pk.PublicKeyBase64())
-	require.Equal(t, "Base58", pk.PublicKeyBase58())
-	require.Equal(t, "Hex", pk.PublicKeyHex())
-	require.Equal(t, "otherValue", pk["other"])
 	require.Empty(t, pk.Usage())
-	require.Empty(t, pk.PublicKeyJWK())
+	require.Empty(t, pk.JWK())
+	require.Empty(t, pk.PublicKeyJwk())
 
 	require.NotEmpty(t, pk.JSONLdObject())
+}
+
+func TestInternalPublicKeyJWK(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{
+		"jwk": map[string]interface{}{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		},
+	})
+
+	jwk := pk.JWK()
+	require.Equal(t, "kty", jwk.Kty())
+	require.Equal(t, "crv", jwk.Crv())
+	require.Equal(t, "x", jwk.X())
+	require.Equal(t, "y", jwk.Y())
 
 	pk = NewPublicKey(map[string]interface{}{
+		"jwk": "invalid",
+	})
+
+	jwk = pk.JWK()
+	require.Nil(t, jwk)
+}
+
+func TestPublicKeyJWK(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{
 		"publicKeyJwk": map[string]interface{}{
 			"kty": "kty",
 			"crv": "crv",
@@ -50,9 +67,16 @@ func TestPublicKey(t *testing.T) {
 		},
 	})
 
-	jwk := pk.PublicKeyJWK()
+	jwk := pk.PublicKeyJwk()
 	require.Equal(t, "kty", jwk.Kty())
 	require.Equal(t, "crv", jwk.Crv())
 	require.Equal(t, "x", jwk.X())
 	require.Equal(t, "y", jwk.Y())
+
+	pk = NewPublicKey(map[string]interface{}{
+		"publicKeyJwk": "invalid",
+	})
+
+	jwk = pk.PublicKeyJwk()
+	require.Nil(t, jwk)
 }

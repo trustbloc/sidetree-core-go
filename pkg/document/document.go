@@ -41,7 +41,7 @@ func (doc Document) ID() string {
 
 // PublicKeys in generic document are used for managing operation keys
 func (doc Document) PublicKeys() []PublicKey {
-	return parsePublicKeys(doc[PublicKeyProperty])
+	return ParsePublicKeys(doc[PublicKeyProperty])
 }
 
 // GetStringValue returns string value for specified key or "" if not found or wrong type
@@ -70,8 +70,8 @@ func stringEntry(entry interface{}) string {
 	return id
 }
 
-// stringArray
-func stringArray(entry interface{}) []string {
+// StringArray is utility function to return string array from interface
+func StringArray(entry interface{}) []string {
 	if entry == nil {
 		return nil
 	}

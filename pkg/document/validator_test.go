@@ -67,13 +67,13 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "public key id is missing")
 	})
-	t.Run("missing JWK", func(t *testing.T) {
+	t.Run("invalid number of JWK properties", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(noJWK))
 		require.Nil(t, err)
 
 		err = ValidatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "operations key has to be in JWK format")
+		require.Contains(t, err.Error(), "invalid number of JWK properties")
 	})
 	t.Run("duplicate id", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(duplicateID))
@@ -82,6 +82,15 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 		err = ValidatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "duplicate public key id")
+	})
+
+	t.Run("unknown property", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(moreProperties))
+		require.Nil(t, err)
+
+		err = ValidatePublicKeys(doc.PublicKeys())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid number of public key properties")
 	})
 }
 
@@ -105,9 +114,88 @@ func TestValidateOperationsKey(t *testing.T) {
 		"y":   "y",
 	}
 
-	pk["publicKeyJwk"] = jwk
+	pk["jwk"] = jwk
 	err = ValidateOperationsKey(pk)
 	require.NoError(t, err)
+}
+
+func TestValidateJWK(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.NoError(t, err)
+	})
+	t.Run("invalid property", func(t *testing.T) {
+		jwk := JWK{
+			"kty":   "kty",
+			"crv":   "crv",
+			"x":     "x",
+			"y":     "y",
+			"other": "value",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid number of JWK properties")
+	})
+
+	t.Run("missing kty", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK kty is missing")
+	})
+
+	t.Run("missing crv", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "kty",
+			"crv": "",
+			"x":   "x",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK crv is missing")
+	})
+
+	t.Run("missing x", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK x is missing")
+	})
+
+	t.Run("missing y", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK y is missing")
+	})
 }
 
 func TestIsAuthenticationKey(t *testing.T) {
@@ -150,12 +238,30 @@ func TestIsGeneralKey(t *testing.T) {
 	require.True(t, ok)
 }
 
+const moreProperties = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "other": "unknown",
+      "type": "JwsVerificationKey2020",
+      "usage": ["ops"], 
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ]
+}`
+
 const noUsage = `{
   "publicKey": [
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "publicKeyJwk": {
+      "usage": [], 
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -171,7 +277,7 @@ const wrongUsage = `{
       "id": "key1",
       "type": "JwsVerificationKey2020",
       "usage": ["invalid"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -187,7 +293,7 @@ const tooMuchUsage = `{
       "id": "key1",
       "type": "JwsVerificationKey2020",
       "usage": ["ops", "general", "auth", "assertion", "agreement", "other"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -202,7 +308,8 @@ const noJWK = `{
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"]
+      "usage": ["ops"],
+      "jwk": {}
     }
   ]
 }`
@@ -212,7 +319,7 @@ const noID = `{
     {
       "type": "JwsVerificationKey2020",
       "usage": ["ops"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -228,7 +335,7 @@ const invalidKeyType = `{
       "id": "key1",
       "type": "InvalidKeyType",
       "usage": ["general"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -244,7 +351,7 @@ const duplicateID = `{
       "id": "key1",
       "type": "JwsVerificationKey2020",
       "usage": ["ops"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -255,7 +362,7 @@ const duplicateID = `{
       "id": "key1",
       "type": "JwsVerificationKey2020",
       "usage": ["ops"],
-      "publicKeyJwk": {
+      "jwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",

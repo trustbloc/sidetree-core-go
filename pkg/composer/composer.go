@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -34,34 +33,48 @@ func ApplyPatches(doc document.Document, patches []patch.Patch) (document.Docume
 
 // applyPatch applies a patch to the document
 func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) {
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
 	action := p.GetAction()
 	switch action {
 	case patch.Replace:
-		return applyRecover(p.GetStringValue(patch.DocumentKey))
+		return applyRecover(p.GetValue(patch.DocumentKey))
 	case patch.JSONPatch:
-		return applyJSON(doc, p.GetStringValue(patch.PatchesKey))
+		return applyJSON(doc, p.GetValue(patch.PatchesKey))
 	case patch.AddPublicKeys:
-		return applyAddPublicKeys(doc, p.GetStringValue(patch.PublicKeys))
+		return applyAddPublicKeys(doc, p.GetValue(patch.PublicKeys))
 	case patch.RemovePublicKeys:
-		return applyRemovePublicKeys(doc, p.GetStringValue(patch.PublicKeys))
+		return applyRemovePublicKeys(doc, p.GetValue(patch.PublicKeys))
 	case patch.AddServiceEndpoints:
-		return applyAddServiceEndpoints(doc, p.GetStringValue(patch.ServiceEndpointsKey))
+		return applyAddServiceEndpoints(doc, p.GetValue(patch.ServiceEndpointsKey))
 	case patch.RemoveServiceEndpoints:
-		return applyRemoveServiceEndpoints(doc, p.GetStringValue(patch.ServiceEndpointIdsKey))
+		return applyRemoveServiceEndpoints(doc, p.GetValue(patch.ServiceEndpointIdsKey))
 	}
 
 	return nil, fmt.Errorf("action '%s' is not supported", action)
 }
 
-func applyRecover(newDoc string) (document.Document, error) {
-	log.Debugf("applying recover patch: %s", newDoc)
-	return document.FromBytes([]byte(newDoc))
+func applyRecover(newDoc interface{}) (document.Document, error) {
+	log.Debugf("applying recover patch: %v", newDoc)
+	docBytes, err := json.Marshal(newDoc)
+	if err != nil {
+		return nil, err
+	}
+
+	return document.FromBytes(docBytes)
 }
 
-func applyJSON(doc document.Document, patches string) (document.Document, error) {
-	log.Debugf("applying JSON patch: %s", patches)
+func applyJSON(doc document.Document, entry interface{}) (document.Document, error) {
+	log.Debugf("applying JSON patch: %v", entry)
 
-	jsonPatches, err := jsonpatch.DecodePatch([]byte(patches))
+	bytes, err := json.Marshal(entry)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonPatches, err := jsonpatch.DecodePatch(bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -80,20 +93,13 @@ func applyJSON(doc document.Document, patches string) (document.Document, error)
 }
 
 // adds public keys to document
-func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Document, error) {
-	log.Debugf("applying add public keys patch: %s", publicKeys)
+func applyAddPublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
+	log.Debugf("applying add public keys patch: %v", entry)
 
-	// create an empty did document with public keys
-	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{"%s":%s}`, document.PublicKeyProperty, publicKeys)))
-	if err != nil {
-		return nil, errors.Errorf("public keys invalid: %s", err.Error())
-	}
+	newPublicKeyArr := document.ParsePublicKeys(entry)
+	newPublicKeys := sliceToMapPK(newPublicKeyArr)
 
-	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
-
-	newPublicKeys := sliceToMapPK(pkDoc.PublicKeys())
-
-	existingPublicKeys := diddoc.PublicKeys()
+	existingPublicKeys := doc.PublicKeys()
 	for _, existing := range existingPublicKeys {
 		// NOTE: If a key ID already exists, we will just replace the existing key
 		// so new public keys will retain new version
@@ -108,18 +114,12 @@ func applyAddPublicKeys(doc document.Document, publicKeys string) (document.Docu
 }
 
 // remove public keys from the document
-func applyRemovePublicKeys(doc document.Document, removeKeyIDs string) (document.Document, error) {
-	log.Debugf("applying remove public keys patch: %s", removeKeyIDs)
+func applyRemovePublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
+	log.Debugf("applying remove public keys patch: %v", entry)
 
-	var keysToRemove []string
-	err := json.Unmarshal([]byte(removeKeyIDs), &keysToRemove)
-	if err != nil {
-		return nil, err
-	}
+	newPublicKeys := sliceToMapPK(doc.PublicKeys())
 
-	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
-	newPublicKeys := sliceToMapPK(diddoc.PublicKeys())
-
+	keysToRemove := document.StringArray(entry)
 	for _, key := range keysToRemove {
 		delete(newPublicKeys, key)
 	}
@@ -150,22 +150,17 @@ func mapToSlicePK(mapValues map[string]document.PublicKey) []interface{} {
 }
 
 // adds service endpoints to document
-func applyAddServiceEndpoints(doc document.Document, serviceEnpoints string) (document.Document, error) {
-	log.Debugf("applying add service endpoints patch: %s", serviceEnpoints)
+func applyAddServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
+	log.Debugf("applying add service endpoints patch: %v", entry)
 
-	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+
+	newServiceArr := document.ParseServices(entry)
 
 	// create an empty did document with service endpoints
-	svcDocStr := fmt.Sprintf(`{"%s":%s}`, document.ServiceProperty, serviceEnpoints)
+	newServices := sliceToMapServices(newServiceArr)
 
-	svcDoc, err := document.DidDocumentFromBytes([]byte(svcDocStr))
-	if err != nil {
-		return nil, errors.Errorf("services invalid: %s", err.Error())
-	}
-
-	newServices := sliceToMapServices(svcDoc.Services())
-
-	existingServices := diddoc.Services()
+	existingServices := didDoc.Services()
 	for _, existing := range existingServices {
 		// NOTE: If a service ID already exists, we will just replace the existing service
 		// so new service endpoints will retain new version
@@ -179,18 +174,13 @@ func applyAddServiceEndpoints(doc document.Document, serviceEnpoints string) (do
 	return doc, nil
 }
 
-func applyRemoveServiceEndpoints(doc document.Document, serviceIDs string) (document.Document, error) {
-	log.Debugf("applying remove service endpoints patch: %s", serviceIDs)
-
-	var servicesToRemove []string
-	err := json.Unmarshal([]byte(serviceIDs), &servicesToRemove)
-	if err != nil {
-		return nil, err
-	}
+func applyRemoveServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
+	log.Debugf("applying remove service endpoints patch: %v", entry)
 
 	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 	newServices := sliceToMapServices(diddoc.Services())
 
+	servicesToRemove := document.StringArray(entry)
 	for _, svc := range servicesToRemove {
 		delete(newServices, svc)
 	}
