@@ -225,6 +225,88 @@ func TestIsGeneralKey(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestGeneralKeyUsage(t *testing.T) {
+	for _, pubKeyType := range allowedKeyTypesGeneral {
+		pk := createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general})
+		err := ValidatePublicKeys([]PublicKey{pk})
+		require.NoError(t, err, "valid usage for type")
+	}
+
+	pk := createMockPublicKeyWithTypeUsage("invalidUsage", []interface{}{general})
+	err := ValidatePublicKeys([]PublicKey{pk})
+	require.Error(t, err, "invalid usage for type")
+}
+
+func TestInvalidKeyUsage(t *testing.T) {
+	pk := createMockPublicKeyWithTypeUsage(jwsVerificationKey2020, []interface{}{"invalidUsage"})
+	err := ValidatePublicKeys([]PublicKey{pk})
+	require.Error(t, err, "invalid usage")
+}
+
+func TestOpsKeyUsage(t *testing.T) {
+	testKeyUsage(t, allowedKeyTypesOps, ops)
+}
+
+func TestVerificationKeyUsage(t *testing.T) {
+	testKeyUsage(t, allowedKeyTypesVerification, assertion)
+	testKeyUsage(t, allowedKeyTypesVerification, auth)
+}
+
+func TestAgreementKeyUsage(t *testing.T) {
+	testKeyUsage(t, allowedKeyTypesAgreement, agreement)
+}
+
+func testKeyUsage(t *testing.T, allowedKeys existenceMap, pubKeyUsage string) {
+	for _, pubKeyType := range allowedKeys {
+		pk := createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage})
+		err := ValidatePublicKeys([]PublicKey{pk})
+		require.NoError(t, err, "valid usage for type")
+
+		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{pubKeyUsage})
+		err = ValidatePublicKeys([]PublicKey{pk})
+		require.NoError(t, err, "valid usage for type")
+	}
+
+	for _, pubKeyType := range allowedKeyTypesGeneral {
+		_, ok := allowedKeys[pubKeyType]
+		if ok {
+			continue
+		}
+
+		pk := createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage, agreement})
+		err := ValidatePublicKeys([]PublicKey{pk})
+		require.Error(t, err, "invalid usage for type")
+
+		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage, assertion})
+		err = ValidatePublicKeys([]PublicKey{pk})
+		require.Error(t, err, "invalid usage for type")
+
+		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage})
+		err = ValidatePublicKeys([]PublicKey{pk})
+		require.Error(t, err, "invalid usage for type")
+
+		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{pubKeyUsage})
+		err = ValidatePublicKeys([]PublicKey{pk})
+		require.Error(t, err, "invalid usage for type")
+	}
+}
+
+func createMockPublicKeyWithTypeUsage(pubKeyType string, usage []interface{}) PublicKey {
+	pk := map[string]interface{}{
+		"id":    "key1",
+		"type":  pubKeyType,
+		"usage": usage,
+		"jwk": map[string]interface{}{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		},
+	}
+
+	return pk
+}
+
 const moreProperties = `{
   "publicKey": [
     {
