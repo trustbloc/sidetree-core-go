@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package didvalidator
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,11 +16,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 func TestNew(t *testing.T) {
@@ -142,13 +146,21 @@ func TestTransformDocument(t *testing.T) {
 
 	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
 	require.NoError(t, err)
-	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
-	require.Contains(t, didDoc.PublicKeys()[0].ID(), testID)
-	require.Contains(t, didDoc.Services()[0].ID(), testID)
-	require.NotEmpty(t, didDoc.Services()[0].Endpoint())
 	require.Equal(t, didContext, didDoc.Context()[0])
-	require.Empty(t, didDoc.PublicKeys()[0].JWK())
-	require.NotEmpty(t, didDoc.PublicKeys()[0].PublicKeyJwk())
+
+	// validate services
+	service := didDoc.Services()[0]
+	require.Contains(t, service.ID(), testID)
+	require.NotEmpty(t, service.Endpoint())
+	require.Equal(t, "IdentityHub", service.Type())
+
+	// validate public keys
+	pk := didDoc.PublicKeys()[0]
+	require.Contains(t, pk.ID(), testID)
+	require.NotEmpty(t, pk.Type())
+	require.Empty(t, pk.JWK())
+	require.NotEmpty(t, pk.PublicKeyJwk())
+	require.Empty(t, pk.PublicKeyBase58())
 
 	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general", "dual-assertion-general",
 		"dual-agreement-general"}
@@ -162,6 +174,78 @@ func TestTransformDocument(t *testing.T) {
 
 	expectedAgreementKeys := []string{"master", "dual-agreement-general", "agreement-only"}
 	require.Equal(t, len(expectedAgreementKeys), len(didDoc.AgreementKey()))
+}
+
+func TestEd25519VerificationKey2018(t *testing.T) {
+	publicKey, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	jwk, err := pubkey.GetPublicKeyJWK(publicKey)
+	require.NoError(t, err)
+
+	publicKeyBytes, err := json.Marshal(jwk)
+	require.NoError(t, err)
+
+	data := fmt.Sprintf(ed25519DocTemplate, string(publicKeyBytes))
+	doc, err := document.FromBytes([]byte(data))
+	require.NoError(t, err)
+
+	const testID = "doc:abc:123"
+	doc[document.IDProperty] = testID
+
+	v := getDefaultValidator()
+
+	result, err := v.TransformDocument(doc)
+	require.NoError(t, err)
+
+	jsonTransformed, err := json.Marshal(result.Document)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
+	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
+	require.Equal(t, didContext, didDoc.Context()[0])
+
+	// validate service
+	service := didDoc.Services()[0]
+	require.Contains(t, service.ID(), testID)
+	require.NotEmpty(t, service.Endpoint())
+	require.Equal(t, "OpenIdConnectVersion1.0Service", service.Type())
+
+	// validate public key
+	pk := didDoc.PublicKeys()[0]
+	require.Contains(t, pk.ID(), testID)
+	require.Equal(t, "Ed25519VerificationKey2018", pk.Type())
+	require.Empty(t, pk.JWK())
+	require.Empty(t, pk.PublicKeyJwk())
+
+	// test base58 encoding
+	require.Equal(t, base58.Encode(publicKey), pk.PublicKeyBase58())
+
+	// validate length of expected keys
+	expectedPublicKeys := []string{"dual-assertion-general"}
+	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
+
+	expectedAssertionMethodKeys := []string{"dual-assertion-general"}
+	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethod()))
+
+	require.Equal(t, 0, len(didDoc.Authentication()))
+	require.Equal(t, 0, len(didDoc.AgreementKey()))
+}
+
+func TestEd25519VerificationKey2018_Error(t *testing.T) {
+	doc, err := document.FromBytes([]byte(ed25519Invalid))
+	require.NoError(t, err)
+
+	const testID = "doc:abc:123"
+	doc[document.IDProperty] = testID
+
+	v := getDefaultValidator()
+
+	result, err := v.TransformDocument(doc)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "unknown curve")
 }
 
 func getDefaultValidator() *Validator {
@@ -209,3 +293,37 @@ var pubKeyWithController = []byte(`{
       }
 	}]
 }`)
+
+const ed25519DocTemplate = `{
+  "publicKey": [
+	{
+  		"id": "dual-assertion-general",
+  		"type": "Ed25519VerificationKey2018",
+		"usage": ["general", "assertion"],
+  		"jwk": %s
+	}
+  ],
+  "service": [
+	{
+	   "id": "oidc",
+	   "type": "OpenIdConnectVersion1.0Service",
+	   "serviceEndpoint": "https://openid.example.com/"
+	}
+  ]
+}`
+
+const ed25519Invalid = `{
+  "publicKey": [
+	{
+  		"id": "dual-assertion-general",
+  		"type": "Ed25519VerificationKey2018",
+		"usage": ["general", "assertion"],
+      	"jwk": {
+        	"kty": "OKP",
+        	"crv": "curve",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+	}
+  ]
+}`

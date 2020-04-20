@@ -31,24 +31,6 @@ const (
 
 	// AgreementKeyProperty defines key for agreement key property
 	AgreementKeyProperty = "agreementKey"
-
-	// ControllerProperty defines key for controller
-	ControllerProperty = "controller"
-
-	// UsageProperty describes key usage property
-	UsageProperty = "usage"
-
-	// PublicKeyJwkProperty describes external public key JWK
-	PublicKeyJwkProperty = "publicKeyJwk"
-
-	// JwkProperty describes internal public key JWK
-	JwkProperty = "jwk"
-
-	// TypeProperty describes type
-	TypeProperty = "type"
-
-	// ServiceEndpointProperty defines service endpoint
-	ServiceEndpointProperty = "serviceEndpoint"
 )
 
 // DIDDocument Defines DID Document data structure used by Sidetree for basic type safety checks.

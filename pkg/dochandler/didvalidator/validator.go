@@ -9,8 +9,12 @@ package didvalidator
 import (
 	"errors"
 
+	"github.com/btcsuite/btcutil/base58"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
 const (
@@ -110,7 +114,10 @@ func (v *Validator) TransformDocument(doc document.Document) (*document.Resoluti
 	}
 
 	// add keys
-	processKeys(internal, result)
+	err := processKeys(internal, result)
+	if err != nil {
+		return nil, err
+	}
 
 	// add services
 	processServices(internal, result)
@@ -150,7 +157,7 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // -- agreement: the key MUST be included in the keyAgreement section of the resolved DID Document
 // (same rules as for auth)
 // -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) { //nolint: gocyclo,funlen
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint: gocyclo,funlen
 	var authentication []interface{}
 	var assertionMethod []interface{}
 	var agreementKey []interface{}
@@ -167,7 +174,16 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		externalPK[document.IDProperty] = internal.ID() + relativeID
 		externalPK[document.TypeProperty] = pk.Type()
 		externalPK[document.ControllerProperty] = internal[document.IDProperty]
-		externalPK[document.PublicKeyJwkProperty] = pk.JWK()
+
+		if pk.Type() == document.Ed25519VerificationKey2018 {
+			ed25519PubKey, err := getED2519PublicKey(pk.JWK())
+			if err != nil {
+				return err
+			}
+			externalPK[document.PublicKeyBase58Property] = base58.Encode(ed25519PubKey)
+		} else {
+			externalPK[document.PublicKeyJwkProperty] = pk.JWK()
+		}
 
 		usages := pk.Usage()
 		if document.IsOperationsKey(usages) {
@@ -215,4 +231,16 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 	}
 
 	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
+
+	return nil
+}
+
+func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
+	jwk := &jws.JWK{
+		Crv: pkJWK.Crv(),
+		Kty: pkJWK.Kty(),
+		X:   pkJWK.X(),
+		Y:   pkJWK.Y()}
+
+	return internaljws.GetED25519PublicKey(jwk)
 }

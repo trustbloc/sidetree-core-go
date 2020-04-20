@@ -41,25 +41,9 @@ func VerifySignature(jwk *jws.JWK, signature, msg []byte) error {
 }
 
 func verifyEd25519Signature(jwk *jws.JWK, signature, msg []byte) error {
-	jsonBytes, err := json.Marshal(jwk)
+	pubKey, err := GetED25519PublicKey(jwk)
 	if err != nil {
 		return err
-	}
-
-	var internalJWK JWK
-	err = internalJWK.UnmarshalJSON(jsonBytes)
-	if err != nil {
-		return err
-	}
-
-	pubKey, ok := internalJWK.Key.(ed25519.PublicKey)
-	if !ok {
-		return errors.New("unexpected public key type for ed25519")
-	}
-
-	// ed25519 panics if key size is wrong
-	if len(pubKey) != ed25519.PublicKeySize {
-		return errors.New("ed25519: invalid key")
 	}
 
 	verified := ed25519.Verify(pubKey, msg, signature)
@@ -68,6 +52,32 @@ func verifyEd25519Signature(jwk *jws.JWK, signature, msg []byte) error {
 	}
 
 	return nil
+}
+
+// GetED25519PublicKey retunns ed25519 public key
+func GetED25519PublicKey(jwk *jws.JWK) (ed25519.PublicKey, error) {
+	jsonBytes, err := json.Marshal(jwk)
+	if err != nil {
+		return nil, err
+	}
+
+	var internalJWK JWK
+	err = internalJWK.UnmarshalJSON(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	pubKey, ok := internalJWK.Key.(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New("unexpected public key type for ed25519")
+	}
+
+	// ed25519 panics if key size is wrong
+	if len(pubKey) != ed25519.PublicKeySize {
+		return nil, errors.New("ed25519: invalid key")
+	}
+
+	return pubKey, nil
 }
 
 func verifyECSignature(jwk *jws.JWK, signature, msg []byte) error {

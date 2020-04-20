@@ -25,8 +25,10 @@ const (
 
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
-	ed25519VerificationKey2018        = "Ed25519VerificationKey2018"
 	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
+
+	// Ed25519VerificationKey2018 requires special handling (convert to base58)
+	Ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
 
 	maxJwkProperties       = 4
 	maxPublicKeyProperties = 4
@@ -44,7 +46,7 @@ var allowedKeyTypes = map[string]string{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	// TODO: Verify with Troy about spec restrictions
-	ed25519VerificationKey2018: ed25519VerificationKey2018,
+	Ed25519VerificationKey2018: Ed25519VerificationKey2018,
 	x25519KeyAgreementKey2019:  x25519KeyAgreementKey2019,
 }
 
