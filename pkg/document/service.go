@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 package document
 
+// ServiceEndpointProperty defines service endpoint
+const ServiceEndpointProperty = "serviceEndpoint"
+
 // Service represents any type of service the entity wishes to advertise
 type Service map[string]interface{}
 

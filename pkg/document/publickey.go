@@ -6,6 +6,27 @@ SPDX-License-Identifier: Apache-2.0
 
 package document
 
+const (
+
+	// ControllerProperty defines key for controller
+	ControllerProperty = "controller"
+
+	// UsageProperty describes key usage property
+	UsageProperty = "usage"
+
+	// PublicKeyJwkProperty describes external public key JWK
+	PublicKeyJwkProperty = "publicKeyJwk"
+
+	// JwkProperty describes internal public key JWK
+	JwkProperty = "jwk"
+
+	// TypeProperty describes type
+	TypeProperty = "type"
+
+	// PublicKeyBase58Property defines base 58 encoding for public key
+	PublicKeyBase58Property = "publicKeyBase58"
+)
+
 // PublicKey must include id and type properties, and exactly one value property
 type PublicKey map[string]interface{}
 
@@ -55,6 +76,11 @@ func (pk PublicKey) PublicKeyJwk() JWK {
 		return nil
 	}
 	return NewJWK(json)
+}
+
+// PublicKeyBase58 is base58 encoded public key
+func (pk PublicKey) PublicKeyBase58() string {
+	return stringEntry(pk[PublicKeyBase58Property])
 }
 
 // Usage describes key usage

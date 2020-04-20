@@ -6,6 +6,7 @@ module github.com/trustbloc/sidetree-core-go
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta
+	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/evanphx/json-patch v4.1.0+incompatible
 	github.com/gorilla/mux v1.7.3
 	github.com/kr/pretty v0.1.0 // indirect
