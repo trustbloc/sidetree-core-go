@@ -42,12 +42,39 @@ var allowedOps = map[string]string{
 	agreement: agreement,
 }
 
-var allowedKeyTypes = map[string]string{
+type existenceMap map[string]string
+
+var allowedKeyTypesOps = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
-	// TODO: Verify with Troy about spec restrictions
-	Ed25519VerificationKey2018: Ed25519VerificationKey2018,
-	x25519KeyAgreementKey2019:  x25519KeyAgreementKey2019,
+}
+
+var allowedKeyTypesGeneral = existenceMap{
+	jwsVerificationKey2020:            jwsVerificationKey2020,
+	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
+	Ed25519VerificationKey2018:        Ed25519VerificationKey2018,
+	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019,
+}
+
+var allowedKeyTypesVerification = existenceMap{
+	jwsVerificationKey2020:            jwsVerificationKey2020,
+	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
+	Ed25519VerificationKey2018:        Ed25519VerificationKey2018,
+}
+
+var allowedKeyTypesAgreement = existenceMap{
+	// TODO: Verify appropriate agreement key types for JWS and Secp256k1
+	jwsVerificationKey2020:            jwsVerificationKey2020,
+	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
+	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019,
+}
+
+var allowedKeyTypes = map[string]existenceMap{
+	ops:       allowedKeyTypesOps,
+	general:   allowedKeyTypesGeneral,
+	auth:      allowedKeyTypesVerification,
+	assertion: allowedKeyTypesVerification,
+	agreement: allowedKeyTypesAgreement,
 }
 
 // ValidatePublicKeys validates public keys
@@ -80,7 +107,7 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 			}
 		}
 
-		if _, ok := allowedKeyTypes[pubKey.Type()]; !ok {
+		if !validateKeyTypeUsage(pubKey) {
 			return fmt.Errorf("invalid key type: %s", pubKey.Type())
 		}
 
@@ -90,6 +117,23 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 	}
 
 	return nil
+}
+
+// validateKeyTypeUsage validates if the public key type is valid for a certain usage
+func validateKeyTypeUsage(pubKey PublicKey) bool {
+	for _, usage := range pubKey.Usage() {
+		allowed, ok := allowedKeyTypes[usage]
+		if !ok {
+			return false
+		}
+
+		_, ok = allowed[pubKey.Type()]
+		if !ok {
+			return false
+		}
+	}
+
+	return true
 }
 
 // ValidateOperationsKey validates operation key
