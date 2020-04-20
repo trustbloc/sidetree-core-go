@@ -26,6 +26,7 @@ const (
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
 	ed25519VerificationKey2018        = "Ed25519VerificationKey2018"
+	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
 
 	maxJwkProperties       = 4
 	maxPublicKeyProperties = 4
@@ -44,6 +45,7 @@ var allowedKeyTypes = map[string]string{
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	// TODO: Verify with Troy about spec restrictions
 	ed25519VerificationKey2018: ed25519VerificationKey2018,
+	x25519KeyAgreementKey2019:  x25519KeyAgreementKey2019,
 }
 
 // ValidatePublicKeys validates public keys
