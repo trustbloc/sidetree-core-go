@@ -26,7 +26,7 @@ func (s Service) Type() interface{} {
 
 // Endpoint is service endpoint
 func (s Service) Endpoint() interface{} {
-	return s[jsonldServicePoint]
+	return s[ServiceEndpointProperty]
 }
 
 // JSONLdObject returns map that represents JSON LD Object
