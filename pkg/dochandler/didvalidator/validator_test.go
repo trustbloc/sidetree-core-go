@@ -145,6 +145,7 @@ func TestTransformDocument(t *testing.T) {
 	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
 	require.Contains(t, didDoc.PublicKeys()[0].ID(), testID)
 	require.Contains(t, didDoc.Services()[0].ID(), testID)
+	require.NotEmpty(t, didDoc.Services()[0].Endpoint())
 	require.Equal(t, didContext, didDoc.Context()[0])
 	require.Empty(t, didDoc.PublicKeys()[0].JWK())
 	require.NotEmpty(t, didDoc.PublicKeys()[0].PublicKeyJwk())

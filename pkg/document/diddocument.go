@@ -47,7 +47,8 @@ const (
 	// TypeProperty describes type
 	TypeProperty = "type"
 
-	jsonldServicePoint = "serviceEndpoint"
+	// ServiceEndpointProperty defines service endpoint
+	ServiceEndpointProperty = "serviceEndpoint"
 )
 
 // DIDDocument Defines DID Document data structure used by Sidetree for basic type safety checks.

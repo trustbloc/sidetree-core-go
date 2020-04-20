@@ -127,7 +127,7 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 		externalService := make(document.Service)
 		externalService[document.IDProperty] = internal.ID() + "#" + sv.ID()
 		externalService[document.TypeProperty] = sv.Type()
-		externalService[document.PublicKeyJwkProperty] = sv.Endpoint()
+		externalService[document.ServiceEndpointProperty] = sv.Endpoint()
 
 		services = append(services, externalService)
 	}
