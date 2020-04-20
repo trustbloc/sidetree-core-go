@@ -183,19 +183,6 @@ func TestValidateJWK(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "JWK x is missing")
 	})
-
-	t.Run("missing y", func(t *testing.T) {
-		jwk := JWK{
-			"kty": "kty",
-			"crv": "crv",
-			"x":   "x",
-			"y":   "",
-		}
-
-		err := ValidateJWK(jwk)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "JWK y is missing")
-	})
 }
 
 func TestIsAuthenticationKey(t *testing.T) {

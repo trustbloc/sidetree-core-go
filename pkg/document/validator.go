@@ -119,10 +119,6 @@ func ValidateJWK(jwk JWK) error {
 		return errors.New("JWK x is missing")
 	}
 
-	if jwk.Y() == "" {
-		return errors.New("JWK y is missing")
-	}
-
 	return nil
 }
 
