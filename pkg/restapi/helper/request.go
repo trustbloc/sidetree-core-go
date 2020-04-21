@@ -7,9 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package helper
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/jsoncanonicalizer"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -149,7 +151,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		RecoveryCommitment: mhNextRecoveryCommitmentHash,
 	}
 
-	suffixDataBytes, err := docutil.MarshalCanonical(suffixData)
+	suffixDataBytes, err := MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +162,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}
 
-	return docutil.MarshalCanonical(schema)
+	return MarshalCanonical(schema)
 }
 
 func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
@@ -195,7 +197,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 		SignedData:          jws,
 	}
 
-	return docutil.MarshalCanonical(schema)
+	return MarshalCanonical(schema)
 }
 
 // NewUpdateRequest is utility function to create payload for 'update' request
@@ -232,7 +234,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		SignedData:        jws,
 	}
 
-	return docutil.MarshalCanonical(schema)
+	return MarshalCanonical(schema)
 }
 
 // NewRecoverRequest is utility function to create payload for 'recovery' request
@@ -282,11 +284,11 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		SignedData:          jws,
 	}
 
-	return docutil.MarshalCanonical(schema)
+	return MarshalCanonical(schema)
 }
 
 func signModel(data interface{}, signer Signer) (*model.JWS, error) {
-	signedDataBytes, err := docutil.MarshalCanonical(data)
+	signedDataBytes, err := MarshalCanonical(data)
 	if err != nil {
 		return nil, err
 	}
@@ -355,5 +357,15 @@ func getDeltaBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, e
 		Patches:          patches,
 	}
 
-	return docutil.MarshalCanonical(delta)
+	return MarshalCanonical(delta)
+}
+
+// MarshalCanonical is using JCS RFC canonicalization
+func MarshalCanonical(value interface{}) ([]byte, error) {
+	jsonLiteralValByte, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsoncanonicalizer.Transform(jsonLiteralValByte)
 }

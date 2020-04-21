@@ -96,7 +96,16 @@ issues:
         - errcheck # TODO enable
         - nakedret # TODO enable
         - staticcheck # TODO enable
-
+    - path: jsoncanonicalizer
+      linters:
+        - golint
+        - funlen
+        - gomnd
+        - gosec
+        - errcheck
+        - gocyclo
+        - gocognit
+        - whitespace
   exclude:
     # Allow package logger variables (for now)
     - \`logger\` is a global variable
