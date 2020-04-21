@@ -22,12 +22,7 @@ func CalculateID(namespace, encoded string, hashAlgorithmAsMultihashCode uint) (
 
 //CalculateUniqueSuffix calculates the unique suffix from an encoded value
 func CalculateUniqueSuffix(encoded string, hashAlgorithmAsMultihashCode uint) (string, error) {
-	value, err := DecodeString(encoded)
-	if err != nil {
-		return "", nil
-	}
-
-	multiHashBytes, err := ComputeMultihash(hashAlgorithmAsMultihashCode, value)
+	multiHashBytes, err := ComputeMultihash(hashAlgorithmAsMultihashCode, []byte(encoded))
 	if err != nil {
 		return "", err
 	}
