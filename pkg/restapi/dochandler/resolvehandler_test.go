@@ -20,6 +20,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -48,7 +49,31 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		getID = func(req *http.Request) string { return result.Document.ID() }
+		getID = func(namespace string, req *http.Request) string { return result.Document.ID() }
+		handler := NewResolveHandler(docHandler)
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/document", nil)
+		handler.Resolve(rw, req)
+		require.Equal(t, http.StatusOK, rw.Code)
+		fmt.Printf("Response: %s\n", rw.Body.String())
+		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
+	})
+	t.Run("Success with initial value", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().
+			WithNamespace(namespace)
+
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
+		require.NoError(t, err)
+
+		initialParam := request.GetInitialStateParam(namespace)
+		initialParamValue := create.Delta + "." + create.SuffixData
+
+		initialState := "?" + initialParam + "=" + initialParamValue
+
+		getID = func(namespace string, req *http.Request) string { return id + initialState }
 		handler := NewResolveHandler(docHandler)
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -58,7 +83,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Invalid ID", func(t *testing.T) {
-		getID = func(req *http.Request) string { return "someid" }
+		getID = func(namespace string, req *http.Request) string { return "someid" }
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewResolveHandler(docHandler)
 
@@ -68,7 +93,9 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
 	t.Run("Not found", func(t *testing.T) {
-		getID = func(req *http.Request) string { return namespace + docutil.NamespaceDelimiter + "someid" }
+		getID = func(namespace string, req *http.Request) string {
+			return namespace + docutil.NamespaceDelimiter + "someid"
+		}
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewResolveHandler(docHandler)
 
@@ -78,7 +105,9 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, rw.Code)
 	})
 	t.Run("Error", func(t *testing.T) {
-		getID = func(req *http.Request) string { return namespace + docutil.NamespaceDelimiter + "someid" }
+		getID = func(namespace string, req *http.Request) string {
+			return namespace + docutil.NamespaceDelimiter + "someid"
+		}
 		errExpected := errors.New("get doc error")
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
 		handler := NewResolveHandler(docHandler)
@@ -115,7 +144,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		getID = func(req *http.Request) string { return result.Document.ID() }
+		getID = func(namespace string, req *http.Request) string { return result.Document.ID() }
 		handler := NewResolveHandler(docHandler)
 
 		rw := httptest.NewRecorder()
@@ -123,6 +152,16 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		handler.Resolve(rw, req)
 		require.Equal(t, http.StatusGone, rw.Code)
 	})
+}
+
+func TestGetInitialState(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/document", nil)
+	initialState := getInitialState(namespace, req)
+	require.Empty(t, initialState)
+
+	req = httptest.NewRequest(http.MethodGet, "/document?-sidetree-initial-state=abc", nil)
+	initialState = getInitialState(namespace, req)
+	require.Equal(t, "?-sidetree-initial-state=abc", initialState)
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {

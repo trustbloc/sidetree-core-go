@@ -7,13 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package mocks
 
 import (
+	"encoding/json"
 	"errors"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/composer"
+	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 // NewMockDocumentHandler returns a new mock document handler
@@ -91,6 +95,11 @@ func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (*document.Re
 	if m.err != nil {
 		return nil, m.err
 	}
+
+	if strings.Contains(idOrDocument, request.GetInitialStateParam(m.namespace)) {
+		return m.resolveWithInitialState(idOrDocument)
+	}
+
 	if _, ok := m.store[idOrDocument]; !ok {
 		return nil, errors.New("not found")
 	}
@@ -109,4 +118,32 @@ func applyID(doc document.Document, id string) document.Document {
 	// apply id to document
 	doc["id"] = id
 	return doc
+}
+
+func (m *MockDocumentHandler) resolveWithInitialState(idOrDocument string) (*document.ResolutionResult, error) {
+	id, initialState, err := request.GetParts(m.namespace, idOrDocument)
+	if err != nil {
+		return nil, err
+	}
+
+	decodedDelta, err := docutil.DecodeString(initialState.Delta)
+	if err != nil {
+		return nil, err
+	}
+
+	var delta model.DeltaModel
+	err = json.Unmarshal(decodedDelta, &delta)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := composer.ApplyPatches(nil, delta.Patches)
+	if err != nil {
+		return nil, err
+	}
+
+	doc = applyID(doc, id)
+	return &document.ResolutionResult{
+		Document: doc,
+	}, nil
 }

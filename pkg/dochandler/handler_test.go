@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	namespace = "doc:namespace"
+	namespace = "doc:method"
 
-	sha2_256           = 18
-	initialValuesParam = ";initial-values="
+	sha2_256          = 18
+	initialStateParam = "?-method-initial-state="
 )
 
 func TestDocumentHandler_Namespace(t *testing.T) {
@@ -77,13 +77,13 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 	require.Contains(t, err.Error(), "unexpected interface for document")
 }
 
-func TestDocumentHandler_ProcessOperation_MazOperationSizeError(t *testing.T) {
+func TestDocumentHandler_ProcessOperation_MaxDeltaSizeError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
 	// modify handler protocol client to decrease max operation size
 	protocol := mocks.NewMockProtocolClient()
-	protocol.Protocol.MaxOperationByteSize = 2
+	protocol.Protocol.MaxDeltaByteSize = 2
 	dochandler.protocol = protocol
 
 	createOp := getCreateOperation()
@@ -91,7 +91,7 @@ func TestDocumentHandler_ProcessOperation_MazOperationSizeError(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(createOp)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
+	require.Contains(t, err.Error(), "delta byte size exceeds protocol max delta byte size")
 }
 
 func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
@@ -134,53 +134,57 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
-	docID := getCreateOperation().ID
+	createReq, err := getCreateRequest()
+	require.NoError(t, err)
 
-	encodedRequest := docutil.EncodeToString(getCreateOperation().OperationBuffer)
+	createOp := getCreateOperation()
+	docID := createOp.ID
 
-	result, err := dochandler.ResolveDocument(docID + initialValuesParam + encodedRequest)
+	initialState := createReq.Delta + "." + createReq.SuffixData
+
+	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
 	require.NotNil(t, result)
 	require.Equal(t, false, result.MethodMetadata.Published)
 
-	result, err = dochandler.ResolveDocument(docID + initialValuesParam)
+	result, err = dochandler.ResolveDocument(docID + initialStateParam)
 	require.NotNil(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "initial values is present but empty")
 
 	// create request not encoded
-	result, err = dochandler.ResolveDocument(docID + initialValuesParam + "payload")
+	result, err = dochandler.ResolveDocument(docID + initialStateParam + "payload")
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "invalid character")
-
-	// invalid create request - not json
-	result, err = dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString([]byte("payload")))
-	require.NotNil(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "invalid character")
+	require.Contains(t, err.Error(), "initial state should have two parts: delta and suffix data")
 
 	// did doesn't match the one created by parsing original create request
-	result, err = dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialValuesParam + encodedRequest)
+	result, err = dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialStateParam + initialState)
 	require.NotNil(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "provided did doesn't match did created from create request")
+
+	// delta and suffix data not encoded (parse create operation fails)
+	result, err = dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
+	require.NotNil(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "invalid character")
 }
 
-func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
+func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
 	// modify handler protocol client to decrease max operation size
 	protocol := mocks.NewMockProtocolClient()
-	protocol.Protocol.MaxOperationByteSize = 2
+	protocol.Protocol.MaxDeltaByteSize = 2
 	dochandler.protocol = protocol
 
 	docID := getCreateOperation().ID
 
-	result, err := dochandler.ResolveDocument(docID + initialValuesParam + docutil.EncodeToString(getCreateOperation().OperationBuffer))
+	result, err := dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
+	require.Contains(t, err.Error(), "delta byte size exceeds protocol max delta byte size")
 }
 
 func TestTransformToExternalDocument(t *testing.T) {
@@ -202,38 +206,20 @@ func TestGetUniquePortion(t *testing.T) {
 	const namespace = "did:sidetree"
 
 	// id doesn't contain namespace
-	uniquePortion, err := getUniquePortion(namespace, "invalid")
+	uniquePortion, err := getSuffix(namespace, "invalid")
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "ID must start with configured namespace")
 
 	// id equals namespace; unique portion is empty
-	uniquePortion, err = getUniquePortion(namespace, namespace+docutil.NamespaceDelimiter)
+	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "unique portion is empty")
 
 	// valid unique portion
 	const unique = "exKwW0HjS5y4zBtJ7vYDwglYhtckdO15JDt1j5F5Q0A"
-	uniquePortion, err = getUniquePortion(namespace, namespace+docutil.NamespaceDelimiter+unique)
+	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter+unique)
 	require.Nil(t, err)
 	require.Equal(t, unique, uniquePortion)
-}
-
-func TestGetParts(t *testing.T) {
-	const testDID = "did:method:abc"
-
-	did, initial, err := getParts(testDID)
-	require.Nil(t, err)
-	require.Empty(t, initial)
-	require.Equal(t, testDID, did)
-
-	did, initial, err = getParts(testDID + initialValuesParam)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "initial values is present but empty")
-
-	did, initial, err = getParts(testDID + initialValuesParam + "xyz")
-	require.Nil(t, err)
-	require.Equal(t, testDID, did)
-	require.Equal(t, initial, "xyz")
 }
 
 func TestProcessOperation_Update(t *testing.T) {
@@ -359,7 +345,7 @@ const validDoc = `{
 }`
 
 func getCreateRequest() (*model.CreateRequest, error) {
-	delta, err := getdelta()
+	delta, err := getDelta()
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +367,7 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}, nil
 }
 
-func getdelta() (*model.DeltaModel, error) {
+func getDelta() (*model.DeltaModel, error) {
 	replacePatch, err := patch.NewReplacePatch(validDoc)
 	if err != nil {
 		return nil, err
@@ -410,7 +396,7 @@ func computeMultihash(data string) string {
 }
 
 func getUpdateRequest() (*model.UpdateRequest, error) {
-	deltaBytes, err := json.Marshal(getUpdatedelta())
+	deltaBytes, err := json.Marshal(getUpdateDelta())
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +408,7 @@ func getUpdateRequest() (*model.UpdateRequest, error) {
 	}, nil
 }
 
-func getUpdatedelta() *model.DeltaModel {
+func getUpdateDelta() *model.DeltaModel {
 	return &model.DeltaModel{
 		UpdateCommitment: computeMultihash("updateReveal"),
 	}

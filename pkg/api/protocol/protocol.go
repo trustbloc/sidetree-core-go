@@ -14,8 +14,8 @@ type Protocol struct {
 	HashAlgorithmInMultiHashCode uint
 	// MaxOperationsPerBatch defines maximum operations per batch
 	MaxOperationsPerBatch uint
-	// MaxOperationByteSize is maximum size of an operation in bytes
-	MaxOperationByteSize uint
+	// MaxDeltaByteSize is maximum size of the `delta` property in bytes
+	MaxDeltaByteSize uint
 }
 
 // Client defines interface for accessing protocol version/information

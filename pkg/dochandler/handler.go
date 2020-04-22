@@ -30,8 +30,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 const (
@@ -141,12 +143,12 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 	}
 
 	// extract did and optional initial document value
-	id, initial, err := getParts(idOrInitialDoc)
+	id, initial, err := request.GetParts(r.namespace, idOrInitialDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	uniquePortion, err := getUniquePortion(r.namespace, id)
+	uniquePortion, err := getSuffix(r.namespace, id)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +160,7 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 	}
 
 	// if document was not found on the blockchain and initial value has been provided resolve using initial value
-	if initial != "" && strings.Contains(err.Error(), "not found") {
+	if initial != nil && strings.Contains(err.Error(), "not found") {
 		return r.resolveRequestWithDocument(id, initial)
 	}
 
@@ -183,18 +185,18 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 	return externalResult, nil
 }
 
-func (r *DocumentHandler) resolveRequestWithDocument(id, encodedCreateReq string) (*document.ResolutionResult, error) {
-	createReqBytes, err := docutil.DecodeString(encodedCreateReq)
+func (r *DocumentHandler) resolveRequestWithDocument(id string, initial *model.CreateRequest) (*document.ResolutionResult, error) {
+	// verify size of each delta does not exceed the maximum allowed limit
+	if len(initial.Delta) > int(r.protocol.Current().MaxDeltaByteSize) {
+		return nil, errors.New("delta byte size exceeds protocol max delta byte size")
+	}
+
+	initialBytes, err := json.Marshal(initial)
 	if err != nil {
 		return nil, err
 	}
 
-	// verify size of each operation does not exceed the maximum allowed limit
-	if len(createReqBytes) > int(r.protocol.Current().MaxOperationByteSize) {
-		return nil, errors.New("operation byte size exceeds protocol max operation byte size")
-	}
-
-	op, err := operation.ParseCreateOperation(createReqBytes, r.protocol.Current())
+	op, err := operation.ParseCreateOperation(initialBytes, r.protocol.Current())
 	if err != nil {
 		return nil, err
 	}
@@ -239,8 +241,8 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 // validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	// check maximum operation size against protocol
-	if len(operation.OperationBuffer) > int(r.protocol.Current().MaxOperationByteSize) {
-		return errors.New("operation byte size exceeds protocol max operation byte size")
+	if len(operation.EncodedDelta) > int(r.protocol.Current().MaxDeltaByteSize) {
+		return errors.New("delta byte size exceeds protocol max delta byte size")
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
@@ -264,8 +266,8 @@ func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
 	return r.validator.IsValidOriginalDocument(docBytes)
 }
 
-// getUniquePortion fetches unique portion of ID which is string after namespace
-func getUniquePortion(namespace, idOrDocument string) (string, error) {
+// getSuffix fetches unique portion of ID which is string after namespace
+func getSuffix(namespace, idOrDocument string) (string, error) {
 	ns := namespace + docutil.NamespaceDelimiter
 	pos := strings.Index(idOrDocument, ns)
 	if pos == -1 {
@@ -278,24 +280,6 @@ func getUniquePortion(namespace, idOrDocument string) (string, error) {
 	}
 
 	return idOrDocument[adjustedPos:], nil
-}
-
-// getParts inspects params string and returns did and optional initial value
-func getParts(params string) (string, string, error) {
-	const initialParam = ";initial-values="
-	pos := strings.Index(params, initialParam)
-	if pos == -1 {
-		// there is no initial-values so params contains only did
-		return params, "", nil
-	}
-
-	adjustedPos := pos + len(initialParam)
-	if adjustedPos >= len(params) {
-		return "", "", errors.New("initial values is present but empty")
-	}
-
-	// return did and initial document value
-	return params[0:pos], params[adjustedPos:], nil
 }
 
 func getInitialDocument(patches []patch.Patch) (document.Document, error) {
