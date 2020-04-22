@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package diddochandler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
@@ -16,20 +17,20 @@ import (
 // UpdateHandler handles the creation and update of DID documents
 type UpdateHandler struct {
 	*dochandler.UpdateHandler
-	basePath string
+	path string
 }
 
 // NewUpdateHandler returns a new DID document update handler
 func NewUpdateHandler(basePath string, processor dochandler.Processor) *UpdateHandler {
 	return &UpdateHandler{
 		UpdateHandler: dochandler.NewUpdateHandler(processor),
-		basePath:      basePath,
+		path:          fmt.Sprintf("%s/operations", basePath),
 	}
 }
 
 // Path returns the context path
 func (h *UpdateHandler) Path() string {
-	return h.basePath
+	return h.path
 }
 
 // Method returns the HTTP method
