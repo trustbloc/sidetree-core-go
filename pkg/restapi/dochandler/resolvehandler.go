@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
@@ -40,7 +41,7 @@ func NewResolveHandler(resolver Resolver) *ResolveHandler {
 
 // Resolve resolves a document
 func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
-	id := getID(req)
+	id := getID(o.resolver.Namespace(), req)
 	logger.Debugf("Resolving DID document for ID [%s]", id)
 	response, err := o.doResolve(id)
 	if err != nil {
@@ -71,6 +72,17 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 	return doc, nil
 }
 
-var getID = func(req *http.Request) string {
-	return mux.Vars(req)["id"]
+var getID = func(namespace string, req *http.Request) string {
+	return mux.Vars(req)["id"] + getInitialState(namespace, req)
+}
+
+func getInitialState(namespace string, req *http.Request) string {
+	initialParam := request.GetInitialStateParam(namespace)
+	initialParamValue := req.URL.Query().Get(initialParam)
+
+	if initialParamValue != "" {
+		return "?" + initialParam + "=" + initialParamValue
+	}
+
+	return ""
 }
