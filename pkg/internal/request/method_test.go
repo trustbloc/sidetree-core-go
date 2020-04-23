@@ -23,6 +23,9 @@ func TestGetMethodInitialParam(t *testing.T) {
 	initialParam := GetInitialStateParam("did:method")
 	require.Equal(t, "-method-initial-state", initialParam)
 
+	initialParam = GetInitialStateParam("did:mymethod:network")
+	require.Equal(t, "-mymethod-initial-state", initialParam)
+
 	// should never happens since namespace is configured
 	initialParam = GetInitialStateParam("did")
 	require.Equal(t, "--initial-state", initialParam)
