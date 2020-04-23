@@ -47,7 +47,7 @@ func TestRESTAPI(t *testing.T) {
 		request, err := json.Marshal(createRequest)
 		require.NoError(t, err)
 
-		resp, err := httpPut(t, clientURL+basePath, request)
+		resp, err := httpPut(t, clientURL+basePath+"/operations", request)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 

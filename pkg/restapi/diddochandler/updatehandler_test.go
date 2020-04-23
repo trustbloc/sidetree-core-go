@@ -33,7 +33,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewUpdateHandler(basePath, docHandler)
-		require.Equal(t, basePath, handler.Path())
+		require.Equal(t, basePath+"/operations", handler.Path())
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
 
@@ -43,7 +43,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(request))
+		req := httptest.NewRequest(http.MethodPost, "/document/operations", bytes.NewReader(request))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 
@@ -75,7 +75,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(request))
+		req := httptest.NewRequest(http.MethodPost, "/document/operations", bytes.NewReader(request))
 		handler.Update(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 
