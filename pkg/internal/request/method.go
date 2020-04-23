@@ -15,6 +15,7 @@ import (
 )
 
 const methodParamTemplate = "-%s-initial-state"
+const minPartsInNamespace = 2
 
 // GetInitialStateParam returns initial state parameter for namespace (more specifically method)
 func GetInitialStateParam(namespace string) string {
@@ -24,12 +25,12 @@ func GetInitialStateParam(namespace string) string {
 
 // getMethod returns method from namespace
 func getMethod(namespace string) string {
-	pos := strings.Index(namespace, ":")
-	if pos == -1 || pos+1 == len(namespace) {
+	parts := strings.Split(namespace, ":")
+	if len(parts) < minPartsInNamespace {
 		return ""
 	}
 
-	return namespace[pos+1:]
+	return parts[1]
 }
 
 // GetParts inspects params string and returns did and optional initial state value
