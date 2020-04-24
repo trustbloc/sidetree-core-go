@@ -39,6 +39,19 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
+	t.Run("validate recover request", func(t *testing.T) {
+		recoverRequest, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+
+		recoverRequest.DidSuffix = ""
+		request, err := json.Marshal(recoverRequest)
+		require.NoError(t, err)
+
+		op, err := ParseRecoverOperation(request, p)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "missing did suffix")
+	})
 	t.Run("parse patch data error", func(t *testing.T) {
 		recoverRequest, err := getDefaultRecoverRequest()
 		require.NoError(t, err)

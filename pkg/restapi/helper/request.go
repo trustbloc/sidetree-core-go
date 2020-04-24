@@ -116,11 +116,7 @@ type UpdateRequestInfo struct {
 
 // NewCreateRequest is utility function to create payload for 'create' request
 func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
-	if info.OpaqueDocument == "" {
-		return nil, errors.New("missing opaque document")
-	}
-
-	if err := validateRecoveryKey(info.RecoveryKey); err != nil {
+	if err := validateCreateRequest(info); err != nil {
 		return nil, err
 	}
 
@@ -165,6 +161,14 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	return MarshalCanonical(schema)
 }
 
+func validateCreateRequest(info *CreateRequestInfo) error {
+	if info.OpaqueDocument == "" {
+		return errors.New("missing opaque document")
+	}
+
+	return validateRecoveryKey(info.RecoveryKey)
+}
+
 func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
 	hash, err := docutil.ComputeMultihash(mhCode, bytes)
 	if err != nil {
@@ -176,8 +180,8 @@ func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
 
 // NewDeactivateRequest is utility function to create payload for 'deactivate' request
 func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
-	if info.DidSuffix == "" {
-		return nil, errors.New("missing did unique suffix")
+	if err := validateDeactivateRequest(info); err != nil {
+		return nil, err
 	}
 
 	signedDataModel := model.DeactivateSignedDataModel{
@@ -200,14 +204,18 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	return MarshalCanonical(schema)
 }
 
-// NewUpdateRequest is utility function to create payload for 'update' request
-func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
+func validateDeactivateRequest(info *DeactivateRequestInfo) error {
 	if info.DidSuffix == "" {
-		return nil, errors.New("missing did unique suffix")
+		return errors.New("missing did unique suffix")
 	}
 
-	if info.Patch == nil {
-		return nil, errors.New("missing update information")
+	return validateSigner(info.Signer, true)
+}
+
+// NewUpdateRequest is utility function to create payload for 'update' request
+func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
+	if err := validateUpdateRequest(info); err != nil {
+		return nil, err
 	}
 
 	patches := []patch.Patch{info.Patch}
@@ -237,9 +245,21 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	return MarshalCanonical(schema)
 }
 
+func validateUpdateRequest(info *UpdateRequestInfo) error {
+	if info.DidSuffix == "" {
+		return errors.New("missing did unique suffix")
+	}
+
+	if info.Patch == nil {
+		return errors.New("missing update information")
+	}
+
+	return validateSigner(info.Signer, false)
+}
+
 // NewRecoverRequest is utility function to create payload for 'recovery' request
 func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
-	err := checkRequiredDataForRecovery(info)
+	err := validateRecoverRequest(info)
 	if err != nil {
 		return nil, err
 	}
@@ -304,9 +324,13 @@ func signPayload(payload string, signer Signer) (*model.JWS, error) {
 		return nil, errors.New("signing algorithm is required")
 	}
 
+	protected := &model.Header{
+		Alg: alg,
+	}
+
 	kid, ok := signer.Headers().KeyID()
-	if !ok || kid == "" {
-		return nil, errors.New("signing kid is required")
+	if ok {
+		protected.Kid = kid
 	}
 
 	jwsSignature, err := internal.NewJWS(signer.Headers(), nil, []byte(payload), signer)
@@ -319,10 +343,6 @@ func signPayload(payload string, signer Signer) (*model.JWS, error) {
 		return nil, err
 	}
 
-	protected := &model.Header{
-		Alg: alg,
-		Kid: kid,
-	}
 	return &model.JWS{
 		Protected: protected,
 		Signature: signature,
@@ -330,13 +350,17 @@ func signPayload(payload string, signer Signer) (*model.JWS, error) {
 	}, nil
 }
 
-func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
+func validateRecoverRequest(info *RecoverRequestInfo) error {
 	if info.DidSuffix == "" {
 		return errors.New("missing did unique suffix")
 	}
 
 	if info.OpaqueDocument == "" {
 		return errors.New("missing opaque document")
+	}
+
+	if err := validateSigner(info.Signer, true); err != nil {
+		return err
 	}
 
 	return validateRecoveryKey(info.RecoveryKey)
@@ -372,4 +396,25 @@ func validateRecoveryKey(key *jws.JWK) error {
 	}
 
 	return key.Validate()
+}
+
+func validateSigner(signer Signer, recovery bool) error {
+	if signer == nil {
+		return errors.New("missing signer")
+	}
+
+	if signer.Headers() == nil {
+		return errors.New("missing protected headers")
+	}
+
+	kid, ok := signer.Headers().KeyID()
+	if recovery && ok {
+		return errors.New("kid must not be provided for recovery signer")
+	}
+
+	if !recovery && (!ok || kid == "") {
+		return errors.New("kid has to be provided for update signer")
+	}
+
+	return nil
 }

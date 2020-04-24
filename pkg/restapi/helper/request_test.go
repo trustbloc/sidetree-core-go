@@ -80,7 +80,7 @@ func TestNewDeactivateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
 	t.Run("signing error", func(t *testing.T) {
-		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
+		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr), true)}
 
 		request, err := NewDeactivateRequest(info)
 		require.Error(t, err)
@@ -91,7 +91,7 @@ func TestNewDeactivateRequest(t *testing.T) {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err)
 
-		signer := ecsigner.New(privateKey, "ES256", "recovery")
+		signer := ecsigner.New(privateKey, "ES256", "")
 
 		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: signer}
 
@@ -106,6 +106,8 @@ func TestNewUpdateRequest(t *testing.T) {
 
 	patch, err := getTestPatch()
 	require.NoError(t, err)
+
+	signer := NewMockSigner(nil, false)
 
 	t.Run("missing unique suffix", func(t *testing.T) {
 		info := &UpdateRequestInfo{}
@@ -124,19 +126,35 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "missing update information")
 	})
 	t.Run("multihash not supported", func(t *testing.T) {
-		info := &UpdateRequestInfo{DidSuffix: didSuffix, Patch: patch}
+		info := &UpdateRequestInfo{
+			DidSuffix: didSuffix,
+			Patch:     patch,
+			Signer:    signer}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
 	})
+	t.Run("signer has to have kid error", func(t *testing.T) {
+		// recovery signer doesn't have kid; update signer has to have it
+		info := &UpdateRequestInfo{
+			DidSuffix:     didSuffix,
+			Patch:         patch,
+			MultihashCode: sha2_256,
+			Signer:        NewMockSigner(nil, true)}
+
+		request, err := NewUpdateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "kid has to be provided for update signer")
+	})
 	t.Run("signing error", func(t *testing.T) {
 		info := &UpdateRequestInfo{
 			DidSuffix:     didSuffix,
 			Patch:         patch,
 			MultihashCode: sha2_256,
-			Signer:        NewMockSigner(errors.New(signerErr))}
+			Signer:        NewMockSigner(errors.New(signerErr), false)}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -194,6 +212,15 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing recovery key")
 	})
+	t.Run("missing signer", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+		info.Signer = nil
+
+		request, err := NewRecoverRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing signer")
+	})
 	t.Run("multihash not supported", func(t *testing.T) {
 		info := getRecoverRequestInfo()
 		info.MultihashCode = 55
@@ -205,7 +232,7 @@ func TestNewRecoverRequest(t *testing.T) {
 	})
 	t.Run("signing error", func(t *testing.T) {
 		info := getRecoverRequestInfo()
-		info.Signer = NewMockSigner(errors.New(signerErr))
+		info.Signer = NewMockSigner(errors.New(signerErr), true)
 
 		request, err := NewRecoverRequest(info)
 		require.Error(t, err)
@@ -282,18 +309,49 @@ func TestSignPayload(t *testing.T) {
 		require.Contains(t, err.Error(), "signing algorithm is required")
 	})
 	t.Run("kid is required", func(t *testing.T) {
-		signer := ecsigner.New(privateKey, "alg", "")
-
-		jws, err := signPayload("test", signer)
-		require.Error(t, err)
-		require.Empty(t, jws)
-		require.Contains(t, err.Error(), "signing kid is required")
-	})
-	t.Run("kid is required", func(t *testing.T) {
-		jws, err := signPayload("", NewMockSigner(errors.New("test error")))
+		jws, err := signPayload("", NewMockSigner(errors.New("test error"), true))
 		require.Error(t, err)
 		require.Empty(t, jws)
 		require.Contains(t, err.Error(), "test error")
+	})
+}
+
+func TestValidateSigner(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	t.Run("success - recovery signer", func(t *testing.T) {
+		signer := ecsigner.New(privateKey, "alg", "")
+
+		err := validateSigner(signer, true)
+		require.NoError(t, err)
+	})
+	t.Run("success - update signer (kid has to be provided)", func(t *testing.T) {
+		signer := ecsigner.New(privateKey, "alg", "kid")
+
+		err := validateSigner(signer, false)
+		require.NoError(t, err)
+	})
+	t.Run("missing signer", func(t *testing.T) {
+		err := validateSigner(nil, false)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing signer")
+	})
+
+	t.Run("kid has to be provided for update signer", func(t *testing.T) {
+		signer := ecsigner.New(privateKey, "alg", "")
+
+		err := validateSigner(signer, false)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "kid has to be provided for update signer")
+	})
+
+	t.Run("kid must not be provided for recovery signer", func(t *testing.T) {
+		signer := ecsigner.New(privateKey, "alg", "kid")
+
+		err := validateSigner(signer, true)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "kid must not be provided for recovery signer")
 	})
 }
 
@@ -313,24 +371,27 @@ func getRecoverRequestInfo() *RecoverRequestInfo {
 		OpaqueDocument: opaqueDoc,
 		RecoveryKey:    jwk,
 		MultihashCode:  sha2_256,
-		Signer:         ecsigner.New(privKey, "ES256", "recovery")}
+		Signer:         ecsigner.New(privKey, "ES256", "")}
 }
 
 // mockSigner implements signer interface
 type mockSigner struct {
-	Err error
+	Recovery bool
+	Err      error
 }
 
-// New creates new mock signer
-func NewMockSigner(err error) Signer {
-	return &mockSigner{Err: err}
+// New creates new mock signer (default to recovery signer)
+func NewMockSigner(err error, recovery bool) Signer {
+	return &mockSigner{Err: err, Recovery: recovery}
 }
 
 // Headers provides required JWS protected headers. It provides information about signing key and algorithm.
 func (ms *mockSigner) Headers() jws.Headers {
 	headers := make(jws.Headers)
-	headers[jws.HeaderKeyID] = "kid"
 	headers[jws.HeaderAlgorithm] = "alg"
+	if !ms.Recovery {
+		headers[jws.HeaderKeyID] = "kid"
+	}
 
 	return headers
 }
