@@ -44,7 +44,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document/operations", bytes.NewReader(request))
-		handler.Update(rw, req)
+		handler.Handler()(rw, req)
 		require.Equal(t, http.StatusOK, rw.Code)
 
 		id, err := getID(createRequest.SuffixData)
@@ -76,7 +76,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document/operations", bytes.NewReader(request))
-		handler.Update(rw, req)
+		handler.Handler()(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 
 		body, err := ioutil.ReadAll(rw.Body)
