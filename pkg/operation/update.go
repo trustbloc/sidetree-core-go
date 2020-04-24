@@ -8,6 +8,7 @@ package operation
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -46,6 +47,11 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if err := validateUpdateRequest(schema); err != nil {
+		return nil, err
+	}
+
 	return schema, nil
 }
 
@@ -66,4 +72,20 @@ func parseUpdateDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	}
 
 	return schema, nil
+}
+
+func validateUpdateRequest(update *model.UpdateRequest) error {
+	if err := validateSignedData(update.SignedData); err != nil {
+		return err
+	}
+
+	if update.Delta == "" {
+		return errors.New("missing delta")
+	}
+
+	if update.DidSuffix == "" {
+		return errors.New("missing did suffix")
+	}
+
+	return nil
 }

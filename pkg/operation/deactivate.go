@@ -57,6 +57,10 @@ func validateDeactivateRequest(req *model.DeactivateRequest) error {
 		return errors.New("missing unique suffix")
 	}
 
+	if err := validateSignedData(req.SignedData); err != nil {
+		return err
+	}
+
 	return nil
 }
 

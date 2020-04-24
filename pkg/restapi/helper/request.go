@@ -120,8 +120,8 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, errors.New("missing opaque document")
 	}
 
-	if info.RecoveryKey == nil {
-		return nil, errors.New("missing recovery key")
+	if err := validateRecoveryKey(info.RecoveryKey); err != nil {
+		return nil, err
 	}
 
 	replace, err := patch.NewReplacePatch(info.OpaqueDocument)
@@ -339,11 +339,7 @@ func checkRequiredDataForRecovery(info *RecoverRequestInfo) error {
 		return errors.New("missing opaque document")
 	}
 
-	if info.RecoveryKey == nil {
-		return errors.New("missing recovery key")
-	}
-
-	return nil
+	return validateRecoveryKey(info.RecoveryKey)
 }
 
 func getDeltaBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, error) {
@@ -368,4 +364,12 @@ func MarshalCanonical(value interface{}) ([]byte, error) {
 	}
 
 	return jsoncanonicalizer.Transform(jsonLiteralValByte)
+}
+
+func validateRecoveryKey(key *jws.JWK) error {
+	if key == nil {
+		return errors.New("missing recovery key")
+	}
+
+	return key.Validate()
 }
