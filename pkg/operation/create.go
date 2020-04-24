@@ -14,6 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -58,6 +59,10 @@ func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 	schema := &model.CreateRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := validateCreateRequest(schema); err != nil {
 		return nil, err
 	}
 
@@ -115,8 +120,8 @@ func validateDelta(delta *model.DeltaModel, code uint) error {
 }
 
 func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
-	if suffixData.RecoveryKey == nil {
-		return errors.New("missing recovery key")
+	if err := validateRecoveryKey(suffixData.RecoveryKey); err != nil {
+		return err
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(code)) {
@@ -125,6 +130,26 @@ func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
 
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(code)) {
 		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
+	}
+
+	return nil
+}
+
+func validateRecoveryKey(key *jws.JWK) error {
+	if key == nil {
+		return errors.New("missing recovery key")
+	}
+
+	return key.Validate()
+}
+
+func validateCreateRequest(create *model.CreateRequest) error {
+	if create.Delta == "" {
+		return errors.New("missing delta")
+	}
+
+	if create.SuffixData == "" {
+		return errors.New("missing suffix data")
 	}
 
 	return nil

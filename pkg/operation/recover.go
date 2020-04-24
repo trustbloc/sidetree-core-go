@@ -36,8 +36,6 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	// TODO: Handle recovery key
-
 	return &batch.Operation{
 		OperationBuffer:              request,
 		Type:                         batch.OperationTypeRecover,
@@ -56,6 +54,10 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	schema := &model.RecoverRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := validateRecoverRequest(schema); err != nil {
 		return nil, err
 	}
 
@@ -101,8 +103,8 @@ func parseSignedDataForRecovery(encoded string, code uint) (*model.RecoverSigned
 }
 
 func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, code uint) error {
-	if signedData.RecoveryKey == nil {
-		return errors.New("missing recovery key")
+	if err := validateRecoveryKey(signedData.RecoveryKey); err != nil {
+		return err
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, uint64(code)) {
@@ -111,6 +113,46 @@ func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, cod
 
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, uint64(code)) {
 		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
+	}
+
+	return nil
+}
+
+func validateSignedData(signedData *model.JWS) error {
+	if signedData == nil {
+		return errors.New("missing signed data")
+	}
+
+	if signedData.Payload == "" {
+		return errors.New("signed data is missing payload")
+	}
+
+	if signedData.Signature == "" {
+		return errors.New("signed data is missing signature")
+	}
+
+	if signedData.Protected == nil {
+		return errors.New("signed data is missing protected headers")
+	}
+
+	if signedData.Protected.Alg == "" {
+		return errors.New("signed data is missing algorithm in protected headers")
+	}
+
+	return nil
+}
+
+func validateRecoverRequest(recover *model.RecoverRequest) error {
+	if err := validateSignedData(recover.SignedData); err != nil {
+		return err
+	}
+
+	if recover.Delta == "" {
+		return errors.New("missing delta")
+	}
+
+	if recover.DidSuffix == "" {
+		return errors.New("missing did suffix")
 	}
 
 	return nil

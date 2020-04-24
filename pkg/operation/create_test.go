@@ -78,6 +78,17 @@ func TestValidateSuffixData(t *testing.T) {
 		require.Contains(t, err.Error(),
 			"missing recovery key")
 	})
+	t.Run("validate recovery key error", func(t *testing.T) {
+		suffixData := getSuffixData()
+		suffixData.RecoveryKey = &jws.JWK{
+			Kty: "kty",
+			Crv: "curve",
+		}
+		err := validateSuffixData(suffixData, sha2_256)
+		require.Error(t, err)
+		require.Contains(t, err.Error(),
+			"x is missing")
+	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		suffixData := getSuffixData()
 		suffixData.DeltaHash = ""
@@ -114,6 +125,35 @@ func TestValidatedelta(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing patches")
+	})
+}
+
+func TestValidateCreateRequest(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		err = validateCreateRequest(create)
+		require.NoError(t, err)
+	})
+
+	t.Run("missing suffix data", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+		create.SuffixData = ""
+
+		err = validateCreateRequest(create)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing suffix data")
+	})
+	t.Run("missing delta", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+		create.Delta = ""
+
+		err = validateCreateRequest(create)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing delta")
 	})
 }
 
@@ -163,8 +203,12 @@ func getDelta() (*model.DeltaModel, error) {
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		DeltaHash:          computeMultihash(validDoc),
-		RecoveryKey:        &jws.JWK{},
+		DeltaHash: computeMultihash(validDoc),
+		RecoveryKey: &jws.JWK{
+			Kty: "kty",
+			Crv: "crv",
+			X:   "x",
+		},
 		RecoveryCommitment: computeMultihash("recoveryReveal"),
 	}
 }

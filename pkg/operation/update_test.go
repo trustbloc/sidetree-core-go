@@ -91,6 +91,43 @@ func TestParseUpdatedelta(t *testing.T) {
 	})
 }
 
+func TestValidateUpdateRequest(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		update, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+
+		err = validateUpdateRequest(update)
+		require.NoError(t, err)
+	})
+	t.Run("missing signed data", func(t *testing.T) {
+		update, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+		update.SignedData = nil
+
+		err = validateUpdateRequest(update)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
+	t.Run("missing did suffix", func(t *testing.T) {
+		update, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+		update.DidSuffix = ""
+
+		err = validateUpdateRequest(update)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing did suffix")
+	})
+	t.Run("missing delta", func(t *testing.T) {
+		update, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+		update.Delta = ""
+
+		err = validateUpdateRequest(update)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing delta")
+	})
+}
+
 func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 	deltaBytes, err := json.Marshal(delta)
 	if err != nil {
@@ -98,6 +135,15 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 	}
 
 	return &model.UpdateRequest{
+		DidSuffix: "suffix",
+		SignedData: &model.JWS{
+			Protected: &model.Header{
+				Alg: "alg",
+				Kid: "kid",
+			},
+			Payload:   "payload",
+			Signature: "signature",
+		},
 		Operation: model.OperationTypeUpdate,
 		Delta:     docutil.EncodeToString(deltaBytes),
 	}, nil

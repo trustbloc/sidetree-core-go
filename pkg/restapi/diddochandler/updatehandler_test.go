@@ -122,8 +122,12 @@ func getDelta() (*model.DeltaModel, error) {
 
 func getSuffixData() *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		DeltaHash:          computeMultihash(validDoc),
-		RecoveryKey:        &jws.JWK{},
+		DeltaHash: computeMultihash(validDoc),
+		RecoveryKey: &jws.JWK{
+			Kty: "kty",
+			Crv: "crv",
+			X:   "x",
+		},
 		RecoveryCommitment: computeMultihash("recoveryReveal"),
 	}
 }

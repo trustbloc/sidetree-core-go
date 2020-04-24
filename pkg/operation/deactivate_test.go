@@ -39,6 +39,12 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "missing unique suffix")
 	})
+	t.Run("missing signed data", func(t *testing.T) {
+		op, err := ParseDeactivateOperation([]byte(`{"did_suffix":"abc"}`), p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing signed data")
+		require.Nil(t, op)
+	})
 	t.Run("parse request", func(t *testing.T) {
 		request, err := json.Marshal("invalidJSON")
 		require.NoError(t, err)
@@ -113,7 +119,12 @@ func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.D
 	}
 
 	jws := &model.JWS{
-		Payload: docutil.EncodeToString(signedDataBytes),
+		Protected: &model.Header{
+			Alg: "alg",
+			Kid: "kid",
+		},
+		Payload:   docutil.EncodeToString(signedDataBytes),
+		Signature: "signature",
 	}
 
 	return &model.DeactivateRequest{

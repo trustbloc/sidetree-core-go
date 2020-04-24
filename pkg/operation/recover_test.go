@@ -101,7 +101,7 @@ func TestParseRecoverOperation(t *testing.T) {
 	})
 }
 
-func TestValidateSignedData(t *testing.T) {
+func TestValidateSignedDataForRecovery(t *testing.T) {
 	t.Run("missing recovery key", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.RecoveryKey = nil
@@ -126,6 +126,113 @@ func TestValidateSignedData(t *testing.T) {
 	})
 }
 
+func TestValidateSignedData(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		signedData := &model.JWS{
+			Protected: &model.Header{
+				Alg: "alg",
+				Kid: "kid",
+			},
+			Payload:   "payload",
+			Signature: "signature",
+		}
+
+		err := validateSignedData(signedData)
+		require.NoError(t, err)
+	})
+	t.Run("missing signed data", func(t *testing.T) {
+		err := validateSignedData(nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
+	t.Run("missing protected header", func(t *testing.T) {
+		signedData := &model.JWS{
+			Payload:   "payload",
+			Signature: "signature",
+		}
+
+		err := validateSignedData(signedData)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "signed data is missing protected header")
+	})
+	t.Run("missing payload", func(t *testing.T) {
+		signedData := &model.JWS{
+			Protected: &model.Header{
+				Alg: "alg",
+				Kid: "kid",
+			},
+			Signature: "signature",
+		}
+
+		err := validateSignedData(signedData)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "signed data is missing payload")
+	})
+	t.Run("missing signature", func(t *testing.T) {
+		signedData := &model.JWS{
+			Protected: &model.Header{
+				Alg: "alg",
+				Kid: "kid",
+			},
+			Payload: "payload",
+		}
+
+		err := validateSignedData(signedData)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "signed data is missing signature")
+	})
+	t.Run("missing algorithm", func(t *testing.T) {
+		signedData := &model.JWS{
+			Protected: &model.Header{
+				Kid: "kid",
+			},
+			Payload:   "payload",
+			Signature: "signature",
+		}
+
+		err := validateSignedData(signedData)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing algorithm in protected header")
+	})
+}
+
+func TestValidateRecoverRequest(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		recover, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+
+		err = validateRecoverRequest(recover)
+		require.NoError(t, err)
+	})
+	t.Run("missing signed data", func(t *testing.T) {
+		recover, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+		recover.SignedData = nil
+
+		err = validateRecoverRequest(recover)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
+	t.Run("missing did suffix", func(t *testing.T) {
+		recover, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+		recover.DidSuffix = ""
+
+		err = validateRecoverRequest(recover)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing did suffix")
+	})
+	t.Run("missing delta", func(t *testing.T) {
+		recover, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+		recover.Delta = ""
+
+		err = validateRecoverRequest(recover)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing delta")
+	})
+}
+
 func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
 	deltaBytes, err := docutil.MarshalCanonical(delta)
 	if err != nil {
@@ -142,8 +249,12 @@ func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedD
 		DidSuffix: "suffix",
 		Delta:     docutil.EncodeToString(deltaBytes),
 		SignedData: &model.JWS{
-			// TODO: JWS encoded
-			Payload: docutil.EncodeToString(signedDataBytes),
+			Protected: &model.Header{
+				Alg: "alg",
+				Kid: "kid",
+			},
+			Payload:   docutil.EncodeToString(signedDataBytes),
+			Signature: "signature",
 		},
 	}, nil
 }
@@ -158,7 +269,11 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 
 func getSignedDataForRecovery() *model.RecoverSignedDataModel {
 	return &model.RecoverSignedDataModel{
-		RecoveryKey:        &jws.JWK{},
+		RecoveryKey: &jws.JWK{
+			Kty: "kty",
+			Crv: "crv",
+			X:   "x",
+		},
 		RecoveryCommitment: computeMultihash("recoveryReveal"),
 		DeltaHash:          computeMultihash("operation"),
 	}
