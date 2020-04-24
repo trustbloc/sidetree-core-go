@@ -253,7 +253,7 @@ func getDeactivateRequestInfo(uniqueSuffix string) *helper.DeactivateRequestInfo
 	return &helper.DeactivateRequestInfo{
 		DidSuffix:           uniqueSuffix,
 		RecoveryRevealValue: recoveryReveal,
-		Signer:              ecsigner.New(privateKey, "ES256", "recovery"),
+		Signer:              ecsigner.New(privateKey, "ES256", ""),
 	}
 }
 
@@ -276,7 +276,7 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 		NextRecoveryRevealValue: []byte("newRecoveryReveal"),
 		NextUpdateRevealValue:   []byte("newUpdateReveal"),
 		MultihashCode:           sha2_256,
-		Signer:                  ecsigner.New(privateKey, "ES256", "recovery"),
+		Signer:                  ecsigner.New(privateKey, "ES256", ""),
 	}
 }
 

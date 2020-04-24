@@ -37,6 +37,19 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
+	t.Run("validate update request error", func(t *testing.T) {
+		req, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+		req.DidSuffix = ""
+
+		payload, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		schema, err := ParseUpdateOperation(payload, p)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "missing did suffix")
+	})
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		delta, err := getUpdateDelta()
 		require.NoError(t, err)
@@ -55,7 +68,7 @@ func TestParseUpdateOperation(t *testing.T) {
 	})
 }
 
-func TestValidateUpdatedelta(t *testing.T) {
+func TestValidateUpdateDelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		delta, err := getUpdateDelta()
 		require.NoError(t, err)
@@ -68,7 +81,7 @@ func TestValidateUpdatedelta(t *testing.T) {
 	})
 }
 
-func TestParseUpdatedelta(t *testing.T) {
+func TestParseUpdateDelta(t *testing.T) {
 	t.Run("invalid next update commitment", func(t *testing.T) {
 		delta, err := getUpdateDelta()
 		require.NoError(t, err)

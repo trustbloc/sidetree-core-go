@@ -139,5 +139,5 @@ type Protected struct {
 
 	// kid
 	// Required: true
-	Kid string `json:"kid"`
+	Kid string `json:"kid,omitempty"`
 }
