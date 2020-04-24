@@ -65,7 +65,7 @@ func TestRESTAPI(t *testing.T) {
 		didID, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
-		resp, err := httpGet(t, clientURL+basePath+"/"+didID)
+		resp, err := httpGet(t, clientURL+basePath+"/identifiers/"+didID)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 
