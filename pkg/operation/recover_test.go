@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -247,12 +248,12 @@ func TestValidateRecoverRequest(t *testing.T) {
 }
 
 func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
-	deltaBytes, err := docutil.MarshalCanonical(delta)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
 
-	signedDataBytes, err := docutil.MarshalCanonical(signedData)
+	signedDataBytes, err := canonicalizer.MarshalCanonical(signedData)
 	if err != nil {
 		return nil, err
 	}

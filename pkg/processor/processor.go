@@ -9,6 +9,7 @@ package processor
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 
 	log "github.com/sirupsen/logrus"
@@ -20,11 +21,6 @@ import (
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-)
-
-// recovery key ID
-const (
-	recoveryKID = "recovery"
 )
 
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
@@ -188,34 +184,40 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	if operation.SignedData == nil {
-		return nil, errors.New("missing signedData")
-	}
-
-	if operation.SignedData.Protected == nil {
-		return nil, errors.New("missing protected section of signedData")
+	if err := checkSignedData(operation.SignedData); err != nil {
+		return nil, err
 	}
 
 	err := isValidHash(operation.UpdateRevealValue, rm.UpdateCommitment)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update reveal value doesn't match update commitment: %s", err.Error())
 	}
 
-	signingKID := operation.SignedData.Protected.Kid
-
-	var signingPublicKey *jws.JWK
-	if signingKID == recoveryKID {
-		signingPublicKey = rm.RecoveryKey
-	} else {
-		signingPublicKey, err = getSigningPublicKeyFromDoc(rm.Doc, signingKID)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	_, err = internal.ParseJWS(operation.SignedData.Signature, signingPublicKey)
+	signingPublicKey, err := getSigningPublicKeyFromDoc(rm.Doc, operation.SignedData.Protected.Kid)
 	if err != nil {
 		return nil, err
+	}
+
+	jwsParts, err := internal.ParseJWS(operation.SignedData.Signature, signingPublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
+	if err != nil {
+		return nil, err
+	}
+
+	var signedDataModel model.UpdateSignedDataModel
+	err = json.Unmarshal(decoded, &signedDataModel)
+	if err != nil {
+		return nil, err
+	}
+
+	// verify the delta against the signed delta hash
+	err = isValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
+	if err != nil {
+		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
 
 	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)
@@ -230,6 +232,18 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		UpdateCommitment:               operation.UpdateCommitment,
 		RecoveryCommitment:             rm.RecoveryCommitment,
 		RecoveryKey:                    rm.RecoveryKey}, nil
+}
+
+func checkSignedData(signedData *model.JWS) error {
+	if signedData == nil {
+		return errors.New("missing signed data")
+	}
+
+	if signedData.Protected == nil {
+		return errors.New("missing protected section of signed data")
+	}
+
+	return nil
 }
 
 func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, error) {
@@ -270,14 +284,38 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
+	if err := checkSignedData(operation.SignedData); err != nil {
+		return nil, err
+	}
+
 	err := isValidHash(operation.RecoveryRevealValue, rm.RecoveryCommitment)
+	if err != nil {
+		return nil, fmt.Errorf("deactivate recovery reveal value doesn't match recovery commitment: %s", err.Error())
+	}
+
+	jwsParts, err := internal.ParseJWS(operation.SignedData.Signature, rm.RecoveryKey)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = internal.ParseJWS(operation.SignedData.Signature, rm.RecoveryKey)
+	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
 	if err != nil {
 		return nil, err
+	}
+
+	var signedDataModel model.DeactivateSignedDataModel
+	err = json.Unmarshal(decoded, &signedDataModel)
+	if err != nil {
+		return nil, err
+	}
+
+	// verify signed did suffix against actual did suffix
+	if operation.UniqueSuffix != signedDataModel.DidSuffix {
+		return nil, errors.New("did suffix doesn't match signed value")
+	}
+
+	if operation.RecoveryRevealValue != signedDataModel.RecoveryRevealValue {
+		return nil, errors.New("recovery reveal value doesn't match signed value")
 	}
 
 	return &resolutionModel{
@@ -295,9 +333,13 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
+	if err := checkSignedData(operation.SignedData); err != nil {
+		return nil, err
+	}
+
 	err := isValidHash(operation.RecoveryRevealValue, rm.RecoveryCommitment)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("recovery reveal value doesn't match recovery commitment: %s", err.Error())
 	}
 
 	jwsParts, err := internal.ParseJWS(operation.SignedData.Signature, rm.RecoveryKey)
@@ -314,6 +356,12 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 	err = json.Unmarshal(decoded, &signedDataModel)
 	if err != nil {
 		return nil, err
+	}
+
+	// verify the delta against the signed delta hash
+	err = isValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
+	if err != nil {
+		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
 	}
 
 	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)

@@ -18,6 +18,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -91,12 +92,12 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := docutil.MarshalCanonical(delta)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixDataBytes, err := docutil.MarshalCanonical(getSuffixData())
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData())
 	if err != nil {
 		return nil, err
 	}

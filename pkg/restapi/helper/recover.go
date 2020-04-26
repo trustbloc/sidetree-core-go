@@ -10,6 +10,8 @@ import (
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -78,7 +80,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		RecoveryCommitment: mhNextRecoveryCommitmentHash,
 	}
 
-	jws, err := signModel(signedDataModel, info.Signer)
+	jws, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +93,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		SignedData:          jws,
 	}
 
-	return MarshalCanonical(schema)
+	return canonicalizer.MarshalCanonical(schema)
 }
 
 func validateRecoverRequest(info *RecoverRequestInfo) error {

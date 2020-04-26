@@ -10,6 +10,8 @@ import (
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -54,7 +56,11 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	jws, err := signPayload(mhDelta, info.Signer)
+	signedDataModel := model.UpdateSignedDataModel{
+		DeltaHash: mhDelta,
+	}
+
+	jws, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +73,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		SignedData:        jws,
 	}
 
-	return MarshalCanonical(schema)
+	return canonicalizer.MarshalCanonical(schema)
 }
 
 func validateUpdateRequest(info *UpdateRequestInfo) error {
