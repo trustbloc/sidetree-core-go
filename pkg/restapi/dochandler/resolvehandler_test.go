@@ -83,6 +83,25 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		fmt.Printf("Response: %s\n", rw.Body.String())
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
+	t.Run("invalid initial state - bad request error", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().
+			WithNamespace(namespace)
+
+		id := namespace + docutil.NamespaceDelimiter + "abc"
+
+		initialParam := request.GetInitialStateParam(namespace)
+
+		// pass parameter without value
+		initialState := "?" + initialParam + "="
+
+		getID = func(namespace string, req *http.Request) string { return id + initialState }
+		handler := NewResolveHandler(docHandler)
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/document", nil)
+		handler.Resolve(rw, req)
+		require.Equal(t, http.StatusBadRequest, rw.Code)
+	})
+
 	t.Run("Invalid ID", func(t *testing.T) {
 		getID = func(namespace string, req *http.Request) string { return "someid" }
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
