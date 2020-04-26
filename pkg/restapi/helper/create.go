@@ -7,11 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package helper
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/jsoncanonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -71,7 +70,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		RecoveryCommitment: mhNextRecoveryCommitmentHash,
 	}
 
-	suffixDataBytes, err := MarshalCanonical(suffixData)
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}
 
-	return MarshalCanonical(schema)
+	return canonicalizer.MarshalCanonical(schema)
 }
 
 func validateCreateRequest(info *CreateRequestInfo) error {
@@ -121,15 +120,5 @@ func getDeltaBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, e
 		Patches:          patches,
 	}
 
-	return MarshalCanonical(delta)
-}
-
-// MarshalCanonical is using JCS RFC canonicalization
-func MarshalCanonical(value interface{}) ([]byte, error) {
-	jsonLiteralValByte, err := json.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsoncanonicalizer.Transform(jsonLiteralValByte)
+	return canonicalizer.MarshalCanonical(delta)
 }

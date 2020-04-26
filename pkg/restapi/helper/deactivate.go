@@ -10,7 +10,8 @@ import (
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -49,7 +50,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
 	}
 
-	jws, err := signModel(signedDataModel, info.Signer)
+	jws, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 		SignedData:          jws,
 	}
 
-	return MarshalCanonical(schema)
+	return canonicalizer.MarshalCanonical(schema)
 }
 
 func validateDeactivateRequest(info *DeactivateRequestInfo) error {
@@ -91,47 +92,4 @@ func validateSigner(signer Signer, recovery bool) error {
 	}
 
 	return nil
-}
-
-func signModel(data interface{}, signer Signer) (*model.JWS, error) {
-	signedDataBytes, err := MarshalCanonical(data)
-	if err != nil {
-		return nil, err
-	}
-
-	payload := docutil.EncodeToString(signedDataBytes)
-
-	return signPayload(payload, signer)
-}
-
-func signPayload(payload string, signer Signer) (*model.JWS, error) {
-	alg, ok := signer.Headers().Algorithm()
-	if !ok || alg == "" {
-		return nil, errors.New("signing algorithm is required")
-	}
-
-	protected := &model.Header{
-		Alg: alg,
-	}
-
-	kid, ok := signer.Headers().KeyID()
-	if ok {
-		protected.Kid = kid
-	}
-
-	jwsSignature, err := internal.NewJWS(signer.Headers(), nil, []byte(payload), signer)
-	if err != nil {
-		return nil, err
-	}
-
-	signature, err := jwsSignature.SerializeCompact(false)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.JWS{
-		Protected: protected,
-		Signature: signature,
-		Payload:   payload,
-	}, nil
 }

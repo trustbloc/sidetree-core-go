@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -113,7 +114,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 }
 
 func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.DeactivateRequest, error) {
-	signedDataBytes, err := docutil.MarshalCanonical(signedData)
+	signedDataBytes, err := canonicalizer.MarshalCanonical(signedData)
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,8 @@ import (
 
 const (
 	didSuffix            = "did_suffix"
-	didContext           = "https://w3id.org/did/v1"
+	didContext           = "https://www.w3.org/ns/did/v1"
+	sidetreeContext      = "https://identity.foundation/sidetree/context-v1.jsonld"
 	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
 )
 
@@ -104,7 +105,7 @@ func (v *Validator) TransformDocument(doc document.Document) (*document.Resoluti
 	external := document.DidDocumentFromJSONLDObject(make(document.DIDDocument))
 
 	// add context and id
-	external[document.ContextProperty] = []interface{}{didContext}
+	external[document.ContextProperty] = []interface{}{didContext, sidetreeContext}
 	external[document.IDProperty] = internal.ID()
 
 	result := &document.ResolutionResult{

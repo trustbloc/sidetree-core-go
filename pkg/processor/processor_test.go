@@ -21,7 +21,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
@@ -36,77 +37,73 @@ const (
 
 	updateReveal   = "updateReveal"
 	recoveryReveal = "recoveryReveal"
+
+	updateKey = "update-key"
 )
 
 func TestResolve(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+	t.Run("success", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+		op := New("test", store)
 
-	op := New("test", store)
+		doc, err := op.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+		require.NotNil(t, doc)
+	})
 
-	doc, err := op.Resolve(uniqueSuffix)
+	t.Run("document not found error", func(t *testing.T) {
+		store, _ := getDefaultStore(privateKey)
 
-	require.Nil(t, err)
-	require.NotNil(t, doc)
-}
+		op := New("test", store)
+		doc, err := op.Resolve(dummyUniqueSuffix)
+		require.Nil(t, doc)
+		require.Error(t, err)
+		require.Equal(t, "uniqueSuffix not found in the store", err.Error())
+	})
 
-func TestDocumentNotFoundError(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	t.Run("store error", func(t *testing.T) {
+		testErr := errors.New("test store error")
+		store := mocks.NewMockOperationStore(testErr)
+		p := New("test", store)
 
-	store, _ := getDefaultStore(privateKey)
+		doc, err := p.Resolve("suffix")
+		require.Nil(t, doc)
+		require.Error(t, err)
+		require.Equal(t, testErr, err)
+	})
 
-	op := New("test", store)
-	doc, err := op.Resolve(dummyUniqueSuffix)
-	require.Nil(t, doc)
-	require.Error(t, err)
-	require.Equal(t, "uniqueSuffix not found in the store", err.Error())
-}
+	t.Run("resolution error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
 
-func TestResolveMockStoreError(t *testing.T) {
-	testErr := errors.New("test store error")
-	store := mocks.NewMockOperationStore(testErr)
-	p := New("test", store)
+		jsonPatch, err := patch.NewJSONPatch("[]")
+		require.NoError(t, err)
+		jsonPatch["patches"] = "invalid"
 
-	doc, err := p.Resolve("suffix")
-	require.Nil(t, doc)
-	require.Error(t, err)
-	require.Equal(t, testErr, err)
-}
+		createOp, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
+		createOp.Delta = &model.DeltaModel{
+			Patches: []patch.Patch{jsonPatch},
+		}
 
-func TestResolveError(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		err = store.Put(createOp)
+		require.Nil(t, err)
 
-	store := mocks.NewMockOperationStore(nil)
-
-	jsonPatch, err := patch.NewJSONPatch("[]")
-	require.NoError(t, err)
-	jsonPatch["patches"] = "invalid"
-
-	createOp, err := getCreateOperation(privateKey)
-	require.NoError(t, err)
-	createOp.Delta = &model.DeltaModel{
-		Patches: []patch.Patch{jsonPatch},
-	}
-
-	err = store.Put(createOp)
-	require.Nil(t, err)
-
-	p := New("test", store)
-	doc, err := p.Resolve(createOp.UniqueSuffix)
-	require.Nil(t, doc)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "expected array")
+		p := New("test", store)
+		doc, err := p.Resolve(createOp.UniqueSuffix)
+		require.Nil(t, doc)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "expected array")
+	})
 }
 
 func TestUpdateDocument(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	t.Run("Success", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(privateKey)
 
 		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
@@ -114,17 +111,29 @@ func TestUpdateDocument(t *testing.T) {
 		err = store.Put(updateOp)
 		require.Nil(t, err)
 
-		p := New("test", store) //Storing operation in the test store
+		p := New("test", store)
 		result, err := p.Resolve(uniqueSuffix)
 		require.Nil(t, err)
 
-		didDoc := document.FromJSONLDObject(result.Document)
+		// check if service type value is updated (done via json patch)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special1", didDoc.Services()[0].Type())
 
-		//updated instance value inside public key via json patch
-		require.Equal(t, "special1", didDoc.PublicKeys()[0].JWK().Kty())
+		// test consecutive update
+		updateOp, err = getUpdateOperation(privateKey, uniqueSuffix, 2)
+		require.Nil(t, err)
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated again (done via json patch)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special2", didDoc.Services()[0].Type())
 	})
 
-	t.Run("Missing signed data -> error", func(t *testing.T) {
+	t.Run("missing signed data error", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(privateKey)
 
 		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
@@ -135,12 +144,14 @@ func TestUpdateDocument(t *testing.T) {
 		err = store.Put(updateOp)
 		require.NoError(t, err)
 
-		p := New("test", store) //Storing operation in the test store
-		_, err = p.Resolve(uniqueSuffix)
-		require.Error(t, err, "missing protected section of signedData")
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "missing signed data")
 	})
 
-	t.Run("Missing protected section of signed data -> error", func(t *testing.T) {
+	t.Run("missing protected section of signed data error", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(privateKey)
 
 		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
@@ -151,201 +162,163 @@ func TestUpdateDocument(t *testing.T) {
 		err = store.Put(updateOp)
 		require.NoError(t, err)
 
-		p := New("test", store) //Storing operation in the test store
-		_, err = p.Resolve(uniqueSuffix)
-		require.Error(t, err, "missing protected section of signedData")
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err, "missing protected section of signed data")
+		require.Nil(t, doc)
+	})
+
+	t.Run("invalid reveal value error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 77)
+		require.Nil(t, err)
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+		require.Nil(t, doc)
+	})
+
+	t.Run("invalid signature error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		// sign update operation with different  key (than one used in create)
+		differentKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		updateOp, err := getUpdateOperation(differentKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		err = store.Put(updateOp)
+		require.NoError(t, err)
+
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "ecdsa: invalid signature")
+		require.Nil(t, doc)
+	})
+
+	t.Run("signing key not in document error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		s := ecsigner.New(privateKey, "ES256", "some-key")
+		updateOp, err := getUpdateOperationWithSigner(s, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.NotNil(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "signing public key not found in the document")
+	})
+
+	t.Run("delta hash doesn't match delta error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		updateOp.EncodedDelta = docutil.EncodeToString([]byte("other value"))
+
+		err = store.Put(updateOp)
+		require.NoError(t, err)
+
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "update delta doesn't match delta hash")
 	})
 }
 
-func TestUpdateDocument_InvalidRevealValue(t *testing.T) {
+func TestProcessOperation(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+	t.Run("update is first operation error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
 
-	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 77)
-	require.Nil(t, err)
-	err = store.Put(updateOp)
-	require.Nil(t, err)
+		const uniqueSuffix = "uniqueSuffix"
+		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+		err = store.Put(updateOp)
+		require.Nil(t, err)
 
-	p := New("test", store) //Storing operation in the test store
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
-	require.Nil(t, doc)
-}
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Equal(t, "missing create operation", err.Error())
+	})
 
-func TestConsecutiveUpdates(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	t.Run("create is second operation error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+		store.Validate = false
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+		createOp, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
 
-	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
-	require.Nil(t, err)
-	err = store.Put(updateOp)
-	require.Nil(t, err)
+		// store create operation
+		err = store.Put(createOp)
+		require.Nil(t, err)
 
-	updateOp, err = getUpdateOperation(privateKey, uniqueSuffix, 2)
-	require.Nil(t, err)
-	err = store.Put(updateOp)
-	require.Nil(t, err)
+		// store create operation again
+		err = store.Put(createOp)
+		require.Nil(t, err)
 
-	p := New("test", store)
-	result, err := p.Resolve(uniqueSuffix)
-	require.Nil(t, err)
+		p := New("test", store)
+		doc, err := p.Resolve(createOp.UniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Equal(t, "create has to be the first operation", err.Error())
+	})
 
-	didDoc := document.FromJSONLDObject(result.Document)
+	t.Run("recover after deactivate error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-	// double updated instance value inside public key via json patch
-	require.Equal(t, "special2", didDoc.PublicKeys()[0].JWK().Kty())
-}
+		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+		err = store.Put(deactivateOp)
+		require.Nil(t, err)
 
-func TestUpdate_InvalidSignature(t *testing.T) {
-	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 2)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
 
-	store, uniqueSuffix := getDefaultStore(recoveryKey)
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "recover can only be applied to an existing document")
+		require.Nil(t, doc)
+	})
 
-	// sign recover operation with different recovery key (than one used in create)
-	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	t.Run("invalid operation type error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
 
-	updateOp, err := getUpdateOperation(differentRecoveryKey, uniqueSuffix, 1)
-	require.NoError(t, err)
+		createOp, err := getCreateOperation(privateKey)
+		require.NoError(t, err)
 
-	err = store.Put(updateOp)
-	require.NoError(t, err)
+		createOp.Type = "invalid"
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "ecdsa: invalid signature")
-	require.Nil(t, doc)
-}
+		// store create operation
+		err = store.Put(createOp)
+		require.Nil(t, err)
 
-func TestUpdate_PublicKeyInDocument(t *testing.T) {
-	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	store := mocks.NewMockOperationStore(nil)
-
-	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	publicKey, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
-	require.NoError(t, err)
-
-	publicKeyBytes, err := json.Marshal(publicKey)
-	require.NoError(t, err)
-
-	const keyID = "public-key"
-	opaque := fmt.Sprintf(docTemplate, keyID, string(publicKeyBytes))
-
-	// get and store create operation
-	createOp, err := getCreateOperationWithDoc(recoveryKey, opaque)
-	require.NoError(t, err)
-	err = store.Put(createOp)
-	require.Nil(t, err)
-
-	s := ecsigner.New(updateKey, "ES256", keyID)
-	updateOp, err := getUpdateOperationWithSigner(s, createOp.UniqueSuffix, 1)
-	require.NoError(t, err)
-
-	err = store.Put(updateOp)
-	require.NoError(t, err)
-
-	p := New("test", store)
-	doc, err := p.Resolve(createOp.UniqueSuffix)
-	require.NoError(t, err)
-	require.NotNil(t, doc)
-}
-
-func TestUpdateDocument_SigningKeyNotInDocument(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	store, uniqueSuffix := getDefaultStore(privateKey)
-
-	s := ecsigner.New(privateKey, "ES256", "some-key")
-	updateOp, err := getUpdateOperationWithSigner(s, uniqueSuffix, 1)
-	require.NoError(t, err)
-
-	err = store.Put(updateOp)
-	require.Nil(t, err)
-
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "signing public key not found in the document")
-}
-
-func TestProcessOperation_UpdateIsFirstOperation(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	store := mocks.NewMockOperationStore(nil)
-
-	uniqueSuffix := "uniqueSuffix"
-
-	updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
-	require.Nil(t, err)
-	err = store.Put(updateOp)
-	require.Nil(t, err)
-
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Nil(t, doc)
-	require.Equal(t, "missing create operation", err.Error())
-}
-
-func TestProcessOperation_CreateIsSecondOperation(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	store := mocks.NewMockOperationStore(nil)
-	store.Validate = false
-
-	createOp, err := getCreateOperation(privateKey)
-	require.NoError(t, err)
-
-	// store create operation
-	err = store.Put(createOp)
-	require.Nil(t, err)
-
-	// store create operation again
-	err = store.Put(createOp)
-	require.Nil(t, err)
-
-	p := New("test", store)
-	doc, err := p.Resolve(createOp.UniqueSuffix)
-	require.Error(t, err)
-	require.Nil(t, doc)
-	require.Equal(t, "create has to be the first operation", err.Error())
-}
-
-func TestProcessOperation_InvalidOperationType(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	store := mocks.NewMockOperationStore(nil)
-
-	createOp, err := getCreateOperation(privateKey)
-	require.NoError(t, err)
-
-	createOp.Type = "invalid"
-
-	// store create operation
-	err = store.Put(createOp)
-	require.Nil(t, err)
-
-	p := New("test", store)
-	doc, err := p.Resolve(createOp.UniqueSuffix)
-	require.Error(t, err)
-	require.Nil(t, doc)
-	require.Equal(t, "operation type not supported for process operation", err.Error())
+		p := New("test", store)
+		doc, err := p.Resolve(createOp.UniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Equal(t, "operation type not supported for process operation", err.Error())
+	})
 }
 
 func TestIsValidHashErrors(t *testing.T) {
@@ -371,210 +344,258 @@ func TestDeactivate(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+	t.Run("success", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
+		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
 
-	err = store.Put(deactivateOp)
-	require.Nil(t, err)
+		err = store.Put(deactivateOp)
+		require.Nil(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "document was deactivated")
-	require.Nil(t, doc)
-}
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "document was deactivated")
+		require.Nil(t, doc)
 
-func TestConsecutiveDeactivate(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		// deactivate same document again - error
+		deactivateOp, err = getDeactivateOperation(privateKey, uniqueSuffix, 2)
+		require.NoError(t, err)
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+		doc, err = p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
+		require.Nil(t, doc)
+	})
 
-	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	err = store.Put(deactivateOp)
-	require.Nil(t, err)
+	t.Run("document not found error", func(t *testing.T) {
+		store, _ := getDefaultStore(privateKey)
 
-	deactivateOp, err = getDeactivateOperation(privateKey, uniqueSuffix, 2)
-	require.NoError(t, err)
-	err = store.Put(deactivateOp)
-	require.Nil(t, err)
+		deactivateOp, err := getDeactivateOperation(privateKey, dummyUniqueSuffix, 0)
+		require.NoError(t, err)
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
-	require.Nil(t, doc)
-}
+		p := New("test", store)
+		doc, err := p.Resolve(dummyUniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
+		require.Nil(t, doc)
+	})
 
-func TestDeactivate_DocumentNotFound(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	t.Run("invalid recovery reveal value error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-	store, _ := getDefaultStore(privateKey)
+		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+		deactivateOp.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
 
-	deactivateOp, err := getDeactivateOperation(privateKey, dummyUniqueSuffix, 0)
-	require.NoError(t, err)
-	err = store.Put(deactivateOp)
-	require.Nil(t, err)
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+		require.Nil(t, doc)
+	})
 
-	p := New("test", store)
-	doc, err := p.Resolve(dummyUniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
-	require.Nil(t, doc)
-}
+	t.Run("missing signed data error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-func TestDeactivate_InvalidRecoveryRevealValue(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+		deactivateOp.SignedData = nil
 
-	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	deactivateOp.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
-	err = store.Put(deactivateOp)
-	require.NoError(t, err)
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
-	require.Nil(t, doc)
-}
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
 
-func TestDeactivate_InvalidSignature(t *testing.T) {
-	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	t.Run("invalid signature error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-	store, uniqueSuffix := getDefaultStore(recoveryKey)
+		// sign recover operation with different recovery key (than one used in create)
+		differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
 
-	// sign recover operation with different recovery key (than one used in create)
-	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		deactivateOp, err := getDeactivateOperation(differentRecoveryKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
 
-	deactivateOp, err := getDeactivateOperation(differentRecoveryKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	err = store.Put(deactivateOp)
-	require.NoError(t, err)
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "ecdsa: invalid signature")
+		require.Nil(t, doc)
+	})
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "ecdsa: invalid signature")
-	require.Nil(t, doc)
+	t.Run("did suffix doesn't match signed value error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		s := ecsigner.New(privateKey, "ES256", "")
+
+		jws, err := signutil.SignModel(&model.DeactivateSignedDataModel{
+			DidSuffix:           "other",
+			RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
+		}, s)
+		require.NoError(t, err)
+
+		deactivateOp.SignedData = jws
+
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
+
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "did suffix doesn't match signed value")
+	})
+
+	t.Run("recovery reveal value doesn't match signed value", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(privateKey)
+
+		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		s := ecsigner.New(privateKey, "ES256", "")
+
+		jws, err := signutil.SignModel(&model.DeactivateSignedDataModel{
+			DidSuffix:           uniqueSuffix,
+			RecoveryRevealValue: docutil.EncodeToString([]byte("other")),
+		}, s)
+		require.NoError(t, err)
+
+		deactivateOp.SignedData = jws
+
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
+
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "recovery reveal value doesn't match signed value")
+	})
 }
 
 func TestRecover(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+	t.Run("success", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey)
 
-	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	err = store.Put(recoverOp)
-	require.Nil(t, err)
+		recoverOp, err := getRecoverOperation(recoveryKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
 
-	p := New("test", store)
-	result, err := p.Resolve(uniqueSuffix)
-	require.NoError(t, err)
+		p := New("test", store)
+		result, err := p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
 
-	// test for recovered key
-	docBytes, err := result.Document.Bytes()
-	require.NoError(t, err)
-	require.Contains(t, string(docBytes), "recovered")
-}
+		// test for recovered key
+		docBytes, err := result.Document.Bytes()
+		require.NoError(t, err)
+		require.Contains(t, string(docBytes), "recovered")
 
-func TestConsecutiveRecover(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		// apply recover again - consecutive recoveries are valid
+		recoverOp, err = getRecoverOperation(recoveryKey, uniqueSuffix, 2)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+	})
 
-	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	err = store.Put(recoverOp)
-	require.Nil(t, err)
+	t.Run("missing signed data error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey)
 
-	recoverOp, err = getRecoverOperation(privateKey, uniqueSuffix, 2)
-	require.NoError(t, err)
-	err = store.Put(recoverOp)
-	require.Nil(t, err)
+		recoverOp, err := getRecoverOperation(recoveryKey, uniqueSuffix, 1)
+		require.NoError(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.NoError(t, err)
-	require.NotNil(t, doc)
-}
+		recoverOp.SignedData = nil
 
-func TestRecover_InvalidSignature(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
 
-	// sign recover operation with different recovery key (than one used in create)
-	differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	t.Run("invalid signature error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey)
 
-	recoverOp, err := getRecoverOperation(differentRecoveryKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	err = store.Put(recoverOp)
-	require.Nil(t, err)
+		// sign recover operation with different recovery key (than one used in create)
+		differentRecoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "ecdsa: invalid signature")
-}
+		recoverOp, err := getRecoverOperation(differentRecoveryKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
 
-func TestRecoverAfterDeactivate(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "ecdsa: invalid signature")
+	})
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+	t.Run("invalid reveal value error", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
 
-	deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	err = store.Put(deactivateOp)
-	require.Nil(t, err)
+		store, uniqueSuffix := getDefaultStore(privateKey)
 
-	recoverOp, err := getRecoverOperation(privateKey, uniqueSuffix, 2)
-	require.NoError(t, err)
-	err = store.Put(recoverOp)
-	require.Nil(t, err)
+		op, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+		op.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
+		err = store.Put(op)
+		require.NoError(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "recover can only be applied to an existing document")
-	require.Nil(t, doc)
-}
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+		require.Nil(t, doc)
+	})
+	t.Run("delta hash doesn't match delta error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey)
 
-func TestRecover_InvalidRecoveryRevealValue(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+		recoverOp, err := getRecoverOperation(recoveryKey, uniqueSuffix, 1)
+		require.NoError(t, err)
 
-	store, uniqueSuffix := getDefaultStore(privateKey)
+		recoverOp.EncodedDelta = docutil.EncodeToString([]byte("other value"))
 
-	op, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
-	require.NoError(t, err)
-	op.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
-	err = store.Put(op)
-	require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
 
-	p := New("test", store)
-	doc, err := p.Resolve(uniqueSuffix)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
-	require.Nil(t, doc)
+		p := New("test", store)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "recover delta doesn't match delta hash")
+	})
 }
 
 func TestOpsWithTxnGreaterThan(t *testing.T) {
@@ -603,11 +624,11 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
-		"path":  "/publicKey/0/jwk/kty",
+		"path":  "/service/0/type",
 		"value": "special" + strconv.Itoa(int(operationNumber)),
 	}
 
-	patchBytes, err := docutil.MarshalCanonical([]map[string]interface{}{p})
+	patchBytes, err := canonicalizer.MarshalCanonical([]map[string]interface{}{p})
 	if err != nil {
 		return nil, err
 	}
@@ -626,12 +647,16 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	deltaBytes, err := docutil.MarshalCanonical(delta)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
 
-	jws, err := signPayload(getEncodedMultihash(deltaBytes), s)
+	signedData := &model.UpdateSignedDataModel{
+		DeltaHash: getEncodedMultihash(deltaBytes),
+	}
+
+	jws, err := signutil.SignModel(signedData, s)
 	if err != nil {
 		return nil, err
 	}
@@ -640,6 +665,7 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 		ID:                           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:                 uniqueSuffix,
 		HashAlgorithmInMultiHashCode: sha2_256,
+		EncodedDelta:                 docutil.EncodeToString(deltaBytes),
 		Delta:                        delta,
 		Type:                         batch.OperationTypeUpdate,
 		TransactionNumber:            uint64(operationNumber),
@@ -652,7 +678,7 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 }
 
 func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
-	s := ecsigner.New(privateKey, "ES256", "recovery")
+	s := ecsigner.New(privateKey, "ES256", updateKey)
 
 	return getUpdateOperationWithSigner(s, uniqueSuffix, operationNumber)
 }
@@ -660,12 +686,12 @@ func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	signedDataModel := model.DeactivateSignedDataModel{
 		DidSuffix:           uniqueSuffix,
-		RecoveryRevealValue: docutil.EncodeToString([]byte("recovery")),
+		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
 	}
 
-	s := ecsigner.New(privateKey, "ES256", "recovery")
+	s := ecsigner.New(privateKey, "ES256", "")
 
-	jws, err := signModel(signedDataModel, s)
+	jws, err := signutil.SignModel(signedDataModel, s)
 	if err != nil {
 		return nil, err
 	}
@@ -717,12 +743,14 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 }
 
 func getRecoverRequest(privateKey *ecdsa.PrivateKey, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
-	deltaBytes, err := docutil.MarshalCanonical(deltaModel)
+	deltaBytes, err := canonicalizer.MarshalCanonical(deltaModel)
 	if err != nil {
 		return nil, err
 	}
 
-	jws, err := signModel(signedDataModel, ecsigner.New(privateKey, "ES256", "recovery"))
+	signedDataModel.DeltaHash = getEncodedMultihash(deltaBytes)
+
+	jws, err := signutil.SignModel(signedDataModel, ecsigner.New(privateKey, "ES256", ""))
 	if err != nil {
 		return nil, err
 	}
@@ -741,31 +769,29 @@ func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverReque
 		return nil, err
 	}
 
-	recoverSignedData, err := getRecoverSignedData(privateKey)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
 
-	return getRecoverRequest(privateKey, delta, recoverSignedData)
-}
-
-func getRecoverSignedData(privateKey *ecdsa.PrivateKey) (*model.RecoverSignedDataModel, error) {
 	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.RecoverSignedDataModel{
+	recoverSignedData := &model.RecoverSignedDataModel{
 		RecoveryKey:        jwk,
 		RecoveryCommitment: getEncodedMultihash([]byte("recoveryReveal")),
-		DeltaHash:          getEncodedMultihash([]byte("operation")),
-	}, nil
+		DeltaHash:          getEncodedMultihash(deltaBytes),
+	}
+
+	return getRecoverRequest(privateKey, delta, recoverSignedData)
 }
 
-func getDefaultStore(privateKey *ecdsa.PrivateKey) (*mocks.MockOperationStore, string) {
+func getDefaultStore(recoveryKey *ecdsa.PrivateKey) (*mocks.MockOperationStore, string) {
 	store := mocks.NewMockOperationStore(nil)
 
-	createOp, err := getCreateOperation(privateKey)
+	createOp, err := getCreateOperation(recoveryKey)
 	if err != nil {
 		panic(err)
 	}
@@ -824,8 +850,21 @@ func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch
 	}, nil
 }
 
-func getCreateOperation(privateKey *ecdsa.PrivateKey) (*batch.Operation, error) {
-	return getCreateOperationWithDoc(privateKey, validDoc)
+func getCreateOperation(recoveryKey *ecdsa.PrivateKey) (*batch.Operation, error) {
+	// for test purposes use recovery key as update key
+	publicKey, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	publicKeyBytes, err := json.Marshal(publicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	opaque := fmt.Sprintf(docTemplate, updateKey, string(publicKeyBytes))
+
+	return getCreateOperationWithDoc(recoveryKey, opaque)
 }
 
 func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {
@@ -834,7 +873,7 @@ func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error
 		return nil, err
 	}
 
-	deltaBytes, err := docutil.MarshalCanonical(delta)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
@@ -844,7 +883,7 @@ func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error
 		return nil, err
 	}
 
-	suffixDataBytes, err := docutil.MarshalCanonical(suffixData)
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -889,49 +928,6 @@ func getEncodedMultihash(data []byte) string {
 	return docutil.EncodeToString(mh)
 }
 
-func signModel(data interface{}, signer helper.Signer) (*model.JWS, error) {
-	signedDataBytes, err := docutil.MarshalCanonical(data)
-	if err != nil {
-		return nil, err
-	}
-
-	payload := docutil.EncodeToString(signedDataBytes)
-
-	return signPayload(payload, signer)
-}
-
-func signPayload(payload string, signer helper.Signer) (*model.JWS, error) {
-	alg, ok := signer.Headers().Algorithm()
-	if !ok || alg == "" {
-		return nil, errors.New("signing algorithm is required")
-	}
-
-	kid, ok := signer.Headers().KeyID()
-	if !ok || kid == "" {
-		return nil, errors.New("signing kid is required")
-	}
-
-	jwsSignature, err := internal.NewJWS(signer.Headers(), nil, []byte(payload), signer)
-	if err != nil {
-		return nil, err
-	}
-
-	signature, err := jwsSignature.SerializeCompact(false)
-	if err != nil {
-		return nil, err
-	}
-
-	protected := &model.Header{
-		Alg: alg,
-		Kid: kid,
-	}
-	return &model.JWS{
-		Protected: protected,
-		Signature: signature,
-		Payload:   payload,
-	}, nil
-}
-
 const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
@@ -967,6 +963,13 @@ const docTemplate = `{
   		"type": "JwsVerificationKey2020",
 		"usage": ["ops"],
   		"jwk": %s
+	}
+  ],
+  "service": [
+	{
+	   "id": "oidc",
+	   "type": "OpenIdConnectVersion1.0Service",
+	   "serviceEndpoint": "https://openid.example.com/"
 	}
   ]
 }`

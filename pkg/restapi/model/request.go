@@ -84,6 +84,13 @@ type DeactivateRequest struct {
 	SignedData *JWS `json:"signed_data"`
 }
 
+// UpdateSignedDataModel defines signed data model for update
+type UpdateSignedDataModel struct {
+
+	// Hash of the unsigned delta object
+	DeltaHash string `json:"delta_hash"`
+}
+
 // RecoverSignedDataModel defines signed data model for recovery
 type RecoverSignedDataModel struct {
 
