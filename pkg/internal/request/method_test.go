@@ -47,7 +47,7 @@ func TestGetParts(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, did)
 	require.Nil(t, initial)
-	require.Contains(t, err.Error(), "initial values is present but empty")
+	require.Contains(t, err.Error(), "initial state is present but empty")
 
 	did, initial, err = GetParts(namespace, testDID+initialStateParam+"xyz")
 	require.Error(t, err)

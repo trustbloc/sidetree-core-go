@@ -46,7 +46,7 @@ func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
 
 	adjustedPos := pos + len(initialMatch)
 	if adjustedPos >= len(params) {
-		return "", nil, errors.New("initial values is present but empty")
+		return "", nil, errors.New("initial state is present but empty")
 	}
 
 	did := params[0:pos]

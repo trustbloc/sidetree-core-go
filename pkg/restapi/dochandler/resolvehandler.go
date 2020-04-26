@@ -60,6 +60,9 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 
 	doc, err := o.resolver.ResolveDocument(id)
 	if err != nil {
+		if strings.Contains(err.Error(), "bad request") {
+			return nil, common.NewHTTPError(http.StatusBadRequest, err)
+		}
 		if strings.Contains(err.Error(), "not found") {
 			return nil, common.NewHTTPError(http.StatusNotFound, errors.New("document not found"))
 		}

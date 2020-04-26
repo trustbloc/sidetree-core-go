@@ -9,6 +9,7 @@ package mocks
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
@@ -121,9 +122,10 @@ func applyID(doc document.Document, id string) document.Document {
 }
 
 func (m *MockDocumentHandler) resolveWithInitialState(idOrDocument string) (*document.ResolutionResult, error) {
+	const badRequest = "bad request"
 	id, initialState, err := request.GetParts(m.namespace, idOrDocument)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	decodedDelta, err := docutil.DecodeString(initialState.Delta)

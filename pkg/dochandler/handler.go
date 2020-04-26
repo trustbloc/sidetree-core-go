@@ -21,6 +21,7 @@ package dochandler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -38,6 +39,8 @@ import (
 
 const (
 	keyID = "id"
+
+	badRequest = "bad request"
 )
 
 // DocumentHandler implements document handler
@@ -145,12 +148,12 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 	// extract did and optional initial document value
 	id, initial, err := request.GetParts(r.namespace, idOrInitialDoc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	uniquePortion, err := getSuffix(r.namespace, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	// resolve document from the blockchain
@@ -188,26 +191,26 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 func (r *DocumentHandler) resolveRequestWithDocument(id string, initial *model.CreateRequest) (*document.ResolutionResult, error) {
 	// verify size of each delta does not exceed the maximum allowed limit
 	if len(initial.Delta) > int(r.protocol.Current().MaxDeltaByteSize) {
-		return nil, errors.New("delta byte size exceeds protocol max delta byte size")
+		return nil, fmt.Errorf("%s: delta byte size exceeds protocol max delta byte size", badRequest)
 	}
 
 	initialBytes, err := json.Marshal(initial)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: marshal initial state: %s", badRequest, err.Error())
 	}
 
 	op, err := operation.ParseCreateOperation(initialBytes, r.protocol.Current())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	op.ID = r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
 	if id != op.ID {
-		return nil, errors.New("provided did doesn't match did created from create request")
+		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
 	if err := r.validateInitialDocument(op.Delta.Patches); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
 	return r.getCreateResponse(op)
@@ -271,12 +274,12 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 	ns := namespace + docutil.NamespaceDelimiter
 	pos := strings.Index(idOrDocument, ns)
 	if pos == -1 {
-		return "", errors.New("ID must start with configured namespace")
+		return "", errors.New("did must start with configured namespace")
 	}
 
 	adjustedPos := pos + len(ns)
 	if adjustedPos >= len(idOrDocument) {
-		return "", errors.New("unique portion is empty")
+		return "", errors.New("did suffix is empty")
 	}
 
 	return idOrDocument[adjustedPos:], nil

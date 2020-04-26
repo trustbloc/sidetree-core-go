@@ -128,7 +128,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	result, err = dochandler.ResolveDocument(namespace + docutil.NamespaceDelimiter)
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "unique portion is empty")
+	require.Contains(t, err.Error(), "did suffix is empty")
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
@@ -150,7 +150,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	result, err = dochandler.ResolveDocument(docID + initialStateParam)
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "initial values is present but empty")
+	require.Contains(t, err.Error(), "initial state is present but empty")
 
 	// create request not encoded
 	result, err = dochandler.ResolveDocument(docID + initialStateParam + "payload")
@@ -162,7 +162,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	result, err = dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialStateParam + initialState)
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "provided did doesn't match did created from create request")
+	require.Contains(t, err.Error(), "provided did doesn't match did created from initial state")
 
 	// delta and suffix data not encoded (parse create operation fails)
 	result, err = dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
@@ -188,6 +188,26 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testi
 	require.Contains(t, err.Error(), "delta byte size exceeds protocol max delta byte size")
 }
 
+func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
+	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	require.NotNil(t, dochandler)
+
+	createReq, err := getCreateRequestWithDoc(invalidDocNoUsage)
+	require.NoError(t, err)
+
+	createOp, err := getCreateOperationWithInitialState(createReq.SuffixData, createReq.Delta)
+	require.NoError(t, err)
+
+	docID := createOp.ID
+
+	initialState := createReq.Delta + "." + createReq.SuffixData
+
+	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "missing usage")
+}
+
 func TestTransformToExternalDocument(t *testing.T) {
 	dochandler := getDocumentHandler(nil)
 
@@ -209,12 +229,12 @@ func TestGetUniquePortion(t *testing.T) {
 	// id doesn't contain namespace
 	uniquePortion, err := getSuffix(namespace, "invalid")
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "ID must start with configured namespace")
+	require.Contains(t, err.Error(), "did must start with configured namespace")
 
 	// id equals namespace; unique portion is empty
 	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "unique portion is empty")
+	require.Contains(t, err.Error(), "did suffix is empty")
 
 	// valid unique portion
 	const unique = "exKwW0HjS5y4zBtJ7vYDwglYhtckdO15JDt1j5F5Q0A"
@@ -298,37 +318,63 @@ func getCreateOperation() *batchapi.Operation {
 		panic(err)
 	}
 
+	op, err := getCreateOperationWithInitialState(request.SuffixData, request.Delta)
+	if err != nil {
+		panic(err)
+	}
+
+	return op
+}
+
+func getCreateOperationWithInitialState(suffixData, delta string) (*batchapi.Operation, error) {
+	request := &model.CreateRequest{
+		Operation:  model.OperationTypeCreate,
+		SuffixData: suffixData,
+		Delta:      delta,
+	}
+
 	payload, err := json.Marshal(request)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(request.SuffixData, sha2_256)
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(suffixData, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
+	deltaBytes, err := docutil.DecodeString(delta)
 	if err != nil {
 		panic(err)
 	}
 
-	deltaBytes, err := docutil.DecodeString(request.Delta)
+	deltaModel := &model.DeltaModel{}
+	err = json.Unmarshal(deltaBytes, deltaModel)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	delta := &model.DeltaModel{}
-	err = json.Unmarshal(deltaBytes, delta)
+	suffixDataBytes, err := docutil.DecodeString(suffixData)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+
+	suffixDataModel := &model.SuffixDataModel{}
+	err = json.Unmarshal(suffixDataBytes, suffixDataModel)
+	if err != nil {
+		return nil, err
 	}
 
 	return &batchapi.Operation{
 		OperationBuffer:              payload,
-		Delta:                        delta,
-		EncodedDelta:                 request.Delta,
+		Delta:                        deltaModel,
+		EncodedDelta:                 delta,
 		Type:                         batchapi.OperationTypeCreate,
 		HashAlgorithmInMultiHashCode: sha2_256,
 		UniqueSuffix:                 uniqueSuffix,
 		ID:                           namespace + docutil.NamespaceDelimiter + uniqueSuffix,
-		SuffixData:                   getSuffixData(),
-	}
+		SuffixData:                   suffixDataModel,
+	}, nil
 }
 
 const validDoc = `{
@@ -345,54 +391,90 @@ const validDoc = `{
 	}]
 }`
 
+const invalidDocNoUsage = `{
+	"publicKey": [{
+		  "id": "key1",
+		  "type": "JwsVerificationKey2020",
+		  "usage": [],		
+		  "jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		  }
+	}]
+}`
+
 func getCreateRequest() (*model.CreateRequest, error) {
-	delta, err := getDelta()
+	return getCreateRequestWithDoc(validDoc)
+}
+
+func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
+	delta, err := getDeltaWithDoc(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	deltaBytes, err := json.Marshal(delta)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData())
+	encodedDelta := docutil.EncodeToString(deltaBytes)
+
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData(encodedDelta))
 	if err != nil {
 		return nil, err
 	}
+
+	encodedSuffixData := docutil.EncodeToString(suffixDataBytes)
 
 	return &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
+		Delta:      encodedDelta,
+		SuffixData: encodedSuffixData,
 	}, nil
 }
 
-func getDelta() (*model.DeltaModel, error) {
-	replacePatch, err := patch.NewReplacePatch(validDoc)
+func getDeltaWithDoc(doc string) (*model.DeltaModel, error) {
+	replacePatch, err := newReplacePatch(doc)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.DeltaModel{
 		Patches:          []patch.Patch{replacePatch},
-		UpdateCommitment: computeMultihash("updateReveal"),
+		UpdateCommitment: encodedMultihash("updateReveal"),
 	}, nil
 }
 
-func getSuffixData() *model.SuffixDataModel {
+// newReplacePatch creates new replace patch without validation
+func newReplacePatch(doc string) (patch.Patch, error) {
+	parsed, err := document.FromBytes([]byte(doc))
+	if err != nil {
+		return nil, err
+	}
+
+	p := make(patch.Patch)
+	p[patch.ActionKey] = patch.Replace
+	p[patch.DocumentKey] = parsed.JSONLdObject()
+
+	return p, nil
+}
+
+func getSuffixData(encodedDelta string) *model.SuffixDataModel {
 	return &model.SuffixDataModel{
-		DeltaHash: computeMultihash(validDoc),
+		DeltaHash: encodedMultihash(encodedDelta),
 		RecoveryKey: &jws.JWK{
 			Kty: "kty",
 			Crv: "crv",
 			X:   "x",
 		},
-		RecoveryCommitment: computeMultihash("recoveryReveal"),
+		RecoveryCommitment: encodedMultihash("recoveryReveal"),
 	}
 }
 
-func computeMultihash(data string) string {
+func encodedMultihash(data string) string {
 	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
 	if err != nil {
 		panic(err)
@@ -415,7 +497,7 @@ func getUpdateRequest() (*model.UpdateRequest, error) {
 
 func getUpdateDelta() *model.DeltaModel {
 	return &model.DeltaModel{
-		UpdateCommitment: computeMultihash("updateReveal"),
+		UpdateCommitment: encodedMultihash("updateReveal"),
 	}
 }
 
