@@ -55,13 +55,13 @@ func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
 
 	const twoParts = 2
 	if len(initialStateParts) != twoParts {
-		return "", nil, errors.New("initial state should have two parts: delta and suffix data")
+		return "", nil, errors.New("initial state should have two parts: suffix data and delta")
 	}
 
 	initial := &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		Delta:      initialStateParts[0],
-		SuffixData: initialStateParts[1],
+		SuffixData: initialStateParts[0],
+		Delta:      initialStateParts[1],
 	}
 
 	// return did and initial state

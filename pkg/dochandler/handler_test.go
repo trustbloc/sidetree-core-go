@@ -30,10 +30,10 @@ import (
 )
 
 const (
-	namespace = "doc:method"
+	namespace = "did:sidetree"
 
 	sha2_256          = 18
-	initialStateParam = "?-method-initial-state="
+	initialStateParam = "?-sidetree-initial-state="
 )
 
 func TestDocumentHandler_Namespace(t *testing.T) {
@@ -141,7 +141,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	createOp := getCreateOperation()
 	docID := createOp.ID
 
-	initialState := createReq.Delta + "." + createReq.SuffixData
+	initialState := createReq.SuffixData + "." + createReq.Delta
 
 	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
 	require.NotNil(t, result)
@@ -156,7 +156,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	result, err = dochandler.ResolveDocument(docID + initialStateParam + "payload")
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "initial state should have two parts: delta and suffix data")
+	require.Contains(t, err.Error(), "initial state should have two parts: suffix data and delta")
 
 	// did doesn't match the one created by parsing original create request
 	result, err = dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialStateParam + initialState)
@@ -169,6 +169,17 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	require.NotNil(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "invalid character")
+}
+
+func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
+	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	require.NotNil(t, dochandler)
+
+	result, err := dochandler.ResolveDocument(interopResolveDidWithInitialState)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotNil(t, result.Document)
+	require.Equal(t, false, result.MethodMetadata.Published)
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testing.T) {
@@ -200,7 +211,7 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 
 	docID := createOp.ID
 
-	initialState := createReq.Delta + "." + createReq.SuffixData
+	initialState := createReq.SuffixData + "." + createReq.Delta
 
 	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
 	require.Error(t, err)
@@ -520,3 +531,6 @@ func getUpdateOperation() *batchapi.Operation {
 		ID:                           namespace + docutil.NamespaceDelimiter + request.DidSuffix,
 	}
 }
+
+// test value taken from reference implementation
+const interopResolveDidWithInitialState = `did:sidetree:EiAhCWPxdLFgyDVwR1yz94VVFC6NPWQpYJ2JSXr07tFCug?-sidetree-initial-state=eyJkZWx0YV9oYXNoIjoiRWlEc0YySVZJV3oxSEN2eHpLS2ItXzVISW1PQVhZN2RkZUFyZURZVkYtVFRjUSIsInJlY292ZXJ5X2tleSI6eyJrdHkiOiJFQyIsImNydiI6InNlY3AyNTZrMSIsIngiOiJuWEdmTlN6ZU9pemZiYjlsZy1ZT1VYS0c0SWl1a2t5YmVtbXlZTGpYVmZ3IiwieSI6ImNsd0hobmNJRnd5ZHp4RTVTYnE5YjNHNGlZWXJHa0VULVhQUEFNaEx1TkUifSwicmVjb3ZlcnlfY29tbWl0bWVudCI6IkVpQWQzb2MydEtMeXR0eGJzSEZjel9MOUl1WEZNQ3NSOGlQMVl5R1VQU1V5T2cifQ.eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpRGl3YWI0b0EyTno2a25qSVp0dEctSzBSb05xVlJCM2lQbzJLT2Nvb3MyUlEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljS2V5cyI6W3siaWQiOiJzaWduaW5nS2V5IiwidHlwZSI6IlNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoidHRzcFN6TnR0RUhoRk1CeG5BZUxEb0stLTJRTGVLeWFuTlVBQ3ZjUnFWVSIsInkiOiJtaTFvaFFONW93dWxRRlFiamQtOS05bG1uQ1piVGFSZ2Rta2hBcEVsVnRzIn0sInVzYWdlIjpbIm9wcyIsImF1dGgiLCJnZW5lcmFsIl19XSwic2VydmljZUVuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vd3d3LnVybC5jb20ifV19fV19`

@@ -70,7 +70,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		initialParam := request.GetInitialStateParam(namespace)
-		initialParamValue := create.Delta + "." + create.SuffixData
+		initialParamValue := create.SuffixData + "." + create.Delta
 
 		initialState := "?" + initialParam + "=" + initialParamValue
 
