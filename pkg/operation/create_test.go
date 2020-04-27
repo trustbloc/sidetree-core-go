@@ -70,6 +70,12 @@ func TestParseCreateOperation(t *testing.T) {
 	})
 }
 
+func TestParseSuffixData(t *testing.T) {
+	suffixData, err := parseSuffixData(refEncodedSuffixData, sha2_256)
+	require.NoError(t, err)
+	require.NotNil(t, suffixData)
+}
+
 func TestValidateSuffixData(t *testing.T) {
 	t.Run("missing recovery key", func(t *testing.T) {
 		suffixData := getSuffixData()
@@ -106,7 +112,13 @@ func TestValidateSuffixData(t *testing.T) {
 	})
 }
 
-func TestValidatedelta(t *testing.T) {
+func TestParseDelta(t *testing.T) {
+	delta, err := parseDelta(refEncodedDelta, sha2_256)
+	require.NoError(t, err)
+	require.NotNil(t, delta)
+}
+
+func TestValidateDelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		delta, err := getDelta()
 		require.NoError(t, err)
@@ -236,3 +248,7 @@ const validDoc = `{
 		}
 	]
 }`
+
+// samples are taken from reference implementation tests
+const refEncodedDelta = `eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpRGl3YWI0b0EyTno2a25qSVp0dEctSzBSb05xVlJCM2lQbzJLT2Nvb3MyUlEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljS2V5cyI6W3siaWQiOiJzaWduaW5nS2V5IiwidHlwZSI6IlNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoidHRzcFN6TnR0RUhoRk1CeG5BZUxEb0stLTJRTGVLeWFuTlVBQ3ZjUnFWVSIsInkiOiJtaTFvaFFONW93dWxRRlFiamQtOS05bG1uQ1piVGFSZ2Rta2hBcEVsVnRzIn0sInVzYWdlIjpbIm9wcyIsImF1dGgiLCJnZW5lcmFsIl19XSwic2VydmljZUVuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vd3d3LnVybC5jb20ifV19fV19`
+const refEncodedSuffixData = `eyJkZWx0YV9oYXNoIjoiRWlEc0YySVZJV3oxSEN2eHpLS2ItXzVISW1PQVhZN2RkZUFyZURZVkYtVFRjUSIsInJlY292ZXJ5X2tleSI6eyJrdHkiOiJFQyIsImNydiI6InNlY3AyNTZrMSIsIngiOiJuWEdmTlN6ZU9pemZiYjlsZy1ZT1VYS0c0SWl1a2t5YmVtbXlZTGpYVmZ3IiwieSI6ImNsd0hobmNJRnd5ZHp4RTVTYnE5YjNHNGlZWXJHa0VULVhQUEFNaEx1TkUifSwicmVjb3ZlcnlfY29tbWl0bWVudCI6IkVpQWQzb2MydEtMeXR0eGJzSEZjel9MOUl1WEZNQ3NSOGlQMVl5R1VQU1V5T2cifQ`

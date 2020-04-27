@@ -53,12 +53,12 @@ func TestGetParts(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, did)
 	require.Nil(t, initial)
-	require.Contains(t, err.Error(), "initial state should have two parts: delta and suffix data")
+	require.Contains(t, err.Error(), "initial state should have two parts: suffix data and delta")
 
 	did, initial, err = GetParts(namespace, testDID+initialStateParam+"xyz.123")
 	require.NoError(t, err)
 	require.Equal(t, testDID, did)
-	require.Equal(t, initial.Delta, "xyz")
-	require.Equal(t, initial.SuffixData, "123")
+	require.Equal(t, initial.Delta, "123")
+	require.Equal(t, initial.SuffixData, "xyz")
 	require.Equal(t, initial.Operation, model.OperationTypeCreate)
 }
