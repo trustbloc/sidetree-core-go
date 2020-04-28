@@ -896,13 +896,13 @@ func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error
 }
 
 func getReplaceDelta(doc string) (*model.DeltaModel, error) {
-	replace, err := patch.NewReplacePatch(doc)
+	patches, err := patch.PatchesFromDocument(doc)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.DeltaModel{
-		Patches:          []patch.Patch{replace},
+		Patches:          patches,
 		UpdateCommitment: getEncodedMultihash([]byte("updateReveal")),
 	}, nil
 }

@@ -203,13 +203,13 @@ func getCreateRequestBytes() ([]byte, error) {
 }
 
 func getDelta() (*model.DeltaModel, error) {
-	replacePatch, err := patch.NewReplacePatch(validDoc)
+	patches, err := patch.PatchesFromDocument(validDoc)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.DeltaModel{
-		Patches:          []patch.Patch{replacePatch},
+		Patches:          patches,
 		UpdateCommitment: computeMultihash("updateReveal"),
 	}, nil
 }

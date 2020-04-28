@@ -10,16 +10,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
 func TestFromBytes(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		patch, err := FromBytes([]byte(replacePatch))
+		patch, err := FromBytes([]byte(addPublicKeysPatch))
 		require.NoError(t, err)
 		require.NotNil(t, patch)
-		require.Equal(t, patch.GetAction(), Replace)
+		require.Equal(t, patch.GetAction(), AddPublicKeys)
 
 		bytes, err := patch.Bytes()
 		require.NoError(t, err)
@@ -29,10 +27,10 @@ func TestFromBytes(t *testing.T) {
 		require.NotNil(t, jsonld)
 	})
 	t.Run("invalid replace patch", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": "replace"}`))
+		patch, err := FromBytes([]byte(`{"action": "add-public-keys"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "replace patch is missing document")
+		require.Contains(t, err.Error(), "add-public-keys patch is missing public_keys")
 	})
 	t.Run("parse error - invalid character", func(t *testing.T) {
 		patch, err := FromBytes([]byte("[test : 123]"))
@@ -63,40 +61,29 @@ func TestActionValidation(t *testing.T) {
 	})
 }
 
-func TestReplacePatch(t *testing.T) {
-	t.Run("success from bytes", func(t *testing.T) {
-		patch, err := FromBytes([]byte(replacePatch))
-		require.NoError(t, err)
-		require.NotNil(t, patch)
-		require.Equal(t, patch.GetAction(), Replace)
-	})
-	t.Run("missing document", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": "replace"}`))
-		require.Error(t, err)
-		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "replace patch is missing document")
-	})
+func TestPatchesFromDocument(t *testing.T) {
 	t.Run("success from new", func(t *testing.T) {
-		doc, err := document.FromBytes([]byte(testDoc))
+		patches, err := PatchesFromDocument(replaceDoc)
 		require.NoError(t, err)
-
-		p, err := NewReplacePatch(testDoc)
-		require.NoError(t, err)
-		require.NotNil(t, p)
-		require.Equal(t, p.GetAction(), Replace)
-		require.Equal(t, p.GetValue(DocumentKey), doc.JSONLdObject())
+		require.Equal(t, 3, len(patches))
 	})
 	t.Run("error - invalid json", func(t *testing.T) {
-		p, err := NewReplacePatch(`invalid`)
+		p, err := PatchesFromDocument(`invalid`)
 		require.Error(t, err)
 		require.Nil(t, p)
 		require.Contains(t, err.Error(), "invalid character")
 	})
 	t.Run("error - document has id", func(t *testing.T) {
-		p, err := NewReplacePatch(`{"id": "abc"}`)
+		p, err := PatchesFromDocument(`{"id": "abc"}`)
 		require.Error(t, err)
 		require.Nil(t, p)
 		require.Contains(t, err.Error(), "document must NOT have the id property")
+	})
+	t.Run("error - public keys error", func(t *testing.T) {
+		p, err := PatchesFromDocument(invalidKeysDoc)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "invalid number of JWK properties")
 	})
 }
 
@@ -248,7 +235,7 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 
 func TestBytes(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		original, err := FromBytes([]byte(replacePatch))
+		original, err := FromBytes([]byte(addPublicKeysPatch))
 		require.NoError(t, err)
 		require.NotNil(t, original)
 
@@ -271,17 +258,6 @@ func TestBytes(t *testing.T) {
 	})
 }
 
-func TestGetValue(t *testing.T) {
-	patch, err := FromBytes([]byte(replacePatch))
-	require.NoError(t, err)
-	require.NotNil(t, patch)
-
-	doc, err := document.FromBytes([]byte(testDoc))
-	require.NoError(t, err)
-
-	require.Equal(t, doc.JSONLdObject(), patch.GetValue(DocumentKey))
-}
-
 func TestStringEntry(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		str := stringEntry([]string{"hello"})
@@ -291,17 +267,6 @@ func TestStringEntry(t *testing.T) {
 		require.Equal(t, "hello", str)
 	})
 }
-
-const replacePatch = `{
-	"action": "replace",
-	"document": {
-		"service": [{
-			"id":"vcs",
-			"type": "VerifiableCredentialService",
-			"serviceEndpoint": "https://example.com/vc/"
-		}]
-	}
-}`
 
 const ietfPatch = `{
   "action": "ietf-json-patch",
@@ -386,10 +351,35 @@ const removeServiceEndpoints = `{
   "ids": ["sds1", "sds2"]
 }`
 
-const testDoc = `{
-  "service": [{
-    "id":"vcs",
-    "type": "VerifiableCredentialService",
-    "serviceEndpoint": "https://example.com/vc/"
-  }]
+const replaceDoc = `{
+	"publicKey": [{
+		"id": "key1",
+		"type": "JwsVerificationKey2020",
+		"usage": ["ops", "general"],
+		"jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
+	}],
+  	"service": [{
+    	"id":"vcs",
+    	"type": "VerifiableCredentialService",
+    	"serviceEndpoint": "https://example.com/vc/"
+  	}],
+	"test": "test",
+	"other": "value"
+}`
+
+const invalidKeysDoc = `{
+	"publicKey": [{
+		"id": "key1",	
+		"type": "JwsVerificationKey2020",
+		"usage": ["ops"],
+		"jwk": {
+			"kty": "EC",
+			"crv": "P-256K"
+		}
+	}]
 }`

@@ -76,7 +76,11 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*doc
 		return nil, nil
 	}
 
-	doc := m.store[operation.ID]
+	doc, ok := m.store[operation.ID]
+	if !ok { // create operation
+		doc = make(document.Document)
+	}
+
 	doc, err := composer.ApplyPatches(doc, operation.Delta.Patches)
 	if err != nil {
 		return nil, err
@@ -139,7 +143,7 @@ func (m *MockDocumentHandler) resolveWithInitialState(idOrDocument string) (*doc
 		return nil, err
 	}
 
-	doc, err := composer.ApplyPatches(nil, delta.Patches)
+	doc, err := composer.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
 		return nil, err
 	}

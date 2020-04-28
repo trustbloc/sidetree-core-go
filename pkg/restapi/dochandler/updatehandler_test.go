@@ -13,7 +13,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -100,12 +99,9 @@ func TestUpdateHandler_Update(t *testing.T) {
 		recover, err := helper.NewRecoverRequest(getRecoverRequestInfo(uniqueSuffix))
 		require.NoError(t, err)
 
-		fmt.Println(string(recover))
-
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(recover))
 		handler.Update(rw, req)
-		fmt.Println(req.Body)
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})

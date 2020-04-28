@@ -39,8 +39,6 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 
 	action := p.GetAction()
 	switch action {
-	case patch.Replace:
-		return applyRecover(p.GetValue(patch.DocumentKey))
 	case patch.JSONPatch:
 		return applyJSON(doc, p.GetValue(patch.PatchesKey))
 	case patch.AddPublicKeys:
@@ -54,16 +52,6 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 	}
 
 	return nil, fmt.Errorf("action '%s' is not supported", action)
-}
-
-func applyRecover(newDoc interface{}) (document.Document, error) {
-	log.Debugf("applying recover patch: %v", newDoc)
-	docBytes, err := json.Marshal(newDoc)
-	if err != nil {
-		return nil, err
-	}
-
-	return document.FromBytes(docBytes)
 }
 
 func applyJSON(doc document.Document, entry interface{}) (document.Document, error) {
