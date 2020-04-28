@@ -94,6 +94,24 @@ func TestIETFPatch(t *testing.T) {
 		require.NotNil(t, patch)
 		require.Equal(t, patch.GetAction(), JSONPatch)
 	})
+	t.Run("error - path not found", func(t *testing.T) {
+		patch, err := FromBytes([]byte(ietfPatchNoPath))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Equal(t, err.Error(), "ietf-json-patch: path not found")
+	})
+	t.Run("error - cannot update services", func(t *testing.T) {
+		patch, err := FromBytes([]byte(ietfServicesPatch))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Equal(t, err.Error(), "ietf-json-patch: cannot modify services")
+	})
+	t.Run("error - cannot update public keys", func(t *testing.T) {
+		patch, err := FromBytes([]byte(ietfPublicKeysPatch))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Equal(t, err.Error(), "ietf-json-patch: cannot modify public keys")
+	})
 	t.Run("missing patches", func(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "ietf-json-patch"}`))
 		require.Error(t, err)
@@ -272,16 +290,42 @@ const ietfPatch = `{
   "action": "ietf-json-patch",
   "patches": [{
       "op": "replace",
+      "path": "/name",
+      "value": "value"
+	}]
+}`
+
+const ietfPatchNoPath = `{
+  "action": "ietf-json-patch",
+  "patches": [{
+      "op": "replace",
+      "value": "value"
+	}]
+}`
+
+const ietfServicesPatch = `{
+  "action": "ietf-json-patch",
+  "patches": [{
+      "op": "replace",
       "path": "/service",
       "value": "new value"
+	}]
+}`
+
+const ietfPublicKeysPatch = `{
+  "action": "ietf-json-patch",
+  "patches": [{
+      "op": "replace",
+      "path": "/publicKey/0/type",
+      "value": "new type"
 	}]
 }`
 
 const patches = `[
 	{
       "op": "replace",
-      "path": "/service",
-      "value": "new value"
+      "path": "/some/object/0",
+      "value": "value"
 	}
 ]`
 

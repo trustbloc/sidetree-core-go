@@ -121,7 +121,7 @@ func PatchesFromDocument(doc string) ([]Patch, error) { //nolint : gocyclo
 
 // NewJSONPatch creates new generic update patch (will be used for generic updates)
 func NewJSONPatch(patches string) (Patch, error) {
-	if err := validatePatches([]byte(patches)); err != nil {
+	if err := validateJSONPatches([]byte(patches)); err != nil {
 		return nil, err
 	}
 
@@ -285,13 +285,31 @@ func validateDocument(doc document.Document) error {
 	return nil
 }
 
-func validatePatches(patches []byte) error {
-	_, err := jsonpatch.DecodePatch(patches)
+func validateJSONPatches(patches []byte) error {
+	jsonPatches, err := jsonpatch.DecodePatch(patches)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %s", JSONPatch, err.Error())
 	}
 
-	// TODO: We should probably not allow updating keys and services using this patch #175
+	for _, p := range jsonPatches {
+		pathMsg, ok := p["path"]
+		if !ok {
+			return fmt.Errorf("%s: path not found", JSONPatch)
+		}
+
+		var path string
+		if err := json.Unmarshal(*pathMsg, &path); err != nil {
+			return fmt.Errorf("%s: invalid path", JSONPatch)
+		}
+
+		if strings.HasPrefix(path, "/"+document.ServiceProperty) {
+			return fmt.Errorf("%s: cannot modify services", JSONPatch)
+		}
+
+		if strings.HasPrefix(path, "/"+document.PublicKeyProperty) {
+			return fmt.Errorf("%s: cannot modify public keys", JSONPatch)
+		}
+	}
 
 	return nil
 }
@@ -370,7 +388,7 @@ func (p Patch) validateJSON() error {
 		return err
 	}
 
-	return validatePatches(patchesBytes)
+	return validateJSONPatches(patchesBytes)
 }
 
 func (p Patch) validateAddPublicKeys() error {
