@@ -117,7 +117,7 @@ func TestUpdateDocument(t *testing.T) {
 
 		// check if service type value is updated (done via json patch)
 		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
-		require.Equal(t, "special1", didDoc.Services()[0].Type())
+		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
 		updateOp, err = getUpdateOperation(privateKey, uniqueSuffix, 2)
@@ -130,7 +130,7 @@ func TestUpdateDocument(t *testing.T) {
 
 		// check if service type value is updated again (done via json patch)
 		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
-		require.Equal(t, "special2", didDoc.Services()[0].Type())
+		require.Equal(t, "special2", didDoc["test"])
 	})
 
 	t.Run("missing signed data error", func(t *testing.T) {
@@ -624,7 +624,7 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
-		"path":  "/service/0/type",
+		"path":  "/test",
 		"value": "special" + strconv.Itoa(int(operationNumber)),
 	}
 

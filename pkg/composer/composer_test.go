@@ -356,7 +356,7 @@ func setupDefaultDoc() (document.Document, error) {
 const invalidPatches = `[
 	{
       "op": "invalid",
-      "path": "/service",
+      "path": "/test",
       "value": "new value"
 	}
 ]`
@@ -364,7 +364,7 @@ const invalidPatches = `[
 const patches = `[
 	{
       "op": "replace",
-      "path": "/service",
+      "path": "/test",
       "value": "new value"
 	}
 ]`

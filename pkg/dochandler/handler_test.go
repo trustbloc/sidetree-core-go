@@ -8,8 +8,6 @@ package dochandler
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -449,37 +447,29 @@ func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
 }
 
 func getDeltaWithDoc(doc string) (*model.DeltaModel, error) {
-	replacePatch, err := newReplacePatch(doc)
+	patches, err := newAddPublicKeysPatch(doc)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.DeltaModel{
-		Patches:          []patch.Patch{replacePatch},
+		Patches:          []patch.Patch{patches},
 		UpdateCommitment: encodedMultihash("updateReveal"),
 	}, nil
 }
 
-// newReplacePatch creates new replace patch without validation
-func newReplacePatch(doc string) (patch.Patch, error) {
+// newAddPublicKeysPatch creates new add public keys patch without validation
+func newAddPublicKeysPatch(doc string) (patch.Patch, error) {
 	parsed, err := document.FromBytes([]byte(doc))
 	if err != nil {
 		return nil, err
 	}
 
-	const replacePatchTemplate = `{ "op": "add", "path": "/%s", "value": %s}`
+	p := make(patch.Patch)
+	p[patch.ActionKey] = patch.AddPublicKeys
+	p[patch.PublicKeys] = parsed.PublicKeys()
 
-	var patches []string
-	for key, value := range parsed {
-		jsonBytes, err := json.Marshal(value)
-		if err != nil {
-			return nil, err
-		}
-
-		patches = append(patches, fmt.Sprintf(replacePatchTemplate, key, string(jsonBytes)))
-	}
-
-	return patch.NewJSONPatch(fmt.Sprintf("[%s]", strings.Join(patches, ",")))
+	return p, nil
 }
 
 func getSuffixData(encodedDelta string) *model.SuffixDataModel {
