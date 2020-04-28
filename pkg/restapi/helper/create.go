@@ -43,12 +43,11 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	replace, err := patch.NewReplacePatch(info.OpaqueDocument)
+	patches, err := patch.PatchesFromDocument(info.OpaqueDocument)
 	if err != nil {
 		return nil, err
 	}
 
-	patches := []patch.Patch{replace}
 	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
 	if err != nil {
 		return nil, err

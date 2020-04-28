@@ -8,6 +8,8 @@ package dochandler
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -62,9 +64,9 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
-	replacePatch, err := patch.NewReplacePatch("{}")
+	replacePatch, err := patch.NewAddPublicKeysPatch("{}")
 	require.NoError(t, err)
-	replacePatch["document"] = "invalid"
+	replacePatch["publicKeys"] = "invalid"
 
 	createOp := getCreateOperation()
 
@@ -75,7 +77,7 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(createOp)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "unexpected interface for document")
+	require.Contains(t, err.Error(), "expected array of interfaces")
 }
 
 func TestDocumentHandler_ProcessOperation_MaxDeltaSizeError(t *testing.T) {
@@ -176,10 +178,9 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	require.NotNil(t, dochandler)
 
 	result, err := dochandler.ResolveDocument(interopResolveDidWithInitialState)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.NotNil(t, result.Document)
-	require.Equal(t, false, result.MethodMetadata.Published)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "bad request: validate initial document: action 'replace' is not supported")
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testing.T) {
@@ -405,8 +406,8 @@ const validDoc = `{
 const invalidDocNoUsage = `{
 	"publicKey": [{
 		  "id": "key1",
-		  "type": "JwsVerificationKey2020",
-		  "usage": [],		
+		  "type": "JwsVerificationKey2020",	
+		  "usage": [],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -466,11 +467,19 @@ func newReplacePatch(doc string) (patch.Patch, error) {
 		return nil, err
 	}
 
-	p := make(patch.Patch)
-	p[patch.ActionKey] = patch.Replace
-	p[patch.DocumentKey] = parsed.JSONLdObject()
+	const replacePatchTemplate = `{ "op": "add", "path": "/%s", "value": %s}`
 
-	return p, nil
+	var patches []string
+	for key, value := range parsed {
+		jsonBytes, err := json.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
+
+		patches = append(patches, fmt.Sprintf(replacePatchTemplate, key, string(jsonBytes)))
+	}
+
+	return patch.NewJSONPatch(fmt.Sprintf("[%s]", strings.Join(patches, ",")))
 }
 
 func getSuffixData(encodedDelta string) *model.SuffixDataModel {

@@ -19,12 +19,12 @@ const invalid = "invalid"
 
 func TestApplyPatches(t *testing.T) {
 	t.Run("action not supported", func(t *testing.T) {
-		replace, err := patch.NewReplacePatch("{}")
+		replace, err := patch.NewAddServiceEndpointsPatch("{}")
 		require.NoError(t, err)
 
 		replace["action"] = invalid
 
-		doc, err := ApplyPatches(nil, []patch.Patch{replace})
+		doc, err := ApplyPatches(make(document.Document), []patch.Patch{replace})
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "not supported")
@@ -33,10 +33,10 @@ func TestApplyPatches(t *testing.T) {
 
 func TestApplyPatches_Replace(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		replace, err := patch.NewReplacePatch(testDoc)
+		patches, err := patch.PatchesFromDocument(testDoc)
 		require.NoError(t, err)
 
-		doc, err := ApplyPatches(nil, []patch.Patch{replace})
+		doc, err := ApplyPatches(make(document.Document), patches)
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 	})
@@ -345,12 +345,12 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 }
 
 func setupDefaultDoc() (document.Document, error) {
-	replace, err := patch.NewReplacePatch(testDoc)
+	patches, err := patch.PatchesFromDocument(testDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	return ApplyPatches(nil, []patch.Patch{replace})
+	return ApplyPatches(make(document.Document), patches)
 }
 
 const invalidPatches = `[

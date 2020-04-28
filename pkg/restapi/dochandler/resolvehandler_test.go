@@ -208,13 +208,13 @@ func getCreateRequest() (*model.CreateRequest, error) {
 }
 
 func getDelta() (*model.DeltaModel, error) {
-	replace, err := patch.NewReplacePatch(validDoc)
+	patches, err := patch.PatchesFromDocument(validDoc)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.DeltaModel{
-		Patches:          []patch.Patch{replace},
+		Patches:          patches,
 		UpdateCommitment: computeMultihash("updateReveal"),
 	}, nil
 }

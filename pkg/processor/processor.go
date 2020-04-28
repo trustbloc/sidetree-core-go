@@ -162,7 +162,7 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	doc, err := composer.ApplyPatches(nil, operation.Delta.Patches)
+	doc, err := composer.ApplyPatches(make(document.Document), operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)
+	doc, err := composer.ApplyPatches(make(document.Document), operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}

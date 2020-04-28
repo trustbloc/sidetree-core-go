@@ -286,5 +286,5 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 }
 
 func getInitialDocument(patches []patch.Patch) (document.Document, error) {
-	return composer.ApplyPatches(nil, patches)
+	return composer.ApplyPatches(make(document.Document), patches)
 }
