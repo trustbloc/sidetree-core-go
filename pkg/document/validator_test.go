@@ -179,16 +179,16 @@ func TestValidateServices(t *testing.T) {
 
 func TestValidateID(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		err := validateID("recovered")
+		err := ValidateID("recovered")
 		require.NoError(t, err)
 	})
 	t.Run("error - id not ASCII encoded character", func(t *testing.T) {
-		err := validateID("****")
+		err := ValidateID("a****")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("error - exceeded maximum length", func(t *testing.T) {
-		err := validateID("1234567890abcdefghijk")
+		err := ValidateID("1234567890abcdefghijk")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "id exceeds maximum length: 20")
 	})

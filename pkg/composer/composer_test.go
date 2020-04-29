@@ -190,6 +190,19 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array")
 	})
+	t.Run("invalid public key ids", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		removePublicKeys, err := patch.NewRemovePublicKeysPatch(removeKeys)
+		require.NoError(t, err)
+		removePublicKeys["public_keys"] = []interface{}{"a&b"}
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removePublicKeys})
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "id contains invalid characters")
+	})
 	t.Run("success - add and remove same key; doc stays at two keys", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -320,6 +333,19 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array")
+	})
+	t.Run("invalid service ids", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		removeServices, err := patch.NewRemoveServiceEndpointsPatch(removeServices)
+		require.NoError(t, err)
+		removeServices["ids"] = []interface{}{"svc", "a&b"}
+
+		doc, err = ApplyPatches(doc, []patch.Patch{removeServices})
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("success - add and remove same service; doc stays at two services", func(t *testing.T) {
 		doc, err := setupDefaultDoc()

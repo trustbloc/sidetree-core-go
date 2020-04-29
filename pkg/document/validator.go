@@ -15,7 +15,7 @@ import (
 
 // nolint:gochecknoglobals
 var (
-	asciiRegex = regexp.MustCompile("[A-Za-z0-9_-]+")
+	asciiRegex = regexp.MustCompile("^[A-Za-z0-9_-]+$")
 )
 
 const (
@@ -146,14 +146,15 @@ func validateKID(kid string) error {
 		return errors.New("public key id is missing")
 	}
 
-	if err := validateID(kid); err != nil {
+	if err := ValidateID(kid); err != nil {
 		return fmt.Errorf("public key: %s", err.Error())
 	}
 
 	return nil
 }
 
-func validateID(id string) error {
+// ValidateID validates id
+func ValidateID(id string) error {
 	if len(id) > maxIDLength {
 		return fmt.Errorf("id exceeds maximum length: %d", maxIDLength)
 	}
@@ -203,7 +204,7 @@ func validateServiceID(id string) error {
 		return errors.New("service id is missing")
 	}
 
-	if err := validateID(id); err != nil {
+	if err := ValidateID(id); err != nil {
 		return fmt.Errorf("service: %s", err.Error())
 	}
 

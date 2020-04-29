@@ -112,6 +112,12 @@ func validateDelta(delta *model.DeltaModel, code uint) error {
 		return errors.New("missing patches")
 	}
 
+	for _, p := range delta.Patches {
+		if err := p.Validate(); err != nil {
+			return err
+		}
+	}
+
 	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(code)) {
 		return errors.New("next update commitment hash is not computed with the latest supported hash algorithm")
 	}
