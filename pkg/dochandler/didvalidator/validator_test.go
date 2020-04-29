@@ -41,6 +41,14 @@ func TestIsValidOriginalDocument(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestIsValidOriginalDocument_ServiceErrors(t *testing.T) {
+	v := getDefaultValidator()
+
+	err := v.IsValidOriginalDocument(serviceNoID)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "service id is missing")
+}
+
 func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
 	v := getDefaultValidator()
 
@@ -162,23 +170,23 @@ func TestTransformDocument(t *testing.T) {
 	require.NotEmpty(t, pk.PublicKeyJwk())
 	require.Empty(t, pk.PublicKeyBase58())
 
-	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general", "dual-assertion-general",
-		"dual-agreement-general", "dual-delegation-general", "dual-invocation-general"}
+	expectedPublicKeys := []string{"master", "general-only", "dual-auth-gen", "dual-assertion-gen",
+		"dual-agreement-gen", "dual-delegation-gen", "dual-invocation-gen"}
 	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
 
-	expectedAuthenticationKeys := []string{"master", "dual-auth-general", "auth-only"}
+	expectedAuthenticationKeys := []string{"master", "dual-auth-gen", "auth-only"}
 	require.Equal(t, len(expectedAuthenticationKeys), len(didDoc.Authentication()))
 
-	expectedAssertionMethodKeys := []string{"master", "dual-assertion-general", "assertion-only"}
+	expectedAssertionMethodKeys := []string{"master", "dual-assertion-gen", "assertion-only"}
 	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethod()))
 
-	expectedAgreementKeys := []string{"master", "dual-agreement-general", "agreement-only"}
+	expectedAgreementKeys := []string{"master", "dual-agreement-gen", "agreement-only"}
 	require.Equal(t, len(expectedAgreementKeys), len(didDoc.AgreementKey()))
 
-	expectedDelegationKeys := []string{"master", "dual-delegation-general", "delegation-only"}
+	expectedDelegationKeys := []string{"master", "dual-delegation-gen", "delegation-only"}
 	require.Equal(t, len(expectedDelegationKeys), len(didDoc.DelegationKey()))
 
-	expectedInvocationKeys := []string{"master", "dual-invocation-general", "invocation-only"}
+	expectedInvocationKeys := []string{"master", "dual-invocation-gen", "invocation-only"}
 	require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKey()))
 }
 
@@ -280,6 +288,7 @@ var docWithContext = []byte(`{
 }`)
 
 var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
+var serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "serviceEndpoint": "https://example.com/hub"}]}`)
 var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "did_suffix": "abc" }`)

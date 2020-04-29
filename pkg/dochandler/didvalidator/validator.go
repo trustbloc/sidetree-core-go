@@ -89,7 +89,10 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 		return err
 	}
 
-	// Sidetree rule: add service validation
+	// Sidetree rule: validate services
+	if err := document.ValidateServices(didDoc.Services()); err != nil {
+		return err
+	}
 
 	// Sidetree rule: must not have context
 	ctx := didDoc.Context()

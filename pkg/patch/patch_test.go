@@ -205,6 +205,12 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		require.Nil(t, patch)
 		require.Contains(t, err.Error(), "add-service-endpoints patch is missing service_endpoints")
 	})
+	t.Run("error - service is missing id", func(t *testing.T) {
+		p, err := NewAddServiceEndpointsPatch(testAddServiceEndpointsMissingID)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "service id is missing")
+	})
 	t.Run("success from new", func(t *testing.T) {
 		p, err := NewAddServiceEndpointsPatch(testAddServiceEndpoints)
 		require.NoError(t, err)
@@ -385,6 +391,14 @@ const testAddServiceEndpoints = `[
     },
     {
       "id": "sds2",
+      "type": "SecureDataStore",
+      "serviceEndpoint": "http://some-cloud.com/hub"
+    }
+  ]`
+
+const testAddServiceEndpointsMissingID = `[
+    {
+      "id": "",
       "type": "SecureDataStore",
       "serviceEndpoint": "http://some-cloud.com/hub"
     }
