@@ -31,6 +31,12 @@ const (
 
 	// AgreementKeyProperty defines key for agreement key property
 	AgreementKeyProperty = "agreementKey"
+
+	// DelegationKeyProperty defines key for delegation key property
+	DelegationKeyProperty = "capabilityDelegation"
+
+	// InvocationKeyProperty defines key for invocation key property
+	InvocationKeyProperty = "capabilityInvocation"
 )
 
 // DIDDocument Defines DID Document data structure used by Sidetree for basic type safety checks.
@@ -118,6 +124,16 @@ func (doc DIDDocument) AssertionMethod() []interface{} {
 // AgreementKey returns agreement method array (mixture of strings and objects)
 func (doc DIDDocument) AgreementKey() []interface{} {
 	return interfaceArray(doc[AgreementKeyProperty])
+}
+
+// DelegationKey returns delegation method array (mixture of strings and objects)
+func (doc DIDDocument) DelegationKey() []interface{} {
+	return interfaceArray(doc[DelegationKeyProperty])
+}
+
+// InvocationKey returns invocation method array (mixture of strings and objects)
+func (doc DIDDocument) InvocationKey() []interface{} {
+	return interfaceArray(doc[InvocationKeyProperty])
 }
 
 // DIDDocumentFromReader creates an instance of DIDDocument by reading a JSON document from Reader

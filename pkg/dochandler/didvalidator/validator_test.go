@@ -163,7 +163,7 @@ func TestTransformDocument(t *testing.T) {
 	require.Empty(t, pk.PublicKeyBase58())
 
 	expectedPublicKeys := []string{"master", "general-only", "dual-auth-general", "dual-assertion-general",
-		"dual-agreement-general"}
+		"dual-agreement-general", "dual-delegation-general", "dual-invocation-general"}
 	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
 
 	expectedAuthenticationKeys := []string{"master", "dual-auth-general", "auth-only"}
@@ -174,6 +174,12 @@ func TestTransformDocument(t *testing.T) {
 
 	expectedAgreementKeys := []string{"master", "dual-agreement-general", "agreement-only"}
 	require.Equal(t, len(expectedAgreementKeys), len(didDoc.AgreementKey()))
+
+	expectedDelegationKeys := []string{"master", "dual-delegation-general", "delegation-only"}
+	require.Equal(t, len(expectedDelegationKeys), len(didDoc.DelegationKey()))
+
+	expectedInvocationKeys := []string{"master", "dual-invocation-general", "invocation-only"}
+	require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKey()))
 }
 
 func TestEd25519VerificationKey2018(t *testing.T) {

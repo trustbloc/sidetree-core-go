@@ -76,6 +76,12 @@ func TestEmptyDoc(t *testing.T) {
 
 	agreementKey := doc.AgreementKey()
 	require.Equal(t, 0, len(agreementKey))
+
+	delegationKey := doc.DelegationKey()
+	require.Equal(t, 0, len(delegationKey))
+
+	invocationKey := doc.InvocationKey()
+	require.Equal(t, 0, len(invocationKey))
 }
 
 func TestInvalidLists(t *testing.T) {

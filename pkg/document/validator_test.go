@@ -215,6 +215,26 @@ func TestIsAgreementKey(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestIsDelegationKey(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{})
+	ok := IsDelegationKey(pk.Usage())
+	require.False(t, ok)
+
+	pk["usage"] = []interface{}{delegation}
+	ok = IsDelegationKey(pk.Usage())
+	require.True(t, ok)
+}
+
+func TestIsInvocationKey(t *testing.T) {
+	pk := NewPublicKey(map[string]interface{}{})
+	ok := IsInvocationKey(pk.Usage())
+	require.False(t, ok)
+
+	pk["usage"] = []interface{}{invocation}
+	ok = IsInvocationKey(pk.Usage())
+	require.True(t, ok)
+}
+
 func TestIsGeneralKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
 	ok := IsGeneralKey(pk.Usage())
@@ -250,6 +270,8 @@ func TestOpsKeyUsage(t *testing.T) {
 func TestVerificationKeyUsage(t *testing.T) {
 	testKeyUsage(t, allowedKeyTypesVerification, assertion)
 	testKeyUsage(t, allowedKeyTypesVerification, auth)
+	testKeyUsage(t, allowedKeyTypesVerification, delegation)
+	testKeyUsage(t, allowedKeyTypesVerification, invocation)
 }
 
 func TestAgreementKeyUsage(t *testing.T) {
@@ -361,7 +383,7 @@ const tooMuchUsage = `{
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops", "general", "auth", "assertion", "agreement", "other"],
+      "usage": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation", "other"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",

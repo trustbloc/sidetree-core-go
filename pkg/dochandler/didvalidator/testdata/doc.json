@@ -3,7 +3,7 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "usage": ["ops", "general", "auth", "assertion", "agreement"],
+      "usage": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -81,6 +81,50 @@
       "id": "agreement-only",
       "type": "JwsVerificationKey2020",
       "usage": ["agreement"],
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    },
+    {
+      "id": "dual-invocation-general",
+      "type": "JwsVerificationKey2020",
+      "usage": ["invocation", "general"],
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    },
+    {
+      "id": "invocation-only",
+      "type": "JwsVerificationKey2020",
+      "usage": ["invocation"],
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    },
+    {
+      "id": "dual-delegation-general",
+      "type": "JwsVerificationKey2020",
+      "usage": ["delegation", "general"],
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    },
+    {
+      "id": "delegation-only",
+      "type": "JwsVerificationKey2020",
+      "usage": ["delegation"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
