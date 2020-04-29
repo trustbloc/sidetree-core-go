@@ -69,6 +69,8 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 		if strings.Contains(err.Error(), "was deactivated") {
 			return nil, common.NewHTTPError(http.StatusGone, errors.New("document is no longer available"))
 		}
+
+		logger.Errorf("internal server error:  %s", err.Error())
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 

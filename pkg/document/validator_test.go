@@ -67,6 +67,14 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "public key id is missing")
 	})
+	t.Run("invalid id - too long", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(idLong))
+		require.Nil(t, err)
+
+		err = ValidatePublicKeys(doc.PublicKeys())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "public key: id exceeds maximum length")
+	})
 	t.Run("invalid number of JWK properties", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(noJWK))
 		require.Nil(t, err)
@@ -91,6 +99,98 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 		err = ValidatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid number of public key properties")
+	})
+}
+
+func TestValidateServices(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDoc))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Nil(t, err)
+	})
+	t.Run("error - missing service id", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocNoID))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service id is missing")
+	})
+
+	t.Run("error - missing service type", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocNoType))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service type is missing")
+	})
+	t.Run("error - missing service endpoint", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocNoServiceEndpoint))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service endpoint is missing")
+	})
+	t.Run("error - service has unknown property", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocExtraProperty))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid number of service properties")
+	})
+	t.Run("error - service id too long", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocLongID))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service: id exceeds maximum length")
+	})
+	t.Run("error - service type too long", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocLongType))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service type exceeds maximum length")
+	})
+	t.Run("error - service endpoint too long", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocLongServiceEndpoint))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service endpoint exceeds maximum length")
+	})
+	t.Run("error - service endpoint not URI", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocEndpointNotURI))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service endpoint is not valid URI")
+	})
+}
+
+func TestValidateID(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		err := validateID("recovered")
+		require.NoError(t, err)
+	})
+	t.Run("error - id not ASCII encoded character", func(t *testing.T) {
+		err := validateID("****")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "id contains invalid characters")
+	})
+	t.Run("error - exceeded maximum length", func(t *testing.T) {
+		err := validateID("1234567890abcdefghijk")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "id exceeds maximum length: 20")
 	})
 }
 
@@ -405,6 +505,22 @@ const noJWK = `{
   ]
 }`
 
+const idLong = `{
+  "publicKey": [
+    {
+      "id": "idwihmorethantwentycharacters",
+      "type": "JwsVerificationKey2020",
+      "usage": ["ops"],
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ]
+}`
+
 const noID = `{
   "publicKey": [
     {
@@ -461,4 +577,77 @@ const duplicateID = `{
       }
     }
   ]
+}`
+
+const serviceDoc = `{
+	"service": [{
+		"id": "sid-123_ABC",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocNoID = `{
+	"service": [{
+		"id": "",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocLongID = `{
+	"service": [{
+		"id": "thisissomeidthathasmorethantwentycharacters",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocLongType = `{
+	"service": [{
+		"id": "id",
+		"type": "VerifiableCredentialServiceVerifiableCredentialServiceVerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocLongServiceEndpoint = `{
+	"service": [{
+		"id": "sid",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	}]
+}`
+
+const serviceDocEndpointNotURI = `{
+	"service": [{
+		"id": "vcs",
+		"type": "type",
+		"serviceEndpoint": "hello"
+	}]
+}`
+
+const serviceDocNoType = `{
+	"service": [{
+		"id": "vcs",
+		"type": "",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocNoServiceEndpoint = `{
+	"service": [{
+		"id": "vcs",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": ""
+	}]
+}`
+
+const serviceDocExtraProperty = `{
+	"service": [{
+		"id": "vcs",
+		"test": "value",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
 }`

@@ -338,7 +338,11 @@ func getServices(serviceEndpoints string) (interface{}, error) {
 		return nil, fmt.Errorf("services invalid: %s", err.Error())
 	}
 
-	// Add service validation here similar to public keys
+	services := svcDoc.Services()
+	err = document.ValidateServices(services)
+	if err != nil {
+		return nil, err
+	}
 
 	return svcDoc[document.ServiceProperty], nil
 }
@@ -408,7 +412,12 @@ func (p Patch) validateRemovePublicKeys() error {
 
 func (p Patch) validateAddServiceEndpoints() error {
 	_, err := p.getRequiredArray(ServiceEndpointsKey)
-	return err
+	if err != nil {
+		return err
+	}
+
+	services := document.ParseServices(p.GetValue(ServiceEndpointsKey))
+	return document.ValidateServices(services)
 }
 
 func (p Patch) validateRemoveServiceEndpoints() error {

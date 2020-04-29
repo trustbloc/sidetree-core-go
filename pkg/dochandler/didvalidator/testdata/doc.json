@@ -23,7 +23,7 @@
       }
     },
     {
-      "id": "dual-auth-general",
+      "id": "dual-auth-gen",
       "type": "JwsVerificationKey2020",
       "usage": ["auth", "general"],
       "jwk": {
@@ -45,7 +45,7 @@
       }
     },
     {
-      "id": "dual-assertion-general",
+      "id": "dual-assertion-gen",
       "type": "JwsVerificationKey2020",
       "usage": ["assertion", "general"],
       "jwk": {
@@ -67,7 +67,7 @@
       }
     },
     {
-      "id": "dual-agreement-general",
+      "id": "dual-agreement-gen",
       "type": "JwsVerificationKey2020",
       "usage": ["agreement", "general"],
       "jwk": {
@@ -89,7 +89,7 @@
       }
     },
     {
-      "id": "dual-invocation-general",
+      "id": "dual-invocation-gen",
       "type": "JwsVerificationKey2020",
       "usage": ["invocation", "general"],
       "jwk": {
@@ -111,7 +111,7 @@
       }
     },
     {
-      "id": "dual-delegation-general",
+      "id": "dual-delegation-gen",
       "type": "JwsVerificationKey2020",
       "usage": ["delegation", "general"],
       "jwk": {
@@ -146,16 +146,9 @@
   ],
   "service": [
     {
-      "id": "IdentityHub",
+      "id": "hub",
       "type": "IdentityHub",
-      "serviceEndpoint": {
-        "@context": "schema.identity.foundation/hub",
-        "@type": "UserServiceEndpoint",
-        "instance": [
-          "did:sidetree:456",
-          "did:sidetree:789"
-        ]
-      }
+      "serviceEndpoint": "https://example.com/hub/"
     }
   ]
 }

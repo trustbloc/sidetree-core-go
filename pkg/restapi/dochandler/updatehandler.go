@@ -59,14 +59,14 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, error) {
 	operation, err := h.getOperation(request)
 	if err != nil {
-		logger.Errorf("Error: %s", err)
+		logger.Warnf("operation validation error: %s", err.Error())
 		return nil, common.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	// operation has been validated, now process it
 	result, err := h.processor.ProcessOperation(operation)
 	if err != nil {
-		logger.Errorf("Error: %s", err)
+		logger.Errorf("internal server error:  %s", err.Error())
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 

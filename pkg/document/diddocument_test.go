@@ -38,13 +38,9 @@ func TestValid(t *testing.T) {
 	services := doc.Services()
 	require.Equal(t, []Service{
 		{
-			"id":   "IdentityHub",
-			"type": "IdentityHub",
-			"serviceEndpoint": map[string]interface{}{
-				"@context": "schema.identity.foundation/hub",
-				"@type":    "UserServiceEndpoint",
-				"instance": []interface{}{"did:sidetree:456", "did:sidetree:789"},
-			},
+			"id":              "hub",
+			"type":            "IdentityHub",
+			"serviceEndpoint": "https://example.com/hub/",
 		},
 	}, services)
 

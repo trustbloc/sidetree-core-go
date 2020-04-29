@@ -23,13 +23,13 @@ func (s Service) ID() string {
 }
 
 // Type is service type
-func (s Service) Type() interface{} {
-	return s[TypeProperty]
+func (s Service) Type() string {
+	return stringEntry(s[TypeProperty])
 }
 
 // Endpoint is service endpoint
-func (s Service) Endpoint() interface{} {
-	return s[ServiceEndpointProperty]
+func (s Service) Endpoint() string {
+	return stringEntry(s[ServiceEndpointProperty])
 }
 
 // JSONLdObject returns map that represents JSON LD Object

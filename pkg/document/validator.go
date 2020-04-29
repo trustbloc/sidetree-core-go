@@ -9,6 +9,13 @@ package document
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"regexp"
+)
+
+// nolint:gochecknoglobals
+var (
+	asciiRegex = regexp.MustCompile("[A-Za-z0-9_-]+")
 )
 
 const (
@@ -36,6 +43,13 @@ const (
 
 	maxJwkProperties       = 4
 	maxPublicKeyProperties = 4
+	maxServiceProperties   = 3
+
+	// public keys, services id length
+	maxIDLength = 20
+
+	maxServiceTypeLength     = 30
+	maxServiceEndpointLength = 100
 )
 
 var allowedOps = map[string]string{
@@ -92,8 +106,8 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 	// the expected fields are id, usage, type and jwk
 	for _, pubKey := range pubKeys {
 		kid := pubKey.ID()
-		if kid == "" {
-			return errors.New("public key id is missing")
+		if err := validateKID(kid); err != nil {
+			return err
 		}
 
 		if len(pubKey) != maxPublicKeyProperties {
@@ -122,6 +136,103 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 		if err := ValidateJWK(pubKey.JWK()); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func validateKID(kid string) error {
+	if kid == "" {
+		return errors.New("public key id is missing")
+	}
+
+	if err := validateID(kid); err != nil {
+		return fmt.Errorf("public key: %s", err.Error())
+	}
+
+	return nil
+}
+
+func validateID(id string) error {
+	if len(id) > maxIDLength {
+		return fmt.Errorf("id exceeds maximum length: %d", maxIDLength)
+	}
+
+	if !asciiRegex.MatchString(id) {
+		return errors.New("id contains invalid characters")
+	}
+
+	return nil
+}
+
+// ValidateServices validates services
+func ValidateServices(services []Service) error {
+	for _, service := range services {
+		if err := validateService(service); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateService(service Service) error {
+	// expected fields are type, id, and serviceEndpoint
+
+	if len(service) != maxServiceProperties {
+		return errors.New("invalid number of service properties")
+	}
+
+	if err := validateServiceID(service.ID()); err != nil {
+		return err
+	}
+
+	if err := validateServiceType(service.Type()); err != nil {
+		return err
+	}
+
+	if err := validateServiceEndpoint(service.Endpoint()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateServiceID(id string) error {
+	if id == "" {
+		return errors.New("service id is missing")
+	}
+
+	if err := validateID(id); err != nil {
+		return fmt.Errorf("service: %s", err.Error())
+	}
+
+	return nil
+}
+
+func validateServiceType(serviceType string) error {
+	if serviceType == "" {
+		return errors.New("service type is missing")
+	}
+
+	if len(serviceType) > maxServiceTypeLength {
+		return fmt.Errorf("service type exceeds maximum length: %d", maxServiceTypeLength)
+	}
+
+	return nil
+}
+
+func validateServiceEndpoint(serviceEndpoint string) error {
+	if serviceEndpoint == "" {
+		return errors.New("service endpoint is missing")
+	}
+
+	if len(serviceEndpoint) > maxServiceEndpointLength {
+		return fmt.Errorf("service endpoint exceeds maximum length: %d", maxServiceEndpointLength)
+	}
+
+	if _, err := url.ParseRequestURI(serviceEndpoint); err != nil {
+		return fmt.Errorf("service endpoint is not valid URI: %s", err.Error())
 	}
 
 	return nil

@@ -14,16 +14,9 @@
   ],
   "service": [
     {
-      "id": "IdentityHub",
+      "id": "hub",
       "type": "IdentityHub",
-      "serviceEndpoint": {
-        "@context": "schema.identity.foundation/hub",
-        "@type": "UserServiceEndpoint",
-        "instance": [
-          "did:sidetree:456",
-          "did:sidetree:789"
-        ]
-      }
+      "serviceEndpoint": "https://example.com/hub/"
     }
   ],
   "authentication": ["whatever"]
