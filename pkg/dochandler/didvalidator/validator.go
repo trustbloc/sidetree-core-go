@@ -161,11 +161,17 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // (same rules as for auth)
 // -- agreement: the key MUST be included in the keyAgreement section of the resolved DID Document
 // (same rules as for auth)
+// -- delegation: the key MUST be included in the capabilityDelegation section of the resolved DID Document
+// (same rules as for auth)
+// -- invocation: the key MUST be included in the capabilityInvocation section of the resolved DID Document
+// (same rules as for auth)
 // -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint: gocyclo,funlen
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint: gocyclo,funlen, gocognit
 	var authentication []interface{}
 	var assertionMethod []interface{}
 	var agreementKey []interface{}
+	var delegationKey []interface{}
+	var invocationKey []interface{}
 
 	var publicKeys []document.PublicKey
 	var operationPublicKeys []document.PublicKey
@@ -210,12 +216,24 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 			if document.IsAgreementKey(usages) {
 				agreementKey = append(agreementKey, relativeID)
 			}
+			// add into capabilityDelegation by reference if the key has both delegation and general usage
+			if document.IsDelegationKey(usages) {
+				delegationKey = append(delegationKey, relativeID)
+			}
+			// add into capabilityInvocation by reference if the key has both invocation and general usage
+			if document.IsInvocationKey(usages) {
+				invocationKey = append(invocationKey, relativeID)
+			}
 		} else if document.IsAuthenticationKey(usages) {
 			authentication = append(authentication, externalPK)
 		} else if document.IsAssertionKey(usages) {
 			assertionMethod = append(assertionMethod, externalPK)
 		} else if document.IsAgreementKey(usages) {
 			agreementKey = append(agreementKey, externalPK)
+		} else if document.IsDelegationKey(usages) {
+			delegationKey = append(delegationKey, externalPK)
+		} else if document.IsInvocationKey(usages) {
+			invocationKey = append(invocationKey, externalPK)
 		}
 	}
 
@@ -233,6 +251,14 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 
 	if len(agreementKey) > 0 {
 		resolutionResult.Document[document.AgreementKeyProperty] = agreementKey
+	}
+
+	if len(delegationKey) > 0 {
+		resolutionResult.Document[document.DelegationKeyProperty] = delegationKey
+	}
+
+	if len(invocationKey) > 0 {
+		resolutionResult.Document[document.InvocationKeyProperty] = invocationKey
 	}
 
 	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys

@@ -18,8 +18,12 @@ const (
 	auth = "auth"
 	// assertion defines key usage as assertion key
 	assertion = "assertion"
-	// assertion defines key usage as assertion key
+	// agreement defines key usage as agreement key
 	agreement = "agreement"
+	// delegation defines key usage as delegation key
+	delegation = "delegation"
+	// invocation defines key usage as invocation key
+	invocation = "invocation"
 	// general defines key usage as general key
 	general = "general"
 
@@ -35,11 +39,13 @@ const (
 )
 
 var allowedOps = map[string]string{
-	ops:       ops,
-	auth:      auth,
-	general:   general,
-	assertion: assertion,
-	agreement: agreement,
+	ops:        ops,
+	auth:       auth,
+	general:    general,
+	assertion:  assertion,
+	agreement:  agreement,
+	delegation: delegation,
+	invocation: invocation,
 }
 
 type existenceMap map[string]string
@@ -70,11 +76,13 @@ var allowedKeyTypesAgreement = existenceMap{
 }
 
 var allowedKeyTypes = map[string]existenceMap{
-	ops:       allowedKeyTypesOps,
-	general:   allowedKeyTypesGeneral,
-	auth:      allowedKeyTypesVerification,
-	assertion: allowedKeyTypesVerification,
-	agreement: allowedKeyTypesAgreement,
+	ops:        allowedKeyTypesOps,
+	general:    allowedKeyTypesGeneral,
+	auth:       allowedKeyTypesVerification,
+	assertion:  allowedKeyTypesVerification,
+	agreement:  allowedKeyTypesAgreement,
+	delegation: allowedKeyTypesVerification,
+	invocation: allowedKeyTypesVerification,
 }
 
 // ValidatePublicKeys validates public keys
@@ -193,6 +201,16 @@ func IsAssertionKey(usages []string) bool {
 // IsAgreementKey returns true if key is an agreement key
 func IsAgreementKey(usages []string) bool {
 	return isUsageKey(usages, agreement)
+}
+
+// IsDelegationKey returns true if key is an delegation key
+func IsDelegationKey(usages []string) bool {
+	return isUsageKey(usages, delegation)
+}
+
+// IsInvocationKey returns true if key is an invocation key
+func IsInvocationKey(usages []string) bool {
+	return isUsageKey(usages, invocation)
 }
 
 func isUsageKey(usages []string, mode string) bool {
