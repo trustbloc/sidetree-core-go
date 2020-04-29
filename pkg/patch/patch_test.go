@@ -183,6 +183,13 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		require.Nil(t, p)
 		require.Contains(t, err.Error(), "missing public key ids")
 	})
+	t.Run("invalid public key ids", func(t *testing.T) {
+		const ids = `["a123*b456"]`
+		p, err := NewRemovePublicKeysPatch(ids)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "id contains invalid characters")
+	})
 	t.Run("error - ids not string array", func(t *testing.T) {
 		const ids = `[0, 1]`
 		p, err := NewRemovePublicKeysPatch(ids)
@@ -247,6 +254,13 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, p)
 		require.Contains(t, err.Error(), "missing service ids")
+	})
+	t.Run("invalid service ids", func(t *testing.T) {
+		const ids = `["a123*b456"]`
+		p, err := NewRemoveServiceEndpointsPatch(ids)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("error - ids not string array", func(t *testing.T) {
 		const ids = `[0, 1]`

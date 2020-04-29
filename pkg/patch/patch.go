@@ -163,6 +163,10 @@ func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
 		return nil, errors.New("missing public key ids")
 	}
 
+	if err := validateIds(ids); err != nil {
+		return nil, err
+	}
+
 	patch := make(Patch)
 	patch[ActionKey] = RemovePublicKeys
 	patch[PublicKeys] = getGenericArray(ids)
@@ -193,6 +197,10 @@ func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
 
 	if len(ids) == 0 {
 		return nil, errors.New("missing service ids")
+	}
+
+	if err := validateIds(ids); err != nil {
+		return nil, err
 	}
 
 	patch := make(Patch)
@@ -406,8 +414,12 @@ func (p Patch) validateAddPublicKeys() error {
 }
 
 func (p Patch) validateRemovePublicKeys() error {
-	_, err := p.getRequiredArray(PublicKeys)
-	return err
+	genericArr, err := p.getRequiredArray(PublicKeys)
+	if err != nil {
+		return err
+	}
+
+	return validateIds(document.StringArray(genericArr))
 }
 
 func (p Patch) validateAddServiceEndpoints() error {
@@ -421,8 +433,22 @@ func (p Patch) validateAddServiceEndpoints() error {
 }
 
 func (p Patch) validateRemoveServiceEndpoints() error {
-	_, err := p.getRequiredArray(ServiceEndpointIdsKey)
-	return err
+	genericArr, err := p.getRequiredArray(ServiceEndpointIdsKey)
+	if err != nil {
+		return err
+	}
+
+	return validateIds(document.StringArray(genericArr))
+}
+
+func validateIds(ids []string) error {
+	for _, id := range ids {
+		if err := document.ValidateID(id); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func getStringArray(arr string) ([]string, error) {

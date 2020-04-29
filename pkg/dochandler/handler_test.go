@@ -178,7 +178,7 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	result, err := dochandler.ResolveDocument(interopResolveDidWithInitialState)
 	require.Error(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "bad request: validate initial document: action 'replace' is not supported")
+	require.Contains(t, err.Error(), "bad request: action 'replace' is not supported")
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testing.T) {
