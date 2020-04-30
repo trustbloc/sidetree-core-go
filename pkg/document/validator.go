@@ -43,7 +43,6 @@ const (
 
 	maxJwkProperties       = 4
 	maxPublicKeyProperties = 4
-	maxServiceProperties   = 3
 
 	// public keys, services id length
 	maxIDLength = 20
@@ -179,10 +178,6 @@ func ValidateServices(services []Service) error {
 
 func validateService(service Service) error {
 	// expected fields are type, id, and serviceEndpoint
-
-	if len(service) != maxServiceProperties {
-		return errors.New("invalid number of service properties")
-	}
 
 	if err := validateServiceID(service.ID()); err != nil {
 		return err

@@ -110,6 +110,13 @@ func TestValidateServices(t *testing.T) {
 		err = ValidateServices(doc.Services())
 		require.Nil(t, err)
 	})
+	t.Run("success - service can have extra property", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocExtraProperty))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.NoError(t, err)
+	})
 	t.Run("error - missing service id", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(serviceDocNoID))
 		require.NoError(t, err)
@@ -134,14 +141,6 @@ func TestValidateServices(t *testing.T) {
 		err = ValidateServices(doc.Services())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service endpoint is missing")
-	})
-	t.Run("error - service has unknown property", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(serviceDocExtraProperty))
-		require.NoError(t, err)
-
-		err = ValidateServices(doc.Services())
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid number of service properties")
 	})
 	t.Run("error - service id too long", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(serviceDocLongID))
