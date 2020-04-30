@@ -145,9 +145,10 @@ func validateKID(kid string) error {
 		return errors.New("public key id is missing")
 	}
 
-	if err := ValidateID(kid); err != nil {
-		return fmt.Errorf("public key: %s", err.Error())
-	}
+	// TODO : Uncomment after integration fixes
+	//if err := ValidateID(kid); err != nil {
+	//	return fmt.Errorf("public key: %s", err.Error())
+	//}
 
 	return nil
 }
