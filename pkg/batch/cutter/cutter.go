@@ -73,10 +73,10 @@ func (r *BatchCutter) Cut(force bool) ([]*batch.OperationInfo, uint, Committer, 
 
 	pending -= batchSize
 
-	logger.Debugf("Pending Size: %d, MaxOperationsPerBatch: %d, Batch Size: %d", pending, maxOperationsPerBatch, batchSize)
+	logger.Infof("Pending Size: %d, MaxOperationsPerBatch: %d, Batch Size: %d", pending, maxOperationsPerBatch, batchSize)
 
 	committer := func() (uint, error) {
-		logger.Debugf("Removing %d operations from the queue", batchSize)
+		logger.Infof("Removing %d operations from the queue", batchSize)
 
 		_, p, err := r.pendingBatch.Remove(batchSize)
 		return p, err
