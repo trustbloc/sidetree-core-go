@@ -104,6 +104,8 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 		return nil, err
 	}
 
+	log.Infof("[%s] operation added to the batch", operation.ID)
+
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
 		return r.getCreateResponse(operation)
