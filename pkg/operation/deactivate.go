@@ -29,12 +29,11 @@ func ParseDeactivateOperation(request []byte, p protocol.Protocol) (*batch.Opera
 	}
 
 	return &batch.Operation{
-		Type:                         batch.OperationTypeDeactivate,
-		OperationBuffer:              request,
-		UniqueSuffix:                 schema.DidSuffix,
-		RecoveryRevealValue:          schema.RecoveryRevealValue,
-		HashAlgorithmInMultiHashCode: p.HashAlgorithmInMultiHashCode,
-		SignedData:                   schema.SignedData,
+		Type:                batch.OperationTypeDeactivate,
+		OperationBuffer:     request,
+		UniqueSuffix:        schema.DidSuffix,
+		RecoveryRevealValue: schema.RecoveryRevealValue,
+		SignedData:          schema.SignedData,
 	}, nil
 }
 

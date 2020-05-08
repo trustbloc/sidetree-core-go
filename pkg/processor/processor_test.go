@@ -662,16 +662,14 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 	}
 
 	operation := &batch.Operation{
-		ID:                           "did:sidetree:" + uniqueSuffix,
-		UniqueSuffix:                 uniqueSuffix,
-		HashAlgorithmInMultiHashCode: sha2_256,
-		EncodedDelta:                 docutil.EncodeToString(deltaBytes),
-		Delta:                        delta,
-		Type:                         batch.OperationTypeUpdate,
-		TransactionNumber:            uint64(operationNumber),
-		UpdateRevealValue:            updateRevealValue,
-		UpdateCommitment:             nextUpdateCommitmentHash,
-		SignedData:                   jws,
+		ID:                "did:sidetree:" + uniqueSuffix,
+		UniqueSuffix:      uniqueSuffix,
+		EncodedDelta:      docutil.EncodeToString(deltaBytes),
+		Delta:             delta,
+		Type:              batch.OperationTypeUpdate,
+		TransactionNumber: uint64(operationNumber),
+		UpdateRevealValue: updateRevealValue,
+		SignedData:        jws,
 	}
 
 	return operation, nil
@@ -720,9 +718,7 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 
 	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + "1"))
 
-	nextRecoveryCommitmentHash := getEncodedMultihash([]byte(recoveryReveal))
-
-	delta, err := getReplaceDelta(recoveredDoc)
+	delta, err := getReplaceDelta(recoveredDoc, nextUpdateCommitmentHash)
 	if err != nil {
 		return nil, err
 	}
@@ -735,8 +731,6 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 		EncodedDelta:        recoverRequest.Delta,
 		SignedData:          recoverRequest.SignedData,
 		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
-		UpdateCommitment:    nextUpdateCommitmentHash,
-		RecoveryCommitment:  nextRecoveryCommitmentHash,
 		TransactionTime:     0,
 		TransactionNumber:   uint64(operationNumber),
 	}, nil
@@ -764,7 +758,7 @@ func getRecoverRequest(privateKey *ecdsa.PrivateKey, deltaModel *model.DeltaMode
 }
 
 func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverRequest, error) {
-	delta, err := getReplaceDelta(recoveredDoc)
+	delta, err := getReplaceDelta(recoveredDoc, getEncodedMultihash([]byte("updateReveal")))
 	if err != nil {
 		return nil, err
 	}
@@ -808,8 +802,6 @@ func getDefaultStore(recoveryKey *ecdsa.PrivateKey) (*mocks.MockOperationStore, 
 func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch.Operation, error) {
 	nextUpdateCommitmentHash := getEncodedMultihash([]byte(updateReveal + "1"))
 
-	nextRecoveryCommitmentHash := getEncodedMultihash([]byte(recoveryReveal))
-
 	createRequest, err := getCreateRequest(privateKey)
 	if err != nil {
 		return nil, err
@@ -825,7 +817,7 @@ func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch
 		return nil, err
 	}
 
-	delta, err := getReplaceDelta(doc)
+	delta, err := getReplaceDelta(doc, nextUpdateCommitmentHash)
 	if err != nil {
 		return nil, err
 	}
@@ -836,17 +828,14 @@ func getCreateOperationWithDoc(privateKey *ecdsa.PrivateKey, doc string) (*batch
 	}
 
 	return &batch.Operation{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		ID:                           "did:sidetree:" + uniqueSuffix,
-		UniqueSuffix:                 uniqueSuffix,
-		Type:                         batch.OperationTypeCreate,
-		OperationBuffer:              operationBuffer,
-		Delta:                        delta,
-		EncodedDelta:                 createRequest.Delta,
-		SuffixData:                   suffixData,
-		TransactionNumber:            0,
-		UpdateCommitment:             nextUpdateCommitmentHash,
-		RecoveryCommitment:           nextRecoveryCommitmentHash,
+		ID:                "did:sidetree:" + uniqueSuffix,
+		UniqueSuffix:      uniqueSuffix,
+		Type:              batch.OperationTypeCreate,
+		OperationBuffer:   operationBuffer,
+		Delta:             delta,
+		EncodedDelta:      createRequest.Delta,
+		SuffixData:        suffixData,
+		TransactionNumber: 0,
 	}, nil
 }
 
@@ -868,7 +857,7 @@ func getCreateOperation(recoveryKey *ecdsa.PrivateKey) (*batch.Operation, error)
 }
 
 func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {
-	delta, err := getReplaceDelta(validDoc)
+	delta, err := getReplaceDelta(validDoc, getEncodedMultihash([]byte("updateReveal")))
 	if err != nil {
 		return nil, err
 	}
@@ -895,7 +884,7 @@ func getCreateRequest(privateKey *ecdsa.PrivateKey) (*model.CreateRequest, error
 	}, nil
 }
 
-func getReplaceDelta(doc string) (*model.DeltaModel, error) {
+func getReplaceDelta(doc, updateCommitment string) (*model.DeltaModel, error) {
 	patches, err := patch.PatchesFromDocument(doc)
 	if err != nil {
 		return nil, err
@@ -903,7 +892,7 @@ func getReplaceDelta(doc string) (*model.DeltaModel, error) {
 
 	return &model.DeltaModel{
 		Patches:          patches,
-		UpdateCommitment: getEncodedMultihash([]byte("updateReveal")),
+		UpdateCommitment: updateCommitment,
 	}, nil
 }
 

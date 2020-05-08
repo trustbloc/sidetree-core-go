@@ -29,15 +29,13 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 	}
 
 	return &batch.Operation{
-		Type:                         batch.OperationTypeUpdate,
-		OperationBuffer:              request,
-		UniqueSuffix:                 schema.DidSuffix,
-		Delta:                        delta,
-		EncodedDelta:                 schema.Delta,
-		UpdateRevealValue:            schema.UpdateRevealValue,
-		UpdateCommitment:             delta.UpdateCommitment,
-		HashAlgorithmInMultiHashCode: protocol.HashAlgorithmInMultiHashCode,
-		SignedData:                   schema.SignedData,
+		Type:              batch.OperationTypeUpdate,
+		OperationBuffer:   request,
+		UniqueSuffix:      schema.DidSuffix,
+		Delta:             delta,
+		EncodedDelta:      schema.Delta,
+		UpdateRevealValue: schema.UpdateRevealValue,
+		SignedData:        schema.SignedData,
 	}, nil
 }
 

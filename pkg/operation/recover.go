@@ -31,22 +31,19 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	signedData, err := parseSignedDataForRecovery(schema.SignedData.Payload, code)
+	_, err = parseSignedDataForRecovery(schema.SignedData.Payload, code)
 	if err != nil {
 		return nil, err
 	}
 
 	return &batch.Operation{
-		OperationBuffer:              request,
-		Type:                         batch.OperationTypeRecover,
-		UniqueSuffix:                 schema.DidSuffix,
-		Delta:                        delta,
-		EncodedDelta:                 schema.Delta,
-		RecoveryRevealValue:          schema.RecoveryRevealValue,
-		UpdateCommitment:             delta.UpdateCommitment,
-		RecoveryCommitment:           signedData.RecoveryCommitment,
-		HashAlgorithmInMultiHashCode: code,
-		SignedData:                   schema.SignedData,
+		OperationBuffer:     request,
+		Type:                batch.OperationTypeRecover,
+		UniqueSuffix:        schema.DidSuffix,
+		Delta:               delta,
+		EncodedDelta:        schema.Delta,
+		RecoveryRevealValue: schema.RecoveryRevealValue,
+		SignedData:          schema.SignedData,
 	}, nil
 }
 

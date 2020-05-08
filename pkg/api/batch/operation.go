@@ -37,8 +37,6 @@ type Operation struct {
 	// encoded delta
 	EncodedDelta string `json:"encodedDelta"`
 
-	//HashAlgorithmInMultiHashCode
-	HashAlgorithmInMultiHashCode uint `json:"hashAlgorithmInMultiHashCode"`
 	//The logical blockchain time that this operation was anchored on the blockchain
 	TransactionTime uint64 `json:"transactionTime"`
 	//The transaction number of the transaction this operation was batched within
@@ -50,11 +48,6 @@ type Operation struct {
 	UpdateRevealValue string `json:"updateRevealValue"`
 	// Reveal value for this recovery/deactivate operation
 	RecoveryRevealValue string `json:"recoveryRevealValue"`
-
-	// Hash of reveal value for the next update operation
-	UpdateCommitment string `json:"updateCommitment"`
-	// Hash of reveal value for next recovery/deactivate operation
-	RecoveryCommitment string `json:"recoveryCommitment"`
 }
 
 // OperationType defines valid values for operation type
