@@ -232,14 +232,10 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 
 // helper namespace for adding operations to the batch
 func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
-	opBytes, err := docutil.MarshalCanonical(operation)
-	if err != nil {
-		return err
-	}
-
 	return r.writer.Add(&batch.OperationInfo{
+		Namespace:    r.namespace,
 		UniqueSuffix: operation.UniqueSuffix,
-		Data:         opBytes,
+		Data:         operation.OperationBuffer,
 	})
 }
 

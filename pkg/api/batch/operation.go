@@ -68,8 +68,9 @@ const (
 	OperationTypeRecover OperationType = "recover"
 )
 
-// OperationInfo contains the unique suffix as well as the operation payload
+// OperationInfo contains the unique suffix and namespace as well as the operation buffer
 type OperationInfo struct {
 	Data         []byte
 	UniqueSuffix string
+	Namespace    string
 }
