@@ -171,8 +171,8 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		UpdateCommitment:               operation.UpdateCommitment,
-		RecoveryCommitment:             operation.RecoveryCommitment,
+		UpdateCommitment:               operation.Delta.UpdateCommitment,
+		RecoveryCommitment:             operation.SuffixData.RecoveryCommitment,
 		RecoveryKey:                    operation.SuffixData.RecoveryKey,
 	}, nil
 }
@@ -229,7 +229,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		UpdateCommitment:               operation.UpdateCommitment,
+		UpdateCommitment:               operation.Delta.UpdateCommitment,
 		RecoveryCommitment:             rm.RecoveryCommitment,
 		RecoveryKey:                    rm.RecoveryKey}, nil
 }
@@ -373,8 +373,8 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		Doc:                            doc,
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
-		UpdateCommitment:               operation.UpdateCommitment,
-		RecoveryCommitment:             operation.RecoveryCommitment,
+		UpdateCommitment:               operation.Delta.UpdateCommitment,
+		RecoveryCommitment:             signedDataModel.RecoveryCommitment,
 		RecoveryKey:                    signedDataModel.RecoveryKey}, nil
 }
 

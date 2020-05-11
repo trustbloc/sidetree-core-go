@@ -376,14 +376,13 @@ func getCreateOperationWithInitialState(suffixData, delta string) (*batchapi.Ope
 	}
 
 	return &batchapi.Operation{
-		OperationBuffer:              payload,
-		Delta:                        deltaModel,
-		EncodedDelta:                 delta,
-		Type:                         batchapi.OperationTypeCreate,
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 uniqueSuffix,
-		ID:                           namespace + docutil.NamespaceDelimiter + uniqueSuffix,
-		SuffixData:                   suffixDataModel,
+		Type:            batchapi.OperationTypeCreate,
+		UniqueSuffix:    uniqueSuffix,
+		ID:              namespace + docutil.NamespaceDelimiter + uniqueSuffix,
+		OperationBuffer: payload,
+		Delta:           deltaModel,
+		EncodedDelta:    delta,
+		SuffixData:      suffixDataModel,
 	}, nil
 }
 
@@ -523,11 +522,10 @@ func getUpdateOperation() *batchapi.Operation {
 	}
 
 	return &batchapi.Operation{
-		OperationBuffer:              payload,
-		Type:                         batchapi.OperationTypeUpdate,
-		HashAlgorithmInMultiHashCode: sha2_256,
-		UniqueSuffix:                 request.DidSuffix,
-		ID:                           namespace + docutil.NamespaceDelimiter + request.DidSuffix,
+		OperationBuffer: payload,
+		Type:            batchapi.OperationTypeUpdate,
+		UniqueSuffix:    request.DidSuffix,
+		ID:              namespace + docutil.NamespaceDelimiter + request.DidSuffix,
 	}
 }
 
