@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package batch
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,14 +24,13 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 //go:generate counterfeiter -o ../mocks/operationqueue.gen.go --fake-name OperationQueue ./cutter OperationQueue
 
-var testOp = &batch.OperationInfo{
-	Data:         []byte("Test Data"),
-	UniqueSuffix: "test",
-}
+const sha2_256 = 18
 
 func TestNew(t *testing.T) {
 	ctx := newMockContext()
@@ -101,6 +103,9 @@ func TestBatchTimer(t *testing.T) {
 
 	writer.Start()
 	defer writer.Stop()
+
+	testOp, err := generateOperation(0)
+	require.NoError(t, err)
 
 	err = writer.Add(testOp)
 	require.Nil(t, err)
@@ -183,6 +188,9 @@ func TestAddAfterStop(t *testing.T) {
 
 	require.True(t, writer.Stopped())
 
+	testOp, err := generateOperation(100)
+	require.NoError(t, err)
+
 	err = writer.Add(testOp)
 	require.EqualError(t, err, "writer is stopped")
 }
@@ -201,10 +209,10 @@ func TestProcessBatchErrorRecovery(t *testing.T) {
 	const n = 12
 	const numBatchesExpected = 7
 
-	require.NoError(t, writer.Add(&batch.OperationInfo{
-		UniqueSuffix: "unique",
-		Data:         []byte("first-op"),
-	}))
+	firstOp, err := generateOperation(0)
+	require.NoError(t, err)
+
+	require.NoError(t, writer.Add(firstOp))
 	time.Sleep(1 * time.Second)
 
 	for _, op := range generateOperations(n) {
@@ -259,6 +267,29 @@ func TestStartWithExistingItems(t *testing.T) {
 }
 
 func TestProcessError(t *testing.T) {
+	t.Run("process operation error", func(t *testing.T) {
+		q := &mocks.OperationQueue{}
+
+		invalidQueue := []*batch.OperationInfo{{Data: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}
+
+		q.LenReturns(1)
+		q.PeekReturns(invalidQueue, nil)
+
+		ctx := newMockContext()
+		ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 1
+		ctx.OpQueue = q
+
+		writer, err := New("test1", ctx, WithBatchTimeout(10*time.Millisecond))
+		require.NoError(t, err)
+
+		writer.Start()
+		defer writer.Stop()
+
+		time.Sleep(50 * time.Millisecond)
+
+		require.Zero(t, len(ctx.BlockchainClient.GetAnchors()))
+	})
+
 	t.Run("Cut error", func(t *testing.T) {
 		errExpected := errors.New("injected operation queue error")
 		q := &mocks.OperationQueue{}
@@ -316,13 +347,44 @@ func withError() Option {
 
 func generateOperations(numOfOperations int) (ops []*batch.OperationInfo) {
 	for j := 1; j <= numOfOperations; j++ {
-		op := &batch.OperationInfo{
-			UniqueSuffix: string(j),
-			Data:         []byte(fmt.Sprintf("op%d", j)),
+		op, err := generateOperation(j)
+		if err != nil {
+			panic(err)
 		}
+
 		ops = append(ops, op)
 	}
 	return
+}
+
+func generateOperation(num int) (*batch.OperationInfo, error) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	doc := fmt.Sprintf(`{"test":%d}`, num)
+	info := &helper.CreateRequestInfo{OpaqueDocument: doc,
+		RecoveryKey:   jwk,
+		MultihashCode: sha2_256}
+
+	request, err := helper.NewCreateRequest(info)
+	if err != nil {
+		return nil, err
+	}
+
+	op := &batch.OperationInfo{
+		Namespace:    "ns",
+		UniqueSuffix: string(num),
+		Data:         request,
+	}
+
+	return op, nil
 }
 
 // mockContext implements mock batch writer context

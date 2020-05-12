@@ -130,73 +130,6 @@ func TestUpdateHandler_Update(t *testing.T) {
 	})
 }
 
-func TestGetOperation(t *testing.T) {
-	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-	handler := NewUpdateHandler(docHandler)
-
-	const uniqueSuffix = "whatever"
-
-	t.Run("create", func(t *testing.T) {
-		operation, err := getCreateRequestBytes()
-		require.NoError(t, err)
-
-		op, err := handler.getOperation(operation)
-		require.NoError(t, err)
-		require.NotNil(t, op)
-	})
-	t.Run("update", func(t *testing.T) {
-		info := getUpdateRequestInfo(uniqueSuffix)
-		request, err := helper.NewUpdateRequest(info)
-		require.NoError(t, err)
-
-		op, err := handler.getOperation(request)
-		require.NoError(t, err)
-		require.NotNil(t, op)
-	})
-	t.Run("deactivate", func(t *testing.T) {
-		info := getDeactivateRequestInfo(uniqueSuffix)
-		request, err := helper.NewDeactivateRequest(info)
-		require.NoError(t, err)
-
-		op, err := handler.getOperation(request)
-		require.NoError(t, err)
-		require.NotNil(t, op)
-	})
-	t.Run("recover", func(t *testing.T) {
-		info := getRecoverRequestInfo(uniqueSuffix)
-		request, err := helper.NewRecoverRequest(info)
-		require.NoError(t, err)
-
-		op, err := handler.getOperation(request)
-		require.NoError(t, err)
-		require.NotNil(t, op)
-	})
-	t.Run("operation parsing error", func(t *testing.T) {
-		// set-up invalid hash algorithm in protocol configuration
-		protocol := mocks.NewMockProtocolClient()
-		protocol.Protocol.HashAlgorithmInMultiHashCode = 55
-
-		docHandlerWithErr := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(protocol)
-		handlerWithErr := NewUpdateHandler(docHandlerWithErr)
-
-		info := getRecoverRequestInfo(uniqueSuffix)
-		request, err := helper.NewRecoverRequest(info)
-		require.NoError(t, err)
-
-		op, err := handlerWithErr.getOperation(request)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "next update commitment hash is not computed with the latest supported hash algorithm")
-		require.Nil(t, op)
-	})
-	t.Run("unsupported operation type error", func(t *testing.T) {
-		operation := getUnsupportedRequest()
-		op, err := handler.getOperation(operation)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "not implemented")
-		require.Nil(t, op)
-	})
-}
-
 func getCreateRequestInfo() *helper.CreateRequestInfo {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -297,13 +230,11 @@ func getUnsupportedRequest() []byte {
 	return payload
 }
 
-func getCreateRequestBytes() ([]byte, error) {
-	req, err := getCreateRequest()
-	if err != nil {
-		return nil, err
-	}
+// operationSchema is used to get operation type
+type operationSchema struct {
 
-	return json.Marshal(req)
+	// operation
+	Operation model.OperationType `json:"type"`
 }
 
 const validDoc = `{

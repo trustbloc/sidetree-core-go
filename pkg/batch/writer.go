@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 package batch
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
 	"github.com/trustbloc/sidetree-core-go/pkg/observer"
+	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 )
 
 const (
@@ -62,6 +64,7 @@ type Writer struct {
 	batchTimeout time.Duration
 	opsHandler   OperationHandler
 	stopped      uint32
+	protocol     protocol.Client
 }
 
 // Context contains batch writer context
@@ -133,6 +136,7 @@ func New(name string, context Context, options ...Option) (*Writer, error) {
 		batchTimeout: batchTimeout,
 		context:      context,
 		opsHandler:   opsHandler,
+		protocol:     context.Protocol(),
 	}, nil
 }
 
@@ -292,7 +296,19 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 
 	operations := make([][]byte, len(ops))
 	for i, d := range ops {
-		operations[i] = d.Data
+		op, err := operation.ParseOperation(d.Namespace, d.Data, r.protocol.Current())
+		if err != nil {
+			return err
+		}
+
+		// TODO: this marshal will be removed when we switch to chunk and map files
+		// and operations will be split based on type
+		opBytes, err := json.Marshal(op)
+		if err != nil {
+			return err
+		}
+
+		operations[i] = opBytes
 	}
 
 	batchBytes, err := r.opsHandler.CreateBatchFile(operations)

@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	op1 = &batch.OperationInfo{UniqueSuffix: "op1", Data: []byte("op1")}
-	op2 = &batch.OperationInfo{UniqueSuffix: "op2", Data: []byte("op2")}
-	op3 = &batch.OperationInfo{UniqueSuffix: "op3", Data: []byte("op3")}
+	op1 = &batch.OperationInfo{Namespace: "ns", UniqueSuffix: "op1", Data: []byte("op1")}
+	op2 = &batch.OperationInfo{Namespace: "ns", UniqueSuffix: "op2", Data: []byte("op2")}
+	op3 = &batch.OperationInfo{Namespace: "ns", UniqueSuffix: "op3", Data: []byte("op3")}
 )
 
 func TestMemQueue(t *testing.T) {

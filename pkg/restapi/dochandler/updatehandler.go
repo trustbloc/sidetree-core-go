@@ -7,18 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 // Processor processes document operations
@@ -74,41 +70,5 @@ func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, er
 }
 
 func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, error) {
-	schema := &operationSchema{}
-	err := json.Unmarshal(operationBuffer, schema)
-	if err != nil {
-		return nil, err
-	}
-
-	protocol := h.processor.Protocol().Current()
-
-	var op *batch.Operation
-	var parseErr error
-	switch schema.Operation {
-	case model.OperationTypeCreate:
-		op, parseErr = operation.ParseCreateOperation(operationBuffer, protocol)
-	case model.OperationTypeUpdate:
-		op, parseErr = operation.ParseUpdateOperation(operationBuffer, protocol)
-	case model.OperationTypeDeactivate:
-		op, parseErr = operation.ParseDeactivateOperation(operationBuffer, protocol)
-	case model.OperationTypeRecover:
-		op, parseErr = operation.ParseRecoverOperation(operationBuffer, protocol)
-	default:
-		return nil, fmt.Errorf("operation type [%s] not implemented", schema.Operation)
-	}
-
-	if parseErr != nil {
-		return nil, parseErr
-	}
-
-	op.ID = h.processor.Namespace() + docutil.NamespaceDelimiter + op.UniqueSuffix
-
-	return op, nil
-}
-
-// operationSchema is used to get operation type
-type operationSchema struct {
-
-	// operation
-	Operation model.OperationType `json:"type"`
+	return operation.ParseOperation(h.processor.Namespace(), operationBuffer, h.processor.Protocol().Current())
 }
