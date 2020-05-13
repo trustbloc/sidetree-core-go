@@ -19,12 +19,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
-	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
+	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
@@ -80,20 +81,31 @@ func TestStart(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
-	var af filehandler.AnchorFile
+	var af models.AnchorFile
 	err = json.Unmarshal(bytes, &af)
 	require.Nil(t, err)
 	require.NotNil(t, af)
+	require.Equal(t, 2, len(af.Operations.Create))
 
-	bytes, err = ctx.CasClient.Read(af.BatchFileHash)
+	bytes, err = ctx.CasClient.Read(af.MapFileHash)
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
-	var bf filehandler.BatchFile
-	err = json.Unmarshal(bytes, &bf)
+	var mf models.MapFile
+	err = json.Unmarshal(bytes, &mf)
 	require.Nil(t, err)
-	require.NotNil(t, bf)
-	require.Equal(t, 2, len(bf.Operations))
+	require.NotNil(t, mf)
+	require.Equal(t, 0, len(mf.Operations.Update))
+
+	bytes, err = ctx.CasClient.Read(mf.Chunks[0].ChunkFileURI)
+	require.Nil(t, err)
+	require.NotNil(t, bytes)
+
+	var cf models.ChunkFile
+	err = json.Unmarshal(bytes, &cf)
+	require.Nil(t, err)
+	require.NotNil(t, cf)
+	require.Equal(t, 2, len(cf.Deltas))
 }
 
 func TestBatchTimer(t *testing.T) {
@@ -120,24 +132,36 @@ func TestBatchTimer(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
-	var af filehandler.AnchorFile
+	var af models.AnchorFile
 	err = json.Unmarshal(bytes, &af)
 	require.Nil(t, err)
 	require.NotNil(t, af)
+	require.Equal(t, 1, len(af.Operations.Create))
+	require.Equal(t, 0, len(af.Operations.Recover))
+	require.Equal(t, 0, len(af.Operations.Deactivate))
 
-	bytes, err = ctx.CasClient.Read(af.BatchFileHash)
+	bytes, err = ctx.CasClient.Read(af.MapFileHash)
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
-	var bf filehandler.BatchFile
-	err = json.Unmarshal(bytes, &bf)
+	var mf models.MapFile
+	err = json.Unmarshal(bytes, &mf)
 	require.Nil(t, err)
-	require.NotNil(t, bf)
-	require.Equal(t, 1, len(bf.Operations))
+	require.NotNil(t, mf)
+	require.Equal(t, 0, len(mf.Operations.Update))
+
+	bytes, err = ctx.CasClient.Read(mf.Chunks[0].ChunkFileURI)
+	var cf models.ChunkFile
+	err = json.Unmarshal(bytes, &cf)
+	require.Nil(t, err)
+	require.NotNil(t, cf)
+	require.Equal(t, 1, len(cf.Deltas))
 }
 
-func TestCasError(t *testing.T) {
+func TestProcessOperationsError(t *testing.T) {
 	ctx := newMockContext()
+	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
+
 	writer, err := New("test", ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
 
@@ -418,7 +442,7 @@ func (m *mockContext) Blockchain() BlockchainClient {
 }
 
 // CAS returns the CAS client
-func (m *mockContext) CAS() CASClient {
+func (m *mockContext) CAS() cas.Client {
 	return m.CasClient
 }
 
@@ -427,15 +451,10 @@ func (m *mockContext) OperationQueue() cutter.OperationQueue {
 	return m.OpQueue
 }
 
-// mockOpsHandler mocks creates batch/anchor files from operations
+// mockOpsHandler mocks creating batch files from operations
 type mockOpsHandler struct{}
 
-// CreateBatchFile mocks creating batch file bytes
-func (h *mockOpsHandler) CreateBatchFile(operations [][]byte) ([]byte, error) {
-	return nil, nil
-}
-
-// CreateAnchorFile mocks creating anchor file bytes
-func (h *mockOpsHandler) CreateAnchorFile(didSuffixes []string, batchAddress string) ([]byte, error) {
-	return nil, nil
+// PrepareTxnFiles mocks preparing batch files from operations
+func (h *mockOpsHandler) PrepareTxnFiles(ops []*batch.Operation) (string, error) {
+	return "", nil
 }

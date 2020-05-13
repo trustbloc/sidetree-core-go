@@ -44,4 +44,22 @@ func TestDidCalculationError(t *testing.T) {
 	require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
 }
 
+func TestNamespaceFromID(t *testing.T) {
+	const namespace = "did:sidetree"
+	const suffix = "123456"
+
+	t.Run("Valid ID", func(t *testing.T) {
+		ns, err := GetNamespaceFromID(namespace + NamespaceDelimiter + suffix)
+		require.NoError(t, err)
+		require.Equal(t, namespace, ns)
+	})
+
+	t.Run("Invalid ID", func(t *testing.T) {
+		ns, err := GetNamespaceFromID(suffix)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid ID")
+		require.Empty(t, ns)
+	})
+}
+
 const suffixDataString = `{"delta_hash":"EiD0ERt_0QnYAoHw0KqhwYyMbMjT_vlvW3C8BuilAWT1Kw","recovery_key":{"kty":"EC","crv":"secp256k1","x":"FDmlOfldNAm9ThIQTj2-UkaCajsfrJOU0wJ7kl3QJHg","y":"bAGx86GZ41PUbzk_bvOKlrW0rXdmnXQrSop7HQoC12Y"},"recovery_commitment":"EiDrKHSo11DLU1uel6fFxH0B-0BLlyu_OinGPmLNvHyVoA"}`

@@ -16,14 +16,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
+	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
 
 const anchorAddressKey = "anchorAddress"
 
 func TestStartObserver(t *testing.T) {
 	t.Run("test error from ProcessSidetreeTxn", func(t *testing.T) {
-		sidetreeTxnCh := make(chan []SidetreeTxn, 100)
+		sidetreeTxnCh := make(chan []txn.SidetreeTxn, 100)
 		isCalled := false
 		var rw sync.RWMutex
 		readFunc := func(key string) ([]byte, error) {
@@ -35,7 +37,7 @@ func TestStartObserver(t *testing.T) {
 
 		providers := &Providers{
 			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			DCASClient:       mockDCAS{readFunc: readFunc},
+			TxnOpsProvider:   txnhandler.New(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClient()),
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
@@ -45,7 +47,7 @@ func TestStartObserver(t *testing.T) {
 		o.Start()
 		defer o.Stop()
 
-		sidetreeTxnCh <- []SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
+		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)
@@ -53,7 +55,7 @@ func TestStartObserver(t *testing.T) {
 	})
 
 	t.Run("test channel close", func(t *testing.T) {
-		sidetreeTxnCh := make(chan []SidetreeTxn, 100)
+		sidetreeTxnCh := make(chan []txn.SidetreeTxn, 100)
 
 		providers := &Providers{
 			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
@@ -71,7 +73,7 @@ func TestStartObserver(t *testing.T) {
 	})
 
 	t.Run("test success", func(t *testing.T) {
-		sidetreeTxnCh := make(chan []SidetreeTxn, 100)
+		sidetreeTxnCh := make(chan []txn.SidetreeTxn, 100)
 		isCalled := false
 
 		var rw sync.RWMutex
@@ -83,15 +85,8 @@ func TestStartObserver(t *testing.T) {
 		}}
 
 		providers := &Providers{
-			Ledger: mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-				b, err := docutil.MarshalCanonical(batch.Operation{ID: "did:sideteree:123456"})
-				require.NoError(t, err)
-				return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
-			}},
+			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
+			TxnOpsProvider:   &mockTxnOpsProvider{},
 			OpStoreProvider:  &mockOperationStoreProvider{opStore: opStore},
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
@@ -102,7 +97,7 @@ func TestStartObserver(t *testing.T) {
 		o.Start()
 		defer o.Stop()
 
-		sidetreeTxnCh <- []SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
+		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)
@@ -111,102 +106,30 @@ func TestStartObserver(t *testing.T) {
 }
 
 func TestTxnProcessor_Process(t *testing.T) {
-	t.Run("test error from dacs read", func(t *testing.T) {
+	t.Run("test error from txn operations provider", func(t *testing.T) {
 		providers := &Providers{
-			DCASClient:       mockDCAS{readFunc: func(key string) ([]byte, error) { return nil, fmt.Errorf("read error") }},
+			TxnOpsProvider:   &mockTxnOpsProvider{err: errors.New("txn operations provider error")},
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.Process(SidetreeTxn{})
+		err := p.Process(txn.SidetreeTxn{})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to retrieve content for anchor")
-	})
-
-	t.Run("test error from getAnchorFile", func(t *testing.T) {
-		providers := &Providers{
-			DCASClient:       mockDCAS{readFunc: func(key string) ([]byte, error) { return []byte("1"), nil }},
-			OpFilterProvider: &NoopOperationFilterProvider{},
-		}
-
-		p := NewTxnProcessor(providers)
-		err := p.Process(SidetreeTxn{})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to unmarshal anchor")
-	})
-
-	t.Run("test error from processBatchFile", func(t *testing.T) {
-		providers := &Providers{
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-				return nil, fmt.Errorf("read error")
-			}},
-			OpFilterProvider: &NoopOperationFilterProvider{},
-		}
-
-		p := NewTxnProcessor(providers)
-		err := p.Process(SidetreeTxn{AnchorAddress: anchorAddressKey})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to retrieve content for batch")
+		require.Contains(t, err.Error(), "failed to retrieve operations for anchor string")
 	})
 }
 
-func TestProcessBatchFile(t *testing.T) {
-	t.Run("test error from getBatchFile", func(t *testing.T) {
-		providers := &Providers{
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-				return []byte("1"), nil
-			}},
-			OpFilterProvider: &NoopOperationFilterProvider{},
-		}
-
-		p := NewTxnProcessor(providers)
-		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: anchorAddressKey})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to unmarshal batch")
-	})
-
-	t.Run("test error from updateOperation", func(t *testing.T) {
-		providers := &Providers{
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-
-				return docutil.MarshalCanonical(&BatchFile{Operations: []string{"1"}})
-			}},
-			OpFilterProvider: &NoopOperationFilterProvider{},
-		}
-
-		p := NewTxnProcessor(providers)
-		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: anchorAddressKey})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to update operation with blockchain metadata")
-	})
-
+func TestProcessTxnOperations(t *testing.T) {
 	t.Run("test error from operationStoreProvider ForNamespace", func(t *testing.T) {
 		errExpected := errors.New("injected store provider error")
 
 		providers := &Providers{
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-				b, err := docutil.MarshalCanonical(batch.Operation{ID: "did:sideteree:123456"})
-				require.NoError(t, err)
-				return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
-			}},
 			OpStoreProvider:  &mockOperationStoreProvider{err: errExpected},
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: anchorAddressKey})
+		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), errExpected.Error())
 	})
@@ -217,85 +140,47 @@ func TestProcessBatchFile(t *testing.T) {
 		}}
 
 		providers := &Providers{
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-				b, err := docutil.MarshalCanonical(batch.Operation{ID: "did:sideteree:123456"})
-				require.NoError(t, err)
-				return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
-			}},
 			OpStoreProvider:  &mockOperationStoreProvider{opStore: opStore},
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: anchorAddressKey})
+		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to store operation from batch")
+		require.Contains(t, err.Error(), "failed to store operation from anchor string")
 	})
 
 	t.Run("test success", func(t *testing.T) {
 		providers := &Providers{
-			DCASClient: mockDCAS{readFunc: func(key string) ([]byte, error) {
-				if key == anchorAddressKey {
-					return docutil.MarshalCanonical(&AnchorFile{})
-				}
-				b, err := docutil.MarshalCanonical(batch.Operation{ID: "did:sideteree:123456"})
-				require.NoError(t, err)
-				return docutil.MarshalCanonical(&BatchFile{Operations: []string{docutil.EncodeToString(b)}})
-			}},
+			TxnOpsProvider:   &mockTxnOpsProvider{},
 			OpStoreProvider:  &mockOperationStoreProvider{opStore: &mockOperationStore{}},
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processBatchFile("", SidetreeTxn{AnchorAddress: anchorAddressKey})
+		batchOps, err := p.TxnOpsProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
+		require.NoError(t, err)
+
+		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
 		require.NoError(t, err)
 	})
 }
 
 func TestUpdateOperation(t *testing.T) {
-	t.Run("test error from unmarshal decoded ops", func(t *testing.T) {
-		_, err := updateOperation(docutil.EncodeToString([]byte("ops")), 1, SidetreeTxn{AnchorAddress: anchorAddressKey})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to unmarshal decoded ops")
-	})
-
 	t.Run("test success", func(t *testing.T) {
-		b, err := docutil.MarshalCanonical(batch.Operation{ID: "did:sideteree:123456"})
-		require.NoError(t, err)
-		updatedOps, err := updateOperation(docutil.EncodeToString(b), 1, SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
-		require.NoError(t, err)
+		updatedOps := updateOperation(&batch.Operation{ID: "did:sidetree:abc"},
+			1, txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.Equal(t, uint64(20), updatedOps.TransactionTime)
 		require.Equal(t, uint64(2), updatedOps.TransactionNumber)
 		require.Equal(t, uint(1), updatedOps.OperationIndex)
 	})
 }
 
-func TestGetNamespace(t *testing.T) {
-	const namespace = "did:sidetree"
-	const suffix = "123456"
-
-	t.Run("Valid ID", func(t *testing.T) {
-		ns, err := namespaceFromDocID(namespace + docutil.NamespaceDelimiter + suffix)
-		require.NoError(t, err)
-		require.Equal(t, namespace, ns)
-	})
-
-	t.Run("Invalid ID", func(t *testing.T) {
-		ns, err := namespaceFromDocID(suffix)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid ID")
-		require.Empty(t, ns)
-	})
-}
-
 type mockLedger struct {
-	registerForSidetreeTxnValue chan []SidetreeTxn
+	registerForSidetreeTxnValue chan []txn.SidetreeTxn
 }
 
-func (m mockLedger) RegisterForSidetreeTxn() <-chan []SidetreeTxn {
+func (m mockLedger) RegisterForSidetreeTxn() <-chan []txn.SidetreeTxn {
 	return m.registerForSidetreeTxnValue
 }
 
@@ -308,6 +193,10 @@ func (m mockDCAS) Read(key string) ([]byte, error) {
 		return m.readFunc(key)
 	}
 	return nil, nil
+}
+
+func (m mockDCAS) Write(content []byte) (string, error) {
+	return "", errors.New("not implemented")
 }
 
 type mockOperationStore struct {
@@ -340,4 +229,20 @@ func (m *mockOperationStoreProvider) ForNamespace(string) (OperationStore, error
 	}
 
 	return m.opStore, nil
+}
+
+type mockTxnOpsProvider struct {
+	err error
+}
+
+func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	op := &batch.Operation{
+		ID: "did:sidetree:abc",
+	}
+
+	return []*batch.Operation{op}, nil
 }
