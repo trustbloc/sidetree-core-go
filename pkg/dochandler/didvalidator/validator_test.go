@@ -160,6 +160,8 @@ func TestTransformDocument(t *testing.T) {
 	service := didDoc.Services()[0]
 	require.Contains(t, service.ID(), testID)
 	require.NotEmpty(t, service.Endpoint())
+	require.Equal(t, "recipientKeysValue", service["recipientKeys"])
+	require.Equal(t, "routingKeysValue", service["routingKeys"])
 	require.Equal(t, "IdentityHub", service.Type())
 
 	// validate public keys

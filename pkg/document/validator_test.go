@@ -110,8 +110,8 @@ func TestValidateServices(t *testing.T) {
 		err = ValidateServices(doc.Services())
 		require.Nil(t, err)
 	})
-	t.Run("success - service can have extra property", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(serviceDocExtraProperty))
+	t.Run("success - service can have allowed optional property", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocOptionalProperty))
 		require.NoError(t, err)
 
 		err = ValidateServices(doc.Services())
@@ -125,7 +125,6 @@ func TestValidateServices(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service id is missing")
 	})
-
 	t.Run("error - missing service type", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(serviceDocNoType))
 		require.NoError(t, err)
@@ -173,6 +172,14 @@ func TestValidateServices(t *testing.T) {
 		err = ValidateServices(doc.Services())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service endpoint is not valid URI")
+	})
+	t.Run("success - service property not allowed", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(serviceDocPropertyNotAllowed))
+		require.NoError(t, err)
+
+		err = ValidateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "property 'test' is not allowed for service")
 	})
 }
 
@@ -641,7 +648,16 @@ const serviceDocNoServiceEndpoint = `{
 	}]
 }`
 
-const serviceDocExtraProperty = `{
+const serviceDocOptionalProperty = `{
+	"service": [{
+		"id": "vcs",
+		"routingKeys": "value",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocPropertyNotAllowed = `{
 	"service": [{
 		"id": "vcs",
 		"test": "value",
