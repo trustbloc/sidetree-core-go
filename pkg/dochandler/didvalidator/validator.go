@@ -144,6 +144,13 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 		externalService[document.TypeProperty] = sv.Type()
 		externalService[document.ServiceEndpointProperty] = sv.Endpoint()
 
+		for _, prop := range document.GetOptionalServiceProperties() {
+			value, ok := sv[prop]
+			if ok {
+				externalService[prop] = value
+			}
+		}
+
 		services = append(services, externalService)
 	}
 

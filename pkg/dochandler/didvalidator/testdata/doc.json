@@ -148,6 +148,8 @@
     {
       "id": "hub",
       "type": "IdentityHub",
+      "routingKeys": "routingKeysValue",
+      "recipientKeys": "recipientKeysValue",
       "serviceEndpoint": "https://example.com/hub/"
     }
   ]
