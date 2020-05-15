@@ -13,7 +13,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 // Signer defines JWS Signer interface that will be used to sign required data in Sidetree request
@@ -26,46 +25,29 @@ type Signer interface {
 }
 
 //SignModel signs model
-func SignModel(model interface{}, signer Signer) (*model.JWS, error) {
+func SignModel(model interface{}, signer Signer) (string, error) {
 	// first you normalize model
 	signedDataBytes, err := canonicalizer.MarshalCanonical(model)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	payload := docutil.EncodeToString(signedDataBytes)
 
-	return signPayload(payload, signer)
+	return SignPayload(payload, signer)
 }
 
-func signPayload(payload string, signer Signer) (*model.JWS, error) {
+// SignPayload allows for singing payload
+func SignPayload(payload string, signer Signer) (string, error) {
 	alg, ok := signer.Headers().Algorithm()
 	if !ok || alg == "" {
-		return nil, errors.New("signing algorithm is required")
-	}
-
-	protected := &model.Header{
-		Alg: alg,
-	}
-
-	kid, ok := signer.Headers().KeyID()
-	if ok {
-		protected.Kid = kid
+		return "", errors.New("signing algorithm is required")
 	}
 
 	jwsSignature, err := internaljws.NewJWS(signer.Headers(), nil, []byte(payload), signer)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	signature, err := jwsSignature.SerializeCompact(false)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.JWS{
-		Protected: protected,
-		Signature: signature,
-		Payload:   payload,
-	}, nil
+	return jwsSignature.SerializeCompact(false)
 }

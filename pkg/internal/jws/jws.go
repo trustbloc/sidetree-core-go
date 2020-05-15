@@ -145,8 +145,8 @@ func WithJWSDetachedPayload(payload []byte) ParseOpt {
 	}
 }
 
-// ParseJWS parses and validates serialized JWS. Currently only JWS Compact Serialization parsing is supported.
-func ParseJWS(jws string, jwk *jws.JWK, opts ...ParseOpt) (*JSONWebSignature, error) {
+// ParseJWS parses serialized JWS. Currently only JWS Compact Serialization parsing is supported.
+func ParseJWS(jws string, opts ...ParseOpt) (*JSONWebSignature, error) {
 	pOpts := &jwsParseOpts{}
 
 	for _, opt := range opts {
@@ -159,7 +159,27 @@ func ParseJWS(jws string, jwk *jws.JWK, opts ...ParseOpt) (*JSONWebSignature, er
 		return nil, errors.New("JWS JSON serialization is not supported")
 	}
 
-	return parseCompacted(jws, jwk, pOpts)
+	return parseCompacted(jws, pOpts)
+}
+
+// VerifyJWS parses and validates serialized JWS. Currently only JWS Compact Serialization parsing is supported.
+func VerifyJWS(jws string, jwk *jws.JWK, opts ...ParseOpt) (*JSONWebSignature, error) {
+	parsedJWS, err := ParseJWS(jws, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	sInput, err := signingInput(parsedJWS.ProtectedHeaders, parsedJWS.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("build signing input: %w", err)
+	}
+
+	err = VerifySignature(jwk, parsedJWS.signature, sInput)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsedJWS, nil
 }
 
 // IsCompactJWS checks weather input is a compact JWS (based on https://tools.ietf.org/html/rfc7516#section-9)
@@ -169,7 +189,7 @@ func IsCompactJWS(s string) bool {
 	return len(parts) == jwsPartsCount
 }
 
-func parseCompacted(jwsCompact string, jwk *jws.JWK, opts *jwsParseOpts) (*JSONWebSignature, error) {
+func parseCompacted(jwsCompact string, opts *jwsParseOpts) (*JSONWebSignature, error) {
 	parts := strings.Split(jwsCompact, ".")
 	if len(parts) != jwsPartsCount {
 		return nil, errors.New("invalid JWS compact format")
@@ -185,19 +205,13 @@ func parseCompacted(jwsCompact string, jwk *jws.JWK, opts *jwsParseOpts) (*JSONW
 		return nil, err
 	}
 
-	sInput, err := signingInput(joseHeaders, payload)
-	if err != nil {
-		return nil, fmt.Errorf("build signing input: %w", err)
-	}
-
 	signature, err := base64.RawURLEncoding.DecodeString(parts[jwsSignaturePart])
 	if err != nil {
 		return nil, fmt.Errorf("decode base64 signature: %w", err)
 	}
 
-	err = VerifySignature(jwk, signature, sInput)
-	if err != nil {
-		return nil, err
+	if len(signature) == 0 {
+		return nil, errors.New("compact jws signature is empty")
 	}
 
 	return &JSONWebSignature{
@@ -216,6 +230,10 @@ func parseCompactedPayload(jwsPayload string, opts *jwsParseOpts) ([]byte, error
 	payload, err := base64.RawURLEncoding.DecodeString(jwsPayload)
 	if err != nil {
 		return nil, fmt.Errorf("decode base64 payload: %w", err)
+	}
+
+	if len(payload) == 0 {
+		return nil, errors.New("compact jws payload is empty")
 	}
 
 	return payload, nil

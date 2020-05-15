@@ -52,23 +52,23 @@ func TestSignPayload(t *testing.T) {
 		signer := ecsigner.New(privateKey, "ES256", "key-1")
 
 		message := "test"
-		jwsSignature, err := signPayload(message, signer)
+		jwsSignature, err := SignPayload(message, signer)
 		require.NoError(t, err)
 		require.NotEmpty(t, jwsSignature)
 
-		_, err = internal.ParseJWS(jwsSignature.Signature, jwk)
+		_, err = internal.VerifyJWS(jwsSignature, jwk)
 		require.NoError(t, err)
 	})
 	t.Run("signing algorithm required", func(t *testing.T) {
 		signer := ecsigner.New(privateKey, "", "kid")
 
-		jws, err := signPayload("test", signer)
+		jws, err := SignPayload("test", signer)
 		require.Error(t, err)
 		require.Empty(t, jws)
 		require.Contains(t, err.Error(), "signing algorithm is required")
 	})
 	t.Run("kid is required", func(t *testing.T) {
-		jws, err := signPayload("", NewMockSigner(errors.New("test error"), true))
+		jws, err := SignPayload("", NewMockSigner(errors.New("test error"), true))
 		require.Error(t, err)
 		require.Empty(t, jws)
 		require.Contains(t, err.Error(), "test error")

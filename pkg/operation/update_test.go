@@ -15,6 +15,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -66,6 +68,67 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the latest supported hash algorithm")
 	})
+	t.Run("invalid signed data", func(t *testing.T) {
+		delta, err := getUpdateDelta()
+		require.NoError(t, err)
+
+		req, err := getUpdateRequest(delta)
+		require.NoError(t, err)
+
+		req.SignedData = "."
+		payload, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		schema, err := ParseUpdateOperation(payload, p)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "invalid JWS compact format")
+	})
+}
+
+func TestParseSignedDataForUpdate(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		req, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+
+		schema, err := parseSignedDataForUpdate(req.SignedData, sha2_256)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+	})
+	t.Run("invalid JWS compact format", func(t *testing.T) {
+		schema, err := parseSignedDataForUpdate("invalid", sha2_256)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "invalid JWS compact format")
+	})
+	t.Run("hash not computed with latest algorithm", func(t *testing.T) {
+		payload := docutil.EncodeToString([]byte(`{"delta_hash": "hash" }`))
+
+		compactJWS, err := signutil.SignPayload(payload, NewMockSigner())
+
+		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "delta hash is not computed with the latest supported hash algorithm")
+	})
+	t.Run("payload not encoded JSON object", func(t *testing.T) {
+		compactJWS, err := signutil.SignPayload(".test.", NewMockSigner())
+		require.NoError(t, err)
+
+		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "illegal base64 data")
+	})
+	t.Run("payload not JSON object", func(t *testing.T) {
+		compactJWS, err := signutil.SignPayload(docutil.EncodeToString([]byte("test")), NewMockSigner())
+		require.NoError(t, err)
+
+		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "invalid character")
+	})
 }
 
 func TestValidateUpdateDelta(t *testing.T) {
@@ -115,7 +178,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	t.Run("missing signed data", func(t *testing.T) {
 		update, err := getDefaultUpdateRequest()
 		require.NoError(t, err)
-		update.SignedData = nil
+		update.SignedData = ""
 
 		err = validateUpdateRequest(update)
 		require.Error(t, err)
@@ -142,23 +205,23 @@ func TestValidateUpdateRequest(t *testing.T) {
 }
 
 func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
-	deltaBytes, err := json.Marshal(delta)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	if err != nil {
+		return nil, err
+	}
+
+	signedModel := model.UpdateSignedDataModel{DeltaHash: computeMultihash(string(deltaBytes))}
+
+	compactJWS, err := signutil.SignModel(signedModel, NewMockSigner())
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.UpdateRequest{
-		DidSuffix: "suffix",
-		SignedData: &model.JWS{
-			Protected: &model.Header{
-				Alg: "alg",
-				Kid: "kid",
-			},
-			Payload:   "payload",
-			Signature: "signature",
-		},
-		Operation: model.OperationTypeUpdate,
-		Delta:     docutil.EncodeToString(deltaBytes),
+		DidSuffix:  "suffix",
+		SignedData: compactJWS,
+		Operation:  model.OperationTypeUpdate,
+		Delta:      docutil.EncodeToString(deltaBytes),
 	}, nil
 }
 

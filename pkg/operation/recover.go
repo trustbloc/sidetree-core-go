@@ -14,6 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -31,7 +32,7 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	_, err = parseSignedDataForRecovery(schema.SignedData.Payload, code)
+	_, err = parseSignedDataForRecovery(schema.SignedData, code)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +81,13 @@ func parseDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	return schema, nil
 }
 
-func parseSignedDataForRecovery(encoded string, code uint) (*model.RecoverSignedDataModel, error) {
-	bytes, err := docutil.DecodeString(encoded)
+func parseSignedDataForRecovery(compactJWS string, code uint) (*model.RecoverSignedDataModel, error) {
+	jws, err := parseSignedData(compactJWS)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := docutil.DecodeString(string(jws.Payload))
 	if err != nil {
 		return nil, err
 	}
@@ -115,41 +121,21 @@ func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, cod
 	return nil
 }
 
-func validateSignedData(signedData *model.JWS) error {
-	if signedData == nil {
-		return errors.New("missing signed data")
-	}
-
-	if signedData.Payload == "" {
-		return errors.New("signed data is missing payload")
-	}
-
-	if signedData.Signature == "" {
-		return errors.New("signed data is missing signature")
-	}
-
-	if signedData.Protected == nil {
-		return errors.New("signed data is missing protected headers")
-	}
-
-	if signedData.Protected.Alg == "" {
-		return errors.New("signed data is missing algorithm in protected headers")
-	}
-
-	return nil
+func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
+	return internal.ParseJWS(compactJWS)
 }
 
 func validateRecoverRequest(recover *model.RecoverRequest) error {
-	if err := validateSignedData(recover.SignedData); err != nil {
-		return err
+	if recover.DidSuffix == "" {
+		return errors.New("missing did suffix")
 	}
 
 	if recover.Delta == "" {
 		return errors.New("missing delta")
 	}
 
-	if recover.DidSuffix == "" {
-		return errors.New("missing did suffix")
+	if recover.SignedData == "" {
+		return errors.New("missing signed data")
 	}
 
 	return nil

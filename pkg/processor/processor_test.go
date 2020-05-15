@@ -139,7 +139,7 @@ func TestUpdateDocument(t *testing.T) {
 		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		updateOp.SignedData = nil
+		updateOp.SignedData = ""
 
 		err = store.Put(updateOp)
 		require.NoError(t, err)
@@ -149,23 +149,6 @@ func TestUpdateDocument(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "missing signed data")
-	})
-
-	t.Run("missing protected section of signed data error", func(t *testing.T) {
-		store, uniqueSuffix := getDefaultStore(privateKey)
-
-		updateOp, err := getUpdateOperation(privateKey, uniqueSuffix, 1)
-		require.NoError(t, err)
-
-		updateOp.SignedData.Protected = nil
-
-		err = store.Put(updateOp)
-		require.NoError(t, err)
-
-		p := New("test", store)
-		doc, err := p.Resolve(uniqueSuffix)
-		require.Error(t, err, "missing protected section of signed data")
-		require.Nil(t, doc)
 	})
 
 	t.Run("invalid reveal value error", func(t *testing.T) {
@@ -408,7 +391,7 @@ func TestDeactivate(t *testing.T) {
 		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		deactivateOp.SignedData = nil
+		deactivateOp.SignedData = ""
 
 		err = store.Put(deactivateOp)
 		require.NoError(t, err)
@@ -530,7 +513,7 @@ func TestRecover(t *testing.T) {
 		recoverOp, err := getRecoverOperation(recoveryKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		recoverOp.SignedData = nil
+		recoverOp.SignedData = ""
 
 		err = store.Put(recoverOp)
 		require.Nil(t, err)

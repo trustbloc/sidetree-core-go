@@ -56,15 +56,20 @@ func validateDeactivateRequest(req *model.DeactivateRequest) error {
 		return errors.New("missing unique suffix")
 	}
 
-	if err := validateSignedData(req.SignedData); err != nil {
-		return err
+	if req.SignedData == "" {
+		return errors.New("missing signed data")
 	}
 
 	return nil
 }
 
 func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.DeactivateSignedDataModel, error) {
-	bytes, err := docutil.DecodeString(req.SignedData.Payload)
+	jws, err := parseSignedData(req.SignedData)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := docutil.DecodeString(string(jws.Payload))
 	if err != nil {
 		return nil, err
 	}

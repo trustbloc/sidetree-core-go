@@ -14,8 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -59,26 +58,13 @@ func TestParseDeactivateOperation(t *testing.T) {
 		deactivateRequest, err := getDefaultDeactivateRequest()
 		require.NoError(t, err)
 
-		deactivateRequest.SignedData.Payload = invalid
+		deactivateRequest.SignedData = "invalid"
 		request, err := json.Marshal(deactivateRequest)
 		require.NoError(t, err)
 
 		op, err := ParseDeactivateOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
-		require.Nil(t, op)
-	})
-	t.Run("parse signed data error - invalid JSON", func(t *testing.T) {
-		deactivateRequest, err := getDefaultDeactivateRequest()
-		require.NoError(t, err)
-
-		deactivateRequest.SignedData.Payload = docutil.EncodeToString([]byte("invalidJSON"))
-		request, err := json.Marshal(deactivateRequest)
-		require.NoError(t, err)
-
-		op, err := ParseDeactivateOperation(request, p)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "invalid JWS compact format")
 		require.Nil(t, op)
 	})
 	t.Run("validate signed data error - did suffix mismatch", func(t *testing.T) {
@@ -114,25 +100,16 @@ func TestParseDeactivateOperation(t *testing.T) {
 }
 
 func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.DeactivateRequest, error) {
-	signedDataBytes, err := canonicalizer.MarshalCanonical(signedData)
+	compactJWS, err := signutil.SignModel(signedData, NewMockSigner())
 	if err != nil {
 		return nil, err
-	}
-
-	jws := &model.JWS{
-		Protected: &model.Header{
-			Alg: "alg",
-			Kid: "kid",
-		},
-		Payload:   docutil.EncodeToString(signedDataBytes),
-		Signature: "signature",
 	}
 
 	return &model.DeactivateRequest{
 		Operation:           model.OperationTypeDeactivate,
 		DidSuffix:           "did",
 		RecoveryRevealValue: "recoveryReveal",
-		SignedData:          jws,
+		SignedData:          compactJWS,
 	}, nil
 }
 

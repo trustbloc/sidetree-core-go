@@ -25,8 +25,8 @@ type Operation struct {
 	// OperationBuffer is the original operation request
 	OperationBuffer []byte `json:"operationBuffer"`
 
-	// signed data for the operation
-	SignedData *model.JWS `json:"signedData"`
+	// Compact JWS - signed data for the operation
+	SignedData string `json:"signedData"`
 
 	// operation delta
 	Delta *model.DeltaModel `json:"delta"`

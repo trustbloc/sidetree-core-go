@@ -23,6 +23,11 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
+	_, err = parseSignedDataForUpdate(schema.SignedData, protocol.HashAlgorithmInMultiHashCode)
+	if err != nil {
+		return nil, err
+	}
+
 	delta, err := parseUpdateDelta(schema.Delta, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
@@ -72,17 +77,41 @@ func parseUpdateDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	return schema, nil
 }
 
+func parseSignedDataForUpdate(compactJWS string, code uint) (*model.UpdateSignedDataModel, error) {
+	jws, err := parseSignedData(compactJWS)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := docutil.DecodeString(string(jws.Payload))
+	if err != nil {
+		return nil, err
+	}
+
+	schema := &model.UpdateSignedDataModel{}
+	err = json.Unmarshal(bytes, schema)
+	if err != nil {
+		return nil, err
+	}
+
+	if !docutil.IsComputedUsingHashAlgorithm(schema.DeltaHash, uint64(code)) {
+		return nil, errors.New("delta hash is not computed with the latest supported hash algorithm")
+	}
+
+	return schema, nil
+}
+
 func validateUpdateRequest(update *model.UpdateRequest) error {
-	if err := validateSignedData(update.SignedData); err != nil {
-		return err
+	if update.DidSuffix == "" {
+		return errors.New("missing did suffix")
 	}
 
 	if update.Delta == "" {
 		return errors.New("missing delta")
 	}
 
-	if update.DidSuffix == "" {
-		return errors.New("missing did suffix")
+	if update.SignedData == "" {
+		return errors.New("missing signed data")
 	}
 
 	return nil
