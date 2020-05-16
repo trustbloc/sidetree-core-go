@@ -148,7 +148,7 @@ func TestParseJWS(t *testing.T) {
 
 	validJWSParts := strings.Split(jwsCompact, ".")
 
-	parsedJWS, err := ParseJWS(jwsCompact, jwk)
+	parsedJWS, err := VerifyJWS(jwsCompact, jwk)
 	require.NoError(t, err)
 	require.NotNil(t, parsedJWS)
 	require.Equal(t, jws, parsedJWS)
@@ -158,32 +158,32 @@ func TestParseJWS(t *testing.T) {
 	detachedPayload, err := base64.RawURLEncoding.DecodeString(validJWSParts[1])
 	require.NoError(t, err)
 
-	parsedJWS, err = ParseJWS(jwsDetached, jwk, WithJWSDetachedPayload(detachedPayload))
+	parsedJWS, err = VerifyJWS(jwsDetached, jwk, WithJWSDetachedPayload(detachedPayload))
 	require.NoError(t, err)
 	require.NotNil(t, parsedJWS)
 	require.Equal(t, jws, parsedJWS)
 
 	// Parse not compact JWS format
-	parsedJWS, err = ParseJWS(`{"some": "JSON"}`, jwk)
+	parsedJWS, err = VerifyJWS(`{"some": "JSON"}`, jwk)
 	require.Error(t, err)
 	require.EqualError(t, err, "JWS JSON serialization is not supported")
 	require.Nil(t, parsedJWS)
 
 	// Parse invalid compact JWS format
-	parsedJWS, err = ParseJWS("two_parts.only", jwk)
+	parsedJWS, err = VerifyJWS("two_parts.only", jwk)
 	require.Error(t, err)
 	require.EqualError(t, err, "invalid JWS compact format")
 	require.Nil(t, parsedJWS)
 
 	// invalid headers
 	jwsWithInvalidHeaders := fmt.Sprintf("%s.%s.%s", "invalid", validJWSParts[1], validJWSParts[2])
-	parsedJWS, err = ParseJWS(jwsWithInvalidHeaders, jwk)
+	parsedJWS, err = VerifyJWS(jwsWithInvalidHeaders, jwk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unmarshal JSON headers")
 	require.Nil(t, parsedJWS)
 
 	jwsWithInvalidHeaders = fmt.Sprintf("%s.%s.%s", corruptedBased64, validJWSParts[1], validJWSParts[2])
-	parsedJWS, err = ParseJWS(jwsWithInvalidHeaders, jwk)
+	parsedJWS, err = VerifyJWS(jwsWithInvalidHeaders, jwk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "decode base64 header")
 	require.Nil(t, parsedJWS)
@@ -191,28 +191,42 @@ func TestParseJWS(t *testing.T) {
 	emptyHeaders := base64.RawURLEncoding.EncodeToString([]byte("{}"))
 
 	jwsWithInvalidHeaders = fmt.Sprintf("%s.%s.%s", emptyHeaders, validJWSParts[1], validJWSParts[2])
-	parsedJWS, err = ParseJWS(jwsWithInvalidHeaders, jwk)
+	parsedJWS, err = VerifyJWS(jwsWithInvalidHeaders, jwk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "alg JWS header is not defined")
 	require.Nil(t, parsedJWS)
 
 	// invalid payload
 	jwsWithInvalidPayload := fmt.Sprintf("%s.%s.%s", validJWSParts[0], corruptedBased64, validJWSParts[2])
-	parsedJWS, err = ParseJWS(jwsWithInvalidPayload, jwk)
+	parsedJWS, err = VerifyJWS(jwsWithInvalidPayload, jwk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "decode base64 payload")
 	require.Nil(t, parsedJWS)
 
 	// invalid signature
 	jwsWithInvalidSignature := fmt.Sprintf("%s.%s.%s", validJWSParts[0], validJWSParts[1], corruptedBased64)
-	parsedJWS, err = ParseJWS(jwsWithInvalidSignature, jwk)
+	parsedJWS, err = VerifyJWS(jwsWithInvalidSignature, jwk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "decode base64 signature")
 	require.Nil(t, parsedJWS)
 
+	// missing signature
+	jwsMissingSignature := fmt.Sprintf("%s.%s.%s", validJWSParts[0], validJWSParts[1], "")
+	parsedJWS, err = VerifyJWS(jwsMissingSignature, jwk)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "compact jws signature is empty")
+	require.Nil(t, parsedJWS)
+
+	// missing payload
+	jwsMissingPayload := fmt.Sprintf("%s.%s.%s", validJWSParts[0], "", validJWSParts[2])
+	parsedJWS, err = VerifyJWS(jwsMissingPayload, jwk)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "compact jws payload is empty")
+	require.Nil(t, parsedJWS)
+
 	// signature verification error error
 	jwk.Kty = "type"
-	parsedJWS, err = ParseJWS(jwsCompact, jwk)
+	parsedJWS, err = VerifyJWS(jwsCompact, jwk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "key type is not supported for verifying signature")
 	require.Nil(t, parsedJWS)
@@ -233,7 +247,7 @@ func TestParseJWS_ED25519(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, jwsCompact)
 
-	parsedJWS, err := ParseJWS(jwsCompact, jwk)
+	parsedJWS, err := VerifyJWS(jwsCompact, jwk)
 	require.NoError(t, err)
 	require.NotNil(t, parsedJWS)
 	require.Equal(t, jws, parsedJWS)

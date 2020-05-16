@@ -59,8 +59,8 @@ type UpdateRequest struct {
 	// Reveal value for this update operation
 	UpdateRevealValue string `json:"update_reveal_value"`
 
-	// JWS signature information
-	SignedData *JWS `json:"signed_data"`
+	// Compact JWS - signature information
+	SignedData string `json:"signed_data"`
 
 	// Encoded delta object
 	Delta string `json:"delta"`
@@ -80,8 +80,8 @@ type DeactivateRequest struct {
 	// Required: true
 	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
-	// JWS Signature information
-	SignedData *JWS `json:"signed_data"`
+	// Compact JWS - signature information
+	SignedData string `json:"signed_data"`
 }
 
 // UpdateSignedDataModel defines signed data model for update
@@ -130,21 +130,10 @@ type RecoverRequest struct {
 	// Required: true
 	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
-	// JWS Signature information
-	SignedData *JWS `json:"signed_data"`
+	// Compact JWS - signature information
+	SignedData string `json:"signed_data"`
 
 	// Encoded delta object
 	// Required: true
 	Delta string `json:"delta"`
-}
-
-// Protected describes JWS header
-type Protected struct {
-	// alg
-	// Required: true
-	Alg string `json:"alg"`
-
-	// kid
-	// Required: true
-	Kid string `json:"kid,omitempty"`
 }

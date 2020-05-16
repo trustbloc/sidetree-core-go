@@ -16,6 +16,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -86,13 +88,13 @@ func TestParseRecoverOperation(t *testing.T) {
 		recoverRequest, err := getDefaultRecoverRequest()
 		require.NoError(t, err)
 
-		recoverRequest.SignedData.Payload = invalid
+		recoverRequest.SignedData = invalid
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "invalid JWS compact format")
 		require.Nil(t, op)
 	})
 	t.Run("validate signed data error", func(t *testing.T) {
@@ -140,73 +142,49 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 	})
 }
 
-func TestValidateSignedData(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		signedData := &model.JWS{
-			Protected: &model.Header{
-				Alg: "alg",
-				Kid: "kid",
-			},
-			Payload:   "payload",
-			Signature: "signature",
-		}
+func TestParseSignedData(t *testing.T) {
+	mockSigner := NewMockSigner()
 
-		err := validateSignedData(signedData)
+	t.Run("success", func(t *testing.T) {
+		jwsSignature, err := internal.NewJWS(nil, nil, []byte("payload"), mockSigner)
 		require.NoError(t, err)
+
+		compactJWS, err := jwsSignature.SerializeCompact(false)
+		require.NoError(t, err)
+
+		jws, err := parseSignedData(compactJWS)
+		require.NoError(t, err)
+		require.NotNil(t, jws)
 	})
 	t.Run("missing signed data", func(t *testing.T) {
-		err := validateSignedData(nil)
+		jws, err := parseSignedData("")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing signed data")
+		require.Nil(t, jws)
+		require.Contains(t, err.Error(), "invalid JWS compact format")
 	})
-	t.Run("missing protected header", func(t *testing.T) {
-		signedData := &model.JWS{
-			Payload:   "payload",
-			Signature: "signature",
-		}
-
-		err := validateSignedData(signedData)
+	t.Run("missing protected headers", func(t *testing.T) {
+		jws, err := parseSignedData(".cGF5bG9hZA.c2lnbmF0dXJl")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed data is missing protected header")
+		require.Nil(t, jws)
+		require.Contains(t, err.Error(), "unmarshal JSON headers: unexpected end of JSON input")
 	})
 	t.Run("missing payload", func(t *testing.T) {
-		signedData := &model.JWS{
-			Protected: &model.Header{
-				Alg: "alg",
-				Kid: "kid",
-			},
-			Signature: "signature",
-		}
+		jwsSignature, err := internal.NewJWS(nil, nil, nil, mockSigner)
+		require.NoError(t, err)
 
-		err := validateSignedData(signedData)
+		compactJWS, err := jwsSignature.SerializeCompact(false)
+		require.NoError(t, err)
+
+		jws, err := parseSignedData(compactJWS)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed data is missing payload")
+		require.Nil(t, jws)
+		require.Contains(t, err.Error(), "compact jws payload is empty")
 	})
 	t.Run("missing signature", func(t *testing.T) {
-		signedData := &model.JWS{
-			Protected: &model.Header{
-				Alg: "alg",
-				Kid: "kid",
-			},
-			Payload: "payload",
-		}
-
-		err := validateSignedData(signedData)
+		jws, err := parseSignedData("eyJhbGciOiJhbGciLCJraWQiOiJraWQifQ.cGF5bG9hZA.")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed data is missing signature")
-	})
-	t.Run("missing algorithm", func(t *testing.T) {
-		signedData := &model.JWS{
-			Protected: &model.Header{
-				Kid: "kid",
-			},
-			Payload:   "payload",
-			Signature: "signature",
-		}
-
-		err := validateSignedData(signedData)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing algorithm in protected header")
+		require.Nil(t, jws)
+		require.Contains(t, err.Error(), "compact jws signature is empty")
 	})
 }
 
@@ -221,7 +199,7 @@ func TestValidateRecoverRequest(t *testing.T) {
 	t.Run("missing signed data", func(t *testing.T) {
 		recover, err := getDefaultRecoverRequest()
 		require.NoError(t, err)
-		recover.SignedData = nil
+		recover.SignedData = ""
 
 		err = validateRecoverRequest(recover)
 		require.Error(t, err)
@@ -253,23 +231,16 @@ func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedD
 		return nil, err
 	}
 
-	signedDataBytes, err := canonicalizer.MarshalCanonical(signedData)
+	compactJWS, err := signutil.SignModel(signedData, NewMockSigner())
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.RecoverRequest{
-		Operation: model.OperationTypeRecover,
-		DidSuffix: "suffix",
-		Delta:     docutil.EncodeToString(deltaBytes),
-		SignedData: &model.JWS{
-			Protected: &model.Header{
-				Alg: "alg",
-				Kid: "kid",
-			},
-			Payload:   docutil.EncodeToString(signedDataBytes),
-			Signature: "signature",
-		},
+		Operation:  model.OperationTypeRecover,
+		DidSuffix:  "suffix",
+		Delta:      docutil.EncodeToString(deltaBytes),
+		SignedData: compactJWS,
 	}, nil
 }
 
@@ -300,4 +271,34 @@ func getRecoverRequestBytes() ([]byte, error) {
 	}
 
 	return json.Marshal(req)
+}
+
+// MockSigner implements signer interface
+type MockSigner struct {
+	MockSignature []byte
+	MockHeaders   jws.Headers
+	Err           error
+}
+
+// New creates new mock signer (default to recovery signer)
+func NewMockSigner() *MockSigner {
+	headers := make(jws.Headers)
+	headers[jws.HeaderAlgorithm] = "alg"
+	headers[jws.HeaderKeyID] = "kid"
+
+	return &MockSigner{MockHeaders: headers, MockSignature: []byte("signature")}
+}
+
+// Headers provides required JWS protected headers. It provides information about signing key and algorithm.
+func (ms *MockSigner) Headers() jws.Headers {
+	return ms.MockHeaders
+}
+
+// Sign signs msg and returns mock signature value
+func (ms *MockSigner) Sign(msg []byte) ([]byte, error) {
+	if ms.Err != nil {
+		return nil, ms.Err
+	}
+
+	return ms.MockSignature, nil
 }
