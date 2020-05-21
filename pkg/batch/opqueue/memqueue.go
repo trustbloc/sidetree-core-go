@@ -41,8 +41,9 @@ func (q *MemQueue) Peek(num uint) ([]*batch.OperationInfo, error) {
 	return q.items[0:n], nil
 }
 
-// Remove removes (up to) the given number of items from the head of the queue and returns the new length of the queue.
-func (q *MemQueue) Remove(num uint) ([]*batch.OperationInfo, uint, error) {
+// Remove removes (up to) the given number of items from the head of the queue.
+// Returns the actual number of items that were removed and the new length of the queue.
+func (q *MemQueue) Remove(num uint) (uint, uint, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -54,7 +55,7 @@ func (q *MemQueue) Remove(num uint) ([]*batch.OperationInfo, uint, error) {
 	items := q.items[0:n]
 	q.items = q.items[n:]
 
-	return items, uint(len(q.items)), nil
+	return uint(len(items)), uint(len(q.items)), nil
 }
 
 // Len returns the length of the queue.

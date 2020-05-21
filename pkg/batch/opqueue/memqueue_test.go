@@ -55,10 +55,9 @@ func TestMemQueue(t *testing.T) {
 	require.Equal(t, ops[1], op2)
 	require.Equal(t, ops[2], op3)
 
-	ops, l, err = q.Remove(1)
+	n, l, err := q.Remove(1)
 	require.NoError(t, err)
-	require.Len(t, ops, 1)
-	require.Equal(t, ops[0], op1)
+	require.Equal(t, uint(1), n)
 	require.Equal(t, uint(2), l)
 
 	ops, err = q.Peek(1)
@@ -66,10 +65,8 @@ func TestMemQueue(t *testing.T) {
 	require.Len(t, ops, 1)
 	require.Equal(t, ops[0], op2)
 
-	ops, l, err = q.Remove(5)
+	n, l, err = q.Remove(5)
 	require.NoError(t, err)
-	require.Len(t, ops, 2)
-	require.Equal(t, ops[0], op2)
-	require.Equal(t, ops[1], op3)
+	require.Equal(t, uint(2), n)
 	require.Zero(t, l)
 }
