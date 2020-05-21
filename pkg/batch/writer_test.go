@@ -320,7 +320,7 @@ func TestProcessError(t *testing.T) {
 		const numOperations = 3
 		q.LenReturns(numOperations)
 		q.PeekReturns(generateOperations(numOperations), nil)
-		q.RemoveReturns(nil, 1, errExpected)
+		q.RemoveReturns(0, 1, errExpected)
 
 		ctx := newMockContext()
 		ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 2

@@ -19,9 +19,9 @@ var logger = logrus.New()
 type OperationQueue interface {
 	// Add adds the given operation to the tail of the queue and returns the new length of the queue
 	Add(data *batch.OperationInfo) (uint, error)
-	// Remove removes (up to) the given number of operations from the head of the queue. The operation are returned
-	// along with the new length of the queue.
-	Remove(num uint) ([]*batch.OperationInfo, uint, error)
+	// Remove removes (up to) the given number of items from the head of the queue.
+	// Returns the actual number of items that were removed and the new length of the queue.
+	Remove(num uint) (uint, uint, error)
 	// Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
 	Peek(num uint) ([]*batch.OperationInfo, error)
 	// Len returns the number of operation in the queue

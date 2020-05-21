@@ -21,18 +21,18 @@ type OperationQueue struct {
 		result1 uint
 		result2 error
 	}
-	RemoveStub        func(num uint) ([]*batch.OperationInfo, uint, error)
+	RemoveStub        func(num uint) (uint, uint, error)
 	removeMutex       sync.RWMutex
 	removeArgsForCall []struct {
 		num uint
 	}
 	removeReturns struct {
-		result1 []*batch.OperationInfo
+		result1 uint
 		result2 uint
 		result3 error
 	}
 	removeReturnsOnCall map[int]struct {
-		result1 []*batch.OperationInfo
+		result1 uint
 		result2 uint
 		result3 error
 	}
@@ -113,7 +113,7 @@ func (fake *OperationQueue) AddReturnsOnCall(i int, result1 uint, result2 error)
 	}{result1, result2}
 }
 
-func (fake *OperationQueue) Remove(num uint) ([]*batch.OperationInfo, uint, error) {
+func (fake *OperationQueue) Remove(num uint) (uint, uint, error) {
 	fake.removeMutex.Lock()
 	ret, specificReturn := fake.removeReturnsOnCall[len(fake.removeArgsForCall)]
 	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
@@ -142,26 +142,26 @@ func (fake *OperationQueue) RemoveArgsForCall(i int) uint {
 	return fake.removeArgsForCall[i].num
 }
 
-func (fake *OperationQueue) RemoveReturns(result1 []*batch.OperationInfo, result2 uint, result3 error) {
+func (fake *OperationQueue) RemoveReturns(result1 uint, result2 uint, result3 error) {
 	fake.RemoveStub = nil
 	fake.removeReturns = struct {
-		result1 []*batch.OperationInfo
+		result1 uint
 		result2 uint
 		result3 error
 	}{result1, result2, result3}
 }
 
-func (fake *OperationQueue) RemoveReturnsOnCall(i int, result1 []*batch.OperationInfo, result2 uint, result3 error) {
+func (fake *OperationQueue) RemoveReturnsOnCall(i int, result1 uint, result2 uint, result3 error) {
 	fake.RemoveStub = nil
 	if fake.removeReturnsOnCall == nil {
 		fake.removeReturnsOnCall = make(map[int]struct {
-			result1 []*batch.OperationInfo
+			result1 uint
 			result2 uint
 			result3 error
 		})
 	}
 	fake.removeReturnsOnCall[i] = struct {
-		result1 []*batch.OperationInfo
+		result1 uint
 		result2 uint
 		result3 error
 	}{result1, result2, result3}
