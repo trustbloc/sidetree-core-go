@@ -28,19 +28,18 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	delta, err := parseUpdateDelta(schema.Delta, protocol.HashAlgorithmInMultiHashCode)
+	delta, err := ParseDelta(schema.Delta, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
 
 	return &batch.Operation{
-		Type:              batch.OperationTypeUpdate,
-		OperationBuffer:   request,
-		UniqueSuffix:      schema.DidSuffix,
-		Delta:             delta,
-		EncodedDelta:      schema.Delta,
-		UpdateRevealValue: schema.UpdateRevealValue,
-		SignedData:        schema.SignedData,
+		Type:            batch.OperationTypeUpdate,
+		OperationBuffer: request,
+		UniqueSuffix:    schema.DidSuffix,
+		Delta:           delta,
+		EncodedDelta:    schema.Delta,
+		SignedData:      schema.SignedData,
 	}, nil
 }
 
@@ -52,25 +51,6 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	}
 
 	if err := validateUpdateRequest(schema); err != nil {
-		return nil, err
-	}
-
-	return schema, nil
-}
-
-func parseUpdateDelta(encoded string, code uint) (*model.DeltaModel, error) {
-	bytes, err := docutil.DecodeString(encoded)
-	if err != nil {
-		return nil, err
-	}
-
-	schema := &model.DeltaModel{}
-	err = json.Unmarshal(bytes, schema)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := validateDelta(schema, code); err != nil {
 		return nil, err
 	}
 

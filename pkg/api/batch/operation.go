@@ -16,6 +16,8 @@ type Operation struct {
 	//Operation type
 	Type OperationType `json:"type"`
 
+	Namespace string `json:"namespace"`
+
 	//ID is full ID for this document - includes namespace + unique suffix
 	ID string `json:"id"`
 
@@ -31,11 +33,14 @@ type Operation struct {
 	// operation delta
 	Delta *model.DeltaModel `json:"delta"`
 
+	// encoded delta
+	EncodedDelta string `json:"encodedDelta"`
+
 	// suffix data
 	SuffixData *model.SuffixDataModel `json:"suffixData"`
 
-	// encoded delta
-	EncodedDelta string `json:"encodedDelta"`
+	// encoded suffix data
+	EncodedSuffixData string `json:"encodedSuffixData"`
 
 	//The logical blockchain time that this operation was anchored on the blockchain
 	TransactionTime uint64 `json:"transactionTime"`
@@ -43,11 +48,6 @@ type Operation struct {
 	TransactionNumber uint64 `json:"transactionNumber"`
 	//The index this operation was assigned to in the batch
 	OperationIndex uint `json:"operationIndex"`
-
-	// Reveal value for this update operation
-	UpdateRevealValue string `json:"updateRevealValue"`
-	// Reveal value for this recovery/deactivate operation
-	RecoveryRevealValue string `json:"recoveryRevealValue"`
 }
 
 // OperationType defines valid values for operation type

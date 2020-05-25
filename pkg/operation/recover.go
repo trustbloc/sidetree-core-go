@@ -27,7 +27,7 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 
 	code := protocol.HashAlgorithmInMultiHashCode
 
-	delta, err := parseDelta(schema.Delta, code)
+	delta, err := ParseDelta(schema.Delta, code)
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +38,12 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 	}
 
 	return &batch.Operation{
-		OperationBuffer:     request,
-		Type:                batch.OperationTypeRecover,
-		UniqueSuffix:        schema.DidSuffix,
-		Delta:               delta,
-		EncodedDelta:        schema.Delta,
-		RecoveryRevealValue: schema.RecoveryRevealValue,
-		SignedData:          schema.SignedData,
+		OperationBuffer: request,
+		Type:            batch.OperationTypeRecover,
+		UniqueSuffix:    schema.DidSuffix,
+		Delta:           delta,
+		EncodedDelta:    schema.Delta,
+		SignedData:      schema.SignedData,
 	}, nil
 }
 
@@ -56,25 +55,6 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	}
 
 	if err := validateRecoverRequest(schema); err != nil {
-		return nil, err
-	}
-
-	return schema, nil
-}
-
-func parseDelta(encoded string, code uint) (*model.DeltaModel, error) {
-	bytes, err := docutil.DecodeString(encoded)
-	if err != nil {
-		return nil, err
-	}
-
-	schema := &model.DeltaModel{}
-	err = json.Unmarshal(bytes, schema)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := validateDelta(schema, code); err != nil {
 		return nil, err
 	}
 

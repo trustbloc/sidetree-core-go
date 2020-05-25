@@ -369,22 +369,6 @@ func TestDeactivate(t *testing.T) {
 		require.Nil(t, doc)
 	})
 
-	t.Run("invalid recovery reveal value error", func(t *testing.T) {
-		store, uniqueSuffix := getDefaultStore(privateKey)
-
-		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
-		require.NoError(t, err)
-		deactivateOp.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
-		err = store.Put(deactivateOp)
-		require.NoError(t, err)
-
-		p := New("test", store)
-		doc, err := p.Resolve(uniqueSuffix)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "supplied hash doesn't match original content")
-		require.Nil(t, doc)
-	})
-
 	t.Run("missing signed data error", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(privateKey)
 
@@ -448,7 +432,7 @@ func TestDeactivate(t *testing.T) {
 		require.Contains(t, err.Error(), "did suffix doesn't match signed value")
 	})
 
-	t.Run("recovery reveal value doesn't match signed value", func(t *testing.T) {
+	t.Run("deactivate recovery reveal value doesn't match recovery commitment", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(privateKey)
 
 		deactivateOp, err := getDeactivateOperation(privateKey, uniqueSuffix, 1)
@@ -471,7 +455,7 @@ func TestDeactivate(t *testing.T) {
 		doc, err := p.Resolve(uniqueSuffix)
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "recovery reveal value doesn't match signed value")
+		require.Contains(t, err.Error(), "deactivate recovery reveal value doesn't match recovery commitment")
 	})
 }
 
@@ -552,7 +536,11 @@ func TestRecover(t *testing.T) {
 
 		op, err := getRecoverOperation(privateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
-		op.RecoveryRevealValue = docutil.EncodeToString([]byte("invalid"))
+		signedModel := model.RecoverSignedDataModel{
+			RecoveryRevealValue: "invalid",
+		}
+		op.SignedData, err = signutil.SignModel(signedModel, ecsigner.New(privateKey, "P-256", ""))
+
 		err = store.Put(op)
 		require.NoError(t, err)
 
@@ -636,7 +624,8 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 	}
 
 	signedData := &model.UpdateSignedDataModel{
-		DeltaHash: getEncodedMultihash(deltaBytes),
+		DeltaHash:         getEncodedMultihash(deltaBytes),
+		UpdateRevealValue: updateRevealValue,
 	}
 
 	jws, err := signutil.SignModel(signedData, s)
@@ -651,7 +640,6 @@ func getUpdateOperationWithSigner(s helper.Signer, uniqueSuffix string, operatio
 		Delta:             delta,
 		Type:              batch.OperationTypeUpdate,
 		TransactionNumber: uint64(operationNumber),
-		UpdateRevealValue: updateRevealValue,
 		SignedData:        jws,
 	}
 
@@ -678,13 +666,12 @@ func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, o
 	}
 
 	return &batch.Operation{
-		ID:                  "did:sidetree:" + uniqueSuffix,
-		UniqueSuffix:        uniqueSuffix,
-		Type:                batch.OperationTypeDeactivate,
-		TransactionTime:     0,
-		TransactionNumber:   uint64(operationNumber),
-		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
-		SignedData:          jws,
+		ID:                "did:sidetree:" + uniqueSuffix,
+		UniqueSuffix:      uniqueSuffix,
+		Type:              batch.OperationTypeDeactivate,
+		TransactionTime:   0,
+		TransactionNumber: uint64(operationNumber),
+		SignedData:        jws,
 	}, nil
 }
 
@@ -707,15 +694,14 @@ func getRecoverOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, oper
 	}
 
 	return &batch.Operation{
-		UniqueSuffix:        uniqueSuffix,
-		Type:                batch.OperationTypeRecover,
-		OperationBuffer:     operationBuffer,
-		Delta:               delta,
-		EncodedDelta:        recoverRequest.Delta,
-		SignedData:          recoverRequest.SignedData,
-		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
-		TransactionTime:     0,
-		TransactionNumber:   uint64(operationNumber),
+		UniqueSuffix:      uniqueSuffix,
+		Type:              batch.OperationTypeRecover,
+		OperationBuffer:   operationBuffer,
+		Delta:             delta,
+		EncodedDelta:      recoverRequest.Delta,
+		SignedData:        recoverRequest.SignedData,
+		TransactionTime:   0,
+		TransactionNumber: uint64(operationNumber),
 	}, nil
 }
 
@@ -757,9 +743,10 @@ func getDefaultRecoverRequest(privateKey *ecdsa.PrivateKey) (*model.RecoverReque
 	}
 
 	recoverSignedData := &model.RecoverSignedDataModel{
-		RecoveryKey:        jwk,
-		RecoveryCommitment: getEncodedMultihash([]byte("recoveryReveal")),
-		DeltaHash:          getEncodedMultihash(deltaBytes),
+		RecoveryKey:         jwk,
+		RecoveryCommitment:  getEncodedMultihash([]byte(recoveryReveal)),
+		RecoveryRevealValue: docutil.EncodeToString([]byte(recoveryReveal)),
+		DeltaHash:           getEncodedMultihash(deltaBytes),
 	}
 
 	return getRecoverRequest(privateKey, delta, recoverSignedData)

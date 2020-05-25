@@ -57,7 +57,8 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	signedDataModel := model.UpdateSignedDataModel{
-		DeltaHash: mhDelta,
+		DeltaHash:         mhDelta,
+		UpdateRevealValue: docutil.EncodeToString(info.UpdateRevealValue),
 	}
 
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)

@@ -144,29 +144,6 @@ func TestValidateUpdateDelta(t *testing.T) {
 	})
 }
 
-func TestParseUpdateDelta(t *testing.T) {
-	t.Run("invalid next update commitment", func(t *testing.T) {
-		delta, err := getUpdateDelta()
-		require.NoError(t, err)
-
-		delta.UpdateCommitment = ""
-		deltaBytes, err := json.Marshal(delta)
-		require.NoError(t, err)
-
-		parsed, err := parseUpdateDelta(docutil.EncodeToString(deltaBytes), sha2_256)
-		require.Error(t, err)
-		require.Nil(t, parsed)
-		require.Contains(t, err.Error(),
-			"next update commitment hash is not computed with the latest supported hash algorithm")
-	})
-	t.Run("invalid bytes", func(t *testing.T) {
-		parsed, err := parseUpdateDelta("invalid", sha2_256)
-		require.Error(t, err)
-		require.Nil(t, parsed)
-		require.Contains(t, err.Error(), "invalid character")
-	})
-}
-
 func TestValidateUpdateRequest(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		update, err := getDefaultUpdateRequest()

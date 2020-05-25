@@ -27,12 +27,12 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 
 	code := protocol.HashAlgorithmInMultiHashCode
 
-	suffixData, err := parseSuffixData(schema.SuffixData, code)
+	suffixData, err := ParseSuffixData(schema.SuffixData, code)
 	if err != nil {
 		return nil, err
 	}
 
-	delta, err := parseCreateDelta(schema.Delta, code)
+	delta, err := ParseDelta(schema.Delta, code)
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +43,13 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 	}
 
 	return &batch.Operation{
-		OperationBuffer: request,
-		Type:            batch.OperationTypeCreate,
-		UniqueSuffix:    uniqueSuffix,
-		Delta:           delta,
-		EncodedDelta:    schema.Delta,
-		SuffixData:      suffixData,
+		OperationBuffer:   request,
+		Type:              batch.OperationTypeCreate,
+		UniqueSuffix:      uniqueSuffix,
+		Delta:             delta,
+		EncodedDelta:      schema.Delta,
+		SuffixData:        suffixData,
+		EncodedSuffixData: schema.SuffixData,
 	}, nil
 }
 
@@ -66,7 +67,8 @@ func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 	return schema, nil
 }
 
-func parseCreateDelta(encoded string, code uint) (*model.DeltaModel, error) {
+// ParseDelta parses encoded delta string into delta model
+func ParseDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
@@ -85,7 +87,8 @@ func parseCreateDelta(encoded string, code uint) (*model.DeltaModel, error) {
 	return schema, nil
 }
 
-func parseSuffixData(encoded string, code uint) (*model.SuffixDataModel, error) {
+// ParseSuffixData parses encoded suffix data into suffix data model
+func ParseSuffixData(encoded string, code uint) (*model.SuffixDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err

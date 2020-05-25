@@ -71,7 +71,7 @@ func TestParseCreateOperation(t *testing.T) {
 }
 
 func TestParseSuffixData(t *testing.T) {
-	suffixData, err := parseSuffixData(refEncodedSuffixData, sha2_256)
+	suffixData, err := ParseSuffixData(refEncodedSuffixData, sha2_256)
 	require.NoError(t, err)
 	require.NotNil(t, suffixData)
 }
@@ -114,7 +114,7 @@ func TestValidateSuffixData(t *testing.T) {
 
 func TestParseDelta(t *testing.T) {
 	// reference encoded delta fails because it contains 'replace' patch
-	delta, err := parseDelta(refEncodedDelta, sha2_256)
+	delta, err := ParseDelta(refEncodedDelta, sha2_256)
 	require.Error(t, err)
 	require.Nil(t, delta)
 	require.Contains(t, err.Error(), "action 'replace' is not supported")
