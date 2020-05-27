@@ -184,24 +184,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	err := isValidHash(operation.UpdateRevealValue, rm.UpdateCommitment)
-	if err != nil {
-		return nil, fmt.Errorf("update reveal value doesn't match update commitment: %s", err.Error())
-	}
-
-	parsedJWS, err := parseSignedData(operation.SignedData)
-	if err != nil {
-		return nil, err
-	}
-
-	kid, _ := parsedJWS.ProtectedHeaders.KeyID()
-
-	signingPublicKey, err := getSigningPublicKeyFromDoc(rm.Doc, kid)
-	if err != nil {
-		return nil, err
-	}
-
-	jwsParts, err := internal.VerifyJWS(operation.SignedData, signingPublicKey)
+	jwsParts, err := parseSignedData(operation.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -217,10 +200,29 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, err
 	}
 
+	// verify that reveal value matches update commitment
+	err = isValidHash(signedDataModel.UpdateRevealValue, rm.UpdateCommitment)
+	if err != nil {
+		return nil, fmt.Errorf("update reveal value doesn't match update commitment: %s", err.Error())
+	}
+
 	// verify the delta against the signed delta hash
 	err = isValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
+	}
+
+	kid, _ := jwsParts.ProtectedHeaders.KeyID()
+
+	signingPublicKey, err := getSigningPublicKeyFromDoc(rm.Doc, kid)
+	if err != nil {
+		return nil, err
+	}
+
+	// verify signature
+	_, err = internal.VerifyJWS(operation.SignedData, signingPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
 	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)
@@ -283,23 +285,13 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
-	err := isValidHash(operation.RecoveryRevealValue, rm.RecoveryCommitment)
-	if err != nil {
-		return nil, fmt.Errorf("deactivate recovery reveal value doesn't match recovery commitment: %s", err.Error())
-	}
-
-	_, err = parseSignedData(operation.SignedData)
+	jwsParts, err := parseSignedData(operation.SignedData)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Spec has changed again to use recovery kid (figure out which kid and enable it in framework)
 	// kid, ok := parsedJWS.ProtectedHeaders.KeyID()
-
-	jwsParts, err := internal.VerifyJWS(operation.SignedData, rm.RecoveryKey)
-	if err != nil {
-		return nil, err
-	}
 
 	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
 	if err != nil {
@@ -317,8 +309,15 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		return nil, errors.New("did suffix doesn't match signed value")
 	}
 
-	if operation.RecoveryRevealValue != signedDataModel.RecoveryRevealValue {
-		return nil, errors.New("recovery reveal value doesn't match signed value")
+	err = isValidHash(signedDataModel.RecoveryRevealValue, rm.RecoveryCommitment)
+	if err != nil {
+		return nil, fmt.Errorf("deactivate recovery reveal value doesn't match recovery commitment: %s", err.Error())
+	}
+
+	// verify signature
+	_, err = internal.VerifyJWS(operation.SignedData, rm.RecoveryKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
 	return &resolutionModel{
@@ -336,20 +335,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	err := isValidHash(operation.RecoveryRevealValue, rm.RecoveryCommitment)
-	if err != nil {
-		return nil, fmt.Errorf("recovery reveal value doesn't match recovery commitment: %s", err.Error())
-	}
-
-	_, err = parseSignedData(operation.SignedData)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Spec has changed again to use recovery kid (figure out which kid and enable it in framework)
-	// kid, ok := parsedJWS.ProtectedHeaders.KeyID()
-
-	jwsParts, err := internal.VerifyJWS(operation.SignedData, rm.RecoveryKey)
+	jwsParts, err := parseSignedData(operation.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -365,10 +351,24 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, err
 	}
 
+	err = isValidHash(signedDataModel.RecoveryRevealValue, rm.RecoveryCommitment)
+	if err != nil {
+		return nil, fmt.Errorf("recovery reveal value doesn't match recovery commitment: %s", err.Error())
+	}
+
 	// verify the delta against the signed delta hash
 	err = isValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
+	}
+
+	// TODO: Spec has changed again to use recovery kid (figure out which kid and enable it in framework)
+	// kid, ok := parsedJWS.ProtectedHeaders.KeyID()
+
+	// verify signature
+	_, err = internal.VerifyJWS(operation.SignedData, rm.RecoveryKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
 	doc, err := composer.ApplyPatches(make(document.Document), operation.Delta.Patches)

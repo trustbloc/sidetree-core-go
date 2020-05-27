@@ -43,6 +43,7 @@ func ParseOperation(namespace string, operationBuffer []byte, protocol protocol.
 		return nil, parseErr
 	}
 
+	op.Namespace = namespace
 	op.ID = namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
 
 	return op, nil

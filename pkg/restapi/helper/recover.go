@@ -74,9 +74,10 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	signedDataModel := model.RecoverSignedDataModel{
-		DeltaHash:          docutil.EncodeToString(mhDelta),
-		RecoveryKey:        info.RecoveryKey,
-		RecoveryCommitment: mhNextRecoveryCommitmentHash,
+		DeltaHash:           docutil.EncodeToString(mhDelta),
+		RecoveryKey:         info.RecoveryKey,
+		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
+		RecoveryCommitment:  mhNextRecoveryCommitmentHash,
 	}
 
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)

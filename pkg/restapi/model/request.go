@@ -86,6 +86,8 @@ type DeactivateRequest struct {
 
 // UpdateSignedDataModel defines signed data model for update
 type UpdateSignedDataModel struct {
+	// Reveal value for this update operation
+	UpdateRevealValue string `json:"update_reveal_value"`
 
 	// Hash of the unsigned delta object
 	DeltaHash string `json:"delta_hash"`
@@ -99,6 +101,9 @@ type RecoverSignedDataModel struct {
 
 	// The new recovery key
 	RecoveryKey *jws.JWK `json:"recovery_key"`
+
+	// the current reveal value to use for this request
+	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
 	// Recovery commitment be used for the next recovery/deactivate
 	RecoveryCommitment string `json:"recovery_commitment"`
