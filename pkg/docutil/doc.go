@@ -6,6 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 
 package docutil
 
+import (
+	"strings"
+
+	"github.com/pkg/errors"
+)
+
 // NamespaceDelimiter is the delimiter that separates the namespace from the unique suffix
 const NamespaceDelimiter = ":"
 
@@ -28,4 +34,14 @@ func CalculateUniqueSuffix(encoded string, hashAlgorithmAsMultihashCode uint) (s
 	}
 
 	return EncodeToString(multiHashBytes), nil
+}
+
+// GetNamespaceFromID returns namespace from ID
+func GetNamespaceFromID(id string) (string, error) {
+	pos := strings.LastIndex(id, ":")
+	if pos == -1 {
+		return "", errors.Errorf("invalid ID [%s]", id)
+	}
+
+	return id[0:pos], nil
 }

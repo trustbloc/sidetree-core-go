@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
@@ -290,7 +291,7 @@ func (m *BatchContext) Blockchain() batch.BlockchainClient {
 }
 
 // CAS returns the CAS client
-func (m *BatchContext) CAS() batch.CASClient {
+func (m *BatchContext) CAS() cas.Client {
 	return m.CasClient
 }
 

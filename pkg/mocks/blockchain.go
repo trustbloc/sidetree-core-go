@@ -9,7 +9,7 @@ package mocks
 import (
 	"sync"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/observer"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
 
 // MockBlockchainClient mocks blockchain client for testing purposes.
@@ -38,7 +38,7 @@ func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string) error {
 	return nil
 }
 
-func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *observer.SidetreeTxn) {
+func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn) {
 	m.RLock()
 	defer m.RUnlock()
 	moreTransactions := false
@@ -48,7 +48,7 @@ func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *observer
 
 	if len(m.anchors) > 0 && sinceTransactionNumber < len(m.anchors)-1 {
 		hashIndex := sinceTransactionNumber + 1
-		return moreTransactions, &observer.SidetreeTxn{TransactionTime: uint64(hashIndex), TransactionNumber: uint64(hashIndex), AnchorAddress: m.anchors[hashIndex]}
+		return moreTransactions, &txn.SidetreeTxn{TransactionTime: uint64(hashIndex), TransactionNumber: uint64(hashIndex), AnchorAddress: m.anchors[hashIndex]}
 	}
 	return moreTransactions, nil
 }

@@ -7,33 +7,28 @@ SPDX-License-Identifier: Apache-2.0
 package observer
 
 import (
-	"encoding/json"
-	"strings"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
 
 var logger = logrus.New()
 
-// SidetreeTxn defines info about sidetree transaction
-type SidetreeTxn struct {
-	TransactionTime   uint64
-	TransactionNumber uint64
-	AnchorAddress     string
-}
-
 // Ledger interface to access ledger txn
 type Ledger interface {
-	RegisterForSidetreeTxn() <-chan []SidetreeTxn
+	RegisterForSidetreeTxn() <-chan []txn.SidetreeTxn
 }
 
-// DCAS interface to access content addressable storage
-type DCAS interface {
-	Read(key string) ([]byte, error)
+// TxnOpsProvider defines an interface for retrieving(assembling) operations from batch files(chunk, map, anchor)
+type TxnOpsProvider interface {
+	// GetTxnOperations will read batch files(chunk, map, anchor) and assemble batch operations from those files
+	GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error)
 }
 
 // OperationStore interface to access operation store
@@ -59,7 +54,7 @@ type OperationFilterProvider interface {
 // Providers contains all of the providers required by the TxnProcessor
 type Providers struct {
 	Ledger           Ledger
-	DCASClient       DCAS
+	TxnOpsProvider   TxnOpsProvider
 	OpStoreProvider  OperationStoreProvider
 	OpFilterProvider OperationFilterProvider
 }
@@ -91,7 +86,7 @@ func (o *Observer) Stop() {
 	o.stopCh <- struct{}{}
 }
 
-func (o *Observer) listen(txnsCh <-chan []SidetreeTxn) {
+func (o *Observer) listen(txnsCh <-chan []txn.SidetreeTxn) {
 	for {
 		select {
 		case <-o.stopCh:
@@ -109,7 +104,7 @@ func (o *Observer) listen(txnsCh <-chan []SidetreeTxn) {
 	}
 }
 
-func (o *Observer) process(txns []SidetreeTxn) {
+func (o *Observer) process(txns []txn.SidetreeTxn) {
 	for _, txn := range txns {
 		err := o.processor.Process(txn)
 		if err != nil {
@@ -123,6 +118,7 @@ func (o *Observer) process(txns []SidetreeTxn) {
 // TxnProcessor processes Sidetree transactions by persisting them to an operation store
 type TxnProcessor struct {
 	*Providers
+	txnhandler.Handler
 }
 
 // NewTxnProcessor returns a new document operation processor
@@ -133,42 +129,23 @@ func NewTxnProcessor(providers *Providers) *TxnProcessor {
 }
 
 // Process persists all of the operations for the given anchor
-func (p *TxnProcessor) Process(sidetreeTxn SidetreeTxn) error {
+func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
 	logger.Debugf("processing sidetree txn:%+v", sidetreeTxn)
 
-	content, err := p.DCASClient.Read(sidetreeTxn.AnchorAddress)
+	txnOps, err := p.TxnOpsProvider.GetTxnOperations(&sidetreeTxn)
 	if err != nil {
-		return errors.Wrapf(err, "failed to retrieve content for anchor: key[%s]", sidetreeTxn.AnchorAddress)
+		return fmt.Errorf("failed to retrieve operations for anchor string[%s]: %s", sidetreeTxn.AnchorAddress, err)
 	}
 
-	logger.Debugf("cas content for anchor[%s]: %s", sidetreeTxn.AnchorAddress, string(content))
-
-	af, err := getAnchorFile(content)
-	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal anchor[%s]", sidetreeTxn.AnchorAddress)
-	}
-
-	return p.processBatchFile(af.BatchFileHash, sidetreeTxn)
+	return p.processTxnOperations(txnOps, sidetreeTxn)
 }
 
-func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn SidetreeTxn) error {
-	content, err := p.DCASClient.Read(batchFileAddress)
-	if err != nil {
-		return errors.Wrapf(err, "failed to retrieve content for batch: key[%s]", batchFileAddress)
-	}
+func (p *TxnProcessor) processTxnOperations(txnOps []*batch.Operation, sidetreeTxn txn.SidetreeTxn) error {
+	logger.Debugf("processing %d transaction operations", len(txnOps))
 
-	bf, err := getBatchFile(content)
-	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal batch[%s]", batchFileAddress)
-	}
-
-	logger.Debugf("batch file operations: %s", bf.Operations)
 	var ops []*batch.Operation
-	for index, op := range bf.Operations {
-		updatedOp, errUpdateOps := updateOperation(op, uint(index), sidetreeTxn)
-		if errUpdateOps != nil {
-			return errors.Wrapf(errUpdateOps, "failed to update operation with blockchain metadata")
-		}
+	for index, op := range txnOps {
+		updatedOp := updateOperation(op, uint(index), sidetreeTxn)
 
 		logger.Debugf("updated operation with blockchain time: %s", updatedOp.ID)
 		ops = append(ops, updatedOp)
@@ -194,24 +171,14 @@ func (p *TxnProcessor) processBatchFile(batchFileAddress string, sidetreeTxn Sid
 
 		err = opStore.Put(validOps)
 		if err != nil {
-			return errors.Wrapf(err, "failed to store operation from batch[%s]", batchFileAddress)
+			return errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorAddress)
 		}
 	}
 
 	return nil
 }
 
-func updateOperation(encodedOp string, index uint, sidetreeTxn SidetreeTxn) (*batch.Operation, error) {
-	decodedOp, err := docutil.DecodeString(encodedOp)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode ops")
-	}
-	var op batch.Operation
-	err = json.Unmarshal(decodedOp, &op)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal decoded ops")
-	}
-
+func updateOperation(op *batch.Operation, index uint, sidetreeTxn txn.SidetreeTxn) *batch.Operation {
 	//  The logical blockchain time that this operation was anchored on the blockchain
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
@@ -219,54 +186,7 @@ func updateOperation(encodedOp string, index uint, sidetreeTxn SidetreeTxn) (*ba
 	// The index this operation was assigned to in the batch
 	op.OperationIndex = index
 
-	return &op, nil
-}
-
-// AnchorFile defines the schema of a Anchor File
-type AnchorFile struct {
-	// BatchFileHash is encoded hash of the batch file
-	BatchFileHash string `json:"batchFileHash"`
-
-	// UniqueSuffixes is an array of suffixes (the unique portion of the ID string that differentiates
-	// one document from another) for all documents that are declared to have operations within the associated batch file.
-	UniqueSuffixes []string `json:"uniqueSuffixes"`
-}
-
-// getAnchorFile creates new anchor file struct from bytes
-var getAnchorFile = func(bytes []byte) (*AnchorFile, error) {
-	return unmarshalAnchorFile(bytes)
-}
-
-// unmarshalAnchorFile creates new anchor file struct from bytes
-func unmarshalAnchorFile(bytes []byte) (*AnchorFile, error) {
-	af := &AnchorFile{}
-	err := json.Unmarshal(bytes, af)
-	if err != nil {
-		return nil, err
-	}
-
-	return af, nil
-}
-
-// BatchFile defines the schema of a Batch File and its related operations.
-type BatchFile struct {
-	// Operations included in this batch file, each operation is an encoded string
-	Operations []string `json:"operations"`
-}
-
-// getBatchFile creates new batch file struct from bytes
-var getBatchFile = func(bytes []byte) (*BatchFile, error) {
-	return unmarshalBatchFile(bytes)
-}
-
-// unmarshalBatchFile creates new batch file struct from bytes
-func unmarshalBatchFile(bytes []byte) (*BatchFile, error) {
-	bf := &BatchFile{}
-	err := json.Unmarshal(bytes, bf)
-	if err != nil {
-		return nil, err
-	}
-	return bf, nil
+	return op
 }
 
 type operationsMapping struct {
@@ -280,7 +200,7 @@ func mapOperationsByUniqueSuffix(ops []*batch.Operation) map[string]*operationsM
 	for _, op := range ops {
 		mapping, ok := m[op.UniqueSuffix]
 		if !ok {
-			ns, err := namespaceFromDocID(op.ID)
+			ns, err := docutil.GetNamespaceFromID(op.ID)
 			if err != nil {
 				logger.Infof("Skipping operation since could not get namespace from operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 				continue
@@ -297,13 +217,4 @@ func mapOperationsByUniqueSuffix(ops []*batch.Operation) map[string]*operationsM
 	}
 
 	return m
-}
-
-func namespaceFromDocID(id string) (string, error) {
-	pos := strings.LastIndex(id, ":")
-	if pos == -1 {
-		return "", errors.Errorf("invalid ID [%s]", id)
-	}
-
-	return id[0:pos], nil
 }

@@ -19,7 +19,6 @@ SPDX-License-Identifier: Apache-2.0
 package batch
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -28,11 +27,12 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
-	"github.com/trustbloc/sidetree-core-go/pkg/batch/filehandler"
-	"github.com/trustbloc/sidetree-core-go/pkg/observer"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
 
 const (
@@ -62,7 +62,7 @@ type Writer struct {
 	sendChan     chan process
 	exitChan     chan struct{}
 	batchTimeout time.Duration
-	opsHandler   OperationHandler
+	opsHandler   TxnHandler
 	stopped      uint32
 	protocol     protocol.Client
 }
@@ -73,7 +73,7 @@ type Writer struct {
 // 3) blockchain client
 type Context interface {
 	Protocol() protocol.Client
-	CAS() CASClient
+	CAS() cas.Client
 	Blockchain() BlockchainClient
 	OperationQueue() cutter.OperationQueue
 }
@@ -83,27 +83,14 @@ type BlockchainClient interface {
 	// WriteAnchor writes the anchor file hash as a transaction to blockchain
 	WriteAnchor(anchor string) error
 	// Read ledger transaction
-	Read(sinceTransactionNumber int) (bool, *observer.SidetreeTxn)
+	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
 }
 
-// CASClient defines interface for accessing the underlying content addressable storage
-type CASClient interface {
-	// Write writes the given content to CASClient.
-	// returns the SHA256 hash in base64url encoding which represents the address of the content.
-	Write(content []byte) (string, error)
+// TxnHandler defines an interface for creating chunks, map and anchor files
+type TxnHandler interface {
 
-	// Read reads the content of the given address in CASClient.
-	// returns the content of the given address.
-	Read(address string) ([]byte, error)
-}
-
-// OperationHandler defines an interface for creating batch and anchor files
-type OperationHandler interface {
-	// CreateBatchFile will create batch file bytes
-	CreateBatchFile(operations [][]byte) ([]byte, error)
-
-	// CreateAnchorFile will create anchor file bytes for Sidetree transaction
-	CreateAnchorFile(uniqueSuffixes []string, batchAddress string) ([]byte, error)
+	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string
+	PrepareTxnFiles(ops []*batch.Operation) (string, error)
 }
 
 // New creates a new Writer with the given name (note that name is only used for logging).
@@ -121,11 +108,11 @@ func New(name string, context Context, options ...Option) (*Writer, error) {
 		batchTimeout = rOpts.BatchTimeout
 	}
 
-	var opsHandler OperationHandler
+	var txnHandler TxnHandler
 	if rOpts.OpsHandler != nil {
-		opsHandler = rOpts.OpsHandler
+		txnHandler = rOpts.OpsHandler
 	} else {
-		opsHandler = filehandler.New()
+		txnHandler = txnhandler.New(context.CAS(), context.Protocol())
 	}
 
 	return &Writer{
@@ -135,7 +122,7 @@ func New(name string, context Context, options ...Option) (*Writer, error) {
 		exitChan:     make(chan struct{}),
 		batchTimeout: batchTimeout,
 		context:      context,
-		opsHandler:   opsHandler,
+		opsHandler:   txnHandler,
 		protocol:     context.Protocol(),
 	}, nil
 }
@@ -294,58 +281,25 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 		return errors.New("create batch called with no pending operations, should not happen")
 	}
 
-	operations := make([][]byte, len(ops))
+	operations := make([]*batch.Operation, len(ops))
 	for i, d := range ops {
 		op, err := operation.ParseOperation(d.Namespace, d.Data, r.protocol.Current())
 		if err != nil {
 			return err
 		}
 
-		// TODO: this marshal will be removed when we switch to chunk and map files
-		// and operations will be split based on type
-		opBytes, err := json.Marshal(op)
-		if err != nil {
-			return err
-		}
-
-		operations[i] = opBytes
+		operations[i] = op
 	}
 
-	batchBytes, err := r.opsHandler.CreateBatchFile(operations)
+	anchorString, err := r.opsHandler.PrepareTxnFiles(operations)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("[%s] batch: %s", r.name, string(batchBytes))
+	log.Infof("[%s] writing anchor string: %s", r.name, anchorString)
 
-	// Make the batch file available in CAS
-	batchAddr, err := r.context.CAS().Write(batchBytes)
-	if err != nil {
-		return err
-	}
-
-	uniqueSuffixes := make([]string, len(ops))
-	for i, d := range ops {
-		uniqueSuffixes[i] = d.UniqueSuffix
-	}
-
-	anchorBytes, err := r.opsHandler.CreateAnchorFile(uniqueSuffixes, batchAddr)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("[%s] anchor: %s", r.name, string(anchorBytes))
-
-	// Make the anchor file available in CAS
-	anchorAddr, err := r.context.CAS().Write(anchorBytes)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("[%s] writing anchor address: %s", r.name, anchorAddr)
-
-	// Create Sidetree transaction in blockchain
-	return r.context.Blockchain().WriteAnchor(anchorAddr)
+	// Create Sidetree transaction in blockchain (write anchor string)
+	return r.context.Blockchain().WriteAnchor(anchorString)
 }
 
 func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.Time {
@@ -373,7 +327,7 @@ func WithBatchTimeout(batchTimeout time.Duration) Option {
 }
 
 //WithOperationHandler allows for specifying handler for creating anchor/batch files
-func WithOperationHandler(opsHandler OperationHandler) Option {
+func WithOperationHandler(opsHandler TxnHandler) Option {
 	return func(o *Options) error {
 		o.OpsHandler = opsHandler
 		return nil
@@ -383,7 +337,7 @@ func WithOperationHandler(opsHandler OperationHandler) Option {
 // Options allows the user to specify more advanced options
 type Options struct {
 	BatchTimeout time.Duration
-	OpsHandler   OperationHandler
+	OpsHandler   TxnHandler
 }
 
 //prepareOptsFromOptions reads options
