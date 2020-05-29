@@ -15,7 +15,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
 
 var logger = logrus.New()
@@ -118,7 +117,6 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 // TxnProcessor processes Sidetree transactions by persisting them to an operation store
 type TxnProcessor struct {
 	*Providers
-	txnhandler.Handler
 }
 
 // NewTxnProcessor returns a new document operation processor

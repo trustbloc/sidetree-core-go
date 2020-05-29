@@ -112,7 +112,7 @@ func New(name string, context Context, options ...Option) (*Writer, error) {
 	if rOpts.OpsHandler != nil {
 		txnHandler = rOpts.OpsHandler
 	} else {
-		txnHandler = txnhandler.New(context.CAS(), context.Protocol())
+		txnHandler = txnhandler.NewOperationHandler(context.CAS())
 	}
 
 	return &Writer{

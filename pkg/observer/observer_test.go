@@ -37,7 +37,7 @@ func TestStartObserver(t *testing.T) {
 
 		providers := &Providers{
 			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			TxnOpsProvider:   txnhandler.New(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClient()),
+			TxnOpsProvider:   txnhandler.NewOperationProvider(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClientProvider()),
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
