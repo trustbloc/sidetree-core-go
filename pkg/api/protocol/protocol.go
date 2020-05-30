@@ -24,3 +24,8 @@ type Client interface {
 	// Current returns latest version of protocol
 	Current() Protocol
 }
+
+// ClientProvider returns a protocol client for the given namespace
+type ClientProvider interface {
+	ForNamespace(namespace string) (Client, error)
+}

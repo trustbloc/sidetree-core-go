@@ -18,8 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
@@ -31,13 +29,14 @@ import (
 )
 
 const sha2_256 = 18
+const defaultNS = "did:sidetree"
 
-func TestNew(t *testing.T) {
-	handler := New(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClient())
+func TestNewOperationHandler(t *testing.T) {
+	handler := NewOperationHandler(mocks.NewMockCasClient(nil))
 	require.NotNil(t, handler)
 }
 
-func TestHandler_PrepareTxnFiles(t *testing.T) {
+func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 	const createOpsNum = 2
 	const recoverOpsNum = 1
 	const deactivateOpsNum = 1
@@ -46,7 +45,7 @@ func TestHandler_PrepareTxnFiles(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		handler := New(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClient())
+		handler := NewOperationHandler(mocks.NewMockCasClient(nil))
 
 		anchor, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -92,7 +91,7 @@ func TestHandler_PrepareTxnFiles(t *testing.T) {
 	t.Run("error - write to CAS error for chunk file", func(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		handler := New(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClient())
+		handler := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
 
 		anchor, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -103,7 +102,7 @@ func TestHandler_PrepareTxnFiles(t *testing.T) {
 	t.Run("error - write to CAS error for anchor file", func(t *testing.T) {
 		ops := getTestOperations(0, 0, deactivateOpsNum, 0)
 
-		handler := New(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClient())
+		handler := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
 
 		anchor, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -112,96 +111,8 @@ func TestHandler_PrepareTxnFiles(t *testing.T) {
 	})
 }
 
-func TestHandler_GetTxnOperations(t *testing.T) {
-	const createOpsNum = 2
-	const updateOpsNum = 3
-	const deactivateOpsNum = 2
-	const recoverOpsNum = 2
-
-	t.Run("success", func(t *testing.T) {
-		handler := New(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClient())
-
-		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
-
-		anchor, err := handler.PrepareTxnFiles(ops)
-		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
-
-		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
-			TransactionNumber: 1,
-			TransactionTime:   1,
-		})
-
-		require.NoError(t, err)
-		require.Equal(t, createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum, len(txnOps))
-	})
-
-	t.Run("error - read from CAS error", func(t *testing.T) {
-		handler := New(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClient())
-
-		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     "anchor",
-			TransactionNumber: 1,
-			TransactionTime:   1,
-		})
-
-		require.Error(t, err)
-		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "failed to retrieve content for anchor file[anchor]")
-	})
-
-	t.Run("error - parse anchor operations error", func(t *testing.T) {
-		pc := mocks.NewMockProtocolClient()
-		pc.Protocol = protocol.Protocol{
-			HashAlgorithmInMultiHashCode: 55,
-		}
-		handler := New(mocks.NewMockCasClient(nil), pc)
-
-		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
-
-		anchor, err := handler.PrepareTxnFiles(ops)
-		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
-
-		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
-			TransactionNumber: 1,
-			TransactionTime:   1,
-		})
-
-		require.Error(t, err)
-		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "parse anchor operations: algorithm not supported")
-	})
-
-	t.Run("success - deactivate only", func(t *testing.T) {
-		const deactivateOpsNum = 2
-
-		var ops []*batch.Operation
-		ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
-
-		handler := New(mocks.NewMockCasClient(nil),
-			mocks.NewMockProtocolClient())
-
-		anchor, err := handler.PrepareTxnFiles(ops)
-		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
-
-		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
-			TransactionNumber: 1,
-			TransactionTime:   1,
-		})
-
-		require.NoError(t, err)
-		require.Equal(t, deactivateOpsNum, len(txnOps))
-	})
-}
-
 func TestWriteModelToCAS(t *testing.T) {
-	handler := New(mocks.NewMockCasClient(nil),
-		mocks.NewMockProtocolClient())
+	handler := NewOperationHandler(mocks.NewMockCasClient(nil))
 
 	t.Run("success", func(t *testing.T) {
 		address, err := handler.writeModelToCAS(&models.AnchorFile{}, "alias")
@@ -217,8 +128,7 @@ func TestWriteModelToCAS(t *testing.T) {
 	})
 
 	t.Run("error - CAS error", func(t *testing.T) {
-		handlerWithCASError := New(mocks.NewMockCasClient(errors.New("CAS error")),
-			mocks.NewMockProtocolClient())
+		handlerWithCASError := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
 
 		address, err := handlerWithCASError.writeModelToCAS(&models.AnchorFile{}, "alias")
 		require.Error(t, err)
@@ -279,7 +189,7 @@ func generateCreateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
-	return operation.ParseOperation("ns", request, mocks.NewMockProtocolClient().Current())
+	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
 }
 
 func generateRecoverOperation(num int) (*batch.Operation, error) {
@@ -304,7 +214,7 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 	if err != nil {
 		return nil, err
 	}
-	return operation.ParseOperation("did:sidetree", request, mocks.NewMockProtocolClient().Current())
+	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
 }
 
 func generateDeactivateOperation(num int) (*batch.Operation, error) {
@@ -322,7 +232,7 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
-	return operation.ParseOperation("did:sidetree", request, mocks.NewMockProtocolClient().Current())
+	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
 }
 
 func generateUpdateOperation(num int) (*batch.Operation, error) {
@@ -348,7 +258,7 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
-	return operation.ParseOperation("did:sidetree", request, mocks.NewMockProtocolClient().Current())
+	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
 }
 
 func getTestPatch() (patch.Patch, error) {
