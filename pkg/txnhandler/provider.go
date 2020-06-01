@@ -50,7 +50,7 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Ope
 		// if there's no map file that means that we have only deactivate operations in the batch
 		anchorOps, e := h.parseAnchorOperations(af, txn)
 		if e != nil {
-			return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
+			return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
 		}
 
 		return anchorOps.Deactivate, nil

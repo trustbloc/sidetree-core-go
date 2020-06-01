@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txnhandler
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
 )
 
 func TestNewOperationProvider(t *testing.T) {
@@ -118,6 +120,35 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, deactivateOpsNum, len(txnOps))
+	})
+
+	t.Run("error - protocol client not found for namespace", func(t *testing.T) {
+		const createOpsNum = 2
+
+		var ops []*batch.Operation
+		ops = append(ops, generateOperations(createOpsNum, batch.OperationTypeCreate)...)
+		anchorBytes, err := json.Marshal(models.CreateAnchorFile("", ops))
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorBytes)
+
+		cas := mocks.NewMockCasClient(nil)
+		anchor, err := cas.Write(anchorBytes)
+		require.NoError(t, err)
+
+		pcp := mocks.NewMockProtocolClientProvider()
+		// delete namespace to cause error in the protocol client provider
+		delete(pcp.ProtocolClients, mocks.DefaultNS)
+
+		provider := NewOperationProvider(cas, pcp)
+
+		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			AnchorAddress:     anchor,
+			TransactionNumber: 1,
+			TransactionTime:   1,
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "parse anchor operations: protocol client not found for namespace")
+		require.Nil(t, txnOps)
 	})
 }
 
