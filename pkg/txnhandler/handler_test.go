@@ -47,11 +47,14 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 
 		handler := NewOperationHandler(mocks.NewMockCasClient(nil))
 
-		anchor, err := handler.PrepareTxnFiles(ops)
+		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
+		require.NotEmpty(t, anchorString)
 
-		bytes, err := handler.cas.Read(anchor)
+		anchorData, err := ParseAnchorData(anchorString)
+		require.NoError(t, err)
+
+		bytes, err := handler.cas.Read(anchorData.AnchorAddress)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
@@ -93,9 +96,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 
 		handler := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
 
-		anchor, err := handler.PrepareTxnFiles(ops)
+		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
-		require.Empty(t, anchor)
+		require.Empty(t, anchorString)
 		require.Contains(t, err.Error(), "failed to store chunk file: CAS error")
 	})
 
@@ -104,9 +107,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 
 		handler := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
 
-		anchor, err := handler.PrepareTxnFiles(ops)
+		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
-		require.Empty(t, anchor)
+		require.Empty(t, anchorString)
 		require.Contains(t, err.Error(), "failed to store anchor file: CAS error")
 	})
 }

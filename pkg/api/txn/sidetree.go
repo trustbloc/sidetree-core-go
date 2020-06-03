@@ -10,5 +10,5 @@ package txn
 type SidetreeTxn struct {
 	TransactionTime   uint64
 	TransactionNumber uint64
-	AnchorAddress     string
+	AnchorString      string
 }

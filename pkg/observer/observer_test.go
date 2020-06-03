@@ -21,7 +21,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
 
-const anchorAddressKey = "anchorAddress"
+const anchorString = "1.anchorAddress"
 
 func TestStartObserver(t *testing.T) {
 	t.Run("test error from ProcessSidetreeTxn", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestStartObserver(t *testing.T) {
 		o.Start()
 		defer o.Stop()
 
-		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
+		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorString: "1.address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)
@@ -97,7 +97,7 @@ func TestStartObserver(t *testing.T) {
 		o.Start()
 		defer o.Stop()
 
-		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorAddress: "address"}}
+		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorString: "1.address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)
@@ -129,7 +129,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
+		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), errExpected.Error())
 	})
@@ -145,7 +145,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
+		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to store operation from anchor string")
 	})
@@ -158,10 +158,10 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := NewTxnProcessor(providers)
-		batchOps, err := p.TxnOpsProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
+		batchOps, err := p.TxnOpsProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorAddress: anchorAddressKey})
+		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 	})
 }

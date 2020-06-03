@@ -51,8 +51,12 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*batch.Operation) (string, erro
 		return "", err
 	}
 
-	// TODO: Create anchor string issue-293 - for now return anchor address
-	return anchorAddr, nil
+	ad := AnchorData{
+		NumberOfOperations: len(ops),
+		AnchorAddress:      anchorAddr,
+	}
+
+	return ad.GetAnchorString(), nil
 }
 
 // createAnchorFile will create anchor file from operations and map file and write it to CAS
