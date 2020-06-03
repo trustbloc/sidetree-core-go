@@ -107,10 +107,10 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 	for _, txn := range txns {
 		err := o.processor.Process(txn)
 		if err != nil {
-			logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorAddress, err.Error())
+			logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorString, err.Error())
 			continue
 		}
-		logger.Debugf("Successfully processed anchor[%s]", txn.AnchorAddress)
+		logger.Debugf("Successfully processed anchor[%s]", txn.AnchorString)
 	}
 }
 
@@ -132,7 +132,7 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
 
 	txnOps, err := p.TxnOpsProvider.GetTxnOperations(&sidetreeTxn)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve operations for anchor string[%s]: %s", sidetreeTxn.AnchorAddress, err)
+		return fmt.Errorf("failed to retrieve operations for anchor string[%s]: %s", sidetreeTxn.AnchorString, err)
 	}
 
 	return p.processTxnOperations(txnOps, sidetreeTxn)
@@ -169,7 +169,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.Operation, sidetreeT
 
 		err = opStore.Put(validOps)
 		if err != nil {
-			return errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorAddress)
+			return errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorString)
 		}
 	}
 

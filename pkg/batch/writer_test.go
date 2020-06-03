@@ -25,6 +25,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
+	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
@@ -76,8 +77,11 @@ func TestStart(t *testing.T) {
 	// we should have 4 anchors: 8 operations % max 2 operations per batch
 	require.Equal(t, 4, len(ctx.BlockchainClient.GetAnchors()))
 
+	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	require.NoError(t, err)
+
 	// Check that first anchor has two operations per batch
-	bytes, err := ctx.CasClient.Read(ctx.BlockchainClient.GetAnchors()[0])
+	bytes, err := ctx.CasClient.Read(ad.AnchorAddress)
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
@@ -128,7 +132,10 @@ func TestBatchTimer(t *testing.T) {
 
 	require.Equal(t, 1, len(ctx.BlockchainClient.GetAnchors()))
 
-	bytes, err := ctx.CasClient.Read(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	require.NoError(t, err)
+
+	bytes, err := ctx.CasClient.Read(ad.AnchorAddress)
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 

@@ -36,12 +36,15 @@ func NewOperationProvider(cas DCAS, pcp protocol.ClientProvider) *OperationProvi
 	return &OperationProvider{cas: cas, pcp: pcp}
 }
 
-// GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch Operations from those files
+// GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files
 func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error) {
-	// TODO: parse anchor file address from address string - issue-293
-	anchorAddress := txn.AnchorAddress
+	// ParseAnchorData anchor address and number of operations from anchor string
+	anchorData, err := ParseAnchorData(txn.AnchorString)
+	if err != nil {
+		return nil, err
+	}
 
-	af, err := h.getAnchorFile(anchorAddress)
+	af, err := h.getAnchorFile(anchorData.AnchorAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -58,13 +61,13 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Ope
 
 	mf, err := h.getMapFile(af.MapFileHash)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse map file: key[%s]", af.MapFileHash)
+		return nil, err
 	}
 
 	chunkAddress := mf.Chunks[0].ChunkFileURI
 	cf, err := h.getChunkFile(chunkAddress)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse chunk file: key[%s]", chunkAddress)
+		return nil, err
 	}
 
 	return h.assembleBatchOperations(af, mf, cf, txn)
@@ -166,7 +169,7 @@ type anchorOperations struct {
 }
 
 func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) { //nolint: funlen
-	log.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorAddress)
+	log.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
 
 	var suffixes []string
 

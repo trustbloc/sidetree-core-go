@@ -37,14 +37,14 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchor, err := handler.PrepareTxnFiles(ops)
+		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
+		require.NotEmpty(t, anchorString)
 
 		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
+			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -57,7 +57,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		handler := NewOperationProvider(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClientProvider())
 
 		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     "anchor",
+			AnchorString:      "1" + delimiter + "anchor",
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -73,9 +73,9 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchor, err := handler.PrepareTxnFiles(ops)
+		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
+		require.NotEmpty(t, anchorString)
 
 		pc := mocks.NewMockProtocolClient()
 		pc.Protocol = protocol.Protocol{
@@ -87,7 +87,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		provider := NewOperationProvider(cas, pcp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
+			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -95,6 +95,20 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, txnOps)
 		require.Contains(t, err.Error(), "parse anchor operations: algorithm not supported")
+	})
+
+	t.Run("error - parse anchor data error", func(t *testing.T) {
+		provider := NewOperationProvider(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClientProvider())
+
+		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			AnchorString:      "abc.anchor",
+			TransactionNumber: 1,
+			TransactionTime:   1,
+		})
+
+		require.Error(t, err)
+		require.Nil(t, txnOps)
+		require.Contains(t, err.Error(), "parse anchor data[abc.anchor] failed")
 	})
 
 	t.Run("success - deactivate only", func(t *testing.T) {
@@ -106,14 +120,14 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(cas)
 
-		anchor, err := handler.PrepareTxnFiles(ops)
+		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchor)
+		require.NotEmpty(t, anchorString)
 
 		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
+			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -142,7 +156,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		provider := NewOperationProvider(cas, pcp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			AnchorAddress:     anchor,
+			AnchorString:      "1" + delimiter + anchor,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})

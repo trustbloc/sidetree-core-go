@@ -48,7 +48,7 @@ func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.Side
 
 	if len(m.anchors) > 0 && sinceTransactionNumber < len(m.anchors)-1 {
 		hashIndex := sinceTransactionNumber + 1
-		return moreTransactions, &txn.SidetreeTxn{TransactionTime: uint64(hashIndex), TransactionNumber: uint64(hashIndex), AnchorAddress: m.anchors[hashIndex]}
+		return moreTransactions, &txn.SidetreeTxn{TransactionTime: uint64(hashIndex), TransactionNumber: uint64(hashIndex), AnchorString: m.anchors[hashIndex]}
 	}
 	return moreTransactions, nil
 }
