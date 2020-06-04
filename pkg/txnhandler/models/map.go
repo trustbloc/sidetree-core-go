@@ -63,7 +63,6 @@ func getSignedOperations(filter batch.OperationType, ops []*batch.Operation) []S
 			upd := SignedOperation{
 				DidSuffix:  op.UniqueSuffix,
 				SignedData: op.SignedData,
-				Namespace:  op.Namespace,
 			}
 
 			result = append(result, upd)

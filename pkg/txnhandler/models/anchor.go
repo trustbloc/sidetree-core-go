@@ -25,18 +25,10 @@ type AnchorFile struct {
 type CreateOperation struct {
 	// Encoded suffix data object
 	SuffixData string `json:"suffix_data"`
-
-	// Namespace refers to document namespace
-	// Note: namespace is an optional attribute (currently not part of spec)
-	Namespace string `json:"namespace"`
 }
 
 //SignedOperation contains operation proving data
 type SignedOperation struct {
-	// Namespace refers to document namespace
-	// Note: namespace is an optional attribute (currently not part of spec)
-	Namespace string `json:"namespace"`
-
 	//The suffix of the DID
 	DidSuffix string `json:"did_suffix"`
 
@@ -69,7 +61,7 @@ func getCreateOperations(ops []*batch.Operation) []CreateOperation {
 	var result []CreateOperation
 	for _, op := range ops {
 		if op.Type == batch.OperationTypeCreate {
-			create := CreateOperation{SuffixData: op.EncodedSuffixData, Namespace: op.Namespace}
+			create := CreateOperation{SuffixData: op.EncodedSuffixData}
 
 			result = append(result, create)
 		}

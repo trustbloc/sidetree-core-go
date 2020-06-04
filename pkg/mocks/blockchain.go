@@ -15,13 +15,14 @@ import (
 // MockBlockchainClient mocks blockchain client for testing purposes.
 type MockBlockchainClient struct {
 	sync.RWMutex
-	anchors []string
-	err     error
+	namespace string
+	anchors   []string
+	err       error
 }
 
 // NewMockBlockchainClient creates mock client
 func NewMockBlockchainClient(err error) *MockBlockchainClient {
-	return &MockBlockchainClient{err: err}
+	return &MockBlockchainClient{err: err, namespace: DefaultNS}
 }
 
 // WriteAnchor writes the anchor file hash as a transaction to blockchain.
@@ -48,8 +49,17 @@ func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.Side
 
 	if len(m.anchors) > 0 && sinceTransactionNumber < len(m.anchors)-1 {
 		hashIndex := sinceTransactionNumber + 1
-		return moreTransactions, &txn.SidetreeTxn{TransactionTime: uint64(hashIndex), TransactionNumber: uint64(hashIndex), AnchorString: m.anchors[hashIndex]}
+
+		txn := &txn.SidetreeTxn{
+			Namespace:         m.namespace,
+			TransactionTime:   uint64(hashIndex),
+			TransactionNumber: uint64(hashIndex),
+			AnchorString:      m.anchors[hashIndex],
+		}
+
+		return moreTransactions, txn
 	}
+
 	return moreTransactions, nil
 }
 

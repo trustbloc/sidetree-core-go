@@ -44,6 +44,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
 			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
@@ -87,6 +88,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		provider := NewOperationProvider(cas, pcp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
 			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
@@ -127,6 +129,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
 			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
