@@ -82,7 +82,7 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	log.Debugf("successfully parsed anchor operations: create[%d], recover[%d], deactivate[%d]",
 		len(anchorOps.Create), len(anchorOps.Recover), len(anchorOps.Deactivate))
 
-	mapOps := parseMapOperations(mf)
+	mapOps := parseMapOperations(mf, txn)
 
 	log.Debugf("successfully parsed map operations: update[%d]", len(mapOps.Update))
 
@@ -171,15 +171,15 @@ type anchorOperations struct {
 func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) { //nolint: funlen
 	log.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
 
+	p, err := h.getProtocol(txn.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	var suffixes []string
 
 	var createOps []*batch.Operation
 	for _, op := range af.Operations.Create {
-		p, err := h.getProtocol(op.Namespace)
-		if err != nil {
-			return nil, err
-		}
-
 		suffix, err := docutil.CalculateUniqueSuffix(op.SuffixData, p.HashAlgorithmInMultiHashCode)
 		if err != nil {
 			return nil, err
@@ -193,9 +193,9 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 		// TODO: they are assembling operation buffer in reference implementation (might be easier for version manager)
 		create := &batch.Operation{
 			Type:              batch.OperationTypeCreate,
-			Namespace:         op.Namespace,
+			Namespace:         txn.Namespace,
 			UniqueSuffix:      suffix,
-			ID:                op.Namespace + docutil.NamespaceDelimiter + suffix,
+			ID:                txn.Namespace + docutil.NamespaceDelimiter + suffix,
 			EncodedSuffixData: op.SuffixData,
 			SuffixData:        suffixModel,
 		}
@@ -208,9 +208,9 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	for _, op := range af.Operations.Recover {
 		recover := &batch.Operation{
 			Type:         batch.OperationTypeRecover,
-			Namespace:    op.Namespace,
+			Namespace:    txn.Namespace,
 			UniqueSuffix: op.DidSuffix,
-			ID:           op.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
+			ID:           txn.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
 
@@ -222,9 +222,9 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	for _, op := range af.Operations.Deactivate {
 		deactivate := &batch.Operation{
 			Type:         batch.OperationTypeDeactivate,
-			Namespace:    op.Namespace,
+			Namespace:    txn.Namespace,
 			UniqueSuffix: op.DidSuffix,
-			ID:           op.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
+			ID:           txn.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
 
@@ -258,16 +258,16 @@ type MapOperations struct {
 	Suffixes []string
 }
 
-func parseMapOperations(mf *models.MapFile) *MapOperations {
+func parseMapOperations(mf *models.MapFile, txn *txn.SidetreeTxn) *MapOperations {
 	var suffixes []string
 
 	var updateOps []*batch.Operation
 	for _, op := range mf.Operations.Update {
 		update := &batch.Operation{
 			Type:         batch.OperationTypeUpdate,
-			Namespace:    op.Namespace,
+			Namespace:    txn.Namespace,
 			UniqueSuffix: op.DidSuffix,
-			ID:           op.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
+			ID:           txn.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
 

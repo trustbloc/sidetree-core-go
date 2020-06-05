@@ -11,4 +11,5 @@ type SidetreeTxn struct {
 	TransactionTime   uint64
 	TransactionNumber uint64
 	AnchorString      string
+	Namespace         string
 }

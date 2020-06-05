@@ -33,25 +33,26 @@ import (
 //go:generate counterfeiter -o ../mocks/operationqueue.gen.go --fake-name OperationQueue ./cutter OperationQueue
 
 const sha2_256 = 18
+const namespace = "did:sidetree"
 
 func TestNew(t *testing.T) {
 	ctx := newMockContext()
-	writer, err := New("test", ctx)
+	writer, err := New(namespace, ctx)
 	require.Nil(t, err)
 	require.NotNil(t, writer)
 
-	writer, err = New("test", ctx, WithBatchTimeout(10*time.Second))
+	writer, err = New(namespace, ctx, WithBatchTimeout(10*time.Second))
 	require.Nil(t, err)
 	require.NotNil(t, writer)
 	require.EqualValues(t, writer.batchTimeout, 10*time.Second)
 
-	writer, err = New("test", ctx, withError())
+	writer, err = New(namespace, ctx, withError())
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "failed to read opts: test error")
 	require.Nil(t, writer)
 
 	opsHandler := &mockOpsHandler{}
-	writer, err = New("test", ctx, WithOperationHandler(opsHandler))
+	writer, err = New(namespace, ctx, WithOperationHandler(opsHandler))
 	require.Nil(t, err)
 	require.NotNil(t, writer)
 	require.EqualValues(t, writer.opsHandler, opsHandler)
@@ -59,7 +60,7 @@ func TestNew(t *testing.T) {
 
 func TestStart(t *testing.T) {
 	ctx := newMockContext()
-	writer, err := New("test", ctx)
+	writer, err := New(namespace, ctx)
 	require.Nil(t, err)
 
 	writer.Start()
@@ -114,7 +115,7 @@ func TestStart(t *testing.T) {
 
 func TestBatchTimer(t *testing.T) {
 	ctx := newMockContext()
-	writer, err := New("test", ctx, WithBatchTimeout(2*time.Second))
+	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
 
 	writer.Start()
@@ -169,7 +170,7 @@ func TestProcessOperationsError(t *testing.T) {
 	ctx := newMockContext()
 	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
 
-	writer, err := New("test", ctx, WithBatchTimeout(2*time.Second))
+	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
 
 	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
@@ -190,7 +191,7 @@ func TestProcessOperationsError(t *testing.T) {
 
 func TestBlockchainError(t *testing.T) {
 	ctx := newMockContext()
-	writer, err := New("test", ctx, WithBatchTimeout(2*time.Second))
+	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
 
 	ctx.BlockchainClient = mocks.NewMockBlockchainClient(fmt.Errorf("blockchain error"))
@@ -209,7 +210,7 @@ func TestBlockchainError(t *testing.T) {
 }
 
 func TestAddAfterStop(t *testing.T) {
-	writer, err := New("test", newMockContext())
+	writer, err := New(namespace, newMockContext())
 	require.Nil(t, err)
 	require.False(t, writer.Stopped())
 
@@ -231,7 +232,7 @@ func TestProcessBatchErrorRecovery(t *testing.T) {
 	ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 2
 	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
 
-	writer, err := New("test", ctx, WithBatchTimeout(500*time.Millisecond))
+	writer, err := New(namespace, ctx, WithBatchTimeout(500*time.Millisecond))
 	require.Nil(t, err)
 
 	writer.Start()
@@ -265,7 +266,7 @@ func TestAddError(t *testing.T) {
 	ctx := newMockContext()
 	ctx.OpQueue = q
 
-	writer, err := New("test", ctx)
+	writer, err := New(namespace, ctx)
 	require.NoError(t, err)
 	require.EqualError(t, writer.Add(&batch.OperationInfo{}), errExpected.Error())
 }
@@ -281,7 +282,7 @@ func TestStartWithExistingItems(t *testing.T) {
 	ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = maxOperationsPerBatch
 	ctx.OpQueue = opQueue
 
-	writer, err := New("test", ctx)
+	writer, err := New(namespace, ctx)
 	require.Nil(t, err)
 
 	// Add operations to the queue directly
