@@ -31,6 +31,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
+	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
@@ -93,6 +94,13 @@ type TxnHandler interface {
 	PrepareTxnFiles(ops []*batch.Operation) (string, error)
 }
 
+// CompressionProvider defines an interface for handling different types of compression
+type CompressionProvider interface {
+
+	// Compress will compress data using specified algorithm
+	Compress(alg string, data []byte) ([]byte, error)
+}
+
 // New creates a new Writer with the given namespace.
 // Writer accepts operations being delivered via Add, orders them, and then uses the batch
 // cutter to form the operations batch file. This batch file will then be used to create
@@ -108,11 +116,18 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 		batchTimeout = rOpts.BatchTimeout
 	}
 
+	var compressionProvider CompressionProvider
+	if rOpts.CompressionProvider != nil {
+		compressionProvider = rOpts.CompressionProvider
+	} else {
+		compressionProvider = compression.New(compression.WithDefaultAlgorithms())
+	}
+
 	var txnHandler TxnHandler
 	if rOpts.OpsHandler != nil {
 		txnHandler = rOpts.OpsHandler
 	} else {
-		txnHandler = txnhandler.NewOperationHandler(context.CAS())
+		txnHandler = txnhandler.NewOperationHandler(context.CAS(), context.Protocol(), compressionProvider)
 	}
 
 	return &Writer{
@@ -334,10 +349,19 @@ func WithOperationHandler(opsHandler TxnHandler) Option {
 	}
 }
 
+//WithCompressionProvider allows for specifying compression provider
+func WithCompressionProvider(compressionProvider CompressionProvider) Option {
+	return func(o *Options) error {
+		o.CompressionProvider = compressionProvider
+		return nil
+	}
+}
+
 // Options allows the user to specify more advanced options
 type Options struct {
-	BatchTimeout time.Duration
-	OpsHandler   TxnHandler
+	BatchTimeout        time.Duration
+	OpsHandler          TxnHandler
+	CompressionProvider CompressionProvider
 }
 
 //prepareOptsFromOptions reads options

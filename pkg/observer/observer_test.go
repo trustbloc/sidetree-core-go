@@ -17,6 +17,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
+	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
@@ -37,7 +38,7 @@ func TestStartObserver(t *testing.T) {
 
 		providers := &Providers{
 			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			TxnOpsProvider:   txnhandler.NewOperationProvider(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClientProvider()),
+			TxnOpsProvider:   txnhandler.NewOperationProvider(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClientProvider(), compression.New(compression.WithDefaultAlgorithms())),
 			OpFilterProvider: &NoopOperationFilterProvider{},
 		}
 
@@ -47,7 +48,7 @@ func TestStartObserver(t *testing.T) {
 		o.Start()
 		defer o.Stop()
 
-		sidetreeTxnCh <- []txn.SidetreeTxn{{TransactionTime: 20, TransactionNumber: 2, AnchorString: "1.address"}}
+		sidetreeTxnCh <- []txn.SidetreeTxn{{Namespace: mocks.DefaultNS, TransactionTime: 20, TransactionNumber: 2, AnchorString: "1.address"}}
 		time.Sleep(200 * time.Millisecond)
 		rw.RLock()
 		require.True(t, isCalled)

@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
@@ -32,7 +33,10 @@ const sha2_256 = 18
 const defaultNS = "did:sidetree"
 
 func TestNewOperationHandler(t *testing.T) {
-	handler := NewOperationHandler(mocks.NewMockCasClient(nil))
+	handler := NewOperationHandler(
+		mocks.NewMockCasClient(nil),
+		mocks.NewMockProtocolClient(),
+		compression.New(compression.WithDefaultAlgorithms()))
 	require.NotNil(t, handler)
 }
 
@@ -42,10 +46,15 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 	const deactivateOpsNum = 1
 	const updateOpsNum = 1
 
+	compression := compression.New(compression.WithDefaultAlgorithms())
+
 	t.Run("success", func(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		handler := NewOperationHandler(mocks.NewMockCasClient(nil))
+		handler := NewOperationHandler(
+			mocks.NewMockCasClient(nil),
+			mocks.NewMockProtocolClient(),
+			compression)
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -58,8 +67,11 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
+		content, err := compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
 		var af models.AnchorFile
-		err = json.Unmarshal(bytes, &af)
+		err = json.Unmarshal(content, &af)
 		require.NoError(t, err)
 		require.NotNil(t, af)
 		require.Equal(t, createOpsNum, len(af.Operations.Create))
@@ -71,8 +83,11 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
+		content, err = compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
 		var mf models.MapFile
-		err = json.Unmarshal(bytes, &mf)
+		err = json.Unmarshal(content, &mf)
 		require.NoError(t, err)
 		require.NotNil(t, mf)
 		require.Equal(t, updateOpsNum, len(mf.Operations.Update))
@@ -84,8 +99,11 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
+		content, err = compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
 		var cf models.ChunkFile
-		err = json.Unmarshal(bytes, &cf)
+		err = json.Unmarshal(content, &cf)
 		require.NoError(t, err)
 		require.NotNil(t, cf)
 		require.Equal(t, createOpsNum+recoverOpsNum+updateOpsNum, len(cf.Deltas))
@@ -94,7 +112,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 	t.Run("error - write to CAS error for chunk file", func(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		handler := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
+		handler := NewOperationHandler(
+			mocks.NewMockCasClient(errors.New("CAS error")),
+			mocks.NewMockProtocolClient(),
+			compression)
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -105,7 +126,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 	t.Run("error - write to CAS error for anchor file", func(t *testing.T) {
 		ops := getTestOperations(0, 0, deactivateOpsNum, 0)
 
-		handler := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
+		handler := NewOperationHandler(
+			mocks.NewMockCasClient(errors.New("CAS error")),
+			mocks.NewMockProtocolClient(),
+			compression)
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -115,7 +139,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 }
 
 func TestWriteModelToCAS(t *testing.T) {
-	handler := NewOperationHandler(mocks.NewMockCasClient(nil))
+	handler := NewOperationHandler(
+		mocks.NewMockCasClient(nil),
+		mocks.NewMockProtocolClient(),
+		compression.New(compression.WithDefaultAlgorithms()))
 
 	t.Run("success", func(t *testing.T) {
 		address, err := handler.writeModelToCAS(&models.AnchorFile{}, "alias")
@@ -131,12 +158,31 @@ func TestWriteModelToCAS(t *testing.T) {
 	})
 
 	t.Run("error - CAS error", func(t *testing.T) {
-		handlerWithCASError := NewOperationHandler(mocks.NewMockCasClient(errors.New("CAS error")))
+		handlerWithCASError := NewOperationHandler(
+			mocks.NewMockCasClient(errors.New("CAS error")),
+			mocks.NewMockProtocolClient(),
+			compression.New(compression.WithDefaultAlgorithms()))
 
 		address, err := handlerWithCASError.writeModelToCAS(&models.AnchorFile{}, "alias")
 		require.Error(t, err)
 		require.Empty(t, address)
 		require.Contains(t, err.Error(), "failed to store alias file: CAS error")
+	})
+
+	t.Run("error - compression error", func(t *testing.T) {
+		pc := mocks.NewMockProtocolClient()
+		pc.Protocol.CompressionAlgorithm = "invalid"
+
+		handlerWithProtocolError := NewOperationHandler(
+			mocks.NewMockCasClient(nil),
+			pc,
+			compression.New(compression.WithDefaultAlgorithms()),
+		)
+
+		address, err := handlerWithProtocolError.writeModelToCAS(&models.AnchorFile{}, "alias")
+		require.Error(t, err)
+		require.Empty(t, address)
+		require.Contains(t, err.Error(), "compression algorithm 'invalid' not supported")
 	})
 }
 

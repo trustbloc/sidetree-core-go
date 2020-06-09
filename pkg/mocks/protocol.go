@@ -15,6 +15,9 @@ import (
 // DefaultNS is default namespace used in mocks
 const DefaultNS = "did:sidetree"
 
+// maximum batch files size in bytes
+const maxBatchFileSize = 20000
+
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
 	Protocol protocol.Protocol
@@ -29,6 +32,10 @@ func NewMockProtocolClient() *MockProtocolClient {
 			HashAlgorithmInMultiHashCode: sha2_256,
 			MaxOperationsPerBatch:        2,
 			MaxDeltaByteSize:             2000,
+			CompressionAlgorithm:         "GZIP",
+			MaxChunkFileSize:             maxBatchFileSize,
+			MaxMapFileSize:               maxBatchFileSize,
+			MaxAnchorFileSize:            maxBatchFileSize,
 		},
 	}
 }
