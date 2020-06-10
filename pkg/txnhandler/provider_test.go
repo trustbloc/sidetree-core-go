@@ -16,12 +16,19 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
+	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
 )
 
+const compressionAlgorithm = "GZIP"
+const maxFileSize = 2000 // in bytes
+
 func TestNewOperationProvider(t *testing.T) {
-	handler := NewOperationProvider(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClientProvider())
+	handler := NewOperationProvider(mocks.NewMockCasClient(nil),
+		mocks.NewMockProtocolClientProvider(),
+		compression.New(compression.WithDefaultAlgorithms()))
+
 	require.NotNil(t, handler)
 }
 
@@ -31,9 +38,12 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 	const deactivateOpsNum = 2
 	const recoverOpsNum = 2
 
+	pc := mocks.NewMockProtocolClient()
+	cp := compression.New(compression.WithDefaultAlgorithms())
+
 	t.Run("success", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(cas)
+		handler := NewOperationHandler(cas, pc, cp)
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -41,7 +51,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
+		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider(), cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
@@ -55,9 +65,13 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 	})
 
 	t.Run("error - read from CAS error", func(t *testing.T) {
-		handler := NewOperationProvider(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClientProvider())
+		handler := NewOperationProvider(
+			mocks.NewMockCasClient(errors.New("CAS error")),
+			mocks.NewMockProtocolClientProvider(),
+			cp)
 
 		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
 			AnchorString:      "1" + delimiter + "anchor",
 			TransactionNumber: 1,
 			TransactionTime:   1,
@@ -65,12 +79,12 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		require.Error(t, err)
 		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "failed to retrieve content for anchor file[anchor]")
+		require.Contains(t, err.Error(), "error reading anchor file[anchor]: retrieve CAS content[anchor]: CAS error")
 	})
 
 	t.Run("error - parse anchor operations error", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(cas)
+		handler := NewOperationHandler(cas, pc, cp)
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -78,17 +92,15 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
-		pc := mocks.NewMockProtocolClient()
-		pc.Protocol = protocol.Protocol{
-			HashAlgorithmInMultiHashCode: 55,
-		}
+		invalid := mocks.NewMockProtocolClient()
+		invalid.Protocol.HashAlgorithmInMultiHashCode = 55
 
 		pcp := mocks.NewMockProtocolClientProvider()
-		pcp.ProtocolClients[mocks.DefaultNS] = pc
-		provider := NewOperationProvider(cas, pcp)
+		pcp.ProtocolClients[mocks.DefaultNS] = invalid
+		provider := NewOperationProvider(cas, pcp, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			Namespace:         defaultNS,
+			Namespace:         mocks.DefaultNS,
 			AnchorString:      anchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
@@ -100,7 +112,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 	})
 
 	t.Run("error - parse anchor data error", func(t *testing.T) {
-		provider := NewOperationProvider(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClientProvider())
+		provider := NewOperationProvider(mocks.NewMockCasClient(nil), mocks.NewMockProtocolClientProvider(), cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			AnchorString:      "abc.anchor",
@@ -120,13 +132,13 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
 
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(cas)
+		handler := NewOperationHandler(cas, pc, cp)
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
+		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider(), cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
@@ -156,46 +168,58 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		// delete namespace to cause error in the protocol client provider
 		delete(pcp.ProtocolClients, mocks.DefaultNS)
 
-		provider := NewOperationProvider(cas, pcp)
+		provider := NewOperationProvider(cas, pcp, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
 			AnchorString:      "1" + delimiter + anchor,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "parse anchor operations: protocol client not found for namespace")
+		require.Contains(t, err.Error(), "protocol client not found for namespace [did:sidetree]")
 		require.Nil(t, txnOps)
 	})
 }
 
 func TestHandler_GetAnchorFile(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		cas := mocks.NewMockCasClient(nil)
-		address, err := cas.Write([]byte("{}"))
-		require.NoError(t, err)
+	pcp := mocks.NewMockProtocolClientProvider()
+	cp := compression.New(compression.WithDefaultAlgorithms())
+	p := protocol.Protocol{MaxAnchorFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
-		file, err := provider.getAnchorFile(address)
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	address, err := cas.Write(content)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		file, err := provider.getAnchorFile(address, p)
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
 
-	t.Run("error - read from CAS error", func(t *testing.T) {
-		provider := NewOperationProvider(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClientProvider())
-		file, err := provider.getAnchorFile("address")
+	t.Run("error - anchor file exceeds maximum size", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		lowMaxFileSize := protocol.Protocol{MaxAnchorFileSize: 15, CompressionAlgorithm: compressionAlgorithm}
+
+		file, err := provider.getAnchorFile(address, lowMaxFileSize)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "failed to retrieve content for anchor file[address]: CAS error")
+		require.Contains(t, err.Error(), "exceeded maximum size 15")
 	})
 
 	t.Run("error - parse anchor file error (invalid JSON)", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		address, err := cas.Write([]byte("invalid"))
+		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
+		address, err := cas.Write(content)
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
-		file, err := provider.getAnchorFile(address)
+		provider := NewOperationProvider(cas, pcp, cp)
+		file, err := provider.getAnchorFile(address, p)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "failed to parse content for anchor file")
@@ -203,32 +227,43 @@ func TestHandler_GetAnchorFile(t *testing.T) {
 }
 
 func TestHandler_GetMapFile(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		cas := mocks.NewMockCasClient(nil)
-		address, err := cas.Write([]byte("{}"))
-		require.NoError(t, err)
+	pcp := mocks.NewMockProtocolClientProvider()
+	cp := compression.New(compression.WithDefaultAlgorithms())
+	p := protocol.Protocol{MaxMapFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
-		file, err := provider.getMapFile(address)
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	address, err := cas.Write(content)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		file, err := provider.getMapFile(address, p)
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
 
-	t.Run("error - read from CAS error", func(t *testing.T) {
-		provider := NewOperationProvider(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClientProvider())
-		file, err := provider.getMapFile("address")
+	t.Run("error - map file exceeds maximum size", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		lowMaxFileSize := protocol.Protocol{MaxMapFileSize: 5, CompressionAlgorithm: compressionAlgorithm}
+
+		file, err := provider.getMapFile(address, lowMaxFileSize)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "failed to retrieve content for map file[address]: CAS error")
+		require.Contains(t, err.Error(), "exceeded maximum size 5")
 	})
 
 	t.Run("error - parse anchor file error (invalid JSON)", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		address, err := cas.Write([]byte("invalid"))
+		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
+		address, err := cas.Write(content)
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
-		file, err := provider.getMapFile(address)
+		provider := NewOperationProvider(cas, pcp, cp)
+		file, err := provider.getMapFile(address, p)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "failed to parse content for map file")
@@ -236,34 +271,91 @@ func TestHandler_GetMapFile(t *testing.T) {
 }
 
 func TestHandler_GetChunkFile(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		cas := mocks.NewMockCasClient(nil)
-		address, err := cas.Write([]byte("{}"))
-		require.NoError(t, err)
+	pcp := mocks.NewMockProtocolClientProvider()
+	cp := compression.New(compression.WithDefaultAlgorithms())
+	p := protocol.Protocol{MaxChunkFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
-		file, err := provider.getChunkFile(address)
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	address, err := cas.Write(content)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		file, err := provider.getChunkFile(address, p)
+		require.NoError(t, err)
+		require.NotNil(t, file)
+	})
+
+	t.Run("error - chunk file exceeds maximum size", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		lowMaxFileSize := protocol.Protocol{MaxChunkFileSize: 10, CompressionAlgorithm: compressionAlgorithm}
+
+		file, err := provider.getChunkFile(address, lowMaxFileSize)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "exceeded maximum size 10")
+	})
+
+	t.Run("error - parse chunk file error (invalid JSON)", func(t *testing.T) {
+		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
+		require.NoError(t, err)
+		address, err := cas.Write(content)
+
+		provider := NewOperationProvider(cas, pcp, cp)
+		file, err := provider.getChunkFile(address, p)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "failed to parse content for chunk file")
+	})
+}
+
+func TestHandler_readFromCAS(t *testing.T) {
+	pcp := mocks.NewMockProtocolClientProvider()
+	cp := compression.New(compression.WithDefaultAlgorithms())
+	p := protocol.Protocol{MaxChunkFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	address, err := cas.Write(content)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		file, err := provider.readFromCAS(address, compressionAlgorithm, maxFileSize)
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
 
 	t.Run("error - read from CAS error", func(t *testing.T) {
-		provider := NewOperationProvider(mocks.NewMockCasClient(errors.New("CAS error")), mocks.NewMockProtocolClientProvider())
-		file, err := provider.getChunkFile("address")
+		provider := NewOperationProvider(mocks.NewMockCasClient(errors.New("CAS error")), pcp, cp)
+
+		file, err := provider.getChunkFile("address", p)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "failed to retrieve content for chunk file[address]: CAS error")
+		require.Contains(t, err.Error(), " retrieve CAS content[address]: CAS error")
 	})
 
-	t.Run("error - parse chunk file error (invalid JSON)", func(t *testing.T) {
-		cas := mocks.NewMockCasClient(nil)
-		address, err := cas.Write([]byte("invalid"))
-		require.NoError(t, err)
+	t.Run("error - content exceeds maximum size", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
 
-		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider())
-		file, err := provider.getChunkFile(address)
+		file, err := provider.readFromCAS(address, compressionAlgorithm, 20)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "failed to parse content for chunk file")
+		require.Contains(t, err.Error(), "exceeded maximum size 20")
+	})
+
+	t.Run("error - decompression error", func(t *testing.T) {
+		provider := NewOperationProvider(cas, pcp, cp)
+
+		file, err := provider.readFromCAS(address, "alg", maxFileSize)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "compression algorithm 'alg' not supported")
 	})
 }

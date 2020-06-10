@@ -25,15 +25,20 @@ type DCAS interface {
 	Read(key string) ([]byte, error)
 }
 
+type decompressionProvider interface {
+	Decompress(alg string, data []byte) ([]byte, error)
+}
+
 // OperationProvider assembles batch operations from batch files
 type OperationProvider struct {
 	cas DCAS
 	pcp protocol.ClientProvider
+	dp  decompressionProvider
 }
 
 // NewOperationProvider returns new operation provider
-func NewOperationProvider(cas DCAS, pcp protocol.ClientProvider) *OperationProvider {
-	return &OperationProvider{cas: cas, pcp: pcp}
+func NewOperationProvider(cas DCAS, pcp protocol.ClientProvider, dp decompressionProvider) *OperationProvider {
+	return &OperationProvider{cas: cas, pcp: pcp, dp: dp}
 }
 
 // GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files
@@ -44,7 +49,12 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Ope
 		return nil, err
 	}
 
-	af, err := h.getAnchorFile(anchorData.AnchorAddress)
+	pc, err := h.pcp.ForNamespace(txn.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	af, err := h.getAnchorFile(anchorData.AnchorAddress, pc.Current())
 	if err != nil {
 		return nil, err
 	}
@@ -59,13 +69,13 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Ope
 		return anchorOps.Deactivate, nil
 	}
 
-	mf, err := h.getMapFile(af.MapFileHash)
+	mf, err := h.getMapFile(af.MapFileHash, pc.Current())
 	if err != nil {
 		return nil, err
 	}
 
 	chunkAddress := mf.Chunks[0].ChunkFileURI
-	cf, err := h.getChunkFile(chunkAddress)
+	cf, err := h.getChunkFile(chunkAddress, pc.Current())
 	if err != nil {
 		return nil, err
 	}
@@ -113,10 +123,10 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 }
 
 // getAnchorFile will download anchor file from cas and parse it into anchor file model
-func (h *OperationProvider) getAnchorFile(address string) (*models.AnchorFile, error) {
-	content, err := h.cas.Read(address)
+func (h *OperationProvider) getAnchorFile(address string, p protocol.Protocol) (*models.AnchorFile, error) {
+	content, err := h.readFromCAS(address, p.CompressionAlgorithm, p.MaxAnchorFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve content for anchor file[%s]", address)
+		return nil, errors.Wrapf(err, "error reading anchor file[%s]", address)
 	}
 
 	af, err := models.ParseAnchorFile(content)
@@ -129,10 +139,10 @@ func (h *OperationProvider) getAnchorFile(address string) (*models.AnchorFile, e
 }
 
 // getMapFile will download map file from cas and parse it into map file model
-func (h *OperationProvider) getMapFile(address string) (*models.MapFile, error) {
-	content, err := h.cas.Read(address)
+func (h *OperationProvider) getMapFile(address string, p protocol.Protocol) (*models.MapFile, error) {
+	content, err := h.readFromCAS(address, p.CompressionAlgorithm, p.MaxMapFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve content for map file[%s]", address)
+		return nil, errors.Wrapf(err, "error reading map file[%s]", address)
 	}
 
 	mf, err := models.ParseMapFile(content)
@@ -145,10 +155,10 @@ func (h *OperationProvider) getMapFile(address string) (*models.MapFile, error) 
 }
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model
-func (h *OperationProvider) getChunkFile(address string) (*models.ChunkFile, error) {
-	content, err := h.cas.Read(address)
+func (h *OperationProvider) getChunkFile(address string, p protocol.Protocol) (*models.ChunkFile, error) {
+	content, err := h.readFromCAS(address, p.CompressionAlgorithm, p.MaxChunkFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve content for chunk file[%s]", address)
+		return nil, errors.Wrapf(err, "error reading chunk file[%s]", address)
 	}
 
 	cf, err := models.ParseChunkFile(content)
@@ -158,6 +168,24 @@ func (h *OperationProvider) getChunkFile(address string) (*models.ChunkFile, err
 
 	// TODO: verify chunk file - issue-296
 	return cf, nil
+}
+
+func (h *OperationProvider) readFromCAS(address, alg string, maxSize uint) ([]byte, error) {
+	bytes, err := h.cas.Read(address)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieve CAS content[%s]", address)
+	}
+
+	if len(bytes) > int(maxSize) {
+		return nil, fmt.Errorf("content[%s] size %d exceeded maximum size %d", address, len(bytes), maxSize)
+	}
+
+	content, err := h.dp.Decompress(alg, bytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "decompress CAS content[%s] using '%s'", address, alg)
+	}
+
+	return content, nil
 }
 
 // anchorOperations contains parsed operations from anchor file

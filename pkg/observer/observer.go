@@ -30,6 +30,12 @@ type TxnOpsProvider interface {
 	GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error)
 }
 
+// DecompressionProvider defines an interface for decompressing data using specified algorithm
+type DecompressionProvider interface {
+	// Decompress will decompress compressed data using specified algorithm
+	Decompress(alg string, data []byte) ([]byte, error)
+}
+
 // OperationStore interface to access operation store
 type OperationStore interface {
 	Put(ops []*batch.Operation) error
@@ -52,10 +58,11 @@ type OperationFilterProvider interface {
 
 // Providers contains all of the providers required by the TxnProcessor
 type Providers struct {
-	Ledger           Ledger
-	TxnOpsProvider   TxnOpsProvider
-	OpStoreProvider  OperationStoreProvider
-	OpFilterProvider OperationFilterProvider
+	Ledger                Ledger
+	TxnOpsProvider        TxnOpsProvider
+	OpStoreProvider       OperationStoreProvider
+	OpFilterProvider      OperationFilterProvider
+	DecompressionProvider DecompressionProvider
 }
 
 // Observer receives transactions over a channel and processes them by storing them to an operation store

@@ -13,18 +13,25 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
 )
 
+type compressionProvider interface {
+	Compress(alg string, data []byte) ([]byte, error)
+}
+
 // OperationHandler creates batch files(chunk, map, anchor) from batch operations
 type OperationHandler struct {
-	cas cas.Client
+	cas      cas.Client
+	protocol protocol.Client
+	cp       compressionProvider
 }
 
 // NewOperationHandler returns new operations handler
-func NewOperationHandler(cas cas.Client) *OperationHandler {
-	return &OperationHandler{cas: cas}
+func NewOperationHandler(cas cas.Client, p protocol.Client, cp compressionProvider) *OperationHandler {
+	return &OperationHandler{cas: cas, protocol: p, cp: cp}
 }
 
 // PrepareTxnFiles will create batch files(chunk, map, anchor) from batch operations,
@@ -91,8 +98,13 @@ func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (str
 
 	log.Debugf("%s file: %s", alias, string(bytes))
 
+	compressedBytes, err := h.cp.Compress(h.protocol.Current().CompressionAlgorithm, bytes)
+	if err != nil {
+		return "", err
+	}
+
 	// make file available in CAS
-	address, err := h.cas.Write(bytes)
+	address, err := h.cas.Write(compressedBytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to store %s file: %s", alias, err.Error())
 	}

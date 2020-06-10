@@ -23,6 +23,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
+	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
@@ -34,6 +35,7 @@ import (
 
 const sha2_256 = 18
 const namespace = "did:sidetree"
+const compressionAlgorithm = "GZIP"
 
 func TestNew(t *testing.T) {
 	ctx := newMockContext()
@@ -56,6 +58,10 @@ func TestNew(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, writer)
 	require.EqualValues(t, writer.opsHandler, opsHandler)
+
+	writer, err = New(namespace, ctx, WithCompressionProvider(compression.New(compression.WithDefaultAlgorithms())))
+	require.Nil(t, err)
+	require.NotNil(t, writer)
 }
 
 func TestStart(t *testing.T) {
@@ -86,8 +92,13 @@ func TestStart(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
+	compression := compression.New(compression.WithDefaultAlgorithms())
+
+	content, err := compression.Decompress(compressionAlgorithm, bytes)
+	require.NoError(t, err)
+
 	var af models.AnchorFile
-	err = json.Unmarshal(bytes, &af)
+	err = json.Unmarshal(content, &af)
 	require.Nil(t, err)
 	require.NotNil(t, af)
 	require.Equal(t, 2, len(af.Operations.Create))
@@ -96,8 +107,11 @@ func TestStart(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
+	content, err = compression.Decompress(compressionAlgorithm, bytes)
+	require.NoError(t, err)
+
 	var mf models.MapFile
-	err = json.Unmarshal(bytes, &mf)
+	err = json.Unmarshal(content, &mf)
 	require.Nil(t, err)
 	require.NotNil(t, mf)
 	require.Equal(t, 0, len(mf.Operations.Update))
@@ -106,8 +120,11 @@ func TestStart(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
+	content, err = compression.Decompress(compressionAlgorithm, bytes)
+	require.NoError(t, err)
+
 	var cf models.ChunkFile
-	err = json.Unmarshal(bytes, &cf)
+	err = json.Unmarshal(content, &cf)
 	require.Nil(t, err)
 	require.NotNil(t, cf)
 	require.Equal(t, 2, len(cf.Deltas))
@@ -140,8 +157,13 @@ func TestBatchTimer(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
+	compression := compression.New(compression.WithDefaultAlgorithms())
+
+	content, err := compression.Decompress(compressionAlgorithm, bytes)
+	require.NoError(t, err)
+
 	var af models.AnchorFile
-	err = json.Unmarshal(bytes, &af)
+	err = json.Unmarshal(content, &af)
 	require.Nil(t, err)
 	require.NotNil(t, af)
 	require.Equal(t, 1, len(af.Operations.Create))
@@ -152,15 +174,24 @@ func TestBatchTimer(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, bytes)
 
+	content, err = compression.Decompress(compressionAlgorithm, bytes)
+	require.NoError(t, err)
+
 	var mf models.MapFile
-	err = json.Unmarshal(bytes, &mf)
+	err = json.Unmarshal(content, &mf)
 	require.Nil(t, err)
 	require.NotNil(t, mf)
 	require.Equal(t, 0, len(mf.Operations.Update))
 
 	bytes, err = ctx.CasClient.Read(mf.Chunks[0].ChunkFileURI)
+	require.Nil(t, err)
+	require.NotNil(t, bytes)
+
+	content, err = compression.Decompress(compressionAlgorithm, bytes)
+	require.NoError(t, err)
+
 	var cf models.ChunkFile
-	err = json.Unmarshal(bytes, &cf)
+	err = json.Unmarshal(content, &cf)
 	require.Nil(t, err)
 	require.NotNil(t, cf)
 	require.Equal(t, 1, len(cf.Deltas))
