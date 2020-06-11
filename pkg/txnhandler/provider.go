@@ -80,7 +80,16 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Ope
 		return nil, err
 	}
 
-	return h.assembleBatchOperations(af, mf, cf, txn)
+	txnOps, err := h.assembleBatchOperations(af, mf, cf, txn)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(txnOps) != anchorData.NumberOfOperations {
+		return nil, fmt.Errorf("number of txn ops[%d] doesn't match anchor string num of ops[%d]", len(txnOps), anchorData.NumberOfOperations)
+	}
+
+	return txnOps, nil
 }
 
 func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*batch.Operation, error) {

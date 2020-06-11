@@ -64,6 +64,37 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.Equal(t, createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum, len(txnOps))
 	})
 
+	t.Run("error - number of operations doesn't match", func(t *testing.T) {
+		cas := mocks.NewMockCasClient(nil)
+		handler := NewOperationHandler(cas, pc, cp)
+
+		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
+
+		// anchor string has 9 operations "9.anchorAddress"
+		anchorString, err := handler.PrepareTxnFiles(ops)
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorString)
+
+		// update number of operations in anchor string from 9 to 7
+		ad, err := ParseAnchorData(anchorString)
+		require.NoError(t, err)
+		ad.NumberOfOperations = 7
+		anchorString = ad.GetAnchorString()
+
+		provider := NewOperationProvider(cas, mocks.NewMockProtocolClientProvider(), cp)
+
+		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
+			AnchorString:      anchorString,
+			TransactionNumber: 1,
+			TransactionTime:   1,
+		})
+
+		require.Error(t, err)
+		require.Nil(t, txnOps)
+		require.Contains(t, err.Error(), "number of txn ops[9] doesn't match anchor string num of ops[7]")
+	})
+
 	t.Run("error - read from CAS error", func(t *testing.T) {
 		handler := NewOperationProvider(
 			mocks.NewMockCasClient(errors.New("CAS error")),

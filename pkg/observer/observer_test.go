@@ -165,6 +165,26 @@ func TestProcessTxnOperations(t *testing.T) {
 		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 	})
+
+	t.Run("success - multiple operations with same suffix in transaction operations", func(t *testing.T) {
+		mockOpsStore := &mockOperationStore{}
+		providers := &Providers{
+			TxnOpsProvider:   &mockTxnOpsProvider{},
+			OpStoreProvider:  &mockOperationStoreProvider{opStore: mockOpsStore},
+			OpFilterProvider: &NoopOperationFilterProvider{},
+		}
+
+		p := NewTxnProcessor(providers)
+		batchOps, err := p.TxnOpsProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
+		require.NoError(t, err)
+
+		// add same operations again to create scenario where batch has multiple operations with same suffix
+		// only first operation will be processed, subsequent operations will be discarded
+		batchOps = append(batchOps, batchOps...)
+
+		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		require.NoError(t, err)
+	})
 }
 
 func TestUpdateOperation(t *testing.T) {

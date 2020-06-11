@@ -148,12 +148,22 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
 func (p *TxnProcessor) processTxnOperations(txnOps []*batch.Operation, sidetreeTxn txn.SidetreeTxn) error {
 	logger.Debugf("processing %d transaction operations", len(txnOps))
 
+	batchSuffixes := make(map[string]bool)
+
 	var ops []*batch.Operation
 	for index, op := range txnOps {
+		_, ok := batchSuffixes[op.UniqueSuffix]
+		if ok {
+			logger.Warnf("[%s] duplicate suffix[%s] found in transaction operations: discarding operation %v", sidetreeTxn.Namespace, op.UniqueSuffix, op)
+			continue
+		}
+
 		updatedOp := updateOperation(op, uint(index), sidetreeTxn)
 
 		logger.Debugf("updated operation with blockchain time: %s", updatedOp.ID)
 		ops = append(ops, updatedOp)
+
+		batchSuffixes[op.UniqueSuffix] = true
 	}
 
 	for suffix, mapping := range mapOperationsByUniqueSuffix(ops) {

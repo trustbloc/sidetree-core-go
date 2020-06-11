@@ -296,14 +296,23 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 		return errors.New("create batch called with no pending operations, should not happen")
 	}
 
-	operations := make([]*batch.Operation, len(ops))
-	for i, d := range ops {
+	batchSuffixes := make(map[string]bool)
+
+	var operations []*batch.Operation
+	for _, d := range ops {
 		op, err := operation.ParseOperation(d.Namespace, d.Data, r.protocol.Current())
 		if err != nil {
 			return err
 		}
 
-		operations[i] = op
+		_, ok := batchSuffixes[op.UniqueSuffix]
+		if ok {
+			log.Warnf("[%s] duplicate suffix[%s] found in batch operations: discarding operation %v", r.namespace, op.UniqueSuffix, op)
+			continue
+		}
+
+		operations = append(operations, op)
+		batchSuffixes[op.UniqueSuffix] = true
 	}
 
 	anchorString, err := r.opsHandler.PrepareTxnFiles(operations)
