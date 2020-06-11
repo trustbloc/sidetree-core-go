@@ -352,7 +352,7 @@ func TestStartWithExistingItems(t *testing.T) {
 	writer.Start()
 	defer writer.Stop()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(time.Second)
 	require.Equal(t, numBatchesExpected, len(ctx.BlockchainClient.GetAnchors()))
 }
 
