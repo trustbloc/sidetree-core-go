@@ -88,46 +88,66 @@ func TestStart(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that first anchor has two operations per batch
-	bytes, err := ctx.CasClient.Read(ad.AnchorAddress)
+	af, mf, cf, err := getBatchFiles(ctx.CasClient, ad.AnchorAddress)
 	require.Nil(t, err)
-	require.NotNil(t, bytes)
+
+	require.Equal(t, 2, len(af.Operations.Create))
+	require.Equal(t, 0, len(mf.Operations.Update))
+	require.Equal(t, 2, len(cf.Deltas))
+}
+
+func getBatchFiles(cc cas.Client, anchor string) (*models.AnchorFile, *models.MapFile, *models.ChunkFile, error) { //nolint: interfacer
+	bytes, err := cc.Read(anchor)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	compression := compression.New(compression.WithDefaultAlgorithms())
 
 	content, err := compression.Decompress(compressionAlgorithm, bytes)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	var af models.AnchorFile
 	err = json.Unmarshal(content, &af)
-	require.Nil(t, err)
-	require.NotNil(t, af)
-	require.Equal(t, 2, len(af.Operations.Create))
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	bytes, err = ctx.CasClient.Read(af.MapFileHash)
-	require.Nil(t, err)
-	require.NotNil(t, bytes)
+	bytes, err = cc.Read(af.MapFileHash)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	content, err = compression.Decompress(compressionAlgorithm, bytes)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	var mf models.MapFile
 	err = json.Unmarshal(content, &mf)
-	require.Nil(t, err)
-	require.NotNil(t, mf)
-	require.Equal(t, 0, len(mf.Operations.Update))
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	bytes, err = ctx.CasClient.Read(mf.Chunks[0].ChunkFileURI)
-	require.Nil(t, err)
-	require.NotNil(t, bytes)
+	bytes, err = cc.Read(mf.Chunks[0].ChunkFileURI)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	content, err = compression.Decompress(compressionAlgorithm, bytes)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	var cf models.ChunkFile
 	err = json.Unmarshal(content, &cf)
-	require.Nil(t, err)
-	require.NotNil(t, cf)
-	require.Equal(t, 2, len(cf.Deltas))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &af, &mf, &cf, nil
 }
 
 func TestBatchTimer(t *testing.T) {
@@ -153,47 +173,54 @@ func TestBatchTimer(t *testing.T) {
 	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
 	require.NoError(t, err)
 
-	bytes, err := ctx.CasClient.Read(ad.AnchorAddress)
+	af, mf, cf, err := getBatchFiles(ctx.CasClient, ad.AnchorAddress)
 	require.Nil(t, err)
-	require.NotNil(t, bytes)
 
-	compression := compression.New(compression.WithDefaultAlgorithms())
-
-	content, err := compression.Decompress(compressionAlgorithm, bytes)
-	require.NoError(t, err)
-
-	var af models.AnchorFile
-	err = json.Unmarshal(content, &af)
-	require.Nil(t, err)
-	require.NotNil(t, af)
 	require.Equal(t, 1, len(af.Operations.Create))
 	require.Equal(t, 0, len(af.Operations.Recover))
 	require.Equal(t, 0, len(af.Operations.Deactivate))
 
-	bytes, err = ctx.CasClient.Read(af.MapFileHash)
-	require.Nil(t, err)
-	require.NotNil(t, bytes)
-
-	content, err = compression.Decompress(compressionAlgorithm, bytes)
-	require.NoError(t, err)
-
-	var mf models.MapFile
-	err = json.Unmarshal(content, &mf)
-	require.Nil(t, err)
-	require.NotNil(t, mf)
 	require.Equal(t, 0, len(mf.Operations.Update))
 
-	bytes, err = ctx.CasClient.Read(mf.Chunks[0].ChunkFileURI)
-	require.Nil(t, err)
-	require.NotNil(t, bytes)
+	require.Equal(t, 1, len(cf.Deltas))
+}
 
-	content, err = compression.Decompress(compressionAlgorithm, bytes)
+func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
+	ctx := newMockContext()
+	writer, err := New(namespace, ctx)
+	require.Nil(t, err)
+
+	writer.Start()
+	defer writer.Stop()
+
+	operation, err := generateOperation(1)
 	require.NoError(t, err)
 
-	var cf models.ChunkFile
-	err = json.Unmarshal(content, &cf)
+	err = writer.Add(operation)
 	require.Nil(t, err)
-	require.NotNil(t, cf)
+
+	// add same operation again
+	err = writer.Add(operation)
+	require.Nil(t, err)
+
+	time.Sleep(time.Second)
+
+	// we should have 1 anchors: 2 operations % max 2 operations per batch
+	require.Equal(t, 1, len(ctx.BlockchainClient.GetAnchors()))
+
+	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	require.NoError(t, err)
+
+	// Check that first anchor has one operation per batch; second one has been discarded
+	af, mf, cf, err := getBatchFiles(ctx.CasClient, ad.AnchorAddress)
+	require.Nil(t, err)
+
+	require.Equal(t, 1, len(af.Operations.Create))
+	require.Equal(t, 0, len(af.Operations.Recover))
+	require.Equal(t, 0, len(af.Operations.Deactivate))
+
+	require.Equal(t, 0, len(mf.Operations.Update))
+
 	require.Equal(t, 1, len(cf.Deltas))
 }
 
@@ -442,7 +469,7 @@ func generateOperation(num int) (*batch.OperationInfo, error) {
 	}
 
 	op := &batch.OperationInfo{
-		Namespace:    "ns",
+		Namespace:    "did:sidetree",
 		UniqueSuffix: string(num),
 		Data:         request,
 	}
