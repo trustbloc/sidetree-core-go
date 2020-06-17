@@ -14,7 +14,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -126,10 +125,6 @@ func validateDelta(delta *model.DeltaModel, code uint) error {
 }
 
 func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
-	if err := validateRecoveryKey(suffixData.RecoveryKey); err != nil {
-		return err
-	}
-
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(code)) {
 		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
 	}
@@ -139,14 +134,6 @@ func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
 	}
 
 	return nil
-}
-
-func validateRecoveryKey(key *jws.JWK) error {
-	if key == nil {
-		return errors.New("missing recovery key")
-	}
-
-	return key.Validate()
 }
 
 func validateCreateRequest(create *model.CreateRequest) error {

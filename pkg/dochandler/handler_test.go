@@ -18,6 +18,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/didvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/docvalidator"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -304,7 +305,7 @@ func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
 	protocol := mocks.NewMockProtocolClient()
 
 	validator := docvalidator.New(store)
-	processor := processor.New("test", store)
+	processor := processor.New("test", store, mocks.NewMockProtocolClient())
 
 	ctx := &BatchContext{
 		ProtocolClient:   protocol,
@@ -432,7 +433,12 @@ func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
 
 	encodedDelta := docutil.EncodeToString(deltaBytes)
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData(encodedDelta))
+	suffixData, err := getSuffixData(encodedDelta)
+	if err != nil {
+		return nil, err
+	}
+
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -472,16 +478,22 @@ func newAddPublicKeysPatch(doc string) (patch.Patch, error) {
 	return p, nil
 }
 
-func getSuffixData(encodedDelta string) *model.SuffixDataModel {
-	return &model.SuffixDataModel{
-		DeltaHash: encodedMultihash(encodedDelta),
-		RecoveryKey: &jws.JWK{
-			Kty: "kty",
-			Crv: "crv",
-			X:   "x",
-		},
-		RecoveryCommitment: encodedMultihash("recoveryReveal"),
+func getSuffixData(encodedDelta string) (*model.SuffixDataModel, error) {
+	jwk := &jws.JWK{
+		Kty: "kty",
+		Crv: "crv",
+		X:   "x",
 	}
+
+	c, err := commitment.Calculate(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.SuffixDataModel{
+		DeltaHash:          encodedMultihash(encodedDelta),
+		RecoveryCommitment: c,
+	}, nil
 }
 
 func encodedMultihash(data string) string {

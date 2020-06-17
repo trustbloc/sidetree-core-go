@@ -184,7 +184,6 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 	var invocationKey []interface{}
 
 	var publicKeys []document.PublicKey
-	var operationPublicKeys []document.PublicKey
 
 	// add controller to public key
 	for _, pk := range internal.PublicKeys() {
@@ -207,10 +206,6 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		}
 
 		usages := pk.Usage()
-		if document.IsOperationsKey(usages) {
-			operationPublicKeys = append(operationPublicKeys, externalPK)
-		}
-
 		if document.IsGeneralKey(usages) {
 			publicKeys = append(publicKeys, externalPK)
 
@@ -270,8 +265,6 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 	if len(invocationKey) > 0 {
 		resolutionResult.Document[document.InvocationKeyProperty] = invocationKey
 	}
-
-	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
 
 	return nil
 }

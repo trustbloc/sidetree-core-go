@@ -23,20 +23,17 @@ type RecoverRequestInfo struct {
 	// DID Suffix of the document to be recovered
 	DidSuffix string
 
-	// reveal value for this recovery operation
-	RecoveryRevealValue []byte
-
-	// the new recovery public key as a HEX string
+	// the current recovery public key
 	RecoveryKey *jws.JWK
 
 	// opaque content
 	OpaqueDocument string
 
-	// reveal value to be used for the next recovery
-	NextRecoveryRevealValue []byte
+	// recovery commitment to be used for the next recovery
+	RecoveryCommitment string
 
-	// reveal value to be used for the next update
-	NextUpdateRevealValue []byte
+	// update commitment to be used for the next update
+	UpdateCommitment string
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
@@ -58,7 +55,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
+	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, patches)
 	if err != nil {
 		return nil, err
 	}
@@ -68,16 +65,10 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhNextRecoveryCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextRecoveryRevealValue)
-	if err != nil {
-		return nil, err
-	}
-
 	signedDataModel := model.RecoverSignedDataModel{
-		DeltaHash:           docutil.EncodeToString(mhDelta),
-		RecoveryKey:         info.RecoveryKey,
-		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
-		RecoveryCommitment:  mhNextRecoveryCommitmentHash,
+		DeltaHash:          docutil.EncodeToString(mhDelta),
+		RecoveryKey:        info.RecoveryKey,
+		RecoveryCommitment: info.RecoveryCommitment,
 	}
 
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)
@@ -86,11 +77,10 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.RecoverRequest{
-		Operation:           model.OperationTypeRecover,
-		DidSuffix:           info.DidSuffix,
-		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
-		Delta:               docutil.EncodeToString(deltaBytes),
-		SignedData:          jws,
+		Operation:  model.OperationTypeRecover,
+		DidSuffix:  info.DidSuffix,
+		Delta:      docutil.EncodeToString(deltaBytes),
+		SignedData: jws,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)
@@ -110,4 +100,12 @@ func validateRecoverRequest(info *RecoverRequestInfo) error {
 	}
 
 	return validateRecoveryKey(info.RecoveryKey)
+}
+
+func validateRecoveryKey(key *jws.JWK) error {
+	if key == nil {
+		return errors.New("missing recovery key")
+	}
+
+	return key.Validate()
 }

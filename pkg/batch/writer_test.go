@@ -7,9 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package batch
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,12 +20,13 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
-	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 //go:generate counterfeiter -o ../mocks/operationqueue.gen.go --fake-name OperationQueue ./cutter OperationQueue
@@ -448,20 +446,22 @@ func generateOperations(numOfOperations int) (ops []*batch.OperationInfo) {
 }
 
 func generateOperation(num int) (*batch.OperationInfo, error) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, err
+	jwk := &jws.JWK{
+		Crv: "crv",
+		Kty: "kty",
+		X:   "x",
 	}
 
-	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	c, err := commitment.Calculate(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
 	doc := fmt.Sprintf(`{"test":%d}`, num)
 	info := &helper.CreateRequestInfo{OpaqueDocument: doc,
-		RecoveryKey:   jwk,
-		MultihashCode: sha2_256}
+		RecoveryCommitment: c,
+		UpdateCommitment:   c,
+		MultihashCode:      sha2_256}
 
 	request, err := helper.NewCreateRequest(info)
 	if err != nil {

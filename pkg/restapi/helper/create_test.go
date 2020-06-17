@@ -10,10 +10,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
@@ -32,31 +34,47 @@ func TestNewCreateRequest(t *testing.T) {
 	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	require.NoError(t, err)
 
+	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+	require.NoError(t, err)
+
 	t.Run("missing opaque document", func(t *testing.T) {
 		request, err := NewCreateRequest(&CreateRequestInfo{})
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing opaque document")
 	})
-	t.Run("missing recovery key", func(t *testing.T) {
-		request, err := NewCreateRequest(&CreateRequestInfo{OpaqueDocument: "{}"})
+	t.Run("recovery commitment error", func(t *testing.T) {
+		request, err := NewCreateRequest(&CreateRequestInfo{OpaqueDocument: "{}", RecoveryCommitment: recoveryCommitment})
 		require.Error(t, err)
 		require.Empty(t, request)
-		require.Contains(t, err.Error(), "missing recovery key")
+		require.Contains(t, err.Error(), "recovery commitment is not computed with the specified hash algorithm")
 	})
-	t.Run("multihash not supported", func(t *testing.T) {
+	t.Run("update commitment error", func(t *testing.T) {
 		info := &CreateRequestInfo{OpaqueDocument: "{}",
-			RecoveryKey: jwk}
+			RecoveryCommitment: recoveryCommitment,
+			MultihashCode:      sha2_256,
+		}
 
 		request, err := NewCreateRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
-		require.Contains(t, err.Error(), "algorithm not supported")
+		require.Contains(t, err.Error(), "update commitment is not computed with the specified hash algorithm")
+	})
+	t.Run("multihash not supported", func(t *testing.T) {
+		info := &CreateRequestInfo{OpaqueDocument: "{}",
+			MultihashCode: 55,
+		}
+
+		request, err := NewCreateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "multihash[55] not supported")
 	})
 	t.Run("success", func(t *testing.T) {
 		info := &CreateRequestInfo{OpaqueDocument: "{}",
-			RecoveryKey:   jwk,
-			MultihashCode: sha2_256}
+			RecoveryCommitment: recoveryCommitment,
+			UpdateCommitment:   recoveryCommitment,
+			MultihashCode:      sha2_256}
 
 		request, err := NewCreateRequest(info)
 		require.NoError(t, err)

@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
 // OperationValidationFilter filters out invalid operations.
@@ -21,9 +22,9 @@ type OperationValidationFilter struct {
 }
 
 // NewOperationFilter returns new operation filter with the given name. (Note that name is only used for logging.)
-func NewOperationFilter(name string, store OperationStoreClient) *OperationValidationFilter {
+func NewOperationFilter(name string, store OperationStoreClient, pc protocol.Client) *OperationValidationFilter {
 	return &OperationValidationFilter{
-		OperationProcessor: New(name, store),
+		OperationProcessor: New(name, store, pc),
 	}
 }
 

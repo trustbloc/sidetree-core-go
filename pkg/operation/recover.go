@@ -8,6 +8,7 @@ package operation
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -86,8 +88,8 @@ func parseSignedDataForRecovery(compactJWS string, code uint) (*model.RecoverSig
 }
 
 func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, code uint) error {
-	if err := validateRecoveryKey(signedData.RecoveryKey); err != nil {
-		return err
+	if err := validateKey(signedData.RecoveryKey); err != nil {
+		return fmt.Errorf("signed data for recovery: %s", err.Error())
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, uint64(code)) {
@@ -119,4 +121,12 @@ func validateRecoverRequest(recover *model.RecoverRequest) error {
 	}
 
 	return nil
+}
+
+func validateKey(key *jws.JWK) error {
+	if key == nil {
+		return errors.New("missing key")
+	}
+
+	return key.Validate()
 }

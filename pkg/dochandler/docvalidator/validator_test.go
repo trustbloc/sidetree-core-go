@@ -116,7 +116,6 @@ func TestTransformDocument(t *testing.T) {
 	require.NoError(t, err)
 	result, err = v.TransformDocument(doc)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(result.MethodMetadata.OperationPublicKeys))
 	require.Equal(t, 0, len(result.Document.PublicKeys()))
 }
 

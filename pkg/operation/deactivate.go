@@ -79,10 +79,6 @@ func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.Deactiva
 		return nil, err
 	}
 
-	if signedData.RecoveryRevealValue != req.RecoveryRevealValue {
-		return nil, errors.New("signed recovery reveal mismatch for deactivate")
-	}
-
 	if signedData.DidSuffix != req.DidSuffix {
 		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}

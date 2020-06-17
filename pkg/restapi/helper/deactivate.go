@@ -9,7 +9,6 @@ package helper
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -31,8 +30,8 @@ type DeactivateRequestInfo struct {
 	// DID Suffix of the document to be deactivated
 	DidSuffix string
 
-	// reveal value for this deactivate operation
-	RecoveryRevealValue []byte
+	// Recovery key for current deactivate request
+	RecoveryKey *jws.JWK
 
 	// Signer that will be used for signing specific subset of request data
 	// Signer for recover operation must be recovery key
@@ -46,8 +45,8 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	}
 
 	signedDataModel := model.DeactivateSignedDataModel{
-		DidSuffix:           info.DidSuffix,
-		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
+		DidSuffix:   info.DidSuffix,
+		RecoveryKey: info.RecoveryKey,
 	}
 
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)
@@ -56,10 +55,9 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.DeactivateRequest{
-		Operation:           model.OperationTypeDeactivate,
-		DidSuffix:           info.DidSuffix,
-		RecoveryRevealValue: docutil.EncodeToString(info.RecoveryRevealValue),
-		SignedData:          jws,
+		Operation:  model.OperationTypeDeactivate,
+		DidSuffix:  info.DidSuffix,
+		SignedData: jws,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)

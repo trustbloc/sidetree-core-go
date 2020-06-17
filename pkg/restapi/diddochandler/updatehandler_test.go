@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
@@ -97,7 +98,12 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData())
+	suffixData, err := getSuffixData()
+	if err != nil {
+		return nil, err
+	}
+
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -115,22 +121,27 @@ func getDelta() (*model.DeltaModel, error) {
 		return nil, err
 	}
 
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.DeltaModel{
 		Patches:          patches,
-		UpdateCommitment: computeMultihash("updateReveal"),
+		UpdateCommitment: updateCommitment,
 	}, nil
 }
 
-func getSuffixData() *model.SuffixDataModel {
-	return &model.SuffixDataModel{
-		DeltaHash: computeMultihash(validDoc),
-		RecoveryKey: &jws.JWK{
-			Kty: "kty",
-			Crv: "crv",
-			X:   "x",
-		},
-		RecoveryCommitment: computeMultihash("recoveryReveal"),
+func getSuffixData() (*model.SuffixDataModel, error) {
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		return nil, err
 	}
+
+	return &model.SuffixDataModel{
+		DeltaHash:          computeMultihash(validDoc),
+		RecoveryCommitment: recoveryCommitment,
+	}, nil
 }
 
 func computeMultihash(data string) string {
@@ -158,3 +169,9 @@ const validDoc = `{
 		  }
 	}]
 }`
+
+var testJWK = &jws.JWK{
+	Kty: "kty",
+	Crv: "crv",
+	X:   "x",
+}

@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 
 package document
 
-import "github.com/trustbloc/sidetree-core-go/pkg/jws"
-
 // ResolutionResult describes resolution result
 type ResolutionResult struct {
 	Context        string         `json:"@context"`
@@ -17,7 +15,7 @@ type ResolutionResult struct {
 
 // MethodMetadata contains document metadata
 type MethodMetadata struct {
-	OperationPublicKeys []PublicKey `json:"operationPublicKeys,omitempty"`
-	RecoveryKey         *jws.JWK    `json:"recoveryKey,omitempty"`
-	Published           bool        `json:"published"`
+	UpdateCommitment   string `json:"updateCommitment"`
+	RecoveryCommitment string `json:"recoveryCommitment"`
+	Published          bool   `json:"published"`
 }

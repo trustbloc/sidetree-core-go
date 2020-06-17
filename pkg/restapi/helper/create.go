@@ -8,10 +8,12 @@ package helper
 
 import (
 	"errors"
+	"fmt"
+
+	"github.com/multiformats/go-multihash"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
-	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -23,15 +25,13 @@ type CreateRequestInfo struct {
 	// required
 	OpaqueDocument string
 
-	// the recovery public key as a HEX string
+	// the recovery commitment
 	// required
-	RecoveryKey *jws.JWK
+	RecoveryCommitment string
 
-	// reveal value to be used for the next recovery
-	NextRecoveryRevealValue []byte
-
-	// reveal value to be used for the next update
-	NextUpdateRevealValue []byte
+	// the update commitment
+	// required
+	UpdateCommitment string
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
@@ -48,7 +48,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
+	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, patches)
 	if err != nil {
 		return nil, err
 	}
@@ -58,15 +58,9 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	mhNextRecoveryCommitmentHash, err := getEncodedMultihash(info.MultihashCode, info.NextRecoveryRevealValue)
-	if err != nil {
-		return nil, err
-	}
-
 	suffixData := model.SuffixDataModel{
 		DeltaHash:          mhDelta,
-		RecoveryKey:        info.RecoveryKey,
-		RecoveryCommitment: mhNextRecoveryCommitmentHash,
+		RecoveryCommitment: info.RecoveryCommitment,
 	}
 
 	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
@@ -88,15 +82,21 @@ func validateCreateRequest(info *CreateRequestInfo) error {
 		return errors.New("missing opaque document")
 	}
 
-	return validateRecoveryKey(info.RecoveryKey)
-}
+	supported := multihash.ValidCode(uint64(info.MultihashCode))
 
-func validateRecoveryKey(key *jws.JWK) error {
-	if key == nil {
-		return errors.New("missing recovery key")
+	if !supported {
+		return fmt.Errorf("multihash[%d] not supported", info.MultihashCode)
 	}
 
-	return key.Validate()
+	if !docutil.IsComputedUsingHashAlgorithm(info.RecoveryCommitment, uint64(info.MultihashCode)) {
+		return errors.New("next recovery commitment is not computed with the specified hash algorithm")
+	}
+
+	if !docutil.IsComputedUsingHashAlgorithm(info.UpdateCommitment, uint64(info.MultihashCode)) {
+		return errors.New("next update commitment is not computed with the specified hash algorithm")
+	}
+
+	return nil
 }
 
 func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
@@ -108,14 +108,9 @@ func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
 	return docutil.EncodeToString(hash), nil
 }
 
-func getDeltaBytes(mhCode uint, reveal []byte, patches []patch.Patch) ([]byte, error) {
-	mhNextUpdateCommitmentHash, err := getEncodedMultihash(mhCode, reveal)
-	if err != nil {
-		return nil, err
-	}
-
+func getDeltaBytes(commitment string, patches []patch.Patch) ([]byte, error) {
 	delta := model.DeltaModel{
-		UpdateCommitment: mhNextUpdateCommitmentHash,
+		UpdateCommitment: commitment,
 		Patches:          patches,
 	}
 
