@@ -15,11 +15,12 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -28,6 +29,7 @@ import (
 type OperationProcessor struct {
 	name  string
 	store OperationStoreClient
+	pc    protocol.Client
 }
 
 // OperationStoreClient defines interface for retrieving all operations related to document
@@ -37,8 +39,8 @@ type OperationStoreClient interface {
 }
 
 // New returns new operation processor with the given name. (Note that name is only used for logging.)
-func New(name string, store OperationStoreClient) *OperationProcessor {
-	return &OperationProcessor{name: name, store: store}
+func New(name string, store OperationStoreClient, pc protocol.Client) *OperationProcessor {
+	return &OperationProcessor{name: name, store: store, pc: pc}
 }
 
 // Resolve document based on the given unique suffix
@@ -81,7 +83,8 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	return &document.ResolutionResult{
 		Document: rm.Doc,
 		MethodMetadata: document.MethodMetadata{
-			RecoveryKey: rm.RecoveryKey,
+			RecoveryCommitment: rm.RecoveryCommitment,
+			UpdateCommitment:   rm.UpdateCommitment,
 		},
 	}, nil
 }
@@ -137,7 +140,6 @@ type resolutionModel struct {
 	LastOperationTransactionNumber uint64
 	UpdateCommitment               string
 	RecoveryCommitment             string
-	RecoveryKey                    *jws.JWK
 }
 
 func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -173,7 +175,6 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		UpdateCommitment:               operation.Delta.UpdateCommitment,
 		RecoveryCommitment:             operation.SuffixData.RecoveryCommitment,
-		RecoveryKey:                    operation.SuffixData.RecoveryKey,
 	}, nil
 }
 
@@ -200,10 +201,17 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, err
 	}
 
-	// verify that reveal value matches update commitment
-	err = isValidHash(signedDataModel.UpdateRevealValue, rm.UpdateCommitment)
+	// TODO: protocol should be calculated based on transaction number
+	p := s.pc.Current()
+
+	updateCommitment, err := commitment.Calculate(signedDataModel.UpdateKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
-		return nil, fmt.Errorf("update reveal value doesn't match update commitment: %s", err.Error())
+		return nil, err
+	}
+
+	// verify that update commitments match
+	if updateCommitment != rm.UpdateCommitment {
+		return nil, fmt.Errorf("commitment generated from update key doesn't match update commitment: [%s][%s]", updateCommitment, rm.UpdateCommitment)
 	}
 
 	// verify the delta against the signed delta hash
@@ -212,15 +220,8 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
 
-	kid, _ := jwsParts.ProtectedHeaders.KeyID()
-
-	signingPublicKey, err := getSigningPublicKeyFromDoc(rm.Doc, kid)
-	if err != nil {
-		return nil, err
-	}
-
 	// verify signature
-	_, err = internal.VerifyJWS(operation.SignedData, signingPublicKey)
+	_, err = internal.VerifyJWS(operation.SignedData, signedDataModel.UpdateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
@@ -235,8 +236,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		UpdateCommitment:               operation.Delta.UpdateCommitment,
-		RecoveryCommitment:             rm.RecoveryCommitment,
-		RecoveryKey:                    rm.RecoveryKey}, nil
+		RecoveryCommitment:             rm.RecoveryCommitment}, nil
 }
 
 func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
@@ -245,37 +245,6 @@ func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
 	}
 
 	return internal.ParseJWS(compactJWS)
-}
-
-func getSigningPublicKeyFromDoc(doc document.Document, kid string) (*jws.JWK, error) {
-	pk, err := findPublicKey(doc, kid)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := document.ValidateOperationsKey(pk); err != nil {
-		return nil, err
-	}
-
-	jwk := pk.JWK()
-
-	return &jws.JWK{
-		Kty: jwk.Kty(),
-		Crv: jwk.Crv(),
-		X:   jwk.X(),
-		Y:   jwk.Y(),
-	}, nil
-}
-
-func findPublicKey(doc document.Document, kid string) (document.PublicKey, error) {
-	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
-	for _, pk := range didDoc.PublicKeys() {
-		if pk.ID() == kid {
-			return pk, nil
-		}
-	}
-
-	return nil, errors.New("signing public key not found in the document")
 }
 
 func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
@@ -289,9 +258,6 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: Spec has changed again to use recovery kid (figure out which kid and enable it in framework)
-	// kid, ok := parsedJWS.ProtectedHeaders.KeyID()
 
 	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
 	if err != nil {
@@ -309,13 +275,21 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		return nil, errors.New("did suffix doesn't match signed value")
 	}
 
-	err = isValidHash(signedDataModel.RecoveryRevealValue, rm.RecoveryCommitment)
+	// TODO: protocol should be calculated based on transaction number
+	p := s.pc.Current()
+
+	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
-		return nil, fmt.Errorf("deactivate recovery reveal value doesn't match recovery commitment: %s", err.Error())
+		return nil, err
+	}
+
+	// verify that recovery commitments match
+	if recoveryCommitment != rm.RecoveryCommitment {
+		return nil, fmt.Errorf("commitment generated from recovery key doesn't match recovery commitment: [%s][%s]", recoveryCommitment, rm.RecoveryCommitment)
 	}
 
 	// verify signature
-	_, err = internal.VerifyJWS(operation.SignedData, rm.RecoveryKey)
+	_, err = internal.VerifyJWS(operation.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
@@ -351,9 +325,17 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, err
 	}
 
-	err = isValidHash(signedDataModel.RecoveryRevealValue, rm.RecoveryCommitment)
+	// TODO: protocol should be calculated based on transaction number
+	p := s.pc.Current()
+
+	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
-		return nil, fmt.Errorf("recovery reveal value doesn't match recovery commitment: %s", err.Error())
+		return nil, err
+	}
+
+	// verify that recovery commitments match
+	if recoveryCommitment != rm.RecoveryCommitment {
+		return nil, fmt.Errorf("commitment generated from recovery key doesn't match recovery commitment: [%s][%s]", recoveryCommitment, rm.RecoveryCommitment)
 	}
 
 	// verify the delta against the signed delta hash
@@ -362,11 +344,8 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
 	}
 
-	// TODO: Spec has changed again to use recovery kid (figure out which kid and enable it in framework)
-	// kid, ok := parsedJWS.ProtectedHeaders.KeyID()
-
 	// verify signature
-	_, err = internal.VerifyJWS(operation.SignedData, rm.RecoveryKey)
+	_, err = internal.VerifyJWS(operation.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
@@ -381,8 +360,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		LastOperationTransactionTime:   operation.TransactionTime,
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		UpdateCommitment:               operation.Delta.UpdateCommitment,
-		RecoveryCommitment:             signedDataModel.RecoveryCommitment,
-		RecoveryKey:                    signedDataModel.RecoveryKey}, nil
+		RecoveryCommitment:             signedDataModel.RecoveryCommitment}, nil
 }
 
 func isValidHash(encodedContent, encodedMultihash string) error {

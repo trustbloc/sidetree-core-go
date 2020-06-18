@@ -17,6 +17,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -102,9 +103,15 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid JWS compact format")
 	})
 	t.Run("hash not computed with latest algorithm", func(t *testing.T) {
-		payload := docutil.EncodeToString([]byte(`{"delta_hash": "hash" }`))
+		signedModel := model.UpdateSignedDataModel{
+			DeltaHash: "hash",
+			UpdateKey: testJWK,
+		}
 
-		compactJWS, err := signutil.SignPayload(payload, NewMockSigner())
+		payload, err := json.Marshal(signedModel)
+		require.NoError(t, err)
+
+		compactJWS, err := signutil.SignPayload(docutil.EncodeToString(payload), NewMockSigner())
 
 		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
 		require.Error(t, err)
@@ -187,7 +194,15 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 		return nil, err
 	}
 
-	signedModel := model.UpdateSignedDataModel{DeltaHash: computeMultihash(string(deltaBytes))}
+	updateKey := &jws.JWK{
+		Crv: "crv",
+		Kty: "kty",
+		X:   "x",
+	}
+
+	signedModel := model.UpdateSignedDataModel{
+		DeltaHash: computeMultihash(string(deltaBytes)),
+		UpdateKey: updateKey}
 
 	compactJWS, err := signutil.SignModel(signedModel, NewMockSigner())
 	if err != nil {
@@ -233,4 +248,10 @@ func getUpdateDelta() (*model.DeltaModel, error) {
 
 func getTestPatch() string {
 	return `[{"op": "replace", "path": "/name", "value": "Jane"}]`
+}
+
+var testJWK = &jws.JWK{
+	Crv: "crv",
+	Kty: "kty",
+	X:   "x",
 }

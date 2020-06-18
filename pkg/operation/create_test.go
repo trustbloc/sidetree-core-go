@@ -14,6 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -42,6 +43,20 @@ func TestParseCreateOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
 	})
+	t.Run("missing suffix data", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+		create.SuffixData = ""
+
+		request, err := json.Marshal(create)
+		require.NoError(t, err)
+
+		op, err := ParseCreateOperation(request, p)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "missing suffix data")
+	})
+
 	t.Run("parse suffix data error", func(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
@@ -77,36 +92,21 @@ func TestParseSuffixData(t *testing.T) {
 }
 
 func TestValidateSuffixData(t *testing.T) {
-	t.Run("missing recovery key", func(t *testing.T) {
-		suffixData := getSuffixData()
-		suffixData.RecoveryKey = nil
-		err := validateSuffixData(suffixData, sha2_256)
-		require.Error(t, err)
-		require.Contains(t, err.Error(),
-			"missing recovery key")
-	})
-	t.Run("validate recovery key error", func(t *testing.T) {
-		suffixData := getSuffixData()
-		suffixData.RecoveryKey = &jws.JWK{
-			Kty: "kty",
-			Crv: "curve",
-		}
-		err := validateSuffixData(suffixData, sha2_256)
-		require.Error(t, err)
-		require.Contains(t, err.Error(),
-			"x is missing")
-	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
-		suffixData := getSuffixData()
+		suffixData, err := getSuffixData()
+		require.NoError(t, err)
+
 		suffixData.DeltaHash = ""
-		err := validateSuffixData(suffixData, sha2_256)
+		err = validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
-		suffixData := getSuffixData()
+		suffixData, err := getSuffixData()
+		require.NoError(t, err)
+
 		suffixData.RecoveryCommitment = ""
-		err := validateSuffixData(suffixData, sha2_256)
+		err = validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
 	})
@@ -183,7 +183,12 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData())
+	suffixData, err := getSuffixData()
+	if err != nil {
+		return nil, err
+	}
+
+	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
 	if err != nil {
 		return nil, err
 	}
@@ -216,16 +221,22 @@ func getDelta() (*model.DeltaModel, error) {
 	}, nil
 }
 
-func getSuffixData() *model.SuffixDataModel {
-	return &model.SuffixDataModel{
-		DeltaHash: computeMultihash(validDoc),
-		RecoveryKey: &jws.JWK{
-			Kty: "kty",
-			Crv: "crv",
-			X:   "x",
-		},
-		RecoveryCommitment: computeMultihash("recoveryReveal"),
+func getSuffixData() (*model.SuffixDataModel, error) {
+	jwk := &jws.JWK{
+		Kty: "kty",
+		Crv: "crv",
+		X:   "x",
 	}
+
+	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.SuffixDataModel{
+		DeltaHash:          computeMultihash(validDoc),
+		RecoveryCommitment: recoveryCommitment,
+	}, nil
 }
 func computeMultihash(data string) string {
 	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))

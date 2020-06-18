@@ -7,9 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"net/http"
@@ -22,10 +19,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 func TestResolveHandler_Resolve(t *testing.T) {
@@ -220,19 +217,14 @@ func getDelta() (*model.DeltaModel, error) {
 }
 
 func getSuffixData() *model.SuffixDataModel {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-
-	recoveryKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
-	if err != nil {
-		panic(err)
-	}
-
 	return &model.SuffixDataModel{
 		DeltaHash:          computeMultihash(validDoc),
-		RecoveryKey:        recoveryKey,
 		RecoveryCommitment: computeMultihash("recoveryReveal"),
 	}
+}
+
+var testJWK = &jws.JWK{
+	Kty: "kty",
+	Crv: "crv",
+	X:   "x",
 }

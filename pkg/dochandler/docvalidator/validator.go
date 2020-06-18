@@ -88,17 +88,15 @@ func (v *Validator) TransformDocument(internal document.Document) (*document.Res
 		MethodMetadata: document.MethodMetadata{},
 	}
 
-	processKeys(internal, resolutionResult)
+	processKeys(internal)
 
 	return resolutionResult, nil
 }
 
-// generic documents will most likely only contain operation keys
-// operation keys are not part of external document but resolution result
-func processKeys(internal document.Document, resolutionResult *document.ResolutionResult) {
-	var operationPublicKeys []document.PublicKey
+// generic documents will most likely not contain keys
+func processKeys(internal document.Document) {
+	var pubKeysKeys []document.PublicKey
 
-	var nonOperationsKeys []document.PublicKey
 	for _, pk := range internal.PublicKeys() {
 		relativeID := "#" + pk.ID()
 
@@ -108,19 +106,12 @@ func processKeys(internal document.Document, resolutionResult *document.Resoluti
 		externalPK[document.ControllerProperty] = internal[document.IDProperty]
 		externalPK[document.PublicKeyJwkProperty] = pk.JWK()
 
-		usages := pk.Usage()
-		if document.IsOperationsKey(usages) {
-			operationPublicKeys = append(operationPublicKeys, externalPK)
-		} else {
-			nonOperationsKeys = append(nonOperationsKeys, externalPK)
-		}
+		pubKeysKeys = append(pubKeysKeys, externalPK)
 	}
 
-	if len(nonOperationsKeys) > 0 {
-		internal[document.PublicKeyProperty] = nonOperationsKeys
+	if len(pubKeysKeys) > 0 {
+		internal[document.PublicKeyProperty] = pubKeysKeys
 	} else {
 		delete(internal, document.PublicKeyProperty)
 	}
-
-	resolutionResult.MethodMetadata.OperationPublicKeys = operationPublicKeys
 }

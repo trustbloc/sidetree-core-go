@@ -126,7 +126,8 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*docume
 	}
 
 	externalResult.MethodMetadata.Published = false
-	externalResult.MethodMetadata.RecoveryKey = operation.SuffixData.RecoveryKey
+	externalResult.MethodMetadata.RecoveryCommitment = operation.SuffixData.RecoveryCommitment
+	externalResult.MethodMetadata.UpdateCommitment = operation.Delta.UpdateCommitment
 
 	return externalResult, nil
 }
@@ -185,7 +186,8 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 	}
 
 	externalResult.MethodMetadata.Published = true
-	externalResult.MethodMetadata.RecoveryKey = internalResult.MethodMetadata.RecoveryKey
+	externalResult.MethodMetadata.RecoveryCommitment = internalResult.MethodMetadata.RecoveryCommitment
+	externalResult.MethodMetadata.UpdateCommitment = internalResult.MethodMetadata.UpdateCommitment
 
 	return externalResult, nil
 }

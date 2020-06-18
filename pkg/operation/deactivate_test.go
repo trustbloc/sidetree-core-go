@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -82,21 +83,6 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "signed did suffix mismatch for deactivate")
 		require.Nil(t, op)
 	})
-	t.Run("validate signed data error - reveal value mismatch", func(t *testing.T) {
-		signedData := getSignedDataForDeactivate()
-		signedData.RecoveryRevealValue = "different"
-
-		recoverRequest, err := getDeactivateRequest(signedData)
-		require.NoError(t, err)
-
-		request, err := json.Marshal(recoverRequest)
-		require.NoError(t, err)
-
-		op, err := ParseDeactivateOperation(request, p)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed recovery reveal mismatch for deactivate")
-		require.Nil(t, op)
-	})
 }
 
 func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.DeactivateRequest, error) {
@@ -106,10 +92,9 @@ func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.D
 	}
 
 	return &model.DeactivateRequest{
-		Operation:           model.OperationTypeDeactivate,
-		DidSuffix:           "did",
-		RecoveryRevealValue: "recoveryReveal",
-		SignedData:          compactJWS,
+		Operation:  model.OperationTypeDeactivate,
+		DidSuffix:  "did",
+		SignedData: compactJWS,
 	}, nil
 }
 
@@ -119,8 +104,12 @@ func getDefaultDeactivateRequest() (*model.DeactivateRequest, error) {
 
 func getSignedDataForDeactivate() *model.DeactivateSignedDataModel {
 	return &model.DeactivateSignedDataModel{
-		DidSuffix:           "did",
-		RecoveryRevealValue: "recoveryReveal",
+		DidSuffix: "did",
+		RecoveryKey: &jws.JWK{
+			Kty: "kty",
+			Crv: "crv",
+			X:   "x",
+		},
 	}
 }
 

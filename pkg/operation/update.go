@@ -9,6 +9,7 @@ package operation
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -74,8 +75,8 @@ func parseSignedDataForUpdate(compactJWS string, code uint) (*model.UpdateSigned
 		return nil, err
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(schema.DeltaHash, uint64(code)) {
-		return nil, errors.New("delta hash is not computed with the latest supported hash algorithm")
+	if err := validateSignedDataForUpdate(schema, code); err != nil {
+		return nil, err
 	}
 
 	return schema, nil
@@ -92,6 +93,18 @@ func validateUpdateRequest(update *model.UpdateRequest) error {
 
 	if update.SignedData == "" {
 		return errors.New("missing signed data")
+	}
+
+	return nil
+}
+
+func validateSignedDataForUpdate(signedData *model.UpdateSignedDataModel, code uint) error {
+	if err := validateKey(signedData.UpdateKey); err != nil {
+		return fmt.Errorf("signed data for update: %s", err.Error())
+	}
+
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, uint64(code)) {
+		return errors.New("delta hash is not computed with the latest supported hash algorithm")
 	}
 
 	return nil

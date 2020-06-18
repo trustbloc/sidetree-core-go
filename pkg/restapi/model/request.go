@@ -32,10 +32,7 @@ type SuffixDataModel struct {
 	// Hash of the delta object
 	DeltaHash string `json:"delta_hash"`
 
-	// Initial recovery public key in JWK format
-	RecoveryKey *jws.JWK `json:"recovery_key"`
-
-	// Initial recovery commitment
+	// Commitment hash for the next recovery or deactivate operation
 	RecoveryCommitment string `json:"recovery_commitment"`
 }
 
@@ -56,9 +53,6 @@ type UpdateRequest struct {
 	//The suffix of the DID
 	DidSuffix string `json:"did_suffix"`
 
-	// Reveal value for this update operation
-	UpdateRevealValue string `json:"update_reveal_value"`
-
 	// Compact JWS - signature information
 	SignedData string `json:"signed_data"`
 
@@ -76,18 +70,14 @@ type DeactivateRequest struct {
 	// Required: true
 	DidSuffix string `json:"did_suffix"`
 
-	// the current reveal value to use for this request
-	// Required: true
-	RecoveryRevealValue string `json:"recovery_reveal_value"`
-
 	// Compact JWS - signature information
 	SignedData string `json:"signed_data"`
 }
 
 // UpdateSignedDataModel defines signed data model for update
 type UpdateSignedDataModel struct {
-	// Reveal value for this update operation
-	UpdateRevealValue string `json:"update_reveal_value"`
+	// The current update key
+	UpdateKey *jws.JWK `json:"update_key"`
 
 	// Hash of the unsigned delta object
 	DeltaHash string `json:"delta_hash"`
@@ -99,11 +89,8 @@ type RecoverSignedDataModel struct {
 	// Hash of the unsigned delta object
 	DeltaHash string `json:"delta_hash"`
 
-	// The new recovery key
+	// The current recovery key
 	RecoveryKey *jws.JWK `json:"recovery_key"`
-
-	// the current reveal value to use for this request
-	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
 	// Recovery commitment be used for the next recovery/deactivate
 	RecoveryCommitment string `json:"recovery_commitment"`
@@ -116,9 +103,8 @@ type DeactivateSignedDataModel struct {
 	// Required: true
 	DidSuffix string `json:"did_suffix"`
 
-	// the current reveal value to use for this request
-	// Required: true
-	RecoveryRevealValue string `json:"recovery_reveal_value"`
+	// The current recovery key
+	RecoveryKey *jws.JWK `json:"recovery_key"`
 }
 
 // RecoverRequest is the struct for document recovery payload
@@ -130,10 +116,6 @@ type RecoverRequest struct {
 	//The suffix of the DID
 	// Required: true
 	DidSuffix string `json:"did_suffix"`
-
-	// The reveal value for this recovery
-	// Required: true
-	RecoveryRevealValue string `json:"recovery_reveal_value"`
 
 	// Compact JWS - signature information
 	SignedData string `json:"signed_data"`

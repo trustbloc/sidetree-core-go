@@ -112,7 +112,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing recovery key")
+		require.Contains(t, err.Error(), "signed data for recovery: missing key")
 		require.Nil(t, op)
 	})
 }
@@ -124,7 +124,7 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"missing recovery key")
+			"signed data for recovery: missing key")
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()

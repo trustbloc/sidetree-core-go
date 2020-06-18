@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -37,14 +38,14 @@ const (
 	sha2_256 = 18
 )
 
-var recoveryReveal = []byte("recoveryReveal")
-var updateReveal = []byte("updateReveal")
-
 func TestUpdateHandler_Update(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 	handler := NewUpdateHandler(docHandler)
 
-	create, err := helper.NewCreateRequest(getCreateRequestInfo())
+	req, err := getCreateRequestInfo()
+	require.NoError(t, err)
+
+	create, err := helper.NewCreateRequest(req)
 	require.NoError(t, err)
 
 	var createReq model.CreateRequest
@@ -130,24 +131,23 @@ func TestUpdateHandler_Update(t *testing.T) {
 	})
 }
 
-func getCreateRequestInfo() *helper.CreateRequestInfo {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+func getCreateRequestInfo() (*helper.CreateRequestInfo, error) {
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	recoveryKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &helper.CreateRequestInfo{
-		OpaqueDocument:          validDoc,
-		RecoveryKey:             recoveryKey,
-		NextRecoveryRevealValue: recoveryReveal,
-		NextUpdateRevealValue:   updateReveal,
-		MultihashCode:           sha2_256,
-	}
+		OpaqueDocument:     validDoc,
+		RecoveryCommitment: recoveryCommitment,
+		UpdateCommitment:   updateCommitment,
+		MultihashCode:      sha2_256,
+	}, nil
 }
 
 func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
@@ -162,13 +162,23 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 		panic(err)
 	}
 
+	pubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
 	return &helper.UpdateRequestInfo{
-		DidSuffix:             uniqueSuffix,
-		Patch:                 patchJSON,
-		UpdateRevealValue:     updateReveal,
-		NextUpdateRevealValue: updateReveal,
-		MultihashCode:         sha2_256,
-		Signer:                ecsigner.New(privateKey, "ES256", "key-1"),
+		DidSuffix:        uniqueSuffix,
+		Patch:            patchJSON,
+		UpdateKey:        pubKey,
+		UpdateCommitment: updateCommitment,
+		MultihashCode:    sha2_256,
+		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
 	}
 }
 
@@ -180,9 +190,9 @@ func getDeactivateRequestInfo(uniqueSuffix string) *helper.DeactivateRequestInfo
 	}
 
 	return &helper.DeactivateRequestInfo{
-		DidSuffix:           uniqueSuffix,
-		RecoveryRevealValue: recoveryReveal,
-		Signer:              ecsigner.New(privateKey, "ES256", ""),
+		DidSuffix:   uniqueSuffix,
+		RecoveryKey: testJWK,
+		Signer:      ecsigner.New(privateKey, "ES256", ""),
 	}
 }
 
@@ -197,15 +207,24 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 		panic(err)
 	}
 
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
 	return &helper.RecoverRequestInfo{
-		DidSuffix:               uniqueSuffix,
-		OpaqueDocument:          recoverDoc,
-		RecoveryKey:             recoveryKey,
-		RecoveryRevealValue:     recoveryReveal,
-		NextRecoveryRevealValue: []byte("newRecoveryReveal"),
-		NextUpdateRevealValue:   []byte("newUpdateReveal"),
-		MultihashCode:           sha2_256,
-		Signer:                  ecsigner.New(privateKey, "ES256", ""),
+		DidSuffix:          uniqueSuffix,
+		OpaqueDocument:     recoverDoc,
+		RecoveryKey:        recoveryKey,
+		RecoveryCommitment: recoveryCommitment,
+		UpdateCommitment:   updateCommitment,
+		MultihashCode:      sha2_256,
+		Signer:             ecsigner.New(privateKey, "ES256", ""),
 	}
 }
 

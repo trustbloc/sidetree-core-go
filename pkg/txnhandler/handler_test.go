@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -224,14 +225,22 @@ func generateOperation(num int, opType batch.OperationType) (*batch.Operation, e
 }
 
 func generateCreateOperation(num int) (*batch.Operation, error) {
+	jwk := &jws.JWK{
+		Crv: "crv",
+		Kty: "kty",
+		X:   "x",
+	}
+
+	c, err := commitment.Calculate(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	doc := fmt.Sprintf(`{"test":%d}`, num)
 	info := &helper.CreateRequestInfo{OpaqueDocument: doc,
-		RecoveryKey: &jws.JWK{
-			Crv: "crv",
-			Kty: "kty",
-			X:   "x",
-		},
-		MultihashCode: sha2_256}
+		RecoveryCommitment: c,
+		UpdateCommitment:   c,
+		MultihashCode:      sha2_256}
 
 	request, err := helper.NewCreateRequest(info)
 	if err != nil {
@@ -252,12 +261,19 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
+	c, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &helper.RecoverRequestInfo{
-		DidSuffix:      fmt.Sprintf("did:sidetree:recover-%d", num),
-		OpaqueDocument: `{"test":"value"}`,
-		RecoveryKey:    jwk,
-		MultihashCode:  sha2_256,
-		Signer:         ecsigner.New(privKey, "ES256", "")}
+		DidSuffix:          fmt.Sprintf("did:sidetree:recover-%d", num),
+		OpaqueDocument:     `{"test":"value"}`,
+		RecoveryCommitment: c,
+		UpdateCommitment:   c,
+		RecoveryKey:        jwk,
+		MultihashCode:      sha2_256,
+		Signer:             ecsigner.New(privKey, "ES256", "")}
 
 	request, err := helper.NewRecoverRequest(info)
 	if err != nil {
@@ -295,11 +311,18 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
+	c, err := commitment.Calculate(testJWK, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &helper.UpdateRequestInfo{
-		DidSuffix:     fmt.Sprintf("did:sidetree:update-%d", num),
-		Signer:        ecsigner.New(privateKey, "ES256", "key-1"),
-		Patch:         testPatch,
-		MultihashCode: sha2_256,
+		DidSuffix:        fmt.Sprintf("did:sidetree:update-%d", num),
+		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
+		UpdateCommitment: c,
+		UpdateKey:        testJWK,
+		Patch:            testPatch,
+		MultihashCode:    sha2_256,
 	}
 
 	request, err := helper.NewUpdateRequest(info)
@@ -312,4 +335,10 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 
 func getTestPatch() (patch.Patch, error) {
 	return patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "Jane"}]`)
+}
+
+var testJWK = &jws.JWK{
+	Kty: "kty",
+	Crv: "crv",
+	X:   "x",
 }

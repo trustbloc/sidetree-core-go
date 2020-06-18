@@ -12,6 +12,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -25,12 +26,11 @@ type UpdateRequestInfo struct {
 	// Patch is one of standard patch actions
 	Patch patch.Patch
 
-	// reveal value for this update operation
-	UpdateRevealValue []byte
+	// update commitment to be used for the next update
+	UpdateCommitment string
 
-	// reveal value to be used for the next update
-	// optional if NextUpdateCommitmentHash is provided
-	NextUpdateRevealValue []byte
+	// update key to be used for this update
+	UpdateKey *jws.JWK
 
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
@@ -46,7 +46,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	patches := []patch.Patch{info.Patch}
-	deltaBytes, err := getDeltaBytes(info.MultihashCode, info.NextUpdateRevealValue, patches)
+	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, patches)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +57,8 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	signedDataModel := model.UpdateSignedDataModel{
-		DeltaHash:         mhDelta,
-		UpdateRevealValue: docutil.EncodeToString(info.UpdateRevealValue),
+		DeltaHash: mhDelta,
+		UpdateKey: info.UpdateKey,
 	}
 
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)
@@ -67,11 +67,10 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.UpdateRequest{
-		Operation:         model.OperationTypeUpdate,
-		DidSuffix:         info.DidSuffix,
-		UpdateRevealValue: docutil.EncodeToString(info.UpdateRevealValue),
-		Delta:             docutil.EncodeToString(deltaBytes),
-		SignedData:        jws,
+		Operation:  model.OperationTypeUpdate,
+		DidSuffix:  info.DidSuffix,
+		Delta:      docutil.EncodeToString(deltaBytes),
+		SignedData: jws,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)
