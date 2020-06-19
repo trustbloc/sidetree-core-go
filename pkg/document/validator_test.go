@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const purposeKey = "purpose"
+
 func TestValidatePublicKeys(t *testing.T) {
 	r := reader(t, "testdata/doc.json")
 
@@ -27,29 +29,29 @@ func TestValidatePublicKeys(t *testing.T) {
 }
 
 func TestValidatePublicKeysErrors(t *testing.T) {
-	t.Run("missing usage", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(noUsage))
+	t.Run("missing purpose", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(noPurpose))
 		require.Nil(t, err)
 
 		err = ValidatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing usage")
+		require.Contains(t, err.Error(), "missing purpose")
 	})
-	t.Run("invalid usage", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(wrongUsage))
+	t.Run("invalid purpose", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(wrongPurpose))
 		require.Nil(t, err)
 
 		err = ValidatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid usage")
+		require.Contains(t, err.Error(), "invalid purpose")
 	})
-	t.Run("usage exceeds maximum", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(tooMuchUsage))
+	t.Run("purpose exceeds maximum", func(t *testing.T) {
+		doc, err := DidDocumentFromBytes([]byte(tooMuchPurpose))
 		require.Nil(t, err)
 
 		err = ValidatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "public key usage exceeds maximum length")
+		require.Contains(t, err.Error(), "public key purpose exceeds maximum length")
 	})
 	t.Run("invalid key type", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(invalidKeyType))
@@ -208,7 +210,7 @@ func TestValidateOperationsKey(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "is not an operations key")
 
-	pk["usage"] = []interface{}{ops}
+	pk[purposeKey] = []interface{}{ops}
 	err = ValidateOperationsKey(pk)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "key has to be in JWK format")
@@ -293,106 +295,106 @@ func TestValidateJWK(t *testing.T) {
 
 func TestIsAuthenticationKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsAuthenticationKey(pk.Usage())
+	ok := IsAuthenticationKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk["usage"] = []interface{}{auth}
-	ok = IsAuthenticationKey(pk.Usage())
+	pk[purposeKey] = []interface{}{auth}
+	ok = IsAuthenticationKey(pk.Purpose())
 	require.True(t, ok)
 }
 
 func TestIsAssertionKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsAssertionKey(pk.Usage())
+	ok := IsAssertionKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk["usage"] = []interface{}{assertion}
-	ok = IsAssertionKey(pk.Usage())
+	pk[purposeKey] = []interface{}{assertion}
+	ok = IsAssertionKey(pk.Purpose())
 	require.True(t, ok)
 }
 
 func TestIsAgreementKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsAgreementKey(pk.Usage())
+	ok := IsAgreementKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk["usage"] = []interface{}{agreement}
-	ok = IsAgreementKey(pk.Usage())
+	pk[purposeKey] = []interface{}{agreement}
+	ok = IsAgreementKey(pk.Purpose())
 	require.True(t, ok)
 }
 
 func TestIsDelegationKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsDelegationKey(pk.Usage())
+	ok := IsDelegationKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk["usage"] = []interface{}{delegation}
-	ok = IsDelegationKey(pk.Usage())
+	pk[purposeKey] = []interface{}{delegation}
+	ok = IsDelegationKey(pk.Purpose())
 	require.True(t, ok)
 }
 
 func TestIsInvocationKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsInvocationKey(pk.Usage())
+	ok := IsInvocationKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk["usage"] = []interface{}{invocation}
-	ok = IsInvocationKey(pk.Usage())
+	pk[purposeKey] = []interface{}{invocation}
+	ok = IsInvocationKey(pk.Purpose())
 	require.True(t, ok)
 }
 
 func TestIsGeneralKey(t *testing.T) {
 	pk := NewPublicKey(map[string]interface{}{})
-	ok := IsGeneralKey(pk.Usage())
+	ok := IsGeneralKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk["usage"] = []interface{}{general}
-	ok = IsGeneralKey(pk.Usage())
+	pk[purposeKey] = []interface{}{general}
+	ok = IsGeneralKey(pk.Purpose())
 	require.True(t, ok)
 }
 
-func TestGeneralKeyUsage(t *testing.T) {
+func TestGeneralKeyPurpose(t *testing.T) {
 	for _, pubKeyType := range allowedKeyTypesGeneral {
-		pk := createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{general})
 		err := ValidatePublicKeys([]PublicKey{pk})
-		require.NoError(t, err, "valid usage for type")
+		require.NoError(t, err, "valid purpose for type")
 	}
 
-	pk := createMockPublicKeyWithTypeUsage("invalidUsage", []interface{}{general})
+	pk := createMockPublicKeyWithTypeAndPurpose("invalid", []interface{}{general})
 	err := ValidatePublicKeys([]PublicKey{pk})
-	require.Error(t, err, "invalid usage for type")
+	require.Error(t, err, "invalid purpose for type")
 }
 
-func TestInvalidKeyUsage(t *testing.T) {
-	pk := createMockPublicKeyWithTypeUsage(jwsVerificationKey2020, []interface{}{"invalidUsage"})
+func TestInvalidKeyPurpose(t *testing.T) {
+	pk := createMockPublicKeyWithTypeAndPurpose(jwsVerificationKey2020, []interface{}{"invalidpurpose"})
 	err := ValidatePublicKeys([]PublicKey{pk})
-	require.Error(t, err, "invalid usage")
+	require.Error(t, err, "invalid purpose")
 }
 
-func TestOpsKeyUsage(t *testing.T) {
-	testKeyUsage(t, allowedKeyTypesOps, ops)
+func TestOpsKeyPurpose(t *testing.T) {
+	testKeyPurpose(t, allowedKeyTypesOps, ops)
 }
 
-func TestVerificationKeyUsage(t *testing.T) {
-	testKeyUsage(t, allowedKeyTypesVerification, assertion)
-	testKeyUsage(t, allowedKeyTypesVerification, auth)
-	testKeyUsage(t, allowedKeyTypesVerification, delegation)
-	testKeyUsage(t, allowedKeyTypesVerification, invocation)
+func TestVerificationKeyPurpose(t *testing.T) {
+	testKeyPurpose(t, allowedKeyTypesVerification, assertion)
+	testKeyPurpose(t, allowedKeyTypesVerification, auth)
+	testKeyPurpose(t, allowedKeyTypesVerification, delegation)
+	testKeyPurpose(t, allowedKeyTypesVerification, invocation)
 }
 
-func TestAgreementKeyUsage(t *testing.T) {
-	testKeyUsage(t, allowedKeyTypesAgreement, agreement)
+func TestAgreementKeyPurpose(t *testing.T) {
+	testKeyPurpose(t, allowedKeyTypesAgreement, agreement)
 }
 
-func testKeyUsage(t *testing.T, allowedKeys existenceMap, pubKeyUsage string) {
+func testKeyPurpose(t *testing.T, allowedKeys existenceMap, pubKeyPurpose string) {
 	for _, pubKeyType := range allowedKeys {
-		pk := createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{general, pubKeyPurpose})
 		err := ValidatePublicKeys([]PublicKey{pk})
-		require.NoError(t, err, "valid usage for type")
+		require.NoError(t, err, "valid purpose for type")
 
-		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{pubKeyUsage})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{pubKeyPurpose})
 		err = ValidatePublicKeys([]PublicKey{pk})
-		require.NoError(t, err, "valid usage for type")
+		require.NoError(t, err, "valid purpose for type")
 	}
 
 	for _, pubKeyType := range allowedKeyTypesGeneral {
@@ -401,29 +403,29 @@ func testKeyUsage(t *testing.T, allowedKeys existenceMap, pubKeyUsage string) {
 			continue
 		}
 
-		pk := createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage, agreement})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{general, pubKeyPurpose, agreement})
 		err := ValidatePublicKeys([]PublicKey{pk})
-		require.Error(t, err, "invalid usage for type")
+		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage, assertion})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{general, pubKeyPurpose, assertion})
 		err = ValidatePublicKeys([]PublicKey{pk})
-		require.Error(t, err, "invalid usage for type")
+		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{general, pubKeyUsage})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{general, pubKeyPurpose})
 		err = ValidatePublicKeys([]PublicKey{pk})
-		require.Error(t, err, "invalid usage for type")
+		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeUsage(pubKeyType, []interface{}{pubKeyUsage})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{pubKeyPurpose})
 		err = ValidatePublicKeys([]PublicKey{pk})
-		require.Error(t, err, "invalid usage for type")
+		require.Error(t, err, "invalid purpose for type")
 	}
 }
 
-func createMockPublicKeyWithTypeUsage(pubKeyType string, usage []interface{}) PublicKey {
+func createMockPublicKeyWithTypeAndPurpose(pubKeyType string, purpose []interface{}) PublicKey {
 	pk := map[string]interface{}{
-		"id":    "key1",
-		"type":  pubKeyType,
-		"usage": usage,
+		"id":      "key1",
+		"type":    pubKeyType,
+		"purpose": purpose,
 		"jwk": map[string]interface{}{
 			"kty": "kty",
 			"crv": "crv",
@@ -441,7 +443,7 @@ const moreProperties = `{
       "id": "key1",
       "other": "unknown",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"], 
+      "purpose": ["ops"], 
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -452,12 +454,12 @@ const moreProperties = `{
   ]
 }`
 
-const noUsage = `{
+const noPurpose = `{
   "publicKey": [
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": [], 
+      "purpose": [], 
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -468,12 +470,12 @@ const noUsage = `{
   ]
 }`
 
-const wrongUsage = `{
+const wrongPurpose = `{
   "publicKey": [
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["invalid"],
+      "purpose": ["invalid"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -484,12 +486,12 @@ const wrongUsage = `{
   ]
 }`
 
-const tooMuchUsage = `{
+const tooMuchPurpose = `{
   "publicKey": [
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation", "other"],
+      "purpose": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation", "other"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -505,7 +507,7 @@ const noJWK = `{
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {}
     }
   ]
@@ -516,7 +518,7 @@ const idLong = `{
     {
       "id": "idwihmorethantwentycharacters",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -530,7 +532,7 @@ const noID = `{
   "publicKey": [
     {
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -546,7 +548,7 @@ const invalidKeyType = `{
     {
       "id": "key1",
       "type": "InvalidKeyType",
-      "usage": ["general"],
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -562,7 +564,7 @@ const duplicateID = `{
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -573,7 +575,7 @@ const duplicateID = `{
     {
       "id": "key1",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",

@@ -11,8 +11,8 @@ const (
 	// ControllerProperty defines key for controller
 	ControllerProperty = "controller"
 
-	// UsageProperty describes key usage property
-	UsageProperty = "usage"
+	// PurposeProperty describes key purpose property
+	PurposeProperty = "purpose"
 
 	// PublicKeyJwkProperty describes external public key JWK
 	PublicKeyJwkProperty = "publicKeyJwk"
@@ -83,9 +83,9 @@ func (pk PublicKey) PublicKeyBase58() string {
 	return stringEntry(pk[PublicKeyBase58Property])
 }
 
-// Usage describes key usage
-func (pk PublicKey) Usage() []string {
-	return StringArray(pk[UsageProperty])
+// Purpose describes key purpose
+func (pk PublicKey) Purpose() []string {
+	return StringArray(pk[PurposeProperty])
 }
 
 // JSONLdObject returns map that represents JSON LD Object

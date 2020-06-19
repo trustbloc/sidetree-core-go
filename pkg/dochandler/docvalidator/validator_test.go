@@ -136,7 +136,7 @@ const validDocWithOpsKeys = `
     {
       "id": "update-key",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",

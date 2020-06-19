@@ -162,9 +162,9 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // processKeys will process keys according to Sidetree rules bellow and add them to external document
 // -- general: the key is to be included in the publicKeys section of the resolved DID Document.
 // -- auth: the key is to be included in the authentication section of the resolved DID Document as follows:
-// If the general usage value IS NOT present in the usage array,
+// If the general purpose value IS NOT present in the purpose array,
 // the key descriptor object will be included directly in the authentication section of the resolved DID Document.
-// If the general usage value IS present in the usage array,
+// If the general purpose value IS present in the purpose array,
 // the key descriptor object will be directly included in the publicKeys section of the resolved DID Document,
 // and included by reference in the authentication section.
 // -- assertion: the key MUST be included in the assertionMethod section of the resolved DID Document
@@ -205,39 +205,39 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 			externalPK[document.PublicKeyJwkProperty] = pk.JWK()
 		}
 
-		usages := pk.Usage()
-		if document.IsGeneralKey(usages) {
+		purposes := pk.Purpose()
+		if document.IsGeneralKey(purposes) {
 			publicKeys = append(publicKeys, externalPK)
 
-			// add into authentication by reference if the key has both auth and general usage
-			if document.IsAuthenticationKey(usages) {
+			// add into authentication by reference if the key has both auth and general purpose
+			if document.IsAuthenticationKey(purposes) {
 				authentication = append(authentication, relativeID)
 			}
-			// add into assertionMethod by reference if the key has both assertion and general usage
-			if document.IsAssertionKey(usages) {
+			// add into assertionMethod by reference if the key has both assertion and general purpose
+			if document.IsAssertionKey(purposes) {
 				assertionMethod = append(assertionMethod, relativeID)
 			}
-			// add into keyAgreement by reference if the key has both agreement and general usage
-			if document.IsAgreementKey(usages) {
+			// add into keyAgreement by reference if the key has both agreement and general purpose
+			if document.IsAgreementKey(purposes) {
 				agreementKey = append(agreementKey, relativeID)
 			}
-			// add into capabilityDelegation by reference if the key has both delegation and general usage
-			if document.IsDelegationKey(usages) {
+			// add into capabilityDelegation by reference if the key has both delegation and general purpose
+			if document.IsDelegationKey(purposes) {
 				delegationKey = append(delegationKey, relativeID)
 			}
-			// add into capabilityInvocation by reference if the key has both invocation and general usage
-			if document.IsInvocationKey(usages) {
+			// add into capabilityInvocation by reference if the key has both invocation and general purpose
+			if document.IsInvocationKey(purposes) {
 				invocationKey = append(invocationKey, relativeID)
 			}
-		} else if document.IsAuthenticationKey(usages) {
+		} else if document.IsAuthenticationKey(purposes) {
 			authentication = append(authentication, externalPK)
-		} else if document.IsAssertionKey(usages) {
+		} else if document.IsAssertionKey(purposes) {
 			assertionMethod = append(assertionMethod, externalPK)
-		} else if document.IsAgreementKey(usages) {
+		} else if document.IsAgreementKey(purposes) {
 			agreementKey = append(agreementKey, externalPK)
-		} else if document.IsDelegationKey(usages) {
+		} else if document.IsDelegationKey(purposes) {
 			delegationKey = append(delegationKey, externalPK)
-		} else if document.IsInvocationKey(usages) {
+		} else if document.IsInvocationKey(purposes) {
 			invocationKey = append(invocationKey, externalPK)
 		}
 	}

@@ -26,7 +26,7 @@ func TestPublicKey(t *testing.T) {
 	require.Equal(t, "did:example:123456789abcdefghi#keys-1", pk.ID())
 	require.Equal(t, "JwsVerificationKey2020", pk.Type())
 	require.Equal(t, "did:example:123456789abcdefghi", pk.Controller())
-	require.Empty(t, pk.Usage())
+	require.Empty(t, pk.Purpose())
 	require.Empty(t, pk.JWK())
 	require.Empty(t, pk.PublicKeyJwk())
 	require.Empty(t, pk.PublicKeyBase58())

@@ -23,9 +23,9 @@ func TestValid(t *testing.T) {
 	publicKeys := doc.PublicKeys()
 	require.Equal(t, []PublicKey{
 		{
-			"id":    "key1",
-			"type":  "JwsVerificationKey2020",
-			"usage": []interface{}{"ops", "general"},
+			"id":      "key1",
+			"type":    "JwsVerificationKey2020",
+			"purpose": []interface{}{"ops", "general"},
 			"jwk": map[string]interface{}{
 				"kty": "EC",
 				"crv": "P-256K",
