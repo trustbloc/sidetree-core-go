@@ -3,7 +3,7 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "usage": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation"],
+      "purpose": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -14,7 +14,7 @@
     {
       "id": "ops-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["ops"],
+      "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -25,7 +25,7 @@
     {
       "id": "dual-auth-gen",
       "type": "JwsVerificationKey2020",
-      "usage": ["auth", "general"],
+      "purpose": ["auth", "general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -36,7 +36,7 @@
     {
       "id": "auth-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["auth"],
+      "purpose": ["auth"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -47,7 +47,7 @@
     {
       "id": "dual-assertion-gen",
       "type": "JwsVerificationKey2020",
-      "usage": ["assertion", "general"],
+      "purpose": ["assertion", "general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -58,7 +58,7 @@
     {
       "id": "assertion-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["assertion"],
+      "purpose": ["assertion"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -69,7 +69,7 @@
     {
       "id": "dual-agreement-gen",
       "type": "JwsVerificationKey2020",
-      "usage": ["agreement", "general"],
+      "purpose": ["agreement", "general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -80,7 +80,7 @@
     {
       "id": "agreement-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["agreement"],
+      "purpose": ["agreement"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -91,7 +91,7 @@
     {
       "id": "dual-invocation-gen",
       "type": "JwsVerificationKey2020",
-      "usage": ["invocation", "general"],
+      "purpose": ["invocation", "general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -102,7 +102,7 @@
     {
       "id": "invocation-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["invocation"],
+      "purpose": ["invocation"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -113,7 +113,7 @@
     {
       "id": "dual-delegation-gen",
       "type": "JwsVerificationKey2020",
-      "usage": ["delegation", "general"],
+      "purpose": ["delegation", "general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -124,7 +124,7 @@
     {
       "id": "delegation-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["delegation"],
+      "purpose": ["delegation"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -135,7 +135,7 @@
     {
       "id": "general-only",
       "type": "JwsVerificationKey2020",
-      "usage": ["general"],
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",

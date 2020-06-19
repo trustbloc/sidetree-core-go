@@ -204,7 +204,7 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
-	createReq, err := getCreateRequestWithDoc(invalidDocNoUsage)
+	createReq, err := getCreateRequestWithDoc(invalidDocNoPurpose)
 	require.NoError(t, err)
 
 	createOp, err := getCreateOperationWithInitialState(createReq.SuffixData, createReq.Delta)
@@ -217,7 +217,7 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
 	require.Error(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "missing usage")
+	require.Contains(t, err.Error(), "missing purpose")
 }
 
 func TestTransformToExternalDocument(t *testing.T) {
@@ -392,7 +392,7 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JwsVerificationKey2020",
-		  "usage": ["ops", "general"],
+		  "purpose": ["ops", "general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -402,11 +402,11 @@ const validDoc = `{
 	}]
 }`
 
-const invalidDocNoUsage = `{
+const invalidDocNoPurpose = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JwsVerificationKey2020",	
-		  "usage": [],
+		  "purpose": [],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",

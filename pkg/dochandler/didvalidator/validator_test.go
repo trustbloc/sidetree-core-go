@@ -279,7 +279,7 @@ var docWithContext = []byte(`{
 	"publicKey": [{
       	"id": "key-1",
       	"type": "JwsVerificationKey2020",
-      	"usage": ["ops", "general"],
+      	"purpose": ["ops", "general"],
 		"jwk": {
 			"kty": "EC",
         	"crv": "P-256K",
@@ -301,7 +301,7 @@ var pubKeyWithController = []byte(`{
       "id": "key-1",
       "type": "JwsVerificationKey2020",
       "controller": "did:example:123456789abcdefghi",
-      "usage": ["ops", "general"],
+      "purpose": ["ops", "general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -316,7 +316,7 @@ const ed25519DocTemplate = `{
 	{
   		"id": "dual-assertion-general",
   		"type": "Ed25519VerificationKey2018",
-		"usage": ["general", "assertion"],
+		"purpose": ["general", "assertion"],
   		"jwk": %s
 	}
   ],
@@ -334,7 +334,7 @@ const ed25519Invalid = `{
 	{
   		"id": "dual-assertion-general",
   		"type": "Ed25519VerificationKey2018",
-		"usage": ["general", "assertion"],
+		"purpose": ["general", "assertion"],
       	"jwk": {
         	"kty": "OKP",
         	"crv": "curve",

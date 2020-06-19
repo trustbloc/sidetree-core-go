@@ -114,7 +114,7 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		require.Equal(t, 2, len(keys))
 		for _, key := range keys {
 			if key.ID() == "key2" {
-				require.Equal(t, 1, len(key.Usage()))
+				require.Equal(t, 1, len(key.Purpose()))
 			}
 		}
 	})
@@ -400,7 +400,7 @@ const testDoc = `{
 		{
 		  "id": "key1",
 		  "type": "JwsVerificationKey2020",
-		  "usage": ["ops"],
+		  "purpose": ["ops"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -411,7 +411,7 @@ const testDoc = `{
 		{
 		  "id": "key2",
 		  "type": "JwsVerificationKey2020",
-		  "usage": ["ops", "general"],
+		  "purpose": ["ops", "general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -437,7 +437,7 @@ const testDoc = `{
 const addKeys = `[{
 		  "id": "key3",
 		  "type": "JwsVerificationKey2020",
-		  "usage": ["ops", "general"],
+		  "purpose": ["ops", "general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -449,7 +449,7 @@ const addKeys = `[{
 const updateExistingKey = `[{
 	"id": "key2",
 	"type": "JwsVerificationKey2020",
-	"usage": ["ops"],
+	"purpose": ["ops"],
 	"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",

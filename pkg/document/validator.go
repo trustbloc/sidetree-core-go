@@ -19,19 +19,19 @@ var (
 )
 
 const (
-	// ops defines key usage as operations key
+	// ops defines key purpose as operations key
 	ops = "ops"
-	// auth defines key usage as authentication key
+	// auth defines key purpose as authentication key
 	auth = "auth"
-	// assertion defines key usage as assertion key
+	// assertion defines key purpose as assertion key
 	assertion = "assertion"
-	// agreement defines key usage as agreement key
+	// agreement defines key purpose as agreement key
 	agreement = "agreement"
-	// delegation defines key usage as delegation key
+	// delegation defines key purpose as delegation key
 	delegation = "delegation"
-	// invocation defines key usage as invocation key
+	// invocation defines key purpose as invocation key
 	invocation = "invocation"
-	// general defines key usage as general key
+	// general defines key purpose as general key
 	general = "general"
 
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
@@ -126,7 +126,7 @@ func validateServiceProperty(property string) error {
 func ValidatePublicKeys(pubKeys []PublicKey) error {
 	ids := make(map[string]string)
 
-	// the expected fields are id, usage, type and jwk
+	// the expected fields are id, purpose, type and jwk
 	for _, pubKey := range pubKeys {
 		kid := pubKey.ID()
 		if err := validateKID(kid); err != nil {
@@ -142,17 +142,17 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 		}
 		ids[kid] = kid
 
-		if err := validateKeyUsage(pubKey); err != nil {
+		if err := validateKeyPurpose(pubKey); err != nil {
 			return err
 		}
 
-		if IsOperationsKey(pubKey.Usage()) {
+		if IsOperationsKey(pubKey.Purpose()) {
 			if err := ValidateOperationsKey(pubKey); err != nil {
 				return err
 			}
 		}
 
-		if !validateKeyTypeUsage(pubKey) {
+		if !validateKeyTypePurpose(pubKey) {
 			return fmt.Errorf("invalid key type: %s", pubKey.Type())
 		}
 
@@ -264,10 +264,10 @@ func validateServiceEndpoint(serviceEndpoint string) error {
 	return nil
 }
 
-// validateKeyTypeUsage validates if the public key type is valid for a certain usage
-func validateKeyTypeUsage(pubKey PublicKey) bool {
-	for _, usage := range pubKey.Usage() {
-		allowed, ok := allowedKeyTypes[usage]
+// validateKeyTypePurpose validates if the public key type is valid for a certain purpose
+func validateKeyTypePurpose(pubKey PublicKey) bool {
+	for _, purpose := range pubKey.Purpose() {
+		allowed, ok := allowedKeyTypes[purpose]
 		if !ok {
 			return false
 		}
@@ -283,7 +283,7 @@ func validateKeyTypeUsage(pubKey PublicKey) bool {
 
 // ValidateOperationsKey validates operation key
 func ValidateOperationsKey(pubKey PublicKey) error {
-	if !IsOperationsKey(pubKey.Usage()) {
+	if !IsOperationsKey(pubKey.Purpose()) {
 		return fmt.Errorf("key '%s' is not an operations key", pubKey.ID())
 	}
 
@@ -316,43 +316,43 @@ func ValidateJWK(jwk JWK) error {
 }
 
 // IsOperationsKey returns true if key is an operations key
-func IsOperationsKey(usages []string) bool {
-	return isUsageKey(usages, ops)
+func IsOperationsKey(purposes []string) bool {
+	return isPurposeKey(purposes, ops)
 }
 
 // IsGeneralKey returns true if key is a general key
-func IsGeneralKey(usages []string) bool {
-	return isUsageKey(usages, general)
+func IsGeneralKey(purposes []string) bool {
+	return isPurposeKey(purposes, general)
 }
 
 // IsAuthenticationKey returns true if key is an authentication key
-func IsAuthenticationKey(usages []string) bool {
-	return isUsageKey(usages, auth)
+func IsAuthenticationKey(purposes []string) bool {
+	return isPurposeKey(purposes, auth)
 }
 
 // IsAssertionKey returns true if key is an assertion key
-func IsAssertionKey(usages []string) bool {
-	return isUsageKey(usages, assertion)
+func IsAssertionKey(purposes []string) bool {
+	return isPurposeKey(purposes, assertion)
 }
 
 // IsAgreementKey returns true if key is an agreement key
-func IsAgreementKey(usages []string) bool {
-	return isUsageKey(usages, agreement)
+func IsAgreementKey(purposes []string) bool {
+	return isPurposeKey(purposes, agreement)
 }
 
 // IsDelegationKey returns true if key is an delegation key
-func IsDelegationKey(usages []string) bool {
-	return isUsageKey(usages, delegation)
+func IsDelegationKey(purposes []string) bool {
+	return isPurposeKey(purposes, delegation)
 }
 
 // IsInvocationKey returns true if key is an invocation key
-func IsInvocationKey(usages []string) bool {
-	return isUsageKey(usages, invocation)
+func IsInvocationKey(purposes []string) bool {
+	return isPurposeKey(purposes, invocation)
 }
 
-func isUsageKey(usages []string, mode string) bool {
-	for _, usage := range usages {
-		if usage == mode {
+func isPurposeKey(purposes []string, mode string) bool {
+	for _, purpose := range purposes {
+		if purpose == mode {
 			return true
 		}
 	}
@@ -360,22 +360,22 @@ func isUsageKey(usages []string, mode string) bool {
 	return false
 }
 
-// The object MUST include a usage property, and its value MUST be an array that includes one or more of the following:
+// The object MUST include a purpose property, and its value MUST be an array that includes one or more of the following:
 // - ops: the key is allowed to generate DID operations for the DID.
 // - general: the key is to be included in the publicKeys section of the resolved DID Document.
 // - auth: the key is to be included in the authentication section of the resolved DID Document
-func validateKeyUsage(pubKey PublicKey) error {
-	if len(pubKey.Usage()) == 0 {
-		return fmt.Errorf("key '%s' is missing usage", pubKey.ID())
+func validateKeyPurpose(pubKey PublicKey) error {
+	if len(pubKey.Purpose()) == 0 {
+		return fmt.Errorf("key '%s' is missing purpose", pubKey.ID())
 	}
 
-	if len(pubKey.Usage()) > len(allowedOps) {
-		return fmt.Errorf("public key usage exceeds maximum length: %d", len(allowedOps))
+	if len(pubKey.Purpose()) > len(allowedOps) {
+		return fmt.Errorf("public key purpose exceeds maximum length: %d", len(allowedOps))
 	}
 
-	for _, usage := range pubKey.Usage() {
-		if _, ok := allowedOps[usage]; !ok {
-			return fmt.Errorf("invalid usage: %s", usage)
+	for _, purpose := range pubKey.Purpose() {
+		if _, ok := allowedOps[purpose]; !ok {
+			return fmt.Errorf("invalid purpose: %s", purpose)
 		}
 	}
 

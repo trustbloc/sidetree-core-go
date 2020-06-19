@@ -354,7 +354,7 @@ const addPublicKeysPatch = `{
 	"public_keys": [{
 		"id": "key1",
 		"type": "JwsVerificationKey2020",
-		"usage": ["ops", "general"],
+		"purpose": ["ops", "general"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -367,7 +367,7 @@ const addPublicKeysPatch = `{
 const testAddPublicKeys = `[{
 	"id": "key1",
 	"type": "JwsVerificationKey2020",
-	"usage": ["ops", "general"],
+	"purpose": ["ops", "general"],
 	"jwk": {
 		"kty": "EC",
 		"crv": "P-256K",
@@ -427,7 +427,7 @@ const replaceDoc = `{
 	"publicKey": [{
 		"id": "key1",
 		"type": "JwsVerificationKey2020",
-		"usage": ["ops", "general"],
+		"purpose": ["ops", "general"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -448,7 +448,7 @@ const invalidKeysDoc = `{
 	"publicKey": [{
 		"id": "key1",	
 		"type": "JwsVerificationKey2020",
-		"usage": ["ops"],
+		"purpose": ["ops"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K"
