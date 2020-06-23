@@ -9,6 +9,6 @@
     {
       "id": "IdentityHub",
       "type": "IdentityHub",
-      "serviceEndpoint": ""
+      "endpoint": ""
     }
 }

@@ -18,12 +18,15 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
-const replacePatchTemplate = `{ "op": "add", "path": "/%s", "value": %s }`
+const jsonPatchAddTemplate = `{ "op": "add", "path": "/%s", "value": %s }`
 
 // Action defines action of document patch
 type Action string
 
 const (
+
+	// Replace captures enum value "replace"
+	Replace Action = "replace"
 
 	// AddPublicKeys captures enum value "add-public-keys"
 	AddPublicKeys Action = "add-public-keys"
@@ -95,7 +98,7 @@ func PatchesFromDocument(doc string) ([]Patch, error) { //nolint : gocyclo
 		case document.ServiceProperty:
 			docPatch, err = NewAddServiceEndpointsPatch(string(jsonBytes))
 		default:
-			jsonPatches = append(jsonPatches, fmt.Sprintf(replacePatchTemplate, key, string(jsonBytes)))
+			jsonPatches = append(jsonPatches, fmt.Sprintf(jsonPatchAddTemplate, key, string(jsonBytes)))
 		}
 
 		if err != nil {
@@ -117,6 +120,23 @@ func PatchesFromDocument(doc string) ([]Patch, error) { //nolint : gocyclo
 	}
 
 	return docPatches, nil
+}
+
+// NewReplacePatch creates new replace patch
+func NewReplacePatch(doc string) (Patch, error) {
+	parsed, err := document.ReplaceDocumentFromBytes([]byte(doc))
+	if err != nil {
+		return nil, err
+	}
+	if err := validateReplaceDocument(parsed); err != nil {
+		return nil, err
+	}
+
+	patch := make(Patch)
+	patch[ActionKey] = Replace
+	patch[DocumentKey] = parsed.JSONLdObject()
+
+	return patch, nil
 }
 
 // NewJSONPatch creates new generic update patch (will be used for generic updates)
@@ -239,6 +259,8 @@ func (p Patch) Validate() error {
 	}
 
 	switch action {
+	case Replace:
+		return p.validateReplace()
 	case JSONPatch:
 		return p.validateJSON()
 	case AddPublicKeys:
@@ -283,6 +305,36 @@ func stringEntry(entry interface{}) string {
 		return ""
 	}
 	return id
+}
+
+func validateReplaceDocument(doc document.ReplaceDocument) error {
+	allowedKeys := []string{document.ReplaceServiceProperty, document.ReplacePublicKeyProperty}
+
+	for key := range doc {
+		if !contains(allowedKeys, key) {
+			return fmt.Errorf("key '%s' is not allowed in replace document", key)
+		}
+	}
+
+	if err := document.ValidatePublicKeys(doc.PublicKeys()); err != nil {
+		return fmt.Errorf("failed to validate public keys for replace document: %s", err.Error())
+	}
+
+	if err := document.ValidateServices(doc.Services()); err != nil {
+		return fmt.Errorf("failed to validate services for replace document: %s", err.Error())
+	}
+
+	return nil
+}
+
+func contains(keys []string, key string) bool {
+	for _, k := range keys {
+		if k == key {
+			return true
+		}
+	}
+
+	return false
 }
 
 func validateDocument(doc document.Document) error {
@@ -389,6 +441,15 @@ func (p Patch) getRequiredArray(key Key) ([]interface{}, error) {
 	return arr, nil
 }
 
+func (p Patch) validateReplace() error {
+	doc, err := p.getRequiredMap(DocumentKey)
+	if err != nil {
+		return err
+	}
+
+	return validateReplaceDocument(document.ReplaceDocumentFromJSONLDObject(doc))
+}
+
 func (p Patch) validateJSON() error {
 	patches, err := p.getRequiredArray(PatchesKey)
 	if err != nil {
@@ -467,4 +528,18 @@ func getGenericArray(arr []string) []interface{} {
 		values = append(values, v)
 	}
 	return values
+}
+
+func (p Patch) getRequiredMap(key Key) (map[string]interface{}, error) {
+	entry := p.GetValue(key)
+	if entry == nil {
+		return nil, fmt.Errorf("%s patch is missing %s", p.GetAction(), key)
+	}
+
+	required, ok := entry.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("unexpected interface for document")
+	}
+
+	return required, nil
 }

@@ -590,7 +590,7 @@ const serviceDoc = `{
 	"service": [{
 		"id": "sid-123_ABC",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -598,7 +598,7 @@ const serviceDocNoID = `{
 	"service": [{
 		"id": "",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -606,7 +606,7 @@ const serviceDocLongID = `{
 	"service": [{
 		"id": "thisissomeidthathasmorethantwentycharacters",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -614,7 +614,7 @@ const serviceDocLongType = `{
 	"service": [{
 		"id": "id",
 		"type": "VerifiableCredentialServiceVerifiableCredentialServiceVerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -622,7 +622,7 @@ const serviceDocLongServiceEndpoint = `{
 	"service": [{
 		"id": "sid",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		"endpoint": "https://example.com/vc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	}]
 }`
 
@@ -630,7 +630,7 @@ const serviceDocEndpointNotURI = `{
 	"service": [{
 		"id": "vcs",
 		"type": "type",
-		"serviceEndpoint": "hello"
+		"endpoint": "hello"
 	}]
 }`
 
@@ -638,7 +638,7 @@ const serviceDocNoType = `{
 	"service": [{
 		"id": "vcs",
 		"type": "",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -646,7 +646,7 @@ const serviceDocNoServiceEndpoint = `{
 	"service": [{
 		"id": "vcs",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": ""
+		"endpoint": ""
 	}]
 }`
 
@@ -655,7 +655,7 @@ const serviceDocOptionalProperty = `{
 		"id": "vcs",
 		"routingKeys": "value",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -664,6 +664,6 @@ const serviceDocPropertyNotAllowed = `{
 		"id": "vcs",
 		"test": "value",
 		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/"
+		"endpoint": "https://example.com/vc/"
 	}]
 }`

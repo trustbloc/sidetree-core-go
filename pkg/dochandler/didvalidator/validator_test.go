@@ -159,7 +159,7 @@ func TestTransformDocument(t *testing.T) {
 	// validate services
 	service := didDoc.Services()[0]
 	require.Contains(t, service.ID(), testID)
-	require.NotEmpty(t, service.Endpoint())
+	require.NotEmpty(t, service.ServiceEndpoint())
 	require.Equal(t, "recipientKeysValue", service["recipientKeys"])
 	require.Equal(t, "routingKeysValue", service["routingKeys"])
 	require.Equal(t, "IdentityHub", service.Type())
@@ -225,7 +225,7 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 	// validate service
 	service := didDoc.Services()[0]
 	require.Contains(t, service.ID(), testID)
-	require.NotEmpty(t, service.Endpoint())
+	require.NotEmpty(t, service.ServiceEndpoint())
 	require.Equal(t, "OpenIdConnectVersion1.0Service", service.Type())
 
 	// validate public key
@@ -290,7 +290,7 @@ var docWithContext = []byte(`{
 }`)
 
 var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
-var serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "serviceEndpoint": "https://example.com/hub"}]}`)
+var serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "endpoint": "https://example.com/hub"}]}`)
 var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 var validUpdate = []byte(`{ "did_suffix": "abc" }`)
@@ -324,7 +324,7 @@ const ed25519DocTemplate = `{
 	{
 	   "id": "oidc",
 	   "type": "OpenIdConnectVersion1.0Service",
-	   "serviceEndpoint": "https://openid.example.com/"
+	   "endpoint": "https://openid.example.com/"
 	}
   ]
 }`

@@ -18,13 +18,14 @@ func TestService(t *testing.T) {
 	require.Empty(t, svc.Endpoint())
 
 	svc = NewService(map[string]interface{}{
-		"id":              "did:example:123456789abcdefghi;openid",
-		"type":            "OpenIdConnectVersion3.1Service",
-		"serviceEndpoint": "https://openid.example.com/",
+		"id":       "did:example:123456789abcdefghi;openid",
+		"type":     "OpenIdConnectVersion3.1Service",
+		"endpoint": "https://openid.example.com/",
 	})
 	require.Equal(t, "did:example:123456789abcdefghi;openid", svc.ID())
 	require.Equal(t, "OpenIdConnectVersion3.1Service", svc.Type())
 	require.Equal(t, "https://openid.example.com/", svc.Endpoint())
+	require.Empty(t, svc.ServiceEndpoint())
 
 	require.NotEmpty(t, svc.JSONLdObject())
 }

@@ -150,7 +150,7 @@
       "type": "IdentityHub",
       "routingKeys": "routingKeysValue",
       "recipientKeys": "recipientKeysValue",
-      "serviceEndpoint": "https://example.com/hub/"
+      "endpoint": "https://example.com/hub/"
     }
   ]
 }

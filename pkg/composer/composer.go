@@ -39,6 +39,8 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 
 	action := p.GetAction()
 	switch action {
+	case patch.Replace:
+		return applyRecover(p.GetValue(patch.DocumentKey))
 	case patch.JSONPatch:
 		return applyJSON(doc, p.GetValue(patch.PatchesKey))
 	case patch.AddPublicKeys:
@@ -78,6 +80,25 @@ func applyJSON(doc document.Document, entry interface{}) (document.Document, err
 	}
 
 	return document.FromBytes(docBytes)
+}
+
+func applyRecover(replaceDoc interface{}) (document.Document, error) {
+	log.Debugf("applying replace patch: %v", replaceDoc)
+	docBytes, err := json.Marshal(replaceDoc)
+	if err != nil {
+		return nil, err
+	}
+
+	replace, err := document.ReplaceDocumentFromBytes(docBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	doc := make(document.Document)
+	doc[document.PublicKeyProperty] = replace[document.ReplacePublicKeyProperty]
+	doc[document.ServiceProperty] = replace[document.ReplaceServiceProperty]
+
+	return doc, nil
 }
 
 // adds public keys to document

@@ -15,7 +15,7 @@ import (
 const (
 	multihashCode  uint = 18
 	didMethodName       = "did:sidetree"
-	expectedSuffix      = "EiAd7Z1iVTK7P_I9QQyy-muHI2UGSvxjAIzqxW7odZX2-g"
+	expectedSuffix      = "EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag"
 )
 
 func TestCalculateDID(t *testing.T) {
@@ -42,6 +42,12 @@ func TestDidCalculationError(t *testing.T) {
 	require.NotNil(t, err)
 	require.Empty(t, id)
 	require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
+
+	// payload has to be encoded - decode error
+	id, err = CalculateID(didMethodName, "!!!", sha2_256)
+	require.NotNil(t, err)
+	require.Empty(t, id)
+	require.Contains(t, err.Error(), "illegal base64 data")
 }
 
 func TestNamespaceFromID(t *testing.T) {
@@ -62,4 +68,4 @@ func TestNamespaceFromID(t *testing.T) {
 	})
 }
 
-const suffixDataString = `{"delta_hash":"EiD0ERt_0QnYAoHw0KqhwYyMbMjT_vlvW3C8BuilAWT1Kw","recovery_key":{"kty":"EC","crv":"secp256k1","x":"FDmlOfldNAm9ThIQTj2-UkaCajsfrJOU0wJ7kl3QJHg","y":"bAGx86GZ41PUbzk_bvOKlrW0rXdmnXQrSop7HQoC12Y"},"recovery_commitment":"EiDrKHSo11DLU1uel6fFxH0B-0BLlyu_OinGPmLNvHyVoA"}`
+const suffixDataString = `{"delta_hash":"EiBXM4otLuP2fG4ZA75-anrkWVX0637xZtMJSoKop-trdw","recovery_commitment":"EiC8G4IdbD7D4Co57GjLNKhmDEabrzkO1wsKE9MQeUvOgw"}`
