@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
 func TestFromBytes(t *testing.T) {
@@ -63,7 +65,7 @@ func TestActionValidation(t *testing.T) {
 
 func TestPatchesFromDocument(t *testing.T) {
 	t.Run("success from new", func(t *testing.T) {
-		patches, err := PatchesFromDocument(replaceDoc)
+		patches, err := PatchesFromDocument(testDoc)
 		require.NoError(t, err)
 		require.Equal(t, 3, len(patches))
 	})
@@ -84,6 +86,55 @@ func TestPatchesFromDocument(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, p)
 		require.Contains(t, err.Error(), "invalid number of JWK properties")
+	})
+}
+
+func TestReplacePatch(t *testing.T) {
+	t.Run("success from bytes", func(t *testing.T) {
+		patch, err := FromBytes([]byte(replacePatch))
+		require.NoError(t, err)
+		require.NotNil(t, patch)
+		require.Equal(t, patch.GetAction(), Replace)
+	})
+	t.Run("missing document", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "replace"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "replace patch is missing document")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		doc, err := document.FromBytes([]byte(replaceDoc))
+		require.NoError(t, err)
+
+		p, err := NewReplacePatch(replaceDoc)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+		require.Equal(t, p.GetAction(), Replace)
+		require.Equal(t, p.GetValue(DocumentKey), doc.JSONLdObject())
+	})
+	t.Run("error - invalid json", func(t *testing.T) {
+		p, err := NewReplacePatch(`invalid`)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "invalid character")
+	})
+	t.Run("error - document has invalid property", func(t *testing.T) {
+		p, err := NewReplacePatch(`{"id": "abc"}`)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "key 'id' is not allowed in replace document")
+	})
+	t.Run("error - public keys (missing type)", func(t *testing.T) {
+		p, err := NewReplacePatch(replaceDocInvalidPublicKey)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "invalid number of public key properties")
+	})
+	t.Run("error - services (missing endpoint)", func(t *testing.T) {
+		p, err := NewReplacePatch(replaceDocInvalidServiceEndpoint)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "service endpoint is missing")
 	})
 }
 
@@ -387,12 +438,12 @@ const addServiceEndpoints = `{
     {
       "id": "sds1",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://hub.my-personal-server.com"
+      "endpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "sds2",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://some-cloud.com/hub"
+      "endpoint": "http://some-cloud.com/hub"
     }
   ]
 }`
@@ -401,12 +452,12 @@ const testAddServiceEndpoints = `[
     {
       "id": "sds1",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://hub.my-personal-server.com"
+      "endpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "sds2",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://some-cloud.com/hub"
+      "endpoint": "http://some-cloud.com/hub"
     }
   ]`
 
@@ -414,7 +465,7 @@ const testAddServiceEndpointsMissingID = `[
     {
       "id": "",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://some-cloud.com/hub"
+      "endpoint": "http://some-cloud.com/hub"
     }
   ]`
 
@@ -423,7 +474,7 @@ const removeServiceEndpoints = `{
   "ids": ["sds1", "sds2"]
 }`
 
-const replaceDoc = `{
+const testDoc = `{
 	"publicKey": [{
 		"id": "key1",
 		"type": "JwsVerificationKey2020",
@@ -438,7 +489,7 @@ const replaceDoc = `{
   	"service": [{
     	"id":"vcs",
     	"type": "VerifiableCredentialService",
-    	"serviceEndpoint": "https://example.com/vc/"
+    	"endpoint": "https://example.com/vc/"
   	}],
 	"test": "test",
 	"other": "value"
@@ -453,5 +504,72 @@ const invalidKeysDoc = `{
 			"kty": "EC",
 			"crv": "P-256K"
 		}
+	}]
+}`
+
+const replacePatch = `{
+	"action": "replace",
+	"document": {
+		"public_keys": [
+		{
+			"id": "key-1",
+			"purpose": ["auth"],
+			"type": "EcdsaSecp256k1VerificationKey2019",
+			"jwk": {
+				"kty": "EC",
+				"crv": "P-256K",
+				"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+				"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+			}
+		}],
+		"service_endpoints": [
+		{
+			"id": "sds3",
+			"type": "SecureDataStore",
+			"endpoint": "http://hub.my-personal-server.com"
+		}]
+	}
+}`
+
+const replaceDoc = `{
+	"public_keys": [
+	{
+		"id": "key-1",
+		"purpose": ["auth"],
+		"type": "EcdsaSecp256k1VerificationKey2019",
+		"jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
+	}],
+	"service_endpoints": [
+	{
+		"id": "sds3",
+		"type": "SecureDataStore",
+		"endpoint": "http://hub.my-personal-server.com"
+	}]
+}`
+
+const replaceDocInvalidPublicKey = `{
+	"public_keys": [
+	{
+		"id": "key-1",
+		"purpose": ["auth"],
+		"jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
+	}]
+}`
+
+const replaceDocInvalidServiceEndpoint = `{
+	"service_endpoints": [
+	{
+		"id": "sds3",
+		"type": "SecureDataStore"
 	}]
 }`

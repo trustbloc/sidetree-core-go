@@ -38,9 +38,9 @@ func TestValid(t *testing.T) {
 	services := doc.Services()
 	require.Equal(t, []Service{
 		{
-			"id":              "hub",
-			"type":            "IdentityHub",
-			"serviceEndpoint": "https://example.com/hub/",
+			"id":       "hub",
+			"type":     "IdentityHub",
+			"endpoint": "https://example.com/hub/",
 		},
 	}, services)
 

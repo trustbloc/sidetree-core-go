@@ -1028,7 +1028,7 @@ const opaque = `{
 	{
 	   "id": "oidc",
 	   "type": "OpenIdConnectVersion1.0Service",
-	   "serviceEndpoint": "https://openid.example.com/"
+	   "endpoint": "https://openid.example.com/"
 	}
   ]
 }`

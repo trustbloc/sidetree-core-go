@@ -110,7 +110,7 @@ func GetOptionalServiceProperties() []string {
 }
 
 func validateServiceProperty(property string) error {
-	required := []string{IDProperty, TypeProperty, ServiceEndpointProperty}
+	required := []string{IDProperty, TypeProperty, EndpointProperty}
 	optional := GetOptionalServiceProperties()
 	allowed := append(required, optional...)
 	for _, prop := range allowed {

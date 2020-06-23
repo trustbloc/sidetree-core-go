@@ -19,19 +19,19 @@ const invalid = "invalid"
 
 func TestApplyPatches(t *testing.T) {
 	t.Run("action not supported", func(t *testing.T) {
-		replace, err := patch.NewAddServiceEndpointsPatch("{}")
+		p, err := patch.NewAddServiceEndpointsPatch("{}")
 		require.NoError(t, err)
 
-		replace["action"] = invalid
+		p["action"] = invalid
 
-		doc, err := ApplyPatches(make(document.Document), []patch.Patch{replace})
+		doc, err := ApplyPatches(make(document.Document), []patch.Patch{p})
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "not supported")
 	})
 }
 
-func TestApplyPatches_Replace(t *testing.T) {
+func TestApplyPatches_PatchesFromOpaqueDoc(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		patches, err := patch.PatchesFromDocument(testDoc)
 		require.NoError(t, err)
@@ -39,6 +39,25 @@ func TestApplyPatches_Replace(t *testing.T) {
 		doc, err := ApplyPatches(make(document.Document), patches)
 		require.NoError(t, err)
 		require.NotNil(t, doc)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+		require.Len(t, didDoc.Services(), 2)
+		require.Len(t, didDoc.PublicKeys(), 2)
+	})
+}
+
+func TestApplyPatches_ReplacePatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		replace, err := patch.NewReplacePatch(replaceDoc)
+		require.NoError(t, err)
+
+		doc, err := ApplyPatches(make(document.Document), []patch.Patch{replace})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+		require.Len(t, didDoc.Services(), 1)
+		require.Len(t, didDoc.PublicKeys(), 1)
 	})
 }
 
@@ -424,12 +443,12 @@ const testDoc = `{
     {
       "id": "svc1",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://hub.my-personal-server.com"
+      "endpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "svc2",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://some-cloud.com/hub"
+      "endpoint": "http://some-cloud.com/hub"
     }
   ]
 }`
@@ -464,7 +483,7 @@ const addServices = `[
     {
       "id": "svc3",
       "type": "SecureDataStore",
-      "serviceEndpoint": "http://hub.my-personal-server.com"
+      "endpoint": "http://hub.my-personal-server.com"
     }
   ]`
 
@@ -472,8 +491,29 @@ const updateExistingService = `[
     {
       "id": "svc2",
       "type": "updatedServiceType",
-      "serviceEndpoint": "http://hub.my-personal-server.com"
+      "endpoint": "http://hub.my-personal-server.com"
     }
   ]`
 
 const removeServices = `["svc1", "svc2"]`
+
+const replaceDoc = `{
+	"public_keys": [
+	{
+		"id": "key-1",
+		"purpose": ["auth"],
+		"type": "EcdsaSecp256k1VerificationKey2019",
+		"jwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
+	}],
+	"service_endpoints": [
+	{
+		"id": "sds3",
+		"type": "SecureDataStore",
+		"endpoint": "http://hub.my-personal-server.com"
+	}]
+}`

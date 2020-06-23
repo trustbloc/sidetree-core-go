@@ -16,7 +16,7 @@
     {
       "id": "hub",
       "type": "IdentityHub",
-      "serviceEndpoint": "https://example.com/hub/"
+      "endpoint": "https://example.com/hub/"
     }
   ],
   "authentication": ["whatever"]
