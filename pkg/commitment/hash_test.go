@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
@@ -44,5 +45,20 @@ func TestCalculate(t *testing.T) {
 		require.Error(t, err)
 		require.Empty(t, commitment)
 		require.Contains(t, err.Error(), "Expected '{' but got 'n'")
+	})
+
+	t.Run("interop test", func(t *testing.T) {
+		jwk := &jws.JWK{
+			Kty: "EC",
+			Crv: "secp256k1",
+			X:   "5s3-bKjD1Eu_3NJu8pk7qIdOPl1GBzU_V8aR3xiacoM",
+			Y:   "v0-Q5H3vcfAfQ4zsebJQvMrIg3pcsaJzRvuIYZ3_UOY",
+		}
+
+		canonicalized, err := canonicalizer.MarshalCanonical(jwk)
+		require.NoError(t, err)
+
+		expected := `{"crv":"secp256k1","kty":"EC","x":"5s3-bKjD1Eu_3NJu8pk7qIdOPl1GBzU_V8aR3xiacoM","y":"v0-Q5H3vcfAfQ4zsebJQvMrIg3pcsaJzRvuIYZ3_UOY"}`
+		require.Equal(t, string(canonicalized), expected)
 	})
 }

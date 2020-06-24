@@ -97,6 +97,22 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid JWS compact format")
 		require.Nil(t, op)
 	})
+	t.Run("parse signed data error - unmarshal failed", func(t *testing.T) {
+		recoverRequest, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+
+		compactJWS, err := signutil.SignPayload([]byte("payload"), NewMockSigner())
+		require.NoError(t, err)
+
+		recoverRequest.SignedData = compactJWS
+		request, err := json.Marshal(recoverRequest)
+		require.NoError(t, err)
+
+		op, err := ParseRecoverOperation(request, p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
+		require.Nil(t, op)
+	})
 	t.Run("validate signed data error", func(t *testing.T) {
 		signedData := getSignedDataForRecovery()
 		signedData.RecoveryKey = nil
