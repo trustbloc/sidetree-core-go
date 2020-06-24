@@ -85,6 +85,22 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "invalid JWS compact format")
 	})
+	t.Run("parse signed data error - unmarshal failed", func(t *testing.T) {
+		req, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+
+		compactJWS, err := signutil.SignPayload([]byte("payload"), NewMockSigner())
+		require.NoError(t, err)
+
+		req.SignedData = compactJWS
+		request, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		op, err := ParseUpdateOperation(request, p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
+		require.Nil(t, op)
+	})
 }
 
 func TestParseSignedDataForUpdate(t *testing.T) {
@@ -111,24 +127,15 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		payload, err := json.Marshal(signedModel)
 		require.NoError(t, err)
 
-		compactJWS, err := signutil.SignPayload(docutil.EncodeToString(payload), NewMockSigner())
+		compactJWS, err := signutil.SignPayload(payload, NewMockSigner())
 
 		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "delta hash is not computed with the latest supported hash algorithm")
 	})
-	t.Run("payload not encoded JSON object", func(t *testing.T) {
-		compactJWS, err := signutil.SignPayload(".test.", NewMockSigner())
-		require.NoError(t, err)
-
-		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
-		require.Error(t, err)
-		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "illegal base64 data")
-	})
 	t.Run("payload not JSON object", func(t *testing.T) {
-		compactJWS, err := signutil.SignPayload(docutil.EncodeToString([]byte("test")), NewMockSigner())
+		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())
 		require.NoError(t, err)
 
 		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)

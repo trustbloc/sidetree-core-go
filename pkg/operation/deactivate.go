@@ -9,10 +9,10 @@ package operation
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -40,7 +40,7 @@ func parseDeactivateRequest(payload []byte) (*model.DeactivateRequest, error) {
 	schema := &model.DeactivateRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal deactivate request: %s", err.Error())
 	}
 
 	if err := validateDeactivateRequest(schema); err != nil {
@@ -65,18 +65,13 @@ func validateDeactivateRequest(req *model.DeactivateRequest) error {
 func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.DeactivateSignedDataModel, error) {
 	jws, err := parseSignedData(req.SignedData)
 	if err != nil {
-		return nil, err
-	}
-
-	bytes, err := docutil.DecodeString(string(jws.Payload))
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("deactivate: %s", err.Error())
 	}
 
 	signedData := &model.DeactivateSignedDataModel{}
-	err = json.Unmarshal(bytes, signedData)
+	err = json.Unmarshal(jws.Payload, signedData)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal signed data model for deactivate: %s", err.Error())
 	}
 
 	if signedData.DidSuffix != req.DidSuffix {

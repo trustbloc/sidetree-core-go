@@ -53,7 +53,7 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	schema := &model.RecoverRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal recover request: %s", err.Error())
 	}
 
 	if err := validateRecoverRequest(schema); err != nil {
@@ -66,18 +66,13 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 func parseSignedDataForRecovery(compactJWS string, code uint) (*model.RecoverSignedDataModel, error) {
 	jws, err := parseSignedData(compactJWS)
 	if err != nil {
-		return nil, err
-	}
-
-	bytes, err := docutil.DecodeString(string(jws.Payload))
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("recover: %s", err.Error())
 	}
 
 	schema := &model.RecoverSignedDataModel{}
-	err = json.Unmarshal(bytes, schema)
+	err = json.Unmarshal(jws.Payload, schema)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal signed data model for recover: %s", err.Error())
 	}
 
 	if err := validateSignedDataForRecovery(schema, code); err != nil {
@@ -104,7 +99,12 @@ func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, cod
 }
 
 func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
-	return internal.ParseJWS(compactJWS)
+	jws, err := internal.ParseJWS(compactJWS)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())
+	}
+
+	return jws, nil
 }
 
 func validateRecoverRequest(recover *model.RecoverRequest) error {

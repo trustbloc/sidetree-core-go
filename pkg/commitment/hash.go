@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package commitment
 
 import (
+	log "github.com/sirupsen/logrus"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -18,6 +20,8 @@ func Calculate(jwk *jws.JWK, multihashCode uint) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	log.Debugf("calculating commitment from JWK: %s", string(data))
 
 	multiHashBytes, err := docutil.ComputeMultihash(multihashCode, data)
 	if err != nil {

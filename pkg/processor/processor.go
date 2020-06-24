@@ -190,15 +190,10 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 		return nil, err
 	}
 
-	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
-	if err != nil {
-		return nil, err
-	}
-
 	var signedDataModel model.UpdateSignedDataModel
-	err = json.Unmarshal(decoded, &signedDataModel)
+	err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal signed data model while applying update: %s", err.Error())
 	}
 
 	// TODO: protocol should be calculated based on transaction number
@@ -259,15 +254,10 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 		return nil, err
 	}
 
-	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
-	if err != nil {
-		return nil, err
-	}
-
 	var signedDataModel model.DeactivateSignedDataModel
-	err = json.Unmarshal(decoded, &signedDataModel)
+	err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal signed data model while applying deactivate: %s", err.Error())
 	}
 
 	// verify signed did suffix against actual did suffix
@@ -314,15 +304,10 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		return nil, err
 	}
 
-	decoded, err := docutil.DecodeString(string(jwsParts.Payload))
-	if err != nil {
-		return nil, err
-	}
-
 	var signedDataModel model.RecoverSignedDataModel
-	err = json.Unmarshal(decoded, &signedDataModel)
+	err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal signed data model while applying recover: %s", err.Error())
 	}
 
 	// TODO: protocol should be calculated based on transaction number

@@ -48,7 +48,7 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	schema := &model.UpdateRequest{}
 	err := json.Unmarshal(payload, schema)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal update request: %s", err.Error())
 	}
 
 	if err := validateUpdateRequest(schema); err != nil {
@@ -61,18 +61,13 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 func parseSignedDataForUpdate(compactJWS string, code uint) (*model.UpdateSignedDataModel, error) {
 	jws, err := parseSignedData(compactJWS)
 	if err != nil {
-		return nil, err
-	}
-
-	bytes, err := docutil.DecodeString(string(jws.Payload))
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update: %s", err.Error())
 	}
 
 	schema := &model.UpdateSignedDataModel{}
-	err = json.Unmarshal(bytes, schema)
+	err = json.Unmarshal(jws.Payload, schema)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal signed data model for update: %s", err.Error())
 	}
 
 	if err := validateSignedDataForUpdate(schema, code); err != nil {

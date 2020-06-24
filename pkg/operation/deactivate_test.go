@@ -83,6 +83,22 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "signed did suffix mismatch for deactivate")
 		require.Nil(t, op)
 	})
+	t.Run("parse signed data error - unmarshal signed data failed", func(t *testing.T) {
+		deactivateRequest, err := getDefaultDeactivateRequest()
+		require.NoError(t, err)
+
+		compactJWS, err := signutil.SignPayload([]byte("payload"), NewMockSigner())
+		require.NoError(t, err)
+
+		deactivateRequest.SignedData = compactJWS
+		request, err := json.Marshal(deactivateRequest)
+		require.NoError(t, err)
+
+		op, err := ParseDeactivateOperation(request, p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model for deactivate")
+		require.Nil(t, op)
+	})
 }
 
 func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.DeactivateRequest, error) {

@@ -51,7 +51,7 @@ func TestSignPayload(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		signer := ecsigner.New(privateKey, "ES256", "key-1")
 
-		message := "test"
+		message := []byte("test")
 		jwsSignature, err := SignPayload(message, signer)
 		require.NoError(t, err)
 		require.NotEmpty(t, jwsSignature)
@@ -62,13 +62,13 @@ func TestSignPayload(t *testing.T) {
 	t.Run("signing algorithm required", func(t *testing.T) {
 		signer := ecsigner.New(privateKey, "", "kid")
 
-		jws, err := SignPayload("test", signer)
+		jws, err := SignPayload([]byte("test"), signer)
 		require.Error(t, err)
 		require.Empty(t, jws)
 		require.Contains(t, err.Error(), "signing algorithm is required")
 	})
 	t.Run("kid is required", func(t *testing.T) {
-		jws, err := SignPayload("", NewMockSigner(errors.New("test error"), true))
+		jws, err := SignPayload([]byte(""), NewMockSigner(errors.New("test error"), true))
 		require.Error(t, err)
 		require.Empty(t, jws)
 		require.Contains(t, err.Error(), "test error")

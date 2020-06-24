@@ -21,7 +21,7 @@ func ParseOperation(namespace string, operationBuffer []byte, protocol protocol.
 	schema := &operationSchema{}
 	err := json.Unmarshal(operationBuffer, schema)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal operation buffer into operation schema: %s", err.Error())
 	}
 
 	var op *batch.Operation

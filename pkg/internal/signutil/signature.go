@@ -9,7 +9,6 @@ package signutil
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -32,19 +31,17 @@ func SignModel(model interface{}, signer Signer) (string, error) {
 		return "", err
 	}
 
-	payload := docutil.EncodeToString(signedDataBytes)
-
-	return SignPayload(payload, signer)
+	return SignPayload(signedDataBytes, signer)
 }
 
 // SignPayload allows for singing payload
-func SignPayload(payload string, signer Signer) (string, error) {
+func SignPayload(payload []byte, signer Signer) (string, error) {
 	alg, ok := signer.Headers().Algorithm()
 	if !ok || alg == "" {
 		return "", errors.New("signing algorithm is required")
 	}
 
-	jwsSignature, err := internaljws.NewJWS(signer.Headers(), nil, []byte(payload), signer)
+	jwsSignature, err := internaljws.NewJWS(signer.Headers(), nil, payload, signer)
 	if err != nil {
 		return "", err
 	}

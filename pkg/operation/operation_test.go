@@ -75,6 +75,12 @@ func TestGetOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "not implemented")
 		require.Nil(t, op)
 	})
+	t.Run("unmarshal request error - not JSON", func(t *testing.T) {
+		op, err := ParseOperation(namespace, []byte("operation"), p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to unmarshal operation buffer into operation schema")
+		require.Nil(t, op)
+	})
 }
 
 func getUnsupportedRequest() []byte {

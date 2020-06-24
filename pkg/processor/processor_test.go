@@ -160,6 +160,29 @@ func TestUpdateDocument(t *testing.T) {
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 
+	t.Run("unmarshal signed data model error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		signer := ecsigner.New(updateKey, "ES256", "update-kid")
+
+		compactJWS, err := signutil.SignPayload([]byte("payload"), signer)
+		require.NoError(t, err)
+
+		updateOp.SignedData = compactJWS
+
+		err = store.Put(updateOp)
+		require.NoError(t, err)
+
+		p := New("test", store, pc)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying update")
+	})
+
 	t.Run("invalid update commitment error", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
@@ -396,6 +419,29 @@ func TestDeactivate(t *testing.T) {
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 
+	t.Run("unmarshal signed data model error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		signer := ecsigner.New(recoveryKey, "ES256", "")
+
+		compactJWS, err := signutil.SignPayload([]byte("payload"), signer)
+		require.NoError(t, err)
+
+		deactivateOp.SignedData = compactJWS
+
+		err = store.Put(deactivateOp)
+		require.NoError(t, err)
+
+		p := New("test", store, pc)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying deactivate")
+	})
+
 	t.Run("invalid signature error", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
@@ -524,6 +570,29 @@ func TestRecover(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "missing signed data")
+	})
+
+	t.Run("unmarshal signed data model error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		signer := ecsigner.New(recoveryKey, "ES256", "")
+
+		compactJWS, err := signutil.SignPayload([]byte("payload"), signer)
+		require.NoError(t, err)
+
+		recoverOp.SignedData = compactJWS
+
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		doc, err := p.Resolve(uniqueSuffix)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying recover")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
