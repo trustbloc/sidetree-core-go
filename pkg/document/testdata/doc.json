@@ -16,7 +16,10 @@
     {
       "id": "hub",
       "type": "IdentityHub",
-      "endpoint": "https://example.com/hub/"
+      "endpoint": "https://example.com/hub/",
+      "routingKeys": "routingKeysValue",
+      "recipientKeys": "recipientKeysValue",
+      "priority": 0
     }
   ],
   "authentication": ["whatever"]

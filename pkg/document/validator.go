@@ -101,12 +101,13 @@ var allowedKeyTypes = map[string]existenceMap{
 const (
 	recipientKeys = "recipientKeys"
 	routingKeys   = "routingKeys"
+	priority      = "priority"
 )
 
 // GetOptionalServiceProperties returns allowed optional properties
 // Note that id, type and service endpoint are required properties
 func GetOptionalServiceProperties() []string {
-	return []string{recipientKeys, routingKeys}
+	return []string{recipientKeys, routingKeys, priority}
 }
 
 func validateServiceProperty(property string) error {
@@ -201,7 +202,7 @@ func ValidateServices(services []Service) error {
 }
 
 func validateService(service Service) error {
-	// expected fields are type, id, and serviceEndpoint
+	// expected fields are type, id, and serviceEndpoint and some optional fields
 
 	if err := validateServiceID(service.ID()); err != nil {
 		return err

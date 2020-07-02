@@ -183,6 +183,12 @@ func TestValidateServices(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "property 'test' is not allowed for service")
 	})
+	t.Run("success - didcomm service", func(t *testing.T) {
+		doc, err := DIDDocumentFromReader(reader(t, "testdata/doc.json"))
+		require.NoError(t, err)
+		err = ValidateServices(doc.Services())
+		require.NoError(t, err)
+	})
 }
 
 func TestValidateID(t *testing.T) {
