@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"sort"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -23,6 +23,8 @@ import (
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
+
+var logger = log.New("sidetree-core-processor")
 
 // OperationProcessor will process document operations in chronological order and create final document during resolution.
 // It uses operation store client to retrieve all operations that are related to requested document.
@@ -54,7 +56,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 
 	sortOperations(ops)
 
-	log.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
+	logger.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
 
 	rm := &resolutionModel{}
 
@@ -128,7 +130,7 @@ func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolut
 			return nil, err
 		}
 
-		log.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
 	}
 
 	return rm, nil
@@ -158,7 +160,7 @@ func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *reso
 }
 
 func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	log.Debugf("[%s] Applying create operation: %+v", s.name, operation)
+	logger.Debugf("[%s] Applying create operation: %+v", s.name, operation)
 
 	if rm.Doc != nil {
 		return nil, errors.New("create has to be the first operation")
@@ -179,7 +181,7 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 }
 
 func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
-	log.Debugf("[%s] Applying update operation: %+v", s.name, operation)
+	logger.Debugf("[%s] Applying update operation: %+v", s.name, operation)
 
 	if rm.Doc == nil {
 		return nil, errors.New("update cannot be first operation")
@@ -243,7 +245,7 @@ func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
 }
 
 func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	log.Debugf("[%s] Applying deactivate operation: %+v", s.name, operation)
+	logger.Debugf("[%s] Applying deactivate operation: %+v", s.name, operation)
 
 	if rm.Doc == nil {
 		return nil, errors.New("deactivate can only be applied to an existing document")
@@ -293,7 +295,7 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 }
 
 func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
-	log.Debugf("[%s] Applying recover operation: %+v", s.name, operation)
+	logger.Debugf("[%s] Applying recover operation: %+v", s.name, operation)
 
 	if rm.Doc == nil {
 		return nil, errors.New("recover can only be applied to an existing document")

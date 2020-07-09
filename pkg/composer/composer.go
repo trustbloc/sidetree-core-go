@@ -11,11 +11,13 @@ import (
 	"fmt"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	log "github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
+
+var logger = log.New("sidetree-core-composer")
 
 // ApplyPatches applies patches to the document
 func ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
@@ -57,7 +59,7 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 }
 
 func applyJSON(doc document.Document, entry interface{}) (document.Document, error) {
-	log.Debugf("applying JSON patch: %v", entry)
+	logger.Debugf("applying JSON patch: %v", entry)
 
 	bytes, err := json.Marshal(entry)
 	if err != nil {
@@ -83,7 +85,7 @@ func applyJSON(doc document.Document, entry interface{}) (document.Document, err
 }
 
 func applyRecover(replaceDoc interface{}) (document.Document, error) {
-	log.Debugf("applying replace patch: %v", replaceDoc)
+	logger.Debugf("applying replace patch: %v", replaceDoc)
 	docBytes, err := json.Marshal(replaceDoc)
 	if err != nil {
 		return nil, err
@@ -103,7 +105,7 @@ func applyRecover(replaceDoc interface{}) (document.Document, error) {
 
 // adds public keys to document
 func applyAddPublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
-	log.Debugf("applying add public keys patch: %v", entry)
+	logger.Debugf("applying add public keys patch: %v", entry)
 
 	newPublicKeyArr := document.ParsePublicKeys(entry)
 	newPublicKeys := sliceToMapPK(newPublicKeyArr)
@@ -124,7 +126,7 @@ func applyAddPublicKeys(doc document.Document, entry interface{}) (document.Docu
 
 // remove public keys from the document
 func applyRemovePublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
-	log.Debugf("applying remove public keys patch: %v", entry)
+	logger.Debugf("applying remove public keys patch: %v", entry)
 
 	newPublicKeys := sliceToMapPK(doc.PublicKeys())
 
@@ -160,7 +162,7 @@ func mapToSlicePK(mapValues map[string]document.PublicKey) []interface{} {
 
 // adds service endpoints to document
 func applyAddServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
-	log.Debugf("applying add service endpoints patch: %v", entry)
+	logger.Debugf("applying add service endpoints patch: %v", entry)
 
 	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
@@ -184,7 +186,7 @@ func applyAddServiceEndpoints(doc document.Document, entry interface{}) (documen
 }
 
 func applyRemoveServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
-	log.Debugf("applying remove service endpoints patch: %v", entry)
+	logger.Debugf("applying remove service endpoints patch: %v", entry)
 
 	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 	newServices := sliceToMapServices(diddoc.Services())

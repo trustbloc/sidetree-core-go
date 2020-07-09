@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
@@ -35,6 +35,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
+
+var logger = log.New("sidetree-core-writer")
 
 const (
 	defaultBatchTimeout    = 2 * time.Second
@@ -181,7 +183,7 @@ func (r *Writer) Add(operation *batch.OperationInfo) error {
 	select {
 	case r.sendChan <- process{force: false}:
 		// Send a notification that an operation was added to the queue
-		log.Infof("[%s] operation added to the queue", operation.UniqueSuffix)
+		logger.Infof("[%s] operation added to the queue", operation.UniqueSuffix)
 		return nil
 	case <-r.exitChan:
 		return fmt.Errorf("message from exit channel")
@@ -198,17 +200,17 @@ func (r *Writer) main() {
 	for {
 		select {
 		case p := <-r.sendChan:
-			log.Infof("[%s] Handling process notification for batch writer: %v", r.namespace, p)
+			logger.Infof("[%s] Handling process notification for batch writer: %v", r.namespace, p)
 			pending := r.processAvailable(p.force) > 0
 			timer = r.handleTimer(timer, pending)
 
 		case <-timer:
-			log.Infof("[%s] Handling batch writer timeout", r.namespace)
+			logger.Infof("[%s] Handling batch writer timeout", r.namespace)
 			pending := r.processAvailable(true) > 0
 			timer = r.handleTimer(nil, pending)
 
 		case <-r.exitChan:
-			log.Infof("[%s] exiting batch writer", r.namespace)
+			logger.Infof("[%s] exiting batch writer", r.namespace)
 			return
 		}
 	}
@@ -218,23 +220,23 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 	// First drain the queue of all of the operations that are ready to form a batch
 	pending, err := r.drain()
 	if err != nil {
-		log.Warnf("[%s] Error draining operations queue: %s. Pending operations: %d.", r.namespace, err, pending)
+		logger.Warnf("[%s] Error draining operations queue: %s. Pending operations: %d.", r.namespace, err, pending)
 		return pending
 	}
 
 	if pending == 0 || !forceCut {
-		log.Debugf("[%s] No further processing necessary. Pending operations: %d", r.namespace, pending)
+		logger.Debugf("[%s] No further processing necessary. Pending operations: %d", r.namespace, pending)
 		return pending
 	}
 
-	log.Infof("[%s] Forcefully processing operations. Pending operations: %d", r.namespace, pending)
+	logger.Infof("[%s] Forcefully processing operations. Pending operations: %d", r.namespace, pending)
 
 	// Now process the remaining operations
 	n, pending, err := r.cutAndProcess(true)
 	if err != nil {
-		log.Warnf("[%s] Error processing operations: %s. Pending operations: %d.", r.namespace, err, pending)
+		logger.Warnf("[%s] Error processing operations: %s. Pending operations: %d.", r.namespace, err, pending)
 	} else {
-		log.Infof("[%s] Successfully processed %d operations. Pending operations: %d.", r.namespace, n, pending)
+		logger.Infof("[%s] Successfully processed %d operations. Pending operations: %d.", r.namespace, n, pending)
 	}
 
 	return pending
@@ -242,51 +244,51 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 
 // drain cuts and processes all pending operations that are ready to form a batch.
 func (r *Writer) drain() (pending uint, err error) {
-	log.Debugf("[%s] Draining operations queue...", r.namespace)
+	logger.Debugf("[%s] Draining operations queue...", r.namespace)
 	for {
 		n, pending, err := r.cutAndProcess(false)
 		if err != nil {
-			log.Errorf("[%s] Error draining operations: cutting and processing returned an error: %s", r.namespace, err)
+			logger.Errorf("[%s] Error draining operations: cutting and processing returned an error: %s", r.namespace, err)
 			return pending, err
 		}
 		if n == 0 {
-			log.Infof("[%s] ... drain - no outstanding batches to be processed. Pending operations: %d", r.namespace, pending)
+			logger.Infof("[%s] ... drain - no outstanding batches to be processed. Pending operations: %d", r.namespace, pending)
 			return pending, nil
 		}
-		log.Infof("[%s] ... drain processed %d operations into batch. Pending operations: %d", r.namespace, n, pending)
+		logger.Infof("[%s] ... drain processed %d operations into batch. Pending operations: %d", r.namespace, n, pending)
 	}
 }
 
 func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, err error) {
 	operations, pending, commit, err := r.batchCutter.Cut(forceCut)
 	if err != nil {
-		log.Errorf("[%s] Error cutting batch: %s", r.namespace, err)
+		logger.Errorf("[%s] Error cutting batch: %s", r.namespace, err)
 		return 0, pending, err
 	}
 
 	if len(operations) == 0 {
-		log.Debugf("[%s] No operations to be processed", r.namespace)
+		logger.Debugf("[%s] No operations to be processed", r.namespace)
 		return 0, pending, nil
 	}
 
-	log.Infof("[%s] processing %d batch operations ...", r.namespace, len(operations))
+	logger.Infof("[%s] processing %d batch operations ...", r.namespace, len(operations))
 
 	err = r.process(operations)
 	if err != nil {
-		log.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(operations), err)
+		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(operations), err)
 		return 0, pending + uint(len(operations)), err
 	}
 
-	log.Infof("[%s] Successfully processed %d batch operations. Committing to batch cutter ...", r.namespace, len(operations))
+	logger.Infof("[%s] Successfully processed %d batch operations. Committing to batch cutter ...", r.namespace, len(operations))
 
 	pending, err = commit()
 	if err != nil {
-		log.Errorf("[%s] Batch operations were committed but could not be removed from the queue due to error [%s]. Stopping the batch writer so that no further operations are added.", r.namespace, err)
+		logger.Errorf("[%s] Batch operations were committed but could not be removed from the queue due to error [%s]. Stopping the batch writer so that no further operations are added.", r.namespace, err)
 		r.Stop()
 		return 0, pending, errors.WithMessagef(err, "operations were committed but could not be removed from the queue")
 	}
 
-	log.Infof("[%s] Successfully committed to batch cutter. Pending operations: %d", r.namespace, pending)
+	logger.Infof("[%s] Successfully committed to batch cutter. Pending operations: %d", r.namespace, pending)
 
 	return len(operations), pending, nil
 }
@@ -307,7 +309,7 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
-			log.Warnf("[%s] duplicate suffix[%s] found in batch operations: discarding operation %v", r.namespace, op.UniqueSuffix, op)
+			logger.Warnf("[%s] duplicate suffix[%s] found in batch operations: discarding operation %v", r.namespace, op.UniqueSuffix, op)
 			continue
 		}
 
@@ -320,7 +322,7 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 		return err
 	}
 
-	log.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
+	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
 
 	// Create Sidetree transaction in blockchain (write anchor string)
 	return r.context.Blockchain().WriteAnchor(anchorString)

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -36,6 +36,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
+
+var logger = log.New("sidetree-core-dochandler")
 
 const (
 	keyID = "id"
@@ -94,17 +96,17 @@ func (r *DocumentHandler) Protocol() protocol.Client {
 func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error) {
 	// perform validation for operation request
 	if err := r.validateOperation(operation); err != nil {
-		log.Warnf("Failed to validate operation: %s", err.Error())
+		logger.Warnf("Failed to validate operation: %s", err.Error())
 		return nil, err
 	}
 
 	// validated operation will be added to the batch
 	if err := r.addToBatch(operation); err != nil {
-		log.Errorf("Failed to add operation to batch: %s", err.Error())
+		logger.Errorf("Failed to add operation to batch: %s", err.Error())
 		return nil, err
 	}
 
-	log.Infof("[%s] operation added to the batch", operation.ID)
+	logger.Infof("[%s] operation added to the batch", operation.ID)
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
@@ -176,7 +178,7 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
-		log.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
+		logger.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 		return nil, err
 	}
 

@@ -9,8 +9,6 @@ package txnhandler
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -96,7 +94,7 @@ func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (str
 		return "", fmt.Errorf("failed to marshal %s file: %s", alias, err.Error())
 	}
 
-	log.Debugf("%s file: %s", alias, string(bytes))
+	logger.Debugf("%s file: %s", alias, string(bytes))
 
 	compressedBytes, err := h.cp.Compress(h.protocol.Current().CompressionAlgorithm, bytes)
 	if err != nil {
