@@ -9,10 +9,10 @@ package common
 import (
 	"net/http"
 
-	"github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 )
 
-var logger = logrus.New()
+var logger = log.New("sidetree-core-restapi-common")
 
 // HTTPRequestHandler is an HTTP handler
 type HTTPRequestHandler func(http.ResponseWriter, *http.Request)

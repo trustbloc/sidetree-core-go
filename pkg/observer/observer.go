@@ -10,14 +10,14 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
-var logger = logrus.New()
+var logger = log.New("sidetree-core-observer")
 
 // Ledger interface to access ledger txn
 type Ledger interface {

@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package cutter
 
 import (
-	"github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
-var logger = logrus.New()
+var logger = log.New("sidetree-core-cutter")
 
 // OperationQueue defines the functions for adding and removing operations from a queue
 type OperationQueue interface {
