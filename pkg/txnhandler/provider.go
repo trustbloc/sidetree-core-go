@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -19,6 +19,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
 )
+
+var logger = log.New("sidetree-core-txnhandler")
 
 // DCAS interface to access content addressable storage
 type DCAS interface {
@@ -98,12 +100,12 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
 	}
 
-	log.Debugf("successfully parsed anchor operations: create[%d], recover[%d], deactivate[%d]",
+	logger.Debugf("successfully parsed anchor operations: create[%d], recover[%d], deactivate[%d]",
 		len(anchorOps.Create), len(anchorOps.Recover), len(anchorOps.Deactivate))
 
 	mapOps := parseMapOperations(mf, txn)
 
-	log.Debugf("successfully parsed map operations: update[%d]", len(mapOps.Update))
+	logger.Debugf("successfully parsed map operations: update[%d]", len(mapOps.Update))
 
 	var operations []*batch.Operation
 	operations = append(operations, anchorOps.Create...)
@@ -206,7 +208,7 @@ type anchorOperations struct {
 }
 
 func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) { //nolint: funlen
-	log.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
+	logger.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
 
 	p, err := h.getProtocol(txn.Namespace)
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -30,7 +29,7 @@ func NewOperationFilter(name string, store OperationStoreClient, pc protocol.Cli
 
 // Filter filters out the invalid operations and returns only the valid ones
 func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.Operation) ([]*batch.Operation, error) {
-	log.Debugf("[%s] Validating operations for unique suffix [%s]...", s.name, uniqueSuffix)
+	logger.Debugf("[%s] Validating operations for unique suffix [%s]...", s.name, uniqueSuffix)
 
 	newOps = s.filterInvalidSuffix(uniqueSuffix, newOps)
 
@@ -40,7 +39,7 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 			return nil, err
 		}
 
-		log.Debugf("[%s] Unique suffix not found in the store [%s]", s.name, uniqueSuffix)
+		logger.Debugf("[%s] Unique suffix not found in the store [%s]", s.name, uniqueSuffix)
 	}
 
 	// Combine the existing (persistet) operations with the new operations
@@ -49,7 +48,7 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 	// Sort the operations by transaction time/number
 	sortOperations(ops)
 
-	log.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
+	logger.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
 
 	// split operations info 'full' and 'update' operations
 	fullOps, updateOps := splitOperations(ops)
@@ -62,7 +61,7 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 
 	var validUpdateOps []*batch.Operation
 	if rm.Doc == nil {
-		log.Debugf("[%s] Document was deactivated [%s]", s.name, uniqueSuffix)
+		logger.Debugf("[%s] Document was deactivated [%s]", s.name, uniqueSuffix)
 	} else {
 		// next apply update ops since last 'full' transaction
 		validUpdateOps, _ = s.getValidOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber), rm)
@@ -83,14 +82,14 @@ func (s *OperationValidationFilter) getValidOperations(ops []*batch.Operation, r
 	for _, op := range ops {
 		m, err := s.applyOperation(op, rm)
 		if err != nil {
-			log.Infof("[%s] Rejecting invalid operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			logger.Infof("[%s] Rejecting invalid operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 			continue
 		}
 
 		validOps = append(validOps, op)
 		rm = m
 
-		log.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
 	}
 
 	return validOps, rm
@@ -100,7 +99,7 @@ func (s *OperationValidationFilter) filterInvalidSuffix(uniqueSuffix string, ops
 	var filtered []*batch.Operation
 	for _, op := range ops {
 		if op.UniqueSuffix != uniqueSuffix {
-			log.Infof("[%s] Rejecting invalid operation {ID: %s, UniqueSuffix: %s Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation's unique suffix is not set to [%s]", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, uniqueSuffix)
+			logger.Infof("[%s] Rejecting invalid operation {ID: %s, UniqueSuffix: %s Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation's unique suffix is not set to [%s]", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, uniqueSuffix)
 			continue
 		}
 
