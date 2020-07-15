@@ -60,10 +60,16 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 
 	rm := &resolutionModel{}
 
-	// split operations info 'full' and 'update' operations
-	fullOps, updateOps := splitOperations(ops)
-	if len(fullOps) == 0 {
+	// split operations into 'create', 'update' and 'full' operations
+	createOps, updateOps, fullOps := splitOperations(ops)
+	if len(createOps) == 0 {
 		return nil, errors.New("missing create operation")
+	}
+
+	// apply 'create' operations first
+	rm, err = s.applyCreateOperations(createOps, rm)
+	if err != nil {
+		return nil, err
 	}
 
 	// apply 'full' operations first
@@ -91,16 +97,21 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}, nil
 }
 
-func splitOperations(ops []*batch.Operation) (fullOps, updateOps []*batch.Operation) {
+func splitOperations(ops []*batch.Operation) (createOps, updateOps, fullOps []*batch.Operation) {
 	for _, op := range ops {
-		if op.Type == batch.OperationTypeUpdate {
+		switch op.Type {
+		case batch.OperationTypeCreate:
+			createOps = append(createOps, op)
+		case batch.OperationTypeUpdate:
 			updateOps = append(updateOps, op)
-		} else { // Create, Recover, deactivate
+		case batch.OperationTypeRecover:
+			fullOps = append(fullOps, op)
+		case batch.OperationTypeDeactivate:
 			fullOps = append(fullOps, op)
 		}
 	}
 
-	return fullOps, updateOps
+	return createOps, updateOps, fullOps
 }
 
 // pre-condition: operations have to be sorted
@@ -134,6 +145,22 @@ func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolut
 	}
 
 	return rm, nil
+}
+
+func (s *OperationProcessor) applyCreateOperations(ops []*batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+	var err error
+
+	for _, op := range ops {
+		if rm, err = s.applyOperation(op, rm); err != nil {
+			logger.Infof("[%s] Skipped bad create operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			continue
+		}
+
+		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		return rm, nil
+	}
+
+	return nil, errors.New("valid create operation not found")
 }
 
 type resolutionModel struct {

@@ -51,13 +51,13 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 	logger.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
 
 	// split operations info 'full' and 'update' operations
-	fullOps, updateOps := splitOperations(ops)
-	if len(fullOps) == 0 {
+	createOps, updateOps, fullOps := splitOperations(ops)
+	if len(createOps) == 0 {
 		return nil, errors.New("missing create operation")
 	}
 
 	// apply 'full' operations first
-	validFullOps, rm := s.getValidOperations(fullOps, &resolutionModel{})
+	validFullOps, rm := s.getValidOperations(append(createOps, fullOps...), &resolutionModel{})
 
 	var validUpdateOps []*batch.Operation
 	if rm.Doc == nil {
