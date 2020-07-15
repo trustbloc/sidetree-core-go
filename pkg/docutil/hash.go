@@ -8,6 +8,7 @@ package docutil
 
 import (
 	"crypto"
+	"errors"
 	"fmt"
 	"hash"
 
@@ -76,4 +77,30 @@ func GetMultihashCode(encodedMultihash string) (uint64, error) {
 	}
 
 	return mh.Code, nil
+}
+
+// IsValidHash compares encoded content with encoded multihash
+func IsValidHash(encodedContent, encodedMultihash string) error {
+	content, err := DecodeString(encodedContent)
+	if err != nil {
+		return err
+	}
+
+	code, err := GetMultihashCode(encodedMultihash)
+	if err != nil {
+		return err
+	}
+
+	computedMultihash, err := ComputeMultihash(uint(code), content)
+	if err != nil {
+		return err
+	}
+
+	encodedComputedMultihash := EncodeToString(computedMultihash)
+
+	if encodedComputedMultihash != encodedMultihash {
+		return errors.New("supplied hash doesn't match original content")
+	}
+
+	return nil
 }

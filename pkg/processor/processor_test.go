@@ -99,6 +99,29 @@ func TestResolve(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "expected array")
 	})
+	t.Run("create delta hash doesn't match delta error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		delta, err := getDeltaModel(validDoc, "different")
+		require.NoError(t, err)
+
+		deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+		require.NoError(t, err)
+
+		createOp.EncodedDelta = docutil.EncodeToString(deltaBytes)
+
+		err = store.Put(createOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		doc, err := p.Resolve(createOp.UniqueSuffix)
+		require.Nil(t, doc)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "create delta doesn't match suffix data delta hash")
+	})
 }
 
 func TestUpdateDocument(t *testing.T) {
@@ -323,25 +346,6 @@ func TestProcessOperation(t *testing.T) {
 		require.Nil(t, doc)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
 	})
-}
-
-func TestIsValidHashErrors(t *testing.T) {
-	multihash, err := docutil.ComputeMultihash(sha2_256, []byte("test"))
-	require.NoError(t, err)
-
-	encodedMultihash := docutil.EncodeToString(multihash)
-
-	err = isValidHash("hello", encodedMultihash)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "illegal base64 data at input byte 4")
-
-	err = isValidHash(docutil.EncodeToString([]byte("content")), string(multihash))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "illegal base64 data at input byte 0")
-
-	err = isValidHash(docutil.EncodeToString([]byte("content")), encodedMultihash)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
 }
 
 func TestDeactivate(t *testing.T) {
@@ -823,7 +827,7 @@ func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey 
 		return nil, nil, err
 	}
 
-	delta, err := getReplaceDelta(recoveredDoc, updateCommitment)
+	delta, err := getDeltaModel(recoveredDoc, updateCommitment)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -868,7 +872,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	delta, err := getReplaceDelta(recoveredDoc, updateCommitment)
+	delta, err := getDeltaModel(recoveredDoc, updateCommitment)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -940,12 +944,17 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	delta, err := getReplaceDelta(doc, updateCommitment)
+	delta, err := getDeltaModel(doc, updateCommitment)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixData, err := getSuffixData(recoveryKey)
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	if err != nil {
+		return nil, err
+	}
+
+	suffixData, err := getSuffixData(recoveryKey, deltaBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -964,7 +973,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 }
 
 func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.Operation, error) {
-	return getCreateOperationWithDoc(recoveryKey, updateKey, opaque)
+	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc)
 }
 
 func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {
@@ -973,7 +982,7 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 		return nil, err
 	}
 
-	delta, err := getReplaceDelta(validDoc, updateCommitment)
+	delta, err := getDeltaModel(validDoc, updateCommitment)
 	if err != nil {
 		return nil, err
 	}
@@ -983,7 +992,7 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 		return nil, err
 	}
 
-	suffixData, err := getSuffixData(recoveryKey)
+	suffixData, err := getSuffixData(recoveryKey, deltaBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -1000,7 +1009,7 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 	}, nil
 }
 
-func getReplaceDelta(doc string, updateCommitment string) (*model.DeltaModel, error) {
+func getDeltaModel(doc string, updateCommitment string) (*model.DeltaModel, error) {
 	patches, err := patch.PatchesFromDocument(doc)
 	if err != nil {
 		return nil, err
@@ -1026,19 +1035,14 @@ func getCommitment(key *ecdsa.PrivateKey) (string, error) {
 	return c, nil
 }
 
-func getSuffixData(privateKey *ecdsa.PrivateKey) (*model.SuffixDataModel, error) {
-	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
-	if err != nil {
-		return nil, err
-	}
-
-	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+func getSuffixData(privateKey *ecdsa.PrivateKey, delta []byte) (*model.SuffixDataModel, error) {
+	recoveryCommitment, err := getCommitment(privateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.SuffixDataModel{
-		DeltaHash:          getEncodedMultihash([]byte(validDoc)),
+		DeltaHash:          getEncodedMultihash(delta),
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
@@ -1077,27 +1081,4 @@ const recoveredDoc = `{
 			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
 		  }
 	}]
-}`
-
-const opaque = `{
-  "publicKey": [
-	{
-  		"id": "key-1",
-  		"type": "JwsVerificationKey2020",
-		"purpose": ["general"],
-		"jwk": {
-			"kty": "EC",
-			"crv": "P-256K",
-			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-		}
-	}
-  ],
-  "service": [
-	{
-	   "id": "oidc",
-	   "type": "OpenIdConnectVersion1.0Service",
-	   "endpoint": "https://openid.example.com/"
-	}
-  ]
 }`

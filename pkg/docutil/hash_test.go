@@ -71,3 +71,25 @@ func TestIsComputedUsingHashAlgorithm(t *testing.T) {
 	ok = IsComputedUsingHashAlgorithm("invalid", sha2_256)
 	require.False(t, ok)
 }
+
+func TestIsValidHash(t *testing.T) {
+	multihash, err := ComputeMultihash(sha2_256, []byte("test"))
+	require.NoError(t, err)
+
+	encodedMultihash := EncodeToString(multihash)
+
+	err = IsValidHash(EncodeToString([]byte("test")), encodedMultihash)
+	require.NoError(t, err)
+
+	err = IsValidHash("hello", encodedMultihash)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "illegal base64 data at input byte 4")
+
+	err = IsValidHash(EncodeToString([]byte("content")), string(multihash))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "illegal base64 data at input byte 0")
+
+	err = IsValidHash(EncodeToString([]byte("content")), encodedMultihash)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "supplied hash doesn't match original content")
+}

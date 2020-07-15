@@ -8,6 +8,7 @@ package operation
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -34,6 +35,12 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 	delta, err := ParseDelta(schema.Delta, code)
 	if err != nil {
 		return nil, err
+	}
+
+	// verify actual delta hash matches expected delta hash
+	err = docutil.IsValidHash(schema.Delta, suffixData.DeltaHash)
+	if err != nil {
+		return nil, fmt.Errorf("parse create operation: delta doesn't match suffix data delta hash: %s", err.Error())
 	}
 
 	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, code)

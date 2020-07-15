@@ -138,14 +138,24 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
+	delta, err := getDelta()
+	if err != nil {
+		return nil, err
+	}
+
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.SuffixDataModel{
-		DeltaHash:          computeMultihash(validDoc),
+		DeltaHash:          computeMultihash(deltaBytes),
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
 
-func computeMultihash(data string) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+func computeMultihash(data []byte) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}

@@ -164,6 +164,12 @@ func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm
 		return nil, errors.New("create has to be the first operation")
 	}
 
+	// verify actual delta hash matches expected delta hash
+	err := docutil.IsValidHash(operation.EncodedDelta, operation.SuffixData.DeltaHash)
+	if err != nil {
+		return nil, fmt.Errorf("create delta doesn't match suffix data delta hash: %s", err.Error())
+	}
+
 	doc, err := composer.ApplyPatches(make(document.Document), operation.Delta.Patches)
 	if err != nil {
 		return nil, err
@@ -210,7 +216,7 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 	}
 
 	// verify the delta against the signed delta hash
-	err = isValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
+	err = docutil.IsValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
@@ -324,7 +330,7 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 	}
 
 	// verify the delta against the signed delta hash
-	err = isValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
+	err = docutil.IsValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
 	}
@@ -346,31 +352,6 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 		LastOperationTransactionNumber: operation.TransactionNumber,
 		UpdateCommitment:               operation.Delta.UpdateCommitment,
 		RecoveryCommitment:             signedDataModel.RecoveryCommitment}, nil
-}
-
-func isValidHash(encodedContent, encodedMultihash string) error {
-	content, err := docutil.DecodeString(encodedContent)
-	if err != nil {
-		return err
-	}
-
-	code, err := docutil.GetMultihashCode(encodedMultihash)
-	if err != nil {
-		return err
-	}
-
-	computedMultihash, err := docutil.ComputeMultihash(uint(code), content)
-	if err != nil {
-		return err
-	}
-
-	encodedComputedMultihash := docutil.EncodeToString(computedMultihash)
-
-	if encodedComputedMultihash != encodedMultihash {
-		return errors.New("supplied hash doesn't match original content")
-	}
-
-	return nil
 }
 
 func sortOperations(ops []*batch.Operation) {

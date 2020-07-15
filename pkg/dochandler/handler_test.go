@@ -430,9 +430,7 @@ func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	encodedDelta := docutil.EncodeToString(deltaBytes)
-
-	suffixData, err := getSuffixData(encodedDelta)
+	suffixData, err := getSuffixData(deltaBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +444,7 @@ func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
 
 	return &model.CreateRequest{
 		Operation:  model.OperationTypeCreate,
-		Delta:      encodedDelta,
+		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: encodedSuffixData,
 	}, nil
 }
@@ -459,7 +457,7 @@ func getDeltaWithDoc(doc string) (*model.DeltaModel, error) {
 
 	return &model.DeltaModel{
 		Patches:          []patch.Patch{patches},
-		UpdateCommitment: encodedMultihash("updateReveal"),
+		UpdateCommitment: encodedMultihash([]byte("updateReveal")),
 	}, nil
 }
 
@@ -477,7 +475,7 @@ func newAddPublicKeysPatch(doc string) (patch.Patch, error) {
 	return p, nil
 }
 
-func getSuffixData(encodedDelta string) (*model.SuffixDataModel, error) {
+func getSuffixData(delta []byte) (*model.SuffixDataModel, error) {
 	jwk := &jws.JWK{
 		Kty: "kty",
 		Crv: "crv",
@@ -490,13 +488,13 @@ func getSuffixData(encodedDelta string) (*model.SuffixDataModel, error) {
 	}
 
 	return &model.SuffixDataModel{
-		DeltaHash:          encodedMultihash(encodedDelta),
+		DeltaHash:          encodedMultihash(delta),
 		RecoveryCommitment: c,
 	}, nil
 }
 
-func encodedMultihash(data string) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+func encodedMultihash(data []byte) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}
@@ -518,7 +516,7 @@ func getUpdateRequest() (*model.UpdateRequest, error) {
 
 func getUpdateDelta() *model.DeltaModel {
 	return &model.DeltaModel{
-		UpdateCommitment: encodedMultihash("updateReveal"),
+		UpdateCommitment: encodedMultihash([]byte("updateReveal")),
 	}
 }
 
