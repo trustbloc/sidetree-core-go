@@ -15,7 +15,7 @@ import (
 // MapFile defines the schema for map file and its related operations
 type MapFile struct {
 	Chunks     []Chunk    `json:"chunks"`
-	Operations Operations `json:"Operations,omitempty"`
+	Operations Operations `json:"operations,omitempty"`
 }
 
 // Chunk holds chunk file URI

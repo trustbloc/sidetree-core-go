@@ -18,7 +18,7 @@ type AnchorFile struct {
 	MapFileHash string `json:"mapFileHash,omitempty"`
 
 	// Operations contain proving data for create, recover and deactivate operations
-	Operations Operations `json:"Operations"`
+	Operations Operations `json:"operations"`
 }
 
 //CreateOperation contains create operation data

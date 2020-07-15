@@ -275,8 +275,8 @@ func getSignedDataForRecovery() *model.RecoverSignedDataModel {
 			Crv: "crv",
 			X:   "x",
 		},
-		RecoveryCommitment: computeMultihash("recoveryReveal"),
-		DeltaHash:          computeMultihash("operation"),
+		RecoveryCommitment: computeMultihash([]byte("recoveryReveal")),
+		DeltaHash:          computeMultihash([]byte("operation")),
 	}
 }
 

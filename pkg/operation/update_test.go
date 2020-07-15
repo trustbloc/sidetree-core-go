@@ -208,7 +208,7 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 	}
 
 	signedModel := model.UpdateSignedDataModel{
-		DeltaHash: computeMultihash(string(deltaBytes)),
+		DeltaHash: computeMultihash(deltaBytes),
 		UpdateKey: updateKey}
 
 	compactJWS, err := signutil.SignModel(signedModel, NewMockSigner())
@@ -248,7 +248,7 @@ func getUpdateDelta() (*model.DeltaModel, error) {
 	}
 
 	return &model.DeltaModel{
-		UpdateCommitment: computeMultihash("updateReveal"),
+		UpdateCommitment: computeMultihash([]byte("updateReveal")),
 		Patches:          []patch.Patch{jsonPatch},
 	}, nil
 }

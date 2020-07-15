@@ -83,6 +83,26 @@ func TestParseCreateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid character")
 		require.Nil(t, op)
 	})
+
+	t.Run("delta doesn't match suffix data delta hash", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		delta, err := getDelta()
+		delta.UpdateCommitment = computeMultihash([]byte("different"))
+
+		deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+		require.NoError(t, err)
+
+		create.Delta = docutil.EncodeToString(deltaBytes)
+		request, err := json.Marshal(create)
+		require.NoError(t, err)
+
+		op, err := ParseCreateOperation(request, p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "delta doesn't match suffix data delta hash")
+		require.Nil(t, op)
+	})
 }
 
 func TestParseSuffixData(t *testing.T) {
@@ -219,7 +239,7 @@ func getDelta() (*model.DeltaModel, error) {
 
 	return &model.DeltaModel{
 		Patches:          patches,
-		UpdateCommitment: computeMultihash("updateReveal"),
+		UpdateCommitment: computeMultihash([]byte("updateReveal")),
 	}, nil
 }
 
@@ -235,13 +255,23 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
+	delta, err := getDelta()
+	if err != nil {
+		return nil, err
+	}
+
+	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.SuffixDataModel{
-		DeltaHash:          computeMultihash(validDoc),
+		DeltaHash:          computeMultihash(deltaBytes),
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
-func computeMultihash(data string) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+func computeMultihash(data []byte) string {
+	mh, err := docutil.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}
