@@ -97,7 +97,7 @@ func TestResolve(t *testing.T) {
 		doc, err := p.Resolve(createOp.UniqueSuffix)
 		require.Nil(t, doc)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "expected array")
+		require.Contains(t, err.Error(), "valid create operation not found")
 	})
 	t.Run("create delta hash doesn't match delta error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
@@ -117,7 +117,7 @@ func TestResolve(t *testing.T) {
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.Resolve(createOp.UniqueSuffix)
+		doc, err := p.applyCreateOperation(createOp, &resolutionModel{})
 		require.Nil(t, doc)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "create delta doesn't match suffix data delta hash")
@@ -293,16 +293,10 @@ func TestProcessOperation(t *testing.T) {
 		createOp, err := getCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		// store create operation
-		err = store.Put(createOp)
-		require.Nil(t, err)
-
-		// store create operation again
-		err = store.Put(createOp)
-		require.Nil(t, err)
-
 		p := New("test", store, pc)
-		doc, err := p.Resolve(createOp.UniqueSuffix)
+		doc, err := p.applyCreateOperation(createOp, &resolutionModel{
+			Doc: make(document.Document),
+		})
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Equal(t, "create has to be the first operation", err.Error())
@@ -329,22 +323,21 @@ func TestProcessOperation(t *testing.T) {
 	})
 
 	t.Run("invalid operation type error", func(t *testing.T) {
-		store := mocks.NewMockOperationStore(nil)
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		createOp.Type = "invalid"
+		deactivateOp.Type = "invalid"
 
-		// store create operation
-		err = store.Put(createOp)
+		err = store.Put(deactivateOp)
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.Resolve(createOp.UniqueSuffix)
+		doc, err := p.applyOperation(deactivateOp, &resolutionModel{Doc: make(document.Document)})
 		require.Error(t, err)
-		require.Nil(t, doc)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
+		require.Nil(t, doc)
 	})
 }
 
@@ -399,7 +392,7 @@ func TestDeactivate(t *testing.T) {
 		require.NoError(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.Resolve(dummyUniqueSuffix)
+		doc, err := p.applyDeactivateOperation(deactivateOp, &resolutionModel{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
 		require.Nil(t, doc)
