@@ -20,6 +20,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
+
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -67,26 +69,19 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}
 
 	// apply 'create' operations first
-	rm, err = s.applyCreateOperations(createOps, rm)
-	if err != nil {
-		return nil, err
+	rm = s.applyFirstValidOperation(createOps, rm)
+	if rm == nil {
+		return nil, errors.New("valid create operation not found")
 	}
 
 	// apply 'full' operations first
-	rm, err = s.applyOperations(fullOps, rm)
-	if err != nil {
-		return nil, err
-	}
-
+	rm = s.applyOperations(fullOps, rm, getRecoveryCommitment)
 	if rm.Doc == nil {
 		return nil, errors.New("document was deactivated")
 	}
 
 	// next apply update ops since last 'full' transaction
-	rm, err = s.applyOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber), rm)
-	if err != nil {
-		return nil, err
-	}
+	rm = s.applyOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber), rm, getUpdateCommitment)
 
 	return &document.ResolutionResult{
 		Document: rm.Doc,
@@ -95,6 +90,21 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 			UpdateCommitment:   rm.UpdateCommitment,
 		},
 	}, nil
+}
+
+func (s *OperationProcessor) createOperationHashMap(ops []*batch.Operation) map[string][]*batch.Operation {
+	opMap := make(map[string][]*batch.Operation)
+
+	for _, op := range ops {
+		commitmentValue, err := s.getOperationCommitment(op)
+		if err != nil {
+			logger.Infof("[%s] Skipped bad operation while creating operation hash map {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		}
+
+		opMap[commitmentValue] = append(opMap[commitmentValue], op)
+	}
+
+	return opMap
 }
 
 func splitOperations(ops []*batch.Operation) (createOps, updateOps, fullOps []*batch.Operation) {
@@ -133,34 +143,58 @@ func getOpsWithTxnGreaterThan(ops []*batch.Operation, txnTime, txnNumber uint64)
 	return nil
 }
 
-func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	var err error
+func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolutionModel, commitmentFnc fnc) *resolutionModel {
+	opMap := s.createOperationHashMap(ops)
 
-	for _, op := range ops {
-		if rm, err = s.applyOperation(op, rm); err != nil {
-			return nil, err
+	var state = rm
+
+	commitmentOps, ok := opMap[commitmentFnc(state)]
+	for ok {
+		newState := s.applyFirstValidOperation(commitmentOps, state)
+
+		// can't find a valid operation to apply
+		if newState == nil {
+			break
 		}
 
-		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		state = newState
+
+		// stop if we just applied deactivate
+		if commitmentFnc(state) == "" {
+			return state
+		}
+
+		commitmentOps, ok = opMap[commitmentFnc(state)]
 	}
 
-	return rm, nil
+	return state
 }
 
-func (s *OperationProcessor) applyCreateOperations(ops []*batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	var err error
+type fnc func(rm *resolutionModel) string
 
+func getUpdateCommitment(rm *resolutionModel) string {
+	return rm.UpdateCommitment
+}
+
+func getRecoveryCommitment(rm *resolutionModel) string {
+	return rm.RecoveryCommitment
+}
+
+func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.Operation, rm *resolutionModel) *resolutionModel {
 	for _, op := range ops {
-		if rm, err = s.applyOperation(op, rm); err != nil {
-			logger.Infof("[%s] Skipped bad create operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		var state *resolutionModel
+		var err error
+
+		if state, err = s.applyOperation(op, rm); err != nil {
+			logger.Infof("[%s] Skipped bad operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 			continue
 		}
 
 		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
-		return rm, nil
+		return state
 	}
 
-	return nil, errors.New("valid create operation not found")
+	return nil
 }
 
 type resolutionModel struct {
@@ -391,4 +425,56 @@ func sortOperations(ops []*batch.Operation) {
 
 		return ops[i].TransactionNumber < ops[j].TransactionNumber
 	})
+}
+
+func (s *OperationProcessor) getOperationCommitment(op *batch.Operation) (string, error) { // nolint: gocyclo
+	if op.Type == batch.OperationTypeCreate {
+		return "", errors.New("create operation doesn't have reveal value")
+	}
+
+	jwsParts, err := parseSignedData(op.SignedData)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse signed data for reveal value for %s: %s", op.Type, err.Error())
+	}
+
+	var commitmentKey *jws.JWK
+
+	switch op.Type {
+	case batch.OperationTypeUpdate:
+		var signedDataModel model.UpdateSignedDataModel
+		err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal signed data model for update: %s", err.Error())
+		}
+
+		commitmentKey = signedDataModel.UpdateKey
+	case batch.OperationTypeDeactivate:
+		var signedDataModel model.DeactivateSignedDataModel
+		err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal signed data model for deactivate: %s", err.Error())
+		}
+
+		commitmentKey = signedDataModel.RecoveryKey
+	case batch.OperationTypeRecover:
+		var signedDataModel model.RecoverSignedDataModel
+		err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal signed data model for recover: %s", err.Error())
+		}
+
+		commitmentKey = signedDataModel.RecoveryKey
+	default:
+		return "", errors.New("operation type not supported for generating operation commitment")
+	}
+
+	// TODO: protocol should be calculated based on transaction number
+	p := s.pc.Current()
+
+	c, err := commitment.Calculate(commitmentKey, p.HashAlgorithmInMultiHashCode)
+	if err != nil {
+		return "", fmt.Errorf("failed to calculate operation commitment for key: %s", err.Error())
+	}
+
+	return c, nil
 }
