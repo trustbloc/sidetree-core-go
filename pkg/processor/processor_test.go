@@ -84,11 +84,14 @@ func TestResolve(t *testing.T) {
 		require.NoError(t, err)
 		jsonPatch["patches"] = "invalid"
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
-		createOp.Delta = &model.DeltaModel{
+
+		deltaBytes, err := json.Marshal(&model.DeltaModel{
 			Patches: []patch.Patch{jsonPatch},
-		}
+		})
+
+		createOp.EncodedDelta = docutil.EncodeToString(deltaBytes)
 
 		err = store.Put(createOp)
 		require.Nil(t, err)
@@ -113,11 +116,12 @@ func TestResolve(t *testing.T) {
 
 		createOp.EncodedDelta = docutil.EncodeToString(deltaBytes)
 
-		err = store.Put(createOp)
+		anchoredOp := getAnchoredOperation(createOp)
+		err = store.Put(anchoredOp)
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.applyCreateOperation(createOp, &resolutionModel{})
+		doc, err := p.applyCreateOperation(anchoredOp, &resolutionModel{})
 		require.Nil(t, doc)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "create delta doesn't match suffix data delta hash")
@@ -133,13 +137,17 @@ func TestUpdateDocument(t *testing.T) {
 
 	pc := mocks.NewMockProtocolClient()
 
-	var updateOp *batch.Operation
+	var updateOp *batch.AnchoredOperation
 
 	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		updateOp, updateKey, err = getUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, updateKey, err = getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
 		err = store.Put(updateOp)
 		require.Nil(t, err)
 
@@ -152,7 +160,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
-		updateOp, updateKey, err = getUpdateOperation(updateKey, uniqueSuffix, 2)
+		updateOp, updateKey, err = getAnchoredUpdateOperation(updateKey, uniqueSuffix, 2)
 		require.Nil(t, err)
 		err = store.Put(updateOp)
 		require.Nil(t, err)
@@ -169,13 +177,13 @@ func TestUpdateDocument(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		updateOp.SignedData = ""
@@ -190,13 +198,13 @@ func TestUpdateDocument(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		signer := ecsigner.New(updateKey, "ES256", "update-kid")
@@ -216,13 +224,13 @@ func TestUpdateDocument(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getUpdateOperation(recoveryKey, uniqueSuffix, 77)
+		updateOp, _, err := getAnchoredUpdateOperation(recoveryKey, uniqueSuffix, 77)
 		require.Nil(t, err)
 
 		rm, err = p.applyOperation(updateOp, rm)
@@ -235,7 +243,7 @@ func TestUpdateDocument(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -249,7 +257,9 @@ func TestUpdateDocument(t *testing.T) {
 		updateOp, _, err := getUpdateOperationWithSigner(s, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		rm, err = p.applyOperation(updateOp, rm)
+		anchoredOp := getAnchoredOperation(updateOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "ecdsa: invalid signature")
@@ -259,13 +269,13 @@ func TestUpdateDocument(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		updateOp.EncodedDelta = docutil.EncodeToString([]byte("other value"))
@@ -290,7 +300,7 @@ func TestProcessOperation(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
 		const uniqueSuffix = "uniqueSuffix"
-		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 		err = store.Put(updateOp)
 		require.Nil(t, err)
@@ -306,7 +316,7 @@ func TestProcessOperation(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 		store.Validate = false
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		p := New("test", store, pc)
@@ -320,7 +330,7 @@ func TestProcessOperation(t *testing.T) {
 
 	t.Run("apply recover to non existing document error", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
-		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
+		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
 		require.NoError(t, err)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
@@ -340,11 +350,10 @@ func TestProcessOperation(t *testing.T) {
 
 		deactivateOp.Type = "invalid"
 
-		err = store.Put(deactivateOp)
-		require.Nil(t, err)
+		anchoredOp := getAnchoredOperation(deactivateOp)
 
 		p := New("test", store, pc)
-		doc, err := p.applyOperation(deactivateOp, &resolutionModel{Doc: make(document.Document)})
+		doc, err := p.applyOperation(anchoredOp, &resolutionModel{Doc: make(document.Document)})
 		require.Error(t, err)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
 		require.Nil(t, doc)
@@ -369,7 +378,7 @@ func TestDeactivate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix, 1)
+		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		err = store.Put(deactivateOp)
@@ -385,7 +394,7 @@ func TestDeactivate(t *testing.T) {
 	t.Run("deactivate can only be applied to an existing document", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix, 1)
+		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		p := New("test", store, pc)
@@ -398,7 +407,7 @@ func TestDeactivate(t *testing.T) {
 	t.Run("document not found error", func(t *testing.T) {
 		store, _ := getDefaultStore(recoveryKey, updateKey)
 
-		deactivateOp, err := getDeactivateOperation(recoveryKey, dummyUniqueSuffix, 0)
+		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, dummyUniqueSuffix, 0)
 		require.NoError(t, err)
 		err = store.Put(deactivateOp)
 		require.NoError(t, err)
@@ -414,7 +423,7 @@ func TestDeactivate(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -425,7 +434,9 @@ func TestDeactivate(t *testing.T) {
 
 		deactivateOp.SignedData = ""
 
-		rm, err = p.applyOperation(deactivateOp, rm)
+		anchoredOp := getAnchoredOperation(deactivateOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "missing signed data")
@@ -435,7 +446,7 @@ func TestDeactivate(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -451,7 +462,9 @@ func TestDeactivate(t *testing.T) {
 
 		deactivateOp.SignedData = compactJWS
 
-		rm, err = p.applyOperation(deactivateOp, rm)
+		anchoredOp := getAnchoredOperation(deactivateOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying deactivate")
@@ -461,7 +474,7 @@ func TestDeactivate(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -475,7 +488,9 @@ func TestDeactivate(t *testing.T) {
 		deactivateOp, err := getDeactivateOperationWithSigner(signer, recoveryKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		rm, err = p.applyOperation(deactivateOp, rm)
+		anchoredOp := getAnchoredOperation(deactivateOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "ecdsa: invalid signature")
 		require.Nil(t, rm)
@@ -485,7 +500,7 @@ func TestDeactivate(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -504,7 +519,9 @@ func TestDeactivate(t *testing.T) {
 
 		deactivateOp.SignedData = jws
 
-		rm, err = p.applyOperation(deactivateOp, rm)
+		anchoredOp := getAnchoredOperation(deactivateOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "did suffix doesn't match signed value")
@@ -514,7 +531,7 @@ func TestDeactivate(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -533,7 +550,9 @@ func TestDeactivate(t *testing.T) {
 
 		deactivateOp.SignedData = jws
 
-		rm, err = p.applyOperation(deactivateOp, rm)
+		anchoredOp := getAnchoredOperation(deactivateOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "commitment generated from recovery key doesn't match recovery commitment")
@@ -549,12 +568,12 @@ func TestRecover(t *testing.T) {
 
 	pc := mocks.NewMockProtocolClient()
 
-	var recoverOp *batch.Operation
+	var recoverOp *batch.AnchoredOperation
 
 	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		recoverOp, recoveryKey, err = getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
+		recoverOp, recoveryKey, err = getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
@@ -569,7 +588,7 @@ func TestRecover(t *testing.T) {
 		require.Contains(t, string(docBytes), "recovered")
 
 		// apply recover again - consecutive recoveries are valid
-		recoverOp, _, err = getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
+		recoverOp, _, err = getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
 		require.NoError(t, err)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
@@ -587,7 +606,9 @@ func TestRecover(t *testing.T) {
 
 		invalidRecoverOp.EncodedDelta = ""
 
-		err = store.Put(invalidRecoverOp)
+		invalidAnchoredOp := getAnchoredOperation(invalidRecoverOp)
+
+		err = store.Put(invalidAnchoredOp)
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
@@ -600,7 +621,7 @@ func TestRecover(t *testing.T) {
 		require.Contains(t, string(docBytes), "key1")
 
 		// now generate valid recovery operation with same recoveryKey
-		recoverOp, _, err = getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
+		recoverOp, _, err = getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
 
@@ -618,7 +639,7 @@ func TestRecover(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -629,7 +650,9 @@ func TestRecover(t *testing.T) {
 
 		recoverOp.SignedData = ""
 
-		rm, err = p.applyOperation(recoverOp, rm)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "missing signed data")
@@ -639,7 +662,7 @@ func TestRecover(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -655,7 +678,9 @@ func TestRecover(t *testing.T) {
 
 		recoverOp.SignedData = compactJWS
 
-		rm, err = p.applyOperation(recoverOp, rm)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying recover")
@@ -665,7 +690,7 @@ func TestRecover(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -679,7 +704,10 @@ func TestRecover(t *testing.T) {
 		recoverOp, _, err := getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		rm, err = p.applyOperation(recoverOp, rm)
+		anchoredOp := getAnchoredOperation(recoverOp)
+		err = store.Put(anchoredOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "ecdsa: invalid signature")
@@ -695,7 +723,7 @@ func TestRecover(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, privateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -708,7 +736,9 @@ func TestRecover(t *testing.T) {
 		}
 		recoverOp.SignedData, err = signutil.SignModel(signedModel, ecsigner.New(privateKey, "P-256", ""))
 
-		rm, err = p.applyOperation(recoverOp, rm)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "commitment generated from recovery key doesn't match recovery commitment")
@@ -717,7 +747,7 @@ func TestRecover(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		rm, err := p.applyOperation(createOp, &resolutionModel{})
@@ -728,7 +758,9 @@ func TestRecover(t *testing.T) {
 
 		recoverOp.EncodedDelta = docutil.EncodeToString([]byte("other value"))
 
-		rm, err = p.applyOperation(recoverOp, rm)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "recover delta doesn't match delta hash")
@@ -748,7 +780,7 @@ func TestGetOperationCommitment(t *testing.T) {
 	p := New("test", store, pc)
 
 	t.Run("success - recover", func(t *testing.T) {
-		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
+		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		value, err := p.getOperationCommitment(recoverOp)
@@ -761,7 +793,7 @@ func TestGetOperationCommitment(t *testing.T) {
 	})
 
 	t.Run("success - update", func(t *testing.T) {
-		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		value, err := p.getOperationCommitment(updateOp)
@@ -774,7 +806,7 @@ func TestGetOperationCommitment(t *testing.T) {
 	})
 
 	t.Run("success - deactivate", func(t *testing.T) {
-		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix, 1)
+		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		value, err := p.getOperationCommitment(deactivateOp)
@@ -787,7 +819,7 @@ func TestGetOperationCommitment(t *testing.T) {
 	})
 
 	t.Run("error - create operation doesn't have reveal value", func(t *testing.T) {
-		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
 		value, err := p.getOperationCommitment(createOp)
@@ -802,7 +834,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		recoverOp.SignedData = ""
 
-		value, err := p.getOperationCommitment(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		value, err := p.getOperationCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "missing signed data")
@@ -814,7 +848,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		recoverOp.Type = "other"
 
-		value, err := p.getOperationCommitment(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		value, err := p.getOperationCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "operation type not supported for generating operation commitment")
@@ -831,7 +867,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		recoverOp.SignedData = recoverCompactJWS
 
-		value, err := p.getOperationCommitment(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		value, err := p.getOperationCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
@@ -842,7 +880,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		deactivateOp.SignedData = recoverCompactJWS
 
-		value, err = p.getOperationCommitment(deactivateOp)
+		anchoredOp = getAnchoredOperation(deactivateOp)
+
+		value, err = p.getOperationCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for deactivate")
@@ -857,7 +897,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		updateOp.SignedData = updateCompactJWS
 
-		value, err = p.getOperationCommitment(updateOp)
+		anchoredOp = getAnchoredOperation(updateOp)
+
+		value, err = p.getOperationCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
@@ -865,17 +907,17 @@ func TestGetOperationCommitment(t *testing.T) {
 }
 
 func TestOpsWithTxnGreaterThan(t *testing.T) {
-	op1 := &batch.Operation{
+	op1 := &batch.AnchoredOperation{
 		TransactionTime:   1,
 		TransactionNumber: 1,
 	}
 
-	op2 := &batch.Operation{
+	op2 := &batch.AnchoredOperation{
 		TransactionTime:   1,
 		TransactionNumber: 2,
 	}
 
-	ops := []*batch.Operation{op1, op2}
+	ops := []*batch.AnchoredOperation{op1, op2}
 
 	txns := getOpsWithTxnGreaterThan(ops, 0, 0)
 	require.Equal(t, 2, len(txns))
@@ -891,6 +933,15 @@ func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 	s := ecsigner.New(privateKey, "ES256", updateKeyID)
 
 	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, operationNumber)
+}
+
+func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+	op, nextUpdateKey, err := getUpdateOperation(privateKey, uniqueSuffix, operationNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return getAnchoredOperation(op), nextUpdateKey, nil
 }
 
 func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, *ecdsa.PrivateKey, error) {
@@ -979,6 +1030,15 @@ func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, o
 	return getDeactivateOperationWithSigner(signer, privateKey, uniqueSuffix, operationNumber)
 }
 
+func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, error) {
+	op, err := getDeactivateOperation(privateKey, uniqueSuffix, operationNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return getAnchoredOperation(op), nil
+}
+
 func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, error) {
 	recoverPubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
@@ -1010,6 +1070,15 @@ func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix 
 	signer := ecsigner.New(recoveryKey, "ES256", "")
 
 	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix, operationNumber)
+}
+
+func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+	op, nextRecoveryKey, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, operationNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return getAnchoredOperation(op), nextRecoveryKey, nil
 }
 
 func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, *ecdsa.PrivateKey, error) {
@@ -1110,7 +1179,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 func getDefaultStore(recoveryKey, updateKey *ecdsa.PrivateKey) (*mocks.MockOperationStore, string) {
 	store := mocks.NewMockOperationStore(nil)
 
-	createOp, err := getCreateOperation(recoveryKey, updateKey)
+	createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 	if err != nil {
 		panic(err)
 	}
@@ -1124,7 +1193,7 @@ func getDefaultStore(recoveryKey, updateKey *ecdsa.PrivateKey) (*mocks.MockOpera
 	return store, createOp.UniqueSuffix
 }
 
-func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string) (*batch.Operation, error) {
+func getAnchoredCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string) (*batch.Operation, error) {
 	createRequest, err := getCreateRequest(recoveryKey, updateKey)
 	if err != nil {
 		return nil, err
@@ -1169,12 +1238,34 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		Delta:             delta,
 		EncodedDelta:      createRequest.Delta,
 		SuffixData:        suffixData,
+		EncodedSuffixData: createRequest.SuffixData,
 		TransactionNumber: 0,
 	}, nil
 }
 
 func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.Operation, error) {
-	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc)
+	return getAnchoredCreateOperationWithDoc(recoveryKey, updateKey, validDoc)
+}
+
+func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.AnchoredOperation, error) {
+	op, err := getCreateOperation(recoveryKey, updateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return getAnchoredOperation(op), nil
+}
+
+func getAnchoredOperation(op *batch.Operation) *batch.AnchoredOperation {
+	return &batch.AnchoredOperation{
+		Type:              op.Type,
+		UniqueSuffix:      op.UniqueSuffix,
+		EncodedDelta:      op.EncodedDelta,
+		EncodedSuffixData: op.EncodedSuffixData,
+		SignedData:        op.SignedData,
+		TransactionNumber: op.TransactionNumber,
+		TransactionTime:   op.TransactionTime,
+	}
 }
 
 func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {

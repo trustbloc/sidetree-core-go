@@ -16,18 +16,18 @@ import (
 // MockOperationStore mocks store for testing purposes.
 type MockOperationStore struct {
 	sync.RWMutex
-	operations map[string][]*batch.Operation
+	operations map[string][]*batch.AnchoredOperation
 	Err        error
 	Validate   bool
 }
 
 // NewMockOperationStore creates mock operations store
 func NewMockOperationStore(err error) *MockOperationStore {
-	return &MockOperationStore{operations: make(map[string][]*batch.Operation), Err: err, Validate: true}
+	return &MockOperationStore{operations: make(map[string][]*batch.AnchoredOperation), Err: err, Validate: true}
 }
 
 //Put mocks storing operation
-func (m *MockOperationStore) Put(op *batch.Operation) error {
+func (m *MockOperationStore) Put(op *batch.AnchoredOperation) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -51,7 +51,7 @@ func (m *MockOperationStore) Put(op *batch.Operation) error {
 }
 
 //Get mocks retrieving operations from the store
-func (m *MockOperationStore) Get(uniqueSuffix string) ([]*batch.Operation, error) {
+func (m *MockOperationStore) Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}

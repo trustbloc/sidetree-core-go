@@ -14,7 +14,6 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 var logger = log.New("sidetree-core-observer")
@@ -27,7 +26,7 @@ type Ledger interface {
 // TxnOpsProvider defines an interface for retrieving(assembling) operations from batch files(chunk, map, anchor)
 type TxnOpsProvider interface {
 	// GetTxnOperations will read batch files(chunk, map, anchor) and assemble batch operations from those files
-	GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error)
+	GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error)
 }
 
 // DecompressionProvider defines an interface for decompressing data using specified algorithm
@@ -38,7 +37,7 @@ type DecompressionProvider interface {
 
 // OperationStore interface to access operation store
 type OperationStore interface {
-	Put(ops []*batch.Operation) error
+	Put(ops []*batch.AnchoredOperation) error
 }
 
 // OperationStoreProvider returns an operation store for the given namespace
@@ -48,7 +47,7 @@ type OperationStoreProvider interface {
 
 // OperationFilter filters out operations before they are persisted
 type OperationFilter interface {
-	Filter(uniqueSuffix string, ops []*batch.Operation) ([]*batch.Operation, error)
+	Filter(uniqueSuffix string, ops []*batch.AnchoredOperation) ([]*batch.AnchoredOperation, error)
 }
 
 // OperationFilterProvider returns an operation filter for the given namespace
@@ -145,12 +144,12 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
 	return p.processTxnOperations(txnOps, sidetreeTxn)
 }
 
-func (p *TxnProcessor) processTxnOperations(txnOps []*batch.Operation, sidetreeTxn txn.SidetreeTxn) error {
+func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) error {
 	logger.Debugf("processing %d transaction operations", len(txnOps))
 
 	batchSuffixes := make(map[string]bool)
 
-	var ops []*batch.Operation
+	var ops []*batch.AnchoredOperation
 	for index, op := range txnOps {
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
@@ -158,30 +157,30 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.Operation, sidetreeT
 			continue
 		}
 
-		updatedOp := updateOperation(op, uint(index), sidetreeTxn)
+		updatedOp := updateAnchoredOperation(op, uint(index), sidetreeTxn)
 
-		logger.Debugf("updated operation with blockchain time: %s", updatedOp.ID)
+		logger.Debugf("updated operation with blockchain time: %s", updatedOp.UniqueSuffix)
 		ops = append(ops, updatedOp)
 
 		batchSuffixes[op.UniqueSuffix] = true
 	}
 
-	for suffix, mapping := range mapOperationsByUniqueSuffix(ops) {
-		logger.Debugf("Filtering operations for namespace [%s] and suffix [%s]", mapping.namespace, suffix)
+	for suffix := range mapOperationsByUniqueSuffix(ops) {
+		logger.Debugf("Filtering operations for suffix [%s]", suffix)
 
-		opFilter, err := p.OpFilterProvider.Get(mapping.namespace)
+		opFilter, err := p.OpFilterProvider.Get(sidetreeTxn.Namespace)
 		if err != nil {
-			return errors.Wrapf(err, "error getting operation filter for namespace [%s]", mapping.namespace)
+			return errors.Wrapf(err, "error getting operation filter for namespace [%s]", sidetreeTxn.Namespace)
 		}
 
-		validOps, err := opFilter.Filter(suffix, mapping.operations)
+		validOps, err := opFilter.Filter(suffix, ops)
 		if err != nil {
 			return errors.Wrap(err, "error filtering invalid operations")
 		}
 
-		opStore, err := p.OpStoreProvider.ForNamespace(mapping.namespace)
+		opStore, err := p.OpStoreProvider.ForNamespace(sidetreeTxn.Namespace)
 		if err != nil {
-			return errors.Wrapf(err, "error getting operation store for namespace [%s]", mapping.namespace)
+			return errors.Wrapf(err, "error getting operation store for namespace [%s]", sidetreeTxn.Namespace)
 		}
 
 		err = opStore.Put(validOps)
@@ -193,7 +192,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.Operation, sidetreeT
 	return nil
 }
 
-func updateOperation(op *batch.Operation, index uint, sidetreeTxn txn.SidetreeTxn) *batch.Operation {
+func updateAnchoredOperation(op *batch.AnchoredOperation, index uint, sidetreeTxn txn.SidetreeTxn) *batch.AnchoredOperation {
 	//  The logical blockchain time that this operation was anchored on the blockchain
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
@@ -204,31 +203,11 @@ func updateOperation(op *batch.Operation, index uint, sidetreeTxn txn.SidetreeTx
 	return op
 }
 
-type operationsMapping struct {
-	namespace  string
-	operations []*batch.Operation
-}
-
-func mapOperationsByUniqueSuffix(ops []*batch.Operation) map[string]*operationsMapping {
-	m := make(map[string]*operationsMapping)
+func mapOperationsByUniqueSuffix(ops []*batch.AnchoredOperation) map[string][]*batch.AnchoredOperation {
+	m := make(map[string][]*batch.AnchoredOperation)
 
 	for _, op := range ops {
-		mapping, ok := m[op.UniqueSuffix]
-		if !ok {
-			ns, err := docutil.GetNamespaceFromID(op.ID)
-			if err != nil {
-				logger.Infof("Skipping operation since could not get namespace from operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
-				continue
-			}
-
-			mapping = &operationsMapping{
-				namespace: ns,
-			}
-
-			m[op.UniqueSuffix] = mapping
-		}
-
-		mapping.operations = append(mapping.operations, op)
+		m[op.UniqueSuffix] = append(m[op.UniqueSuffix], op)
 	}
 
 	return m

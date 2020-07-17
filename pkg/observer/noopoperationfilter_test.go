@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 )
 
 func TestNoopOperationFilter_Filter(t *testing.T) {
@@ -24,15 +23,13 @@ func TestNoopOperationFilter_Filter(t *testing.T) {
 	f, err := p.Get(ns)
 	require.NoError(t, err)
 
-	ops := []*batch.Operation{
+	ops := []*batch.AnchoredOperation{
 		{
 			Type:         "create",
-			ID:           ns + docutil.NamespaceDelimiter + suffix,
 			UniqueSuffix: suffix,
 		},
 		{
 			Type:         "update",
-			ID:           ns + docutil.NamespaceDelimiter + suffix,
 			UniqueSuffix: suffix,
 		},
 	}

@@ -44,7 +44,7 @@ func NewOperationProvider(cas DCAS, pcp protocol.ClientProvider, dp decompressio
 }
 
 // GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files
-func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error) {
+func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
 	// ParseAnchorData anchor address and number of operations from anchor string
 	anchorData, err := ParseAnchorData(txn.AnchorString)
 	if err != nil {
@@ -94,7 +94,7 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Ope
 	return txnOps, nil
 }
 
-func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*batch.Operation, error) {
+func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
 	anchorOps, err := h.parseAnchorOperations(af, txn)
 	if err != nil {
 		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
@@ -103,11 +103,11 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	logger.Debugf("successfully parsed anchor operations: create[%d], recover[%d], deactivate[%d]",
 		len(anchorOps.Create), len(anchorOps.Recover), len(anchorOps.Deactivate))
 
-	mapOps := parseMapOperations(mf, txn)
+	mapOps := parseMapOperations(mf)
 
 	logger.Debugf("successfully parsed map operations: update[%d]", len(mapOps.Update))
 
-	var operations []*batch.Operation
+	var operations []*batch.AnchoredOperation
 	operations = append(operations, anchorOps.Create...)
 	operations = append(operations, anchorOps.Recover...)
 	operations = append(operations, mapOps.Update...)
@@ -116,18 +116,17 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	// TODO: Add checks here to makes sure that file sizes match - part of validation tickets
 
 	for i, delta := range cf.Deltas {
-		p, err := h.getProtocol(operations[i].Namespace)
+		p, err := h.getProtocol(txn.Namespace)
 		if err != nil {
 			return nil, err
 		}
 
-		deltaModel, err := operation.ParseDelta(delta, p.HashAlgorithmInMultiHashCode)
+		_, err = operation.ParseDelta(delta, p.HashAlgorithmInMultiHashCode)
 		if err != nil {
 			return nil, fmt.Errorf("parse delta: %s", err.Error())
 		}
 
 		operations[i].EncodedDelta = delta
-		operations[i].Delta = deltaModel
 	}
 
 	return operations, nil
@@ -201,9 +200,9 @@ func (h *OperationProvider) readFromCAS(address, alg string, maxSize uint) ([]by
 
 // anchorOperations contains parsed operations from anchor file
 type anchorOperations struct {
-	Create     []*batch.Operation
-	Recover    []*batch.Operation
-	Deactivate []*batch.Operation
+	Create     []*batch.AnchoredOperation
+	Recover    []*batch.AnchoredOperation
+	Deactivate []*batch.AnchoredOperation
 	Suffixes   []string
 }
 
@@ -217,39 +216,34 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 
 	var suffixes []string
 
-	var createOps []*batch.Operation
+	var createOps []*batch.AnchoredOperation
 	for _, op := range af.Operations.Create {
 		suffix, err := docutil.CalculateUniqueSuffix(op.SuffixData, p.HashAlgorithmInMultiHashCode)
 		if err != nil {
 			return nil, err
 		}
 
-		suffixModel, err := operation.ParseSuffixData(op.SuffixData, p.HashAlgorithmInMultiHashCode)
+		_, err = operation.ParseSuffixData(op.SuffixData, p.HashAlgorithmInMultiHashCode)
 		if err != nil {
 			return nil, err
 		}
 
 		// TODO: they are assembling operation buffer in reference implementation (might be easier for version manager)
-		create := &batch.Operation{
+		create := &batch.AnchoredOperation{
 			Type:              batch.OperationTypeCreate,
-			Namespace:         txn.Namespace,
 			UniqueSuffix:      suffix,
-			ID:                txn.Namespace + docutil.NamespaceDelimiter + suffix,
 			EncodedSuffixData: op.SuffixData,
-			SuffixData:        suffixModel,
 		}
 
 		suffixes = append(suffixes, suffix)
 		createOps = append(createOps, create)
 	}
 
-	var recoverOps []*batch.Operation
+	var recoverOps []*batch.AnchoredOperation
 	for _, op := range af.Operations.Recover {
-		recover := &batch.Operation{
+		recover := &batch.AnchoredOperation{
 			Type:         batch.OperationTypeRecover,
-			Namespace:    txn.Namespace,
 			UniqueSuffix: op.DidSuffix,
-			ID:           txn.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
 
@@ -257,13 +251,11 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 		recoverOps = append(recoverOps, recover)
 	}
 
-	var deactivateOps []*batch.Operation
+	var deactivateOps []*batch.AnchoredOperation
 	for _, op := range af.Operations.Deactivate {
-		deactivate := &batch.Operation{
+		deactivate := &batch.AnchoredOperation{
 			Type:         batch.OperationTypeDeactivate,
-			Namespace:    txn.Namespace,
 			UniqueSuffix: op.DidSuffix,
-			ID:           txn.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
 
@@ -293,20 +285,18 @@ func (h *OperationProvider) getProtocol(namespace string) (*protocol.Protocol, e
 
 // MapOperations contains parsed operations from map file
 type MapOperations struct {
-	Update   []*batch.Operation
+	Update   []*batch.AnchoredOperation
 	Suffixes []string
 }
 
-func parseMapOperations(mf *models.MapFile, txn *txn.SidetreeTxn) *MapOperations {
+func parseMapOperations(mf *models.MapFile) *MapOperations {
 	var suffixes []string
 
-	var updateOps []*batch.Operation
+	var updateOps []*batch.AnchoredOperation
 	for _, op := range mf.Operations.Update {
-		update := &batch.Operation{
+		update := &batch.AnchoredOperation{
 			Type:         batch.OperationTypeUpdate,
-			Namespace:    txn.Namespace,
 			UniqueSuffix: op.DidSuffix,
-			ID:           txn.Namespace + docutil.NamespaceDelimiter + op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
 
