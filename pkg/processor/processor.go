@@ -21,6 +21,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -39,7 +40,7 @@ type OperationProcessor struct {
 // OperationStoreClient defines interface for retrieving all operations related to document
 type OperationStoreClient interface {
 	// Get retrieves all operations related to document
-	Get(uniqueSuffix string) ([]*batch.Operation, error)
+	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
 }
 
 // New returns new operation processor with the given name. (Note that name is only used for logging.)
@@ -92,13 +93,13 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}, nil
 }
 
-func (s *OperationProcessor) createOperationHashMap(ops []*batch.Operation) map[string][]*batch.Operation {
-	opMap := make(map[string][]*batch.Operation)
+func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperation) map[string][]*batch.AnchoredOperation {
+	opMap := make(map[string][]*batch.AnchoredOperation)
 
 	for _, op := range ops {
 		commitmentValue, err := s.getOperationCommitment(op)
 		if err != nil {
-			logger.Infof("[%s] Skipped bad operation while creating operation hash map {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			logger.Infof("[%s] Skipped bad operation while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 		}
 
 		opMap[commitmentValue] = append(opMap[commitmentValue], op)
@@ -107,7 +108,7 @@ func (s *OperationProcessor) createOperationHashMap(ops []*batch.Operation) map[
 	return opMap
 }
 
-func splitOperations(ops []*batch.Operation) (createOps, updateOps, fullOps []*batch.Operation) {
+func splitOperations(ops []*batch.AnchoredOperation) (createOps, updateOps, fullOps []*batch.AnchoredOperation) {
 	for _, op := range ops {
 		switch op.Type {
 		case batch.OperationTypeCreate:
@@ -125,7 +126,7 @@ func splitOperations(ops []*batch.Operation) (createOps, updateOps, fullOps []*b
 }
 
 // pre-condition: operations have to be sorted
-func getOpsWithTxnGreaterThan(ops []*batch.Operation, txnTime, txnNumber uint64) []*batch.Operation {
+func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber uint64) []*batch.AnchoredOperation {
 	for index, op := range ops {
 		if op.TransactionTime < txnTime {
 			continue
@@ -143,7 +144,7 @@ func getOpsWithTxnGreaterThan(ops []*batch.Operation, txnTime, txnNumber uint64)
 	return nil
 }
 
-func (s *OperationProcessor) applyOperations(ops []*batch.Operation, rm *resolutionModel, commitmentFnc fnc) *resolutionModel {
+func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *resolutionModel, commitmentFnc fnc) *resolutionModel {
 	opMap := s.createOperationHashMap(ops)
 
 	var state = rm
@@ -180,13 +181,13 @@ func getRecoveryCommitment(rm *resolutionModel) string {
 	return rm.RecoveryCommitment
 }
 
-func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.Operation, rm *resolutionModel) *resolutionModel {
+func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOperation, rm *resolutionModel) *resolutionModel {
 	for _, op := range ops {
 		var state *resolutionModel
 		var err error
 
 		if state, err = s.applyOperation(op, rm); err != nil {
-			logger.Infof("[%s] Skipped bad operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 			continue
 		}
 
@@ -205,7 +206,7 @@ type resolutionModel struct {
 	RecoveryCommitment             string
 }
 
-func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyOperation(operation *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) {
 	switch operation.Type {
 	case batch.OperationTypeCreate:
 		return s.applyCreateOperation(operation, rm)
@@ -220,41 +221,54 @@ func (s *OperationProcessor) applyOperation(operation *batch.Operation, rm *reso
 	}
 }
 
-func (s *OperationProcessor) applyCreateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	logger.Debugf("[%s] Applying create operation: %+v", s.name, operation)
+func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) {
+	logger.Debugf("[%s] Applying create operation: %+v", s.name, op)
 
 	if rm.Doc != nil {
 		return nil, errors.New("create has to be the first operation")
 	}
 
+	// TODO: protocol should be calculated based on transaction number
+	p := s.pc.Current()
+
+	suffixData, err := operation.ParseSuffixData(op.EncodedSuffixData, p.HashAlgorithmInMultiHashCode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse suffix data: %s", err.Error())
+	}
+
 	// verify actual delta hash matches expected delta hash
-	err := docutil.IsValidHash(operation.EncodedDelta, operation.SuffixData.DeltaHash)
+	err = docutil.IsValidHash(op.EncodedDelta, suffixData.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("create delta doesn't match suffix data delta hash: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(make(document.Document), operation.Delta.Patches)
+	delta, err := operation.ParseDelta(op.EncodedDelta, p.HashAlgorithmInMultiHashCode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
+	}
+
+	doc, err := composer.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
 		return nil, err
 	}
 
 	return &resolutionModel{
 		Doc:                            doc,
-		LastOperationTransactionTime:   operation.TransactionTime,
-		LastOperationTransactionNumber: operation.TransactionNumber,
-		UpdateCommitment:               operation.Delta.UpdateCommitment,
-		RecoveryCommitment:             operation.SuffixData.RecoveryCommitment,
+		LastOperationTransactionTime:   op.TransactionTime,
+		LastOperationTransactionNumber: op.TransactionNumber,
+		UpdateCommitment:               delta.UpdateCommitment,
+		RecoveryCommitment:             suffixData.RecoveryCommitment,
 	}, nil
 }
 
-func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
-	logger.Debugf("[%s] Applying update operation: %+v", s.name, operation)
+func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
+	logger.Debugf("[%s] Applying update operation: %+v", s.name, op)
 
 	if rm.Doc == nil {
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	jwsParts, err := parseSignedData(operation.SignedData)
+	jwsParts, err := parseSignedData(op.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -279,27 +293,32 @@ func (s *OperationProcessor) applyUpdateOperation(operation *batch.Operation, rm
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
+	err = docutil.IsValidHash(op.EncodedDelta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
 
 	// verify signature
-	_, err = internal.VerifyJWS(operation.SignedData, signedDataModel.UpdateKey)
+	_, err = internal.VerifyJWS(op.SignedData, signedDataModel.UpdateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(rm.Doc, operation.Delta.Patches)
+	delta, err := operation.ParseDelta(op.EncodedDelta, p.HashAlgorithmInMultiHashCode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
+	}
+
+	doc, err := composer.ApplyPatches(rm.Doc, delta.Patches)
 	if err != nil {
 		return nil, err
 	}
 
 	return &resolutionModel{
 		Doc:                            doc,
-		LastOperationTransactionTime:   operation.TransactionTime,
-		LastOperationTransactionNumber: operation.TransactionNumber,
-		UpdateCommitment:               operation.Delta.UpdateCommitment,
+		LastOperationTransactionTime:   op.TransactionTime,
+		LastOperationTransactionNumber: op.TransactionNumber,
+		UpdateCommitment:               delta.UpdateCommitment,
 		RecoveryCommitment:             rm.RecoveryCommitment}, nil
 }
 
@@ -311,14 +330,14 @@ func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
 	return internal.ParseJWS(compactJWS)
 }
 
-func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) {
-	logger.Debugf("[%s] Applying deactivate operation: %+v", s.name, operation)
+func (s *OperationProcessor) applyDeactivateOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) {
+	logger.Debugf("[%s] Applying deactivate operation: %+v", s.name, op)
 
 	if rm.Doc == nil {
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
-	jwsParts, err := parseSignedData(operation.SignedData)
+	jwsParts, err := parseSignedData(op.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +349,7 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 	}
 
 	// verify signed did suffix against actual did suffix
-	if operation.UniqueSuffix != signedDataModel.DidSuffix {
+	if op.UniqueSuffix != signedDataModel.DidSuffix {
 		return nil, errors.New("did suffix doesn't match signed value")
 	}
 
@@ -348,27 +367,27 @@ func (s *OperationProcessor) applyDeactivateOperation(operation *batch.Operation
 	}
 
 	// verify signature
-	_, err = internal.VerifyJWS(operation.SignedData, signedDataModel.RecoveryKey)
+	_, err = internal.VerifyJWS(op.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
 	return &resolutionModel{
 		Doc:                            nil,
-		LastOperationTransactionTime:   operation.TransactionTime,
-		LastOperationTransactionNumber: operation.TransactionNumber,
+		LastOperationTransactionTime:   op.TransactionTime,
+		LastOperationTransactionNumber: op.TransactionNumber,
 		UpdateCommitment:               "",
 		RecoveryCommitment:             ""}, nil
 }
 
-func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
-	logger.Debugf("[%s] Applying recover operation: %+v", s.name, operation)
+func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
+	logger.Debugf("[%s] Applying recover operation: %+v", s.name, op)
 
 	if rm.Doc == nil {
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	jwsParts, err := parseSignedData(operation.SignedData)
+	jwsParts, err := parseSignedData(op.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -393,31 +412,36 @@ func (s *OperationProcessor) applyRecoverOperation(operation *batch.Operation, r
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(operation.EncodedDelta, signedDataModel.DeltaHash)
+	err = docutil.IsValidHash(op.EncodedDelta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
 	}
 
 	// verify signature
-	_, err = internal.VerifyJWS(operation.SignedData, signedDataModel.RecoveryKey)
+	_, err = internal.VerifyJWS(op.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(make(document.Document), operation.Delta.Patches)
+	delta, err := operation.ParseDelta(op.EncodedDelta, p.HashAlgorithmInMultiHashCode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
+	}
+
+	doc, err := composer.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
 		return nil, err
 	}
 
 	return &resolutionModel{
 		Doc:                            doc,
-		LastOperationTransactionTime:   operation.TransactionTime,
-		LastOperationTransactionNumber: operation.TransactionNumber,
-		UpdateCommitment:               operation.Delta.UpdateCommitment,
+		LastOperationTransactionTime:   op.TransactionTime,
+		LastOperationTransactionNumber: op.TransactionNumber,
+		UpdateCommitment:               delta.UpdateCommitment,
 		RecoveryCommitment:             signedDataModel.RecoveryCommitment}, nil
 }
 
-func sortOperations(ops []*batch.Operation) {
+func sortOperations(ops []*batch.AnchoredOperation) {
 	sort.Slice(ops, func(i, j int) bool {
 		if ops[i].TransactionTime < ops[j].TransactionTime {
 			return true
@@ -427,7 +451,7 @@ func sortOperations(ops []*batch.Operation) {
 	})
 }
 
-func (s *OperationProcessor) getOperationCommitment(op *batch.Operation) (string, error) { // nolint: gocyclo
+func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation) (string, error) { // nolint: gocyclo
 	if op.Type == batch.OperationTypeCreate {
 		return "", errors.New("create operation doesn't have reveal value")
 	}

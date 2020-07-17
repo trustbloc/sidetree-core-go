@@ -111,7 +111,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Contains(t, err.Error(), "not found")
 
 	// insert document in the store
-	err = store.Put(getCreateOperation())
+	err = store.Put(getAnchoredCreateOperation())
 	require.Nil(t, err)
 
 	// scenario: resolved document (success)
@@ -260,7 +260,7 @@ func TestProcessOperation_Update(t *testing.T) {
 	require.NotNil(t, dochandler)
 
 	// insert document in the store
-	err := store.Put(getCreateOperation())
+	err := store.Put(getAnchoredCreateOperation())
 	require.Nil(t, err)
 
 	// modify default validator to did validator since update payload is did document update
@@ -377,14 +377,26 @@ func getCreateOperationWithInitialState(suffixData, delta string) (*batchapi.Ope
 	}
 
 	return &batchapi.Operation{
-		Type:            batchapi.OperationTypeCreate,
-		UniqueSuffix:    uniqueSuffix,
-		ID:              namespace + docutil.NamespaceDelimiter + uniqueSuffix,
-		OperationBuffer: payload,
-		Delta:           deltaModel,
-		EncodedDelta:    delta,
-		SuffixData:      suffixDataModel,
+		Type:              batchapi.OperationTypeCreate,
+		UniqueSuffix:      uniqueSuffix,
+		ID:                namespace + docutil.NamespaceDelimiter + uniqueSuffix,
+		OperationBuffer:   payload,
+		Delta:             deltaModel,
+		EncodedDelta:      delta,
+		EncodedSuffixData: suffixData,
+		SuffixData:        suffixDataModel,
 	}, nil
+}
+
+func getAnchoredCreateOperation() *batchapi.AnchoredOperation {
+	op := getCreateOperation()
+
+	return &batchapi.AnchoredOperation{
+		Type:              op.Type,
+		UniqueSuffix:      op.UniqueSuffix,
+		EncodedDelta:      op.EncodedDelta,
+		EncodedSuffixData: op.EncodedSuffixData,
+	}
 }
 
 const validDoc = `{

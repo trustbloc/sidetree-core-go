@@ -28,7 +28,7 @@ func NewOperationFilter(name string, store OperationStoreClient, pc protocol.Cli
 }
 
 // Filter filters out the invalid operations and returns only the valid ones
-func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.Operation) ([]*batch.Operation, error) {
+func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.AnchoredOperation) ([]*batch.AnchoredOperation, error) {
 	logger.Debugf("[%s] Validating operations for unique suffix [%s]...", s.name, uniqueSuffix)
 
 	newOps = s.filterInvalidSuffix(uniqueSuffix, newOps)
@@ -59,7 +59,7 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 	// apply 'full' operations first
 	validFullOps, rm := s.getValidOperations(append(createOps, fullOps...), &resolutionModel{})
 
-	var validUpdateOps []*batch.Operation
+	var validUpdateOps []*batch.AnchoredOperation
 	if rm.Doc == nil {
 		logger.Debugf("[%s] Document was deactivated [%s]", s.name, uniqueSuffix)
 	} else {
@@ -67,7 +67,7 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 		validUpdateOps, _ = s.getValidOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber), rm)
 	}
 
-	var validNewOps []*batch.Operation
+	var validNewOps []*batch.AnchoredOperation
 	for _, op := range append(validFullOps, validUpdateOps...) {
 		if contains(newOps, op) {
 			validNewOps = append(validNewOps, op)
@@ -77,12 +77,12 @@ func (s *OperationValidationFilter) Filter(uniqueSuffix string, newOps []*batch.
 	return validNewOps, nil
 }
 
-func (s *OperationValidationFilter) getValidOperations(ops []*batch.Operation, rm *resolutionModel) ([]*batch.Operation, *resolutionModel) {
-	var validOps []*batch.Operation
+func (s *OperationValidationFilter) getValidOperations(ops []*batch.AnchoredOperation, rm *resolutionModel) ([]*batch.AnchoredOperation, *resolutionModel) {
+	var validOps []*batch.AnchoredOperation
 	for _, op := range ops {
 		m, err := s.applyOperation(op, rm)
 		if err != nil {
-			logger.Infof("[%s] Rejecting invalid operation {ID: %s, UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			logger.Infof("[%s] Rejecting invalid operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 			continue
 		}
 
@@ -95,11 +95,11 @@ func (s *OperationValidationFilter) getValidOperations(ops []*batch.Operation, r
 	return validOps, rm
 }
 
-func (s *OperationValidationFilter) filterInvalidSuffix(uniqueSuffix string, ops []*batch.Operation) []*batch.Operation {
-	var filtered []*batch.Operation
+func (s *OperationValidationFilter) filterInvalidSuffix(uniqueSuffix string, ops []*batch.AnchoredOperation) []*batch.AnchoredOperation {
+	var filtered []*batch.AnchoredOperation
 	for _, op := range ops {
 		if op.UniqueSuffix != uniqueSuffix {
-			logger.Infof("[%s] Rejecting invalid operation {ID: %s, UniqueSuffix: %s Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation's unique suffix is not set to [%s]", s.name, op.ID, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, uniqueSuffix)
+			logger.Infof("[%s] Rejecting invalid operation {UniqueSuffix: %s Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation's unique suffix is not set to [%s]", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, uniqueSuffix)
 			continue
 		}
 
@@ -109,7 +109,7 @@ func (s *OperationValidationFilter) filterInvalidSuffix(uniqueSuffix string, ops
 	return filtered
 }
 
-func contains(ops []*batch.Operation, op *batch.Operation) bool {
+func contains(ops []*batch.AnchoredOperation, op *batch.AnchoredOperation) bool {
 	for _, o := range ops {
 		if o == op {
 			return true

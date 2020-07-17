@@ -50,6 +50,32 @@ type Operation struct {
 	OperationIndex uint `json:"operationIndex"`
 }
 
+// AnchoredOperation defines an anchored operation
+type AnchoredOperation struct {
+
+	//Operation type
+	Type OperationType `json:"type"`
+
+	//The unique suffix - encoded hash of the original create document
+	UniqueSuffix string `json:"uniqueSuffix"`
+
+	// Compact JWS - signed data for the operation
+	SignedData string `json:"signedData,omitempty"`
+
+	// encoded delta
+	EncodedDelta string `json:"encodedDelta,omitempty"`
+
+	// encoded suffix data
+	EncodedSuffixData string `json:"encodedSuffixData,omitempty"`
+
+	//The logical blockchain time that this operation was anchored on the blockchain
+	TransactionTime uint64 `json:"transactionTime"`
+	//The transaction number of the transaction this operation was batched within
+	TransactionNumber uint64 `json:"transactionNumber"`
+	//The index this operation was assigned to in the batch
+	OperationIndex uint `json:"operationIndex"`
+}
+
 // OperationType defines valid values for operation type
 type OperationType string
 

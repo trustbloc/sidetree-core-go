@@ -23,6 +23,6 @@ type noopOperationFilter struct {
 }
 
 // Filter simply returns the provided operations without filtering them
-func (m *noopOperationFilter) Filter(_ string, ops []*batch.Operation) ([]*batch.Operation, error) {
+func (m *noopOperationFilter) Filter(_ string, ops []*batch.AnchoredOperation) ([]*batch.AnchoredOperation, error) {
 	return ops, nil
 }

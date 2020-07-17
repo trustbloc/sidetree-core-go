@@ -78,7 +78,7 @@ func TestStartObserver(t *testing.T) {
 		isCalled := false
 
 		var rw sync.RWMutex
-		opStore := &mockOperationStore{putFunc: func(ops []*batch.Operation) error {
+		opStore := &mockOperationStore{putFunc: func(ops []*batch.AnchoredOperation) error {
 			rw.Lock()
 			isCalled = true
 			rw.Unlock()
@@ -130,13 +130,13 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
+		err := p.processTxnOperations([]*batch.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), errExpected.Error())
 	})
 
 	t.Run("test error from operationStore Put", func(t *testing.T) {
-		opStore := &mockOperationStore{putFunc: func(ops []*batch.Operation) error {
+		opStore := &mockOperationStore{putFunc: func(ops []*batch.AnchoredOperation) error {
 			return fmt.Errorf("put error")
 		}}
 
@@ -146,7 +146,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := NewTxnProcessor(providers)
-		err := p.processTxnOperations([]*batch.Operation{{ID: "doc:method:abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
+		err := p.processTxnOperations([]*batch.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to store operation from anchor string")
 	})
@@ -189,7 +189,7 @@ func TestProcessTxnOperations(t *testing.T) {
 
 func TestUpdateOperation(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
-		updatedOps := updateOperation(&batch.Operation{ID: "did:sidetree:abc"},
+		updatedOps := updateAnchoredOperation(&batch.AnchoredOperation{UniqueSuffix: "abc"},
 			1, txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.Equal(t, uint64(20), updatedOps.TransactionTime)
 		require.Equal(t, uint64(2), updatedOps.TransactionNumber)
@@ -221,18 +221,18 @@ func (m mockDCAS) Write(content []byte) (string, error) {
 }
 
 type mockOperationStore struct {
-	putFunc func(ops []*batch.Operation) error
-	getFunc func(suffix string) ([]*batch.Operation, error)
+	putFunc func(ops []*batch.AnchoredOperation) error
+	getFunc func(suffix string) ([]*batch.AnchoredOperation, error)
 }
 
-func (m *mockOperationStore) Put(ops []*batch.Operation) error {
+func (m *mockOperationStore) Put(ops []*batch.AnchoredOperation) error {
 	if m.putFunc != nil {
 		return m.putFunc(ops)
 	}
 	return nil
 }
 
-func (m *mockOperationStore) Get(suffix string) ([]*batch.Operation, error) {
+func (m *mockOperationStore) Get(suffix string) ([]*batch.AnchoredOperation, error) {
 	if m.getFunc != nil {
 		return m.getFunc(suffix)
 	}
@@ -256,14 +256,14 @@ type mockTxnOpsProvider struct {
 	err error
 }
 
-func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Operation, error) {
+func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 
-	op := &batch.Operation{
-		ID: "did:sidetree:abc",
+	op := &batch.AnchoredOperation{
+		UniqueSuffix: "abc",
 	}
 
-	return []*batch.Operation{op}, nil
+	return []*batch.AnchoredOperation{op}, nil
 }
