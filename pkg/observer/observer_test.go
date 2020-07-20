@@ -37,9 +37,8 @@ func TestStartObserver(t *testing.T) {
 		}
 
 		providers := &Providers{
-			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			TxnOpsProvider:   txnhandler.NewOperationProvider(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClientProvider(), compression.New(compression.WithDefaultAlgorithms())),
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			Ledger:         mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
+			TxnOpsProvider: txnhandler.NewOperationProvider(&mockDCAS{readFunc: readFunc}, mocks.NewMockProtocolClientProvider(), compression.New(compression.WithDefaultAlgorithms())),
 		}
 
 		o := New(providers)
@@ -59,8 +58,7 @@ func TestStartObserver(t *testing.T) {
 		sidetreeTxnCh := make(chan []txn.SidetreeTxn, 100)
 
 		providers := &Providers{
-			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			Ledger: mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
 		}
 
 		o := New(providers)
@@ -86,10 +84,9 @@ func TestStartObserver(t *testing.T) {
 		}}
 
 		providers := &Providers{
-			Ledger:           mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
-			TxnOpsProvider:   &mockTxnOpsProvider{},
-			OpStoreProvider:  &mockOperationStoreProvider{opStore: opStore},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			Ledger:          mockLedger{registerForSidetreeTxnValue: sidetreeTxnCh},
+			TxnOpsProvider:  &mockTxnOpsProvider{},
+			OpStoreProvider: &mockOperationStoreProvider{opStore: opStore},
 		}
 
 		o := New(providers)
@@ -109,8 +106,7 @@ func TestStartObserver(t *testing.T) {
 func TestTxnProcessor_Process(t *testing.T) {
 	t.Run("test error from txn operations provider", func(t *testing.T) {
 		providers := &Providers{
-			TxnOpsProvider:   &mockTxnOpsProvider{err: errors.New("txn operations provider error")},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			TxnOpsProvider: &mockTxnOpsProvider{err: errors.New("txn operations provider error")},
 		}
 
 		p := NewTxnProcessor(providers)
@@ -125,8 +121,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		errExpected := errors.New("injected store provider error")
 
 		providers := &Providers{
-			OpStoreProvider:  &mockOperationStoreProvider{err: errExpected},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			OpStoreProvider: &mockOperationStoreProvider{err: errExpected},
 		}
 
 		p := NewTxnProcessor(providers)
@@ -141,8 +136,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		}}
 
 		providers := &Providers{
-			OpStoreProvider:  &mockOperationStoreProvider{opStore: opStore},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			OpStoreProvider: &mockOperationStoreProvider{opStore: opStore},
 		}
 
 		p := NewTxnProcessor(providers)
@@ -153,9 +147,8 @@ func TestProcessTxnOperations(t *testing.T) {
 
 	t.Run("test success", func(t *testing.T) {
 		providers := &Providers{
-			TxnOpsProvider:   &mockTxnOpsProvider{},
-			OpStoreProvider:  &mockOperationStoreProvider{opStore: &mockOperationStore{}},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			TxnOpsProvider:  &mockTxnOpsProvider{},
+			OpStoreProvider: &mockOperationStoreProvider{opStore: &mockOperationStore{}},
 		}
 
 		p := NewTxnProcessor(providers)
@@ -169,9 +162,8 @@ func TestProcessTxnOperations(t *testing.T) {
 	t.Run("success - multiple operations with same suffix in transaction operations", func(t *testing.T) {
 		mockOpsStore := &mockOperationStore{}
 		providers := &Providers{
-			TxnOpsProvider:   &mockTxnOpsProvider{},
-			OpStoreProvider:  &mockOperationStoreProvider{opStore: mockOpsStore},
-			OpFilterProvider: &NoopOperationFilterProvider{},
+			TxnOpsProvider:  &mockTxnOpsProvider{},
+			OpStoreProvider: &mockOperationStoreProvider{opStore: mockOpsStore},
 		}
 
 		p := NewTxnProcessor(providers)
