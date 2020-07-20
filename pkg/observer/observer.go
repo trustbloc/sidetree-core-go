@@ -50,17 +50,11 @@ type OperationFilter interface {
 	Filter(uniqueSuffix string, ops []*batch.AnchoredOperation) ([]*batch.AnchoredOperation, error)
 }
 
-// OperationFilterProvider returns an operation filter for the given namespace
-type OperationFilterProvider interface {
-	Get(namespace string) (OperationFilter, error)
-}
-
 // Providers contains all of the providers required by the TxnProcessor
 type Providers struct {
 	Ledger                Ledger
 	TxnOpsProvider        TxnOpsProvider
 	OpStoreProvider       OperationStoreProvider
-	OpFilterProvider      OperationFilterProvider
 	DecompressionProvider DecompressionProvider
 }
 
@@ -165,28 +159,14 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, s
 		batchSuffixes[op.UniqueSuffix] = true
 	}
 
-	for suffix := range mapOperationsByUniqueSuffix(ops) {
-		logger.Debugf("Filtering operations for suffix [%s]", suffix)
+	opStore, err := p.OpStoreProvider.ForNamespace(sidetreeTxn.Namespace)
+	if err != nil {
+		return errors.Wrapf(err, "error getting operation store for namespace [%s]", sidetreeTxn.Namespace)
+	}
 
-		opFilter, err := p.OpFilterProvider.Get(sidetreeTxn.Namespace)
-		if err != nil {
-			return errors.Wrapf(err, "error getting operation filter for namespace [%s]", sidetreeTxn.Namespace)
-		}
-
-		validOps, err := opFilter.Filter(suffix, ops)
-		if err != nil {
-			return errors.Wrap(err, "error filtering invalid operations")
-		}
-
-		opStore, err := p.OpStoreProvider.ForNamespace(sidetreeTxn.Namespace)
-		if err != nil {
-			return errors.Wrapf(err, "error getting operation store for namespace [%s]", sidetreeTxn.Namespace)
-		}
-
-		err = opStore.Put(validOps)
-		if err != nil {
-			return errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorString)
-		}
+	err = opStore.Put(ops)
+	if err != nil {
+		return errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorString)
 	}
 
 	return nil
@@ -201,14 +181,4 @@ func updateAnchoredOperation(op *batch.AnchoredOperation, index uint, sidetreeTx
 	op.OperationIndex = index
 
 	return op
-}
-
-func mapOperationsByUniqueSuffix(ops []*batch.AnchoredOperation) map[string][]*batch.AnchoredOperation {
-	m := make(map[string][]*batch.AnchoredOperation)
-
-	for _, op := range ops {
-		m[op.UniqueSuffix] = append(m[op.UniqueSuffix], op)
-	}
-
-	return m
 }
