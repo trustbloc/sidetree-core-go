@@ -67,7 +67,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(),
-			"next update commitment hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the required supported hash algorithm")
 	})
 	t.Run("invalid signed data", func(t *testing.T) {
 		delta, err := getUpdateDelta()
@@ -108,12 +108,12 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		req, err := getDefaultUpdateRequest()
 		require.NoError(t, err)
 
-		schema, err := parseSignedDataForUpdate(req.SignedData, sha2_256)
+		schema, err := ParseSignedDataForUpdate(req.SignedData, sha2_256)
 		require.NoError(t, err)
 		require.NotNil(t, schema)
 	})
 	t.Run("invalid JWS compact format", func(t *testing.T) {
-		schema, err := parseSignedDataForUpdate("invalid", sha2_256)
+		schema, err := ParseSignedDataForUpdate("invalid", sha2_256)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "invalid JWS compact format")
@@ -129,7 +129,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 
 		compactJWS, err := signutil.SignPayload(payload, NewMockSigner())
 
-		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
+		schema, err := ParseSignedDataForUpdate(compactJWS, sha2_256)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "delta hash is not computed with the latest supported hash algorithm")
@@ -138,7 +138,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())
 		require.NoError(t, err)
 
-		schema, err := parseSignedDataForUpdate(compactJWS, sha2_256)
+		schema, err := ParseSignedDataForUpdate(compactJWS, sha2_256)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "invalid character")
@@ -154,7 +154,7 @@ func TestValidateUpdateDelta(t *testing.T) {
 		err = validateDelta(delta, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"next update commitment hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the required supported hash algorithm")
 	})
 }
 

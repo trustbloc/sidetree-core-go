@@ -123,7 +123,7 @@ func TestValidateSuffixData(t *testing.T) {
 		suffixData.DeltaHash = ""
 		err = validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "patch data hash is not computed with the required supported hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		suffixData, err := getSuffixData()
@@ -132,7 +132,7 @@ func TestValidateSuffixData(t *testing.T) {
 		suffixData.RecoveryCommitment = ""
 		err = validateSuffixData(suffixData, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required supported hash algorithm")
 	})
 }
 
@@ -151,7 +151,7 @@ func TestValidateDelta(t *testing.T) {
 		err = validateDelta(delta, sha2_256)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"next update commitment hash is not computed with the latest supported hash algorithm")
+			"next update commitment hash is not computed with the required supported hash algorithm")
 	})
 	t.Run("missing patches", func(t *testing.T) {
 		delta, err := getDelta()

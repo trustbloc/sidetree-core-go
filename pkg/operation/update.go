@@ -24,7 +24,7 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	_, err = parseSignedDataForUpdate(schema.SignedData, protocol.HashAlgorithmInMultiHashCode)
+	_, err = ParseSignedDataForUpdate(schema.SignedData, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,8 @@ func parseUpdateRequest(payload []byte) (*model.UpdateRequest, error) {
 	return schema, nil
 }
 
-func parseSignedDataForUpdate(compactJWS string, code uint) (*model.UpdateSignedDataModel, error) {
+// ParseSignedDataForUpdate will parse and validate signed data for update
+func ParseSignedDataForUpdate(compactJWS string, code uint) (*model.UpdateSignedDataModel, error) {
 	jws, err := parseSignedData(compactJWS)
 	if err != nil {
 		return nil, fmt.Errorf("update: %s", err.Error())

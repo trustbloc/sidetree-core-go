@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -24,7 +23,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 var logger = log.New("sidetree-core-processor")
@@ -207,29 +205,31 @@ type resolutionModel struct {
 }
 
 func (s *OperationProcessor) applyOperation(operation *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) {
+	p, err := s.pc.Get(operation.TransactionTime)
+	if err != nil {
+		return nil, fmt.Errorf("apply '%s' operation: %s", operation.Type, err.Error())
+	}
+
 	switch operation.Type {
 	case batch.OperationTypeCreate:
-		return s.applyCreateOperation(operation, rm)
+		return s.applyCreateOperation(operation, p, rm)
 	case batch.OperationTypeUpdate:
-		return s.applyUpdateOperation(operation, rm)
+		return s.applyUpdateOperation(operation, p, rm)
 	case batch.OperationTypeDeactivate:
-		return s.applyDeactivateOperation(operation, rm)
+		return s.applyDeactivateOperation(operation, p, rm)
 	case batch.OperationTypeRecover:
-		return s.applyRecoverOperation(operation, rm)
+		return s.applyRecoverOperation(operation, p, rm)
 	default:
 		return nil, errors.New("operation type not supported for process operation")
 	}
 }
 
-func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p protocol.Protocol, rm *resolutionModel) (*resolutionModel, error) {
 	logger.Debugf("[%s] Applying create operation: %+v", s.name, op)
 
 	if rm.Doc != nil {
 		return nil, errors.New("create has to be the first operation")
 	}
-
-	// TODO: protocol should be calculated based on transaction number
-	p := s.pc.Current()
 
 	suffixData, err := operation.ParseSuffixData(op.EncodedSuffixData, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
@@ -261,26 +261,17 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, r
 	}, nil
 }
 
-func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
+func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p protocol.Protocol, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
 	logger.Debugf("[%s] Applying update operation: %+v", s.name, op)
 
 	if rm.Doc == nil {
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	jwsParts, err := parseSignedData(op.SignedData)
-	if err != nil {
-		return nil, err
-	}
-
-	var signedDataModel model.UpdateSignedDataModel
-	err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
+	signedDataModel, err := operation.ParseSignedDataForUpdate(op.SignedData, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal signed data model while applying update: %s", err.Error())
 	}
-
-	// TODO: protocol should be calculated based on transaction number
-	p := s.pc.Current()
 
 	updateCommitment, err := commitment.Calculate(signedDataModel.UpdateKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
@@ -322,39 +313,22 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, r
 		RecoveryCommitment:             rm.RecoveryCommitment}, nil
 }
 
-func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
-	if compactJWS == "" {
-		return nil, errors.New("missing signed data")
-	}
-
-	return internal.ParseJWS(compactJWS)
-}
-
-func (s *OperationProcessor) applyDeactivateOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) {
+func (s *OperationProcessor) applyDeactivateOperation(op *batch.AnchoredOperation, p protocol.Protocol, rm *resolutionModel) (*resolutionModel, error) {
 	logger.Debugf("[%s] Applying deactivate operation: %+v", s.name, op)
 
 	if rm.Doc == nil {
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
-	jwsParts, err := parseSignedData(op.SignedData)
+	signedDataModel, err := operation.ParseSignedDataForDeactivate(op.SignedData)
 	if err != nil {
-		return nil, err
-	}
-
-	var signedDataModel model.DeactivateSignedDataModel
-	err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal signed data model while applying deactivate: %s", err.Error())
+		return nil, fmt.Errorf("failed to parse signed data model while applying deactivate: %s", err.Error())
 	}
 
 	// verify signed did suffix against actual did suffix
 	if op.UniqueSuffix != signedDataModel.DidSuffix {
 		return nil, errors.New("did suffix doesn't match signed value")
 	}
-
-	// TODO: protocol should be calculated based on transaction number
-	p := s.pc.Current()
 
 	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
@@ -380,26 +354,17 @@ func (s *OperationProcessor) applyDeactivateOperation(op *batch.AnchoredOperatio
 		RecoveryCommitment:             ""}, nil
 }
 
-func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
+func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, p protocol.Protocol, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
 	logger.Debugf("[%s] Applying recover operation: %+v", s.name, op)
 
 	if rm.Doc == nil {
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	jwsParts, err := parseSignedData(op.SignedData)
+	signedDataModel, err := operation.ParseSignedDataForRecover(op.SignedData, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse signed data model while applying recover: %s", err.Error())
 	}
-
-	var signedDataModel model.RecoverSignedDataModel
-	err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal signed data model while applying recover: %s", err.Error())
-	}
-
-	// TODO: protocol should be calculated based on transaction number
-	p := s.pc.Current()
 
 	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
@@ -456,44 +421,38 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 		return "", errors.New("create operation doesn't have reveal value")
 	}
 
-	jwsParts, err := parseSignedData(op.SignedData)
+	p, err := s.pc.Get(op.TransactionTime)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse signed data for reveal value for %s: %s", op.Type, err.Error())
+		return "", fmt.Errorf("get operation commitment: %s", err.Error())
 	}
 
 	var commitmentKey *jws.JWK
 
 	switch op.Type {
 	case batch.OperationTypeUpdate:
-		var signedDataModel model.UpdateSignedDataModel
-		err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal signed data model for update: %s", err.Error())
+		signedDataModel, innerErr := operation.ParseSignedDataForUpdate(op.SignedData, p.HashAlgorithmInMultiHashCode)
+		if innerErr != nil {
+			return "", fmt.Errorf("failed to parse signed data model for update: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.UpdateKey
 	case batch.OperationTypeDeactivate:
-		var signedDataModel model.DeactivateSignedDataModel
-		err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal signed data model for deactivate: %s", err.Error())
+		signedDataModel, innerErr := operation.ParseSignedDataForDeactivate(op.SignedData)
+		if innerErr != nil {
+			return "", fmt.Errorf("failed to parse signed data model for deactivate: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
 	case batch.OperationTypeRecover:
-		var signedDataModel model.RecoverSignedDataModel
-		err = json.Unmarshal(jwsParts.Payload, &signedDataModel)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal signed data model for recover: %s", err.Error())
+		signedDataModel, innerErr := operation.ParseSignedDataForRecover(op.SignedData, p.HashAlgorithmInMultiHashCode)
+		if innerErr != nil {
+			return "", fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
 	default:
 		return "", errors.New("operation type not supported for generating operation commitment")
 	}
-
-	// TODO: protocol should be calculated based on transaction number
-	p := s.pc.Current()
 
 	c, err := commitment.Calculate(commitmentKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {

@@ -116,7 +116,7 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	// TODO: Add checks here to makes sure that file sizes match - part of validation tickets
 
 	for i, delta := range cf.Deltas {
-		p, err := h.getProtocol(txn.Namespace)
+		p, err := h.getProtocol(txn)
 		if err != nil {
 			return nil, err
 		}
@@ -209,9 +209,9 @@ type anchorOperations struct {
 func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) { //nolint: funlen
 	logger.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
 
-	p, err := h.getProtocol(txn.Namespace)
+	p, err := h.getProtocol(txn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing anchor operations: %s", err.Error())
 	}
 
 	var suffixes []string
@@ -271,16 +271,13 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	}, nil
 }
 
-func (h *OperationProvider) getProtocol(namespace string) (*protocol.Protocol, error) {
-	pc, err := h.pcp.ForNamespace(namespace)
+func (h *OperationProvider) getProtocol(txn *txn.SidetreeTxn) (protocol.Protocol, error) {
+	pc, err := h.pcp.ForNamespace(txn.Namespace)
 	if err != nil {
-		return nil, err
+		return protocol.Protocol{}, err
 	}
 
-	// TODO: get protocol based on Sidetree transaction - for now use current
-	p := pc.Current()
-
-	return &p, nil
+	return pc.Get(txn.TransactionTime)
 }
 
 // MapOperations contains parsed operations from map file

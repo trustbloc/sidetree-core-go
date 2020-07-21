@@ -34,7 +34,7 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	_, err = parseSignedDataForRecovery(schema.SignedData, code)
+	_, err = ParseSignedDataForRecover(schema.SignedData, code)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,8 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 	return schema, nil
 }
 
-func parseSignedDataForRecovery(compactJWS string, code uint) (*model.RecoverSignedDataModel, error) {
+// ParseSignedDataForRecover will parse and validate signed data for recover
+func ParseSignedDataForRecover(compactJWS string, code uint) (*model.RecoverSignedDataModel, error) {
 	jws, err := parseSignedData(compactJWS)
 	if err != nil {
 		return nil, fmt.Errorf("recover: %s", err.Error())
@@ -88,17 +89,21 @@ func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, cod
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, uint64(code)) {
-		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
+		return fmt.Errorf("next recovery commitment hash is not computed with the required hash algorithm: %d", code)
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, uint64(code)) {
-		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
+		return fmt.Errorf("patch data hash is not computed with the required hash algorithm: %d", code)
 	}
 
 	return nil
 }
 
 func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
+	if compactJWS == "" {
+		return nil, errors.New("missing signed data")
+	}
+
 	jws, err := internal.ParseJWS(compactJWS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())

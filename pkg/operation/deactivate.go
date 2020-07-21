@@ -23,9 +23,13 @@ func ParseDeactivateOperation(request []byte, p protocol.Protocol) (*batch.Opera
 		return nil, err
 	}
 
-	_, err = parseSignedDataForDeactivate(schema)
+	signedData, err := ParseSignedDataForDeactivate(schema.SignedData)
 	if err != nil {
 		return nil, err
+	}
+
+	if signedData.DidSuffix != schema.DidSuffix {
+		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 
 	return &batch.Operation{
@@ -62,8 +66,9 @@ func validateDeactivateRequest(req *model.DeactivateRequest) error {
 	return nil
 }
 
-func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.DeactivateSignedDataModel, error) {
-	jws, err := parseSignedData(req.SignedData)
+// ParseSignedDataForDeactivate will parse and validate signed data for deactivate
+func ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error) {
+	jws, err := parseSignedData(compactJWS)
 	if err != nil {
 		return nil, fmt.Errorf("deactivate: %s", err.Error())
 	}
@@ -72,10 +77,6 @@ func parseSignedDataForDeactivate(req *model.DeactivateRequest) (*model.Deactiva
 	err = json.Unmarshal(jws.Payload, signedData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal signed data model for deactivate: %s", err.Error())
-	}
-
-	if signedData.DidSuffix != req.DidSuffix {
-		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 
 	return signedData, nil
