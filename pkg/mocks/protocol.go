@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package mocks
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -18,31 +20,51 @@ const DefaultNS = "did:sidetree"
 // maximum batch files size in bytes
 const maxBatchFileSize = 20000
 
+const maxDeltaByteSize = 2000
+
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
-	Protocol protocol.Protocol
+	Protocol protocol.Protocol // current version (separated for easier testing)
+	Versions []protocol.Protocol
 }
 
-// NewMockProtocolClient creates mocks protocol client
+// NewMockProtocolClient creates mock protocol client
 func NewMockProtocolClient() *MockProtocolClient {
+	//nolint:gomnd
+	latest := protocol.Protocol{
+		StartingBlockChainTime:       0,
+		HashAlgorithmInMultiHashCode: sha2_256,
+		MaxOperationsPerBatch:        2,
+		MaxDeltaByteSize:             maxDeltaByteSize,
+		CompressionAlgorithm:         "GZIP",
+		MaxChunkFileSize:             maxBatchFileSize,
+		MaxMapFileSize:               maxBatchFileSize,
+		MaxAnchorFileSize:            maxBatchFileSize,
+	}
+
+	// has to be sorted for mock client to work
+	versions := []protocol.Protocol{latest}
+
 	return &MockProtocolClient{
-		//nolint:gomnd // mock values are defined below.
-		Protocol: protocol.Protocol{
-			StartingBlockChainTime:       0,
-			HashAlgorithmInMultiHashCode: sha2_256,
-			MaxOperationsPerBatch:        2,
-			MaxDeltaByteSize:             2000,
-			CompressionAlgorithm:         "GZIP",
-			MaxChunkFileSize:             maxBatchFileSize,
-			MaxMapFileSize:               maxBatchFileSize,
-			MaxAnchorFileSize:            maxBatchFileSize,
-		},
+		Protocol: latest,
+		Versions: versions,
 	}
 }
 
 // Current mocks getting last protocol version
 func (m *MockProtocolClient) Current() protocol.Protocol {
 	return m.Protocol
+}
+
+// Get mocks getting protocol version based on blockchain(transaction) time
+func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Protocol, error) {
+	for i := len(m.Versions) - 1; i >= 0; i-- {
+		if transactionTime >= m.Versions[i].StartingBlockChainTime {
+			return m.Versions[i], nil
+		}
+	}
+
+	return protocol.Protocol{}, fmt.Errorf("protocol parameters are not defined for blockchain time: %d", transactionTime)
 }
 
 // NewMockProtocolClientProvider creates new mock protocol client provider

@@ -125,7 +125,7 @@ func validateDelta(delta *model.DeltaModel, code uint) error {
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(code)) {
-		return errors.New("next update commitment hash is not computed with the latest supported hash algorithm")
+		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", code)
 	}
 
 	return nil
@@ -133,11 +133,11 @@ func validateDelta(delta *model.DeltaModel, code uint) error {
 
 func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(code)) {
-		return errors.New("next recovery commitment hash is not computed with the latest supported hash algorithm")
+		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", code)
 	}
 
 	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(code)) {
-		return errors.New("patch data hash is not computed with the latest supported hash algorithm")
+		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", code)
 	}
 
 	return nil

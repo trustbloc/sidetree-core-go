@@ -147,14 +147,14 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 		signed.DeltaHash = ""
 		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "patch data hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "patch data hash is not computed with the required hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.RecoveryCommitment = ""
 		err := validateSignedDataForRecovery(signed, sha2_256)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required hash algorithm")
 	})
 }
 
@@ -176,7 +176,7 @@ func TestParseSignedData(t *testing.T) {
 		jws, err := parseSignedData("")
 		require.Error(t, err)
 		require.Nil(t, jws)
-		require.Contains(t, err.Error(), "invalid JWS compact format")
+		require.Contains(t, err.Error(), "missing signed data")
 	})
 	t.Run("missing protected headers", func(t *testing.T) {
 		jws, err := parseSignedData(".cGF5bG9hZA.c2lnbmF0dXJl")

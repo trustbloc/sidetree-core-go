@@ -124,7 +124,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.NotEmpty(t, anchorString)
 
 		invalid := mocks.NewMockProtocolClient()
-		invalid.Protocol.HashAlgorithmInMultiHashCode = 55
+		invalid.Versions[0].HashAlgorithmInMultiHashCode = 55
 
 		pcp := mocks.NewMockProtocolClientProvider()
 		pcp.ProtocolClients[mocks.DefaultNS] = invalid

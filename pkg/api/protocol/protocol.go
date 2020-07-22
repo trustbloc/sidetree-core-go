@@ -9,7 +9,7 @@ package protocol
 // Protocol defines protocol parameters
 type Protocol struct {
 	// StartingBlockChainTime is inclusive starting logical blockchain time that this protocol applies to.
-	StartingBlockChainTime uint
+	StartingBlockChainTime uint64
 	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code
 	HashAlgorithmInMultiHashCode uint
 	// MaxOperationsPerBatch defines maximum operations per batch
@@ -31,6 +31,8 @@ type Client interface {
 
 	// Current returns latest version of protocol
 	Current() Protocol
+
+	Get(transactionTime uint64) (Protocol, error)
 }
 
 // ClientProvider returns a protocol client for the given namespace

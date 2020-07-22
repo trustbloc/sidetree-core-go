@@ -65,7 +65,7 @@ func TestGetOperation(t *testing.T) {
 
 		op, err := ParseOperation(namespace, operation, invalid)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next update commitment hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "next update commitment hash is not computed with the required supported hash algorithm")
 		require.Nil(t, op)
 	})
 	t.Run("unsupported operation type error", func(t *testing.T) {

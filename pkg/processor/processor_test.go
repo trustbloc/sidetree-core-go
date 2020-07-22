@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -77,6 +78,22 @@ func TestResolve(t *testing.T) {
 		require.Equal(t, testErr, err)
 	})
 
+	t.Run("protocol error", func(t *testing.T) {
+		pcWithErr := mocks.NewMockProtocolClient()
+		pcWithErr.Versions = []protocol.Protocol{}
+
+		store, _ := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pcWithErr)
+
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		doc, err := op.applyOperation(createOp, &resolutionModel{})
+		require.Nil(t, doc)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "apply 'create' operation: protocol parameters are not defined for blockchain time")
+	})
+
 	t.Run("resolution error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
@@ -121,7 +138,7 @@ func TestResolve(t *testing.T) {
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.applyCreateOperation(anchoredOp, &resolutionModel{})
+		doc, err := p.applyCreateOperation(anchoredOp, pc.Protocol, &resolutionModel{})
 		require.Nil(t, doc)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "create delta doesn't match suffix data delta hash")
@@ -320,7 +337,7 @@ func TestProcessOperation(t *testing.T) {
 		require.NoError(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.applyCreateOperation(createOp, &resolutionModel{
+		doc, err := p.applyCreateOperation(createOp, pc.Protocol, &resolutionModel{
 			Doc: make(document.Document),
 		})
 		require.Error(t, err)
@@ -413,7 +430,7 @@ func TestDeactivate(t *testing.T) {
 		require.NoError(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.applyDeactivateOperation(deactivateOp, &resolutionModel{})
+		doc, err := p.applyDeactivateOperation(deactivateOp, pc.Protocol, &resolutionModel{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "deactivate can only be applied to an existing document")
 		require.Nil(t, doc)
@@ -467,7 +484,7 @@ func TestDeactivate(t *testing.T) {
 		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying deactivate")
+		require.Contains(t, err.Error(), "failed to parse signed data model while applying deactivate")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -683,7 +700,7 @@ func TestRecover(t *testing.T) {
 		rm, err = p.applyOperation(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying recover")
+		require.Contains(t, err.Error(), "failed to parse signed data model while applying recover")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -732,7 +749,9 @@ func TestRecover(t *testing.T) {
 		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 		signedModel := model.RecoverSignedDataModel{
-			RecoveryKey: privatePubKey,
+			RecoveryKey:        privatePubKey,
+			RecoveryCommitment: getEncodedMultihash([]byte("different")),
+			DeltaHash:          getEncodedMultihash([]byte("{}")),
 		}
 		recoverOp.SignedData, err = signutil.SignModel(signedModel, ecsigner.New(privateKey, "P-256", ""))
 
@@ -816,6 +835,20 @@ func TestGetOperationCommitment(t *testing.T) {
 		c, err := getCommitment(recoveryKey)
 		require.NoError(t, err)
 		require.Equal(t, c, value)
+	})
+
+	t.Run("error - protocol error", func(t *testing.T) {
+		pcWithoutProtocols := mocks.NewMockProtocolClient()
+		pcWithoutProtocols.Versions = []protocol.Protocol{}
+		store, _ := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		value, err := New("test", store, pcWithoutProtocols).getOperationCommitment(updateOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
 	})
 
 	t.Run("error - create operation doesn't have reveal value", func(t *testing.T) {
