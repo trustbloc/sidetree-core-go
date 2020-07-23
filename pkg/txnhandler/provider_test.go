@@ -390,3 +390,104 @@ func TestHandler_readFromCAS(t *testing.T) {
 		require.Contains(t, err.Error(), "compression algorithm 'alg' not supported")
 	})
 }
+
+func TestHandler_assembleBatchOperations(t *testing.T) {
+	pcp := mocks.NewMockProtocolClientProvider()
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(nil, pcp, nil)
+
+		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		require.NoError(t, err)
+
+		updateOp, err := generateOperation(2, batch.OperationTypeUpdate)
+		require.NoError(t, err)
+
+		deactivateOp, err := generateOperation(3, batch.OperationTypeDeactivate)
+		require.NoError(t, err)
+
+		af := &models.AnchorFile{
+			MapFileHash: "hash",
+			Operations: models.Operations{
+				Create:     []models.CreateOperation{{SuffixData: createOp.EncodedSuffixData}},
+				Deactivate: []models.SignedOperation{{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
+			},
+		}
+
+		mf := &models.MapFile{
+			Chunks: []models.Chunk{},
+			Operations: models.Operations{
+				Update: []models.SignedOperation{{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData}},
+			},
+		}
+
+		cf := &models.ChunkFile{Deltas: []string{createOp.EncodedDelta, updateOp.EncodedDelta}}
+
+		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		require.NoError(t, err)
+		require.NotNil(t, file)
+	})
+
+	t.Run("error - anchor, map, chunk file operation number mismatch", func(t *testing.T) {
+		provider := NewOperationProvider(nil, pcp, nil)
+
+		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		require.NoError(t, err)
+
+		updateOp, err := generateOperation(2, batch.OperationTypeUpdate)
+		require.NoError(t, err)
+
+		deactivateOp, err := generateOperation(3, batch.OperationTypeDeactivate)
+		require.NoError(t, err)
+
+		af := &models.AnchorFile{
+			MapFileHash: "hash",
+			Operations: models.Operations{
+				Create: []models.CreateOperation{{SuffixData: createOp.EncodedSuffixData}},
+				Deactivate: []models.SignedOperation{
+					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
+			},
+		}
+
+		mf := &models.MapFile{
+			Chunks: []models.Chunk{},
+			Operations: models.Operations{
+				Update: []models.SignedOperation{{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData}},
+			},
+		}
+
+		// don't add update operation delta to chunk file in order to cause error
+		cf := &models.ChunkFile{Deltas: []string{createOp.EncodedDelta}}
+
+		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(),
+			"number of create+recover+update operations[2] doesn't match number of deltas[1]")
+	})
+
+	t.Run("error - invalid delta", func(t *testing.T) {
+		provider := NewOperationProvider(nil, pcp, nil)
+
+		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		require.NoError(t, err)
+
+		af := &models.AnchorFile{
+			MapFileHash: "hash",
+			Operations: models.Operations{
+				Create: []models.CreateOperation{{SuffixData: createOp.EncodedSuffixData}},
+			},
+		}
+
+		mf := &models.MapFile{
+			Chunks: []models.Chunk{},
+		}
+
+		cf := &models.ChunkFile{Deltas: []string{"invalid-delta"}}
+
+		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "parse delta: illegal base64 data")
+	})
+}

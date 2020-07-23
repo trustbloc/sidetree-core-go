@@ -41,7 +41,6 @@ func ParseMapFile(content []byte) (*MapFile, error) {
 		return nil, err
 	}
 
-	// TODO: Verify map file - issue-295
 	return mf, nil
 }
 

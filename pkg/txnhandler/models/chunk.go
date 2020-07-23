@@ -37,7 +37,6 @@ func ParseChunkFile(content []byte) (*ChunkFile, error) {
 		return nil, err
 	}
 
-	// TODO: Verify chunk file - issue-296
 	return cf, nil
 }
 
