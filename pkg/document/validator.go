@@ -45,7 +45,7 @@ const (
 	maxPublicKeyProperties = 4
 
 	// public keys, services id length
-	maxIDLength = 20
+	maxIDLength = 50
 
 	maxServiceTypeLength     = 30
 	maxServiceEndpointLength = 100
