@@ -29,7 +29,7 @@ func TestNewDeactivateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
 	t.Run("signing error", func(t *testing.T) {
-		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr), true)}
+		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
 
 		request, err := NewDeactivateRequest(info)
 		require.Error(t, err)
@@ -54,65 +54,100 @@ func TestValidateSigner(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	t.Run("success - recovery signer", func(t *testing.T) {
+	const testKid = "kid"
+
+	t.Run("success - kid can be empty", func(t *testing.T) {
 		signer := ecsigner.New(privateKey, "alg", "")
 
-		err := validateSigner(signer, true)
+		err := validateSigner(signer)
 		require.NoError(t, err)
 	})
-	t.Run("success - update signer (kid has to be provided)", func(t *testing.T) {
-		signer := ecsigner.New(privateKey, "alg", "kid")
+	t.Run("success - kid can be provided", func(t *testing.T) {
+		signer := ecsigner.New(privateKey, "alg", testKid)
 
-		err := validateSigner(signer, false)
+		err := validateSigner(signer)
 		require.NoError(t, err)
 	})
-	t.Run("missing signer", func(t *testing.T) {
-		err := validateSigner(nil, false)
+	t.Run("error - missing signer", func(t *testing.T) {
+		err := validateSigner(nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing signer")
 	})
 
-	t.Run("kid has to be provided for update signer", func(t *testing.T) {
-		signer := ecsigner.New(privateKey, "alg", "")
+	t.Run("err - kid must be present in the protected header", func(t *testing.T) {
+		signer := &MockSigner{MockHeaders: make(jws.Headers)}
 
-		err := validateSigner(signer, false)
+		err := validateSigner(signer)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "kid has to be provided for update signer")
+		require.Contains(t, err.Error(), "kid must be present in the protected header")
 	})
 
-	t.Run("kid must not be provided for recovery signer", func(t *testing.T) {
-		signer := ecsigner.New(privateKey, "alg", "kid")
+	t.Run("err - algorithm must be present in the protected header", func(t *testing.T) {
+		headers := make(jws.Headers)
 
-		err := validateSigner(signer, true)
+		headers["kid"] = testKid
+
+		signer := &MockSigner{MockHeaders: headers}
+
+		err := validateSigner(signer)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "kid must not be provided for recovery signer")
+		require.Contains(t, err.Error(), "algorithm must be present in the protected header")
+	})
+
+	t.Run("err - algorithm cannot be empty", func(t *testing.T) {
+		headers := make(jws.Headers)
+
+		headers["kid"] = testKid
+		headers["alg"] = ""
+
+		signer := &MockSigner{MockHeaders: headers}
+
+		err := validateSigner(signer)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "algorithm cannot be empty in the protected header")
+	})
+
+	t.Run("err - invalid protected header value", func(t *testing.T) {
+		headers := make(jws.Headers)
+
+		headers["kid"] = "kid"
+		headers["alg"] = "alg"
+		headers["invalid"] = "value"
+
+		signer := &MockSigner{MockHeaders: headers}
+
+		err := validateSigner(signer)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "protected headers can only contain kid and alg")
 	})
 }
 
-// mockSigner implements signer interface
-type mockSigner struct {
-	Recovery bool
-	Err      error
+// MockSigner implements signer interface
+type MockSigner struct {
+	MockHeaders jws.Headers
+	Err         error
 }
 
 // New creates new mock signer (default to recovery signer)
-func NewMockSigner(err error, recovery bool) Signer {
-	return &mockSigner{Err: err, Recovery: recovery}
+func NewMockSigner(err error) *MockSigner {
+	return &MockSigner{Err: err}
 }
 
 // Headers provides required JWS protected headers. It provides information about signing key and algorithm.
-func (ms *mockSigner) Headers() jws.Headers {
-	headers := make(jws.Headers)
-	headers[jws.HeaderAlgorithm] = "alg"
-	if !ms.Recovery {
+func (ms *MockSigner) Headers() jws.Headers {
+	if ms.MockHeaders == nil {
+		headers := make(jws.Headers)
+		headers[jws.HeaderAlgorithm] = "alg"
 		headers[jws.HeaderKeyID] = "kid"
+
+		return headers
 	}
 
-	return headers
+	return ms.MockHeaders
 }
 
 // Sign signs msg and returns mock signature value
-func (ms *mockSigner) Sign(msg []byte) ([]byte, error) {
+func (ms *MockSigner) Sign(msg []byte) ([]byte, error) {
 	if ms.Err != nil {
 		return nil, ms.Err
 	}

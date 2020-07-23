@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 )
@@ -25,7 +26,7 @@ func TestNewUpdateRequest(t *testing.T) {
 	patch, err := getTestPatch()
 	require.NoError(t, err)
 
-	signer := NewMockSigner(nil, false)
+	signer := NewMockSigner(nil)
 
 	t.Run("missing unique suffix", func(t *testing.T) {
 		info := &UpdateRequestInfo{}
@@ -54,25 +55,27 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
 	})
-	t.Run("signer has to have kid error", func(t *testing.T) {
-		// recovery signer doesn't have kid; update signer has to have it
+	t.Run("kid must be present in the protected header", func(t *testing.T) {
+		signer = NewMockSigner(nil)
+		signer.MockHeaders = make(jws.Headers)
+
 		info := &UpdateRequestInfo{
 			DidSuffix:     didSuffix,
 			Patch:         patch,
 			MultihashCode: sha2_256,
-			Signer:        NewMockSigner(nil, true)}
+			Signer:        signer}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
-		require.Contains(t, err.Error(), "kid has to be provided for update signer")
+		require.Contains(t, err.Error(), "kid must be present in the protected header")
 	})
 	t.Run("signing error", func(t *testing.T) {
 		info := &UpdateRequestInfo{
 			DidSuffix:     didSuffix,
 			Patch:         patch,
 			MultihashCode: sha2_256,
-			Signer:        NewMockSigner(errors.New(signerErr), false)}
+			Signer:        NewMockSigner(errors.New(signerErr))}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)

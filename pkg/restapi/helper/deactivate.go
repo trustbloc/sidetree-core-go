@@ -68,10 +68,10 @@ func validateDeactivateRequest(info *DeactivateRequestInfo) error {
 		return errors.New("missing did unique suffix")
 	}
 
-	return validateSigner(info.Signer, true)
+	return validateSigner(info.Signer)
 }
 
-func validateSigner(signer Signer, recovery bool) error {
+func validateSigner(signer Signer) error {
 	if signer == nil {
 		return errors.New("missing signer")
 	}
@@ -80,13 +80,27 @@ func validateSigner(signer Signer, recovery bool) error {
 		return errors.New("missing protected headers")
 	}
 
-	kid, ok := signer.Headers().KeyID()
-	if recovery && ok {
-		return errors.New("kid must not be provided for recovery signer")
+	// kid MUST be present in the protected header.
+	// alg MUST be present in the protected header, its value MUST NOT be none.
+	// no additional members may be present in the protected header.
+
+	_, ok := signer.Headers().KeyID()
+	if !ok {
+		return errors.New("kid must be present in the protected header")
 	}
 
-	if !recovery && (!ok || kid == "") {
-		return errors.New("kid has to be provided for update signer")
+	alg, ok := signer.Headers().Algorithm()
+	if !ok {
+		return errors.New("algorithm must be present in the protected header")
+	}
+
+	if alg == "" {
+		return errors.New("algorithm cannot be empty in the protected header")
+	}
+
+	const allowedHeaders = 2
+	if len(signer.Headers()) != allowedHeaders {
+		return errors.New("protected headers can only contain kid and alg")
 	}
 
 	return nil

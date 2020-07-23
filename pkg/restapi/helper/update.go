@@ -85,5 +85,5 @@ func validateUpdateRequest(info *UpdateRequestInfo) error {
 		return errors.New("missing update information")
 	}
 
-	return validateSigner(info.Signer, false)
+	return validateSigner(info.Signer)
 }
