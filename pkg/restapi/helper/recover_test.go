@@ -68,7 +68,7 @@ func TestNewRecoverRequest(t *testing.T) {
 	})
 	t.Run("signing error", func(t *testing.T) {
 		info := getRecoverRequestInfo()
-		info.Signer = NewMockSigner(errors.New(signerErr), true)
+		info.Signer = NewMockSigner(errors.New(signerErr))
 
 		request, err := NewRecoverRequest(info)
 		require.Error(t, err)

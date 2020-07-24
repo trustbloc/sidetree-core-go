@@ -95,7 +95,7 @@ func validateRecoverRequest(info *RecoverRequestInfo) error {
 		return errors.New("missing opaque document")
 	}
 
-	if err := validateSigner(info.Signer, true); err != nil {
+	if err := validateSigner(info.Signer); err != nil {
 		return err
 	}
 

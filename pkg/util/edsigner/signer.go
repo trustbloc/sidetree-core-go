@@ -29,10 +29,7 @@ func New(privKey ed25519.PrivateKey, alg, kid string) *Signer {
 func (signer *Signer) Headers() jws.Headers {
 	headers := make(jws.Headers)
 	headers[jws.HeaderAlgorithm] = signer.alg
-
-	if signer.kid != "" {
-		headers[jws.HeaderKeyID] = signer.kid
-	}
+	headers[jws.HeaderKeyID] = signer.kid
 
 	return headers
 }
