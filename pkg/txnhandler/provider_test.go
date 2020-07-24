@@ -409,7 +409,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		af := &models.AnchorFile{
 			MapFileHash: "hash",
 			Operations: models.Operations{
-				Create:     []models.CreateOperation{{SuffixData: createOp.EncodedSuffixData}},
+				Create:     []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
 			},
 		}
@@ -421,7 +421,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			},
 		}
 
-		cf := &models.ChunkFile{Deltas: []string{createOp.EncodedDelta, updateOp.EncodedDelta}}
+		cf := &models.ChunkFile{Deltas: []string{createOp.Delta, updateOp.Delta}}
 
 		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.NoError(t, err)
@@ -443,7 +443,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		af := &models.AnchorFile{
 			MapFileHash: "hash",
 			Operations: models.Operations{
-				Create: []models.CreateOperation{{SuffixData: createOp.EncodedSuffixData}},
+				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
 					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
 			},
@@ -457,7 +457,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		}
 
 		// don't add update operation delta to chunk file in order to cause error
-		cf := &models.ChunkFile{Deltas: []string{createOp.EncodedDelta}}
+		cf := &models.ChunkFile{Deltas: []string{createOp.Delta}}
 
 		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
@@ -475,7 +475,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		af := &models.AnchorFile{
 			MapFileHash: "hash",
 			Operations: models.Operations{
-				Create: []models.CreateOperation{{SuffixData: createOp.EncodedSuffixData}},
+				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 			},
 		}
 

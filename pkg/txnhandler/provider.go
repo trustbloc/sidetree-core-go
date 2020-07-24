@@ -131,7 +131,7 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 			return nil, fmt.Errorf("parse delta: %s", err.Error())
 		}
 
-		operations[i].EncodedDelta = delta
+		operations[i].Delta = delta
 	}
 
 	return operations, nil
@@ -232,9 +232,9 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 
 		// TODO: they are assembling operation buffer in reference implementation (might be easier for version manager)
 		create := &batch.AnchoredOperation{
-			Type:              batch.OperationTypeCreate,
-			UniqueSuffix:      suffix,
-			EncodedSuffixData: op.SuffixData,
+			Type:         batch.OperationTypeCreate,
+			UniqueSuffix: suffix,
+			SuffixData:   op.SuffixData,
 		}
 
 		suffixes = append(suffixes, suffix)

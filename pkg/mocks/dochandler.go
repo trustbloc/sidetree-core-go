@@ -81,7 +81,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*doc
 		doc = make(document.Document)
 	}
 
-	doc, err := composer.ApplyPatches(doc, operation.Delta.Patches)
+	doc, err := composer.ApplyPatches(doc, operation.DeltaModel.Patches)
 	if err != nil {
 		return nil, err
 	}

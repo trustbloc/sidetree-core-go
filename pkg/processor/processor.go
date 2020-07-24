@@ -231,18 +231,18 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	suffixData, err := operation.ParseSuffixData(op.EncodedSuffixData, p.HashAlgorithmInMultiHashCode)
+	suffixData, err := operation.ParseSuffixData(op.SuffixData, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse suffix data: %s", err.Error())
 	}
 
 	// verify actual delta hash matches expected delta hash
-	err = docutil.IsValidHash(op.EncodedDelta, suffixData.DeltaHash)
+	err = docutil.IsValidHash(op.Delta, suffixData.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("create delta doesn't match suffix data delta hash: %s", err.Error())
 	}
 
-	delta, err := operation.ParseDelta(op.EncodedDelta, p.HashAlgorithmInMultiHashCode)
+	delta, err := operation.ParseDelta(op.Delta, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
@@ -284,7 +284,7 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(op.EncodedDelta, signedDataModel.DeltaHash)
+	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
@@ -295,7 +295,7 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	delta, err := operation.ParseDelta(op.EncodedDelta, p.HashAlgorithmInMultiHashCode)
+	delta, err := operation.ParseDelta(op.Delta, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
@@ -377,7 +377,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(op.EncodedDelta, signedDataModel.DeltaHash)
+	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
 	}
@@ -388,7 +388,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	delta, err := operation.ParseDelta(op.EncodedDelta, p.HashAlgorithmInMultiHashCode)
+	delta, err := operation.ParseDelta(op.Delta, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}

@@ -61,7 +61,7 @@ func getCreateOperations(ops []*batch.Operation) []CreateOperation {
 	var result []CreateOperation
 	for _, op := range ops {
 		if op.Type == batch.OperationTypeCreate {
-			create := CreateOperation{SuffixData: op.EncodedSuffixData}
+			create := CreateOperation{SuffixData: op.SuffixData}
 
 			result = append(result, create)
 		}

@@ -73,11 +73,11 @@ func generateOperations(numOfOperations int, opType batch.OperationType) (ops []
 
 func generateOperation(num int, opType batch.OperationType) *batch.Operation {
 	return &batch.Operation{
-		Type:              opType,
-		UniqueSuffix:      fmt.Sprintf("%s-%d", opType, num),
-		Namespace:         "did:sidetree",
-		EncodedSuffixData: "suffix-data",
-		EncodedDelta:      "delta",
-		SignedData:        "signed-data",
+		Type:         opType,
+		UniqueSuffix: fmt.Sprintf("%s-%d", opType, num),
+		Namespace:    "did:sidetree",
+		SuffixData:   "suffix-data",
+		Delta:        "delta",
+		SignedData:   "signed-data",
 	}
 }

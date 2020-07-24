@@ -38,8 +38,8 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		Type:            batch.OperationTypeUpdate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
-		Delta:           delta,
-		EncodedDelta:    schema.Delta,
+		DeltaModel:      delta,
+		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
 	}, nil
 }

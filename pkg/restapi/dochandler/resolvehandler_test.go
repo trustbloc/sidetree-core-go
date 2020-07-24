@@ -40,10 +40,10 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		result, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:         batch.OperationTypeCreate,
-			ID:           id,
-			Delta:        delta,
-			EncodedDelta: create.Delta,
+			Type:       batch.OperationTypeCreate,
+			ID:         id,
+			DeltaModel: delta,
+			Delta:      create.Delta,
 		})
 		require.NoError(t, err)
 
@@ -148,10 +148,10 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		result, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:         batch.OperationTypeCreate,
-			ID:           id,
-			Delta:        delta,
-			EncodedDelta: create.Delta,
+			Type:       batch.OperationTypeCreate,
+			ID:         id,
+			DeltaModel: delta,
+			Delta:      create.Delta,
 		})
 		require.NoError(t, err)
 

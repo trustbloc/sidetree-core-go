@@ -49,13 +49,13 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 	}
 
 	return &batch.Operation{
-		OperationBuffer:   request,
-		Type:              batch.OperationTypeCreate,
-		UniqueSuffix:      uniqueSuffix,
-		Delta:             delta,
-		EncodedDelta:      schema.Delta,
-		SuffixData:        suffixData,
-		EncodedSuffixData: schema.SuffixData,
+		OperationBuffer: request,
+		Type:            batch.OperationTypeCreate,
+		UniqueSuffix:    uniqueSuffix,
+		DeltaModel:      delta,
+		Delta:           schema.Delta,
+		SuffixDataModel: suffixData,
+		SuffixData:      schema.SuffixData,
 	}, nil
 }
 
