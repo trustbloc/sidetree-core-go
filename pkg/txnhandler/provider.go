@@ -111,9 +111,14 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	operations = append(operations, anchorOps.Create...)
 	operations = append(operations, anchorOps.Recover...)
 	operations = append(operations, mapOps.Update...)
-	operations = append(operations, anchorOps.Deactivate...)
 
-	// TODO: Add checks here to makes sure that file sizes match - part of validation tickets
+	if len(operations) != len(cf.Deltas) {
+		// this should never happen since we are assembling batch files
+		return nil, fmt.Errorf("number of create+recover+update operations[%d] doesn't match number of deltas[%d]",
+			len(operations), len(cf.Deltas))
+	}
+
+	operations = append(operations, anchorOps.Deactivate...)
 
 	for i, delta := range cf.Deltas {
 		p, err := h.getProtocol(txn)
@@ -144,7 +149,6 @@ func (h *OperationProvider) getAnchorFile(address string, p protocol.Protocol) (
 		return nil, errors.Wrapf(err, "failed to parse content for anchor file[%s]", address)
 	}
 
-	// TODO: verify anchor file - issue-294
 	return af, nil
 }
 
@@ -160,7 +164,6 @@ func (h *OperationProvider) getMapFile(address string, p protocol.Protocol) (*mo
 		return nil, errors.Wrapf(err, "failed to parse content for map file[%s]", address)
 	}
 
-	// TODO: verify map file - issue-295
 	return mf, nil
 }
 
@@ -176,7 +179,6 @@ func (h *OperationProvider) getChunkFile(address string, p protocol.Protocol) (*
 		return nil, errors.Wrapf(err, "failed to parse content for chunk file[%s]", address)
 	}
 
-	// TODO: verify chunk file - issue-296
 	return cf, nil
 }
 

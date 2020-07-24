@@ -77,7 +77,6 @@ func ParseAnchorFile(content []byte) (*AnchorFile, error) {
 		return nil, err
 	}
 
-	// TODO: Verify anchor file - issue-294
 	return af, nil
 }
 
