@@ -202,9 +202,9 @@ func TestValidateID(t *testing.T) {
 		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("error - exceeded maximum length", func(t *testing.T) {
-		err := ValidateID("1234567890abcdefghijk")
+		err := ValidateID("1234567890abcdefghijk123456789012345678901234567890")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "id exceeds maximum length: 20")
+		require.Contains(t, err.Error(), "id exceeds maximum length: 50")
 	})
 }
 
@@ -522,7 +522,7 @@ const noJWK = `{
 const idLong = `{
   "publicKey": [
     {
-      "id": "idwihmorethantwentycharacters",
+      "id": "idwihmorethan50characters123456789012345678901234567890",
       "type": "JwsVerificationKey2020",
       "purpose": ["ops"],
       "jwk": {
@@ -610,7 +610,7 @@ const serviceDocNoID = `{
 
 const serviceDocLongID = `{
 	"service": [{
-		"id": "thisissomeidthathasmorethantwentycharacters",
+		"id": "thisissomeidthathasmorethan50characters123456789012345678901234567890",
 		"type": "VerifiableCredentialService",
 		"endpoint": "https://example.com/vc/"
 	}]
