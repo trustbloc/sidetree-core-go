@@ -10,70 +10,64 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// Operation defines an operation
+// Operation is used for parsing operation request
 type Operation struct {
 
-	//Operation type
-	Type OperationType `json:"type"`
+	//Type defines operation type
+	Type OperationType
 
-	Namespace string `json:"namespace"`
+	//Namespace defines document namespace
+	Namespace string
 
-	//ID is full ID for this document - includes namespace + unique suffix
-	ID string `json:"id"`
+	// ID is full ID for this document -  namespace + unique suffix
+	ID string
 
-	//The unique suffix - encoded hash of the original create document
-	UniqueSuffix string `json:"uniqueSuffix"`
+	//UniqueSuffix is unique suffix
+	UniqueSuffix string
 
 	// OperationBuffer is the original operation request
-	OperationBuffer []byte `json:"operationBuffer"`
+	OperationBuffer []byte
 
-	// Compact JWS - signed data for the operation
-	SignedData string `json:"signedData"`
+	//SignedData is signed data for the operation (compact JWS)
+	SignedData string
 
-	// operation delta
-	Delta *model.DeltaModel `json:"delta"`
+	// DeltaModel is operation delta model
+	DeltaModel *model.DeltaModel
 
-	// encoded delta
-	EncodedDelta string `json:"encodedDelta"`
+	// Delta is encoded delta
+	Delta string
 
-	// suffix data
-	SuffixData *model.SuffixDataModel `json:"suffixData"`
+	// SuffixDataModel is suffix data model
+	SuffixDataModel *model.SuffixDataModel
 
-	// encoded suffix data
-	EncodedSuffixData string `json:"encodedSuffixData"`
-
-	//The logical blockchain time that this operation was anchored on the blockchain
-	TransactionTime uint64 `json:"transactionTime"`
-	//The transaction number of the transaction this operation was batched within
-	TransactionNumber uint64 `json:"transactionNumber"`
-	//The index this operation was assigned to in the batch
-	OperationIndex uint `json:"operationIndex"`
+	// SuffixData is encoded suffix data
+	SuffixData string
 }
 
-// AnchoredOperation defines an anchored operation
+// AnchoredOperation defines an anchored operation (stored in document operation store)
 type AnchoredOperation struct {
 
-	//Operation type
+	//Type defines operation type
 	Type OperationType `json:"type"`
 
-	//The unique suffix - encoded hash of the original create document
-	UniqueSuffix string `json:"uniqueSuffix"`
+	//UniqueSuffix defines document unique suffix
+	UniqueSuffix string `json:"unique_suffix"`
 
-	// Compact JWS - signed data for the operation
-	SignedData string `json:"signedData,omitempty"`
+	//SignedData is signed data for the operation (compact JWS)
+	SignedData string `json:"signed_data,omitempty"`
 
-	// encoded delta
-	EncodedDelta string `json:"encodedDelta,omitempty"`
+	//Delta is encoded delta
+	Delta string `json:"delta,omitempty"`
 
-	// encoded suffix data
-	EncodedSuffixData string `json:"encodedSuffixData,omitempty"`
+	//SuffixData is encoded suffix data
+	SuffixData string `json:"suffix_data,omitempty"`
 
-	//The logical blockchain time that this operation was anchored on the blockchain
-	TransactionTime uint64 `json:"transactionTime"`
+	//The logical blockchain time (block number) that this operation was anchored on the blockchain
+	TransactionTime uint64 `json:"transaction_time"`
 	//The transaction number of the transaction this operation was batched within
-	TransactionNumber uint64 `json:"transactionNumber"`
+	TransactionNumber uint64 `json:"transaction_number"`
 	//The index this operation was assigned to in the batch
-	OperationIndex uint `json:"operationIndex"`
+	OperationIndex uint `json:"operation_index"`
 }
 
 // OperationType defines valid values for operation type

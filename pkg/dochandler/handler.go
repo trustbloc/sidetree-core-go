@@ -117,7 +117,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 }
 
 func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*document.ResolutionResult, error) {
-	doc, err := getInitialDocument(operation.Delta.Patches)
+	doc, err := getInitialDocument(operation.DeltaModel.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +128,8 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*docume
 	}
 
 	externalResult.MethodMetadata.Published = false
-	externalResult.MethodMetadata.RecoveryCommitment = operation.SuffixData.RecoveryCommitment
-	externalResult.MethodMetadata.UpdateCommitment = operation.Delta.UpdateCommitment
+	externalResult.MethodMetadata.RecoveryCommitment = operation.SuffixDataModel.RecoveryCommitment
+	externalResult.MethodMetadata.UpdateCommitment = operation.DeltaModel.UpdateCommitment
 
 	return externalResult, nil
 }
@@ -215,7 +215,7 @@ func (r *DocumentHandler) resolveRequestWithDocument(id string, initial *model.C
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
-	if err := r.validateInitialDocument(op.Delta.Patches); err != nil {
+	if err := r.validateInitialDocument(op.DeltaModel.Patches); err != nil {
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
@@ -246,12 +246,12 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 // validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	// check maximum operation size against protocol
-	if len(operation.EncodedDelta) > int(r.protocol.Current().MaxDeltaByteSize) {
+	if len(operation.Delta) > int(r.protocol.Current().MaxDeltaByteSize) {
 		return errors.New("delta byte size exceeds protocol max delta byte size")
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
-		return r.validateInitialDocument(operation.Delta.Patches)
+		return r.validateInitialDocument(operation.DeltaModel.Patches)
 	}
 
 	return r.validator.IsValidPayload(operation.OperationBuffer)

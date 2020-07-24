@@ -70,7 +70,7 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	createOp.Delta = &model.DeltaModel{
+	createOp.DeltaModel = &model.DeltaModel{
 		Patches: []patch.Patch{replacePatch},
 	}
 
@@ -377,14 +377,14 @@ func getCreateOperationWithInitialState(suffixData, delta string) (*batchapi.Ope
 	}
 
 	return &batchapi.Operation{
-		Type:              batchapi.OperationTypeCreate,
-		UniqueSuffix:      uniqueSuffix,
-		ID:                namespace + docutil.NamespaceDelimiter + uniqueSuffix,
-		OperationBuffer:   payload,
-		Delta:             deltaModel,
-		EncodedDelta:      delta,
-		EncodedSuffixData: suffixData,
-		SuffixData:        suffixDataModel,
+		Type:            batchapi.OperationTypeCreate,
+		UniqueSuffix:    uniqueSuffix,
+		ID:              namespace + docutil.NamespaceDelimiter + uniqueSuffix,
+		OperationBuffer: payload,
+		DeltaModel:      deltaModel,
+		Delta:           delta,
+		SuffixData:      suffixData,
+		SuffixDataModel: suffixDataModel,
 	}, nil
 }
 
@@ -392,10 +392,10 @@ func getAnchoredCreateOperation() *batchapi.AnchoredOperation {
 	op := getCreateOperation()
 
 	return &batchapi.AnchoredOperation{
-		Type:              op.Type,
-		UniqueSuffix:      op.UniqueSuffix,
-		EncodedDelta:      op.EncodedDelta,
-		EncodedSuffixData: op.EncodedSuffixData,
+		Type:         op.Type,
+		UniqueSuffix: op.UniqueSuffix,
+		Delta:        op.Delta,
+		SuffixData:   op.SuffixData,
 	}
 }
 

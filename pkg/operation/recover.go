@@ -43,8 +43,8 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		OperationBuffer: request,
 		Type:            batch.OperationTypeRecover,
 		UniqueSuffix:    schema.DidSuffix,
-		Delta:           delta,
-		EncodedDelta:    schema.Delta,
+		DeltaModel:      delta,
+		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
 	}, nil
 }

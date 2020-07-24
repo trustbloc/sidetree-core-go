@@ -44,7 +44,7 @@ func getDeltas(filter batch.OperationType, ops []*batch.Operation) []string {
 	var deltas []string
 	for _, op := range ops {
 		if op.Type == filter {
-			deltas = append(deltas, op.EncodedDelta)
+			deltas = append(deltas, op.Delta)
 		}
 	}
 
