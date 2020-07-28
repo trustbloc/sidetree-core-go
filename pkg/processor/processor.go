@@ -231,7 +231,7 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	suffixData, err := operation.ParseSuffixData(op.SuffixData, p.HashAlgorithmInMultiHashCode)
+	suffixData, err := operation.ParseSuffixData(op.SuffixData, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse suffix data: %s", err.Error())
 	}
@@ -242,7 +242,7 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("create delta doesn't match suffix data delta hash: %s", err.Error())
 	}
 
-	delta, err := operation.ParseDelta(op.Delta, p.HashAlgorithmInMultiHashCode)
+	delta, err := operation.ParseDelta(op.Delta, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
@@ -295,7 +295,7 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	delta, err := operation.ParseDelta(op.Delta, p.HashAlgorithmInMultiHashCode)
+	delta, err := operation.ParseDelta(op.Delta, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
@@ -388,7 +388,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	delta, err := operation.ParseDelta(op.Delta, p.HashAlgorithmInMultiHashCode)
+	delta, err := operation.ParseDelta(op.Delta, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}

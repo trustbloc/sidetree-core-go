@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -25,14 +26,12 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	code := protocol.HashAlgorithmInMultiHashCode
-
-	suffixData, err := ParseSuffixData(schema.SuffixData, code)
+	suffixData, err := ParseSuffixData(schema.SuffixData, protocol)
 	if err != nil {
 		return nil, err
 	}
 
-	delta, err := ParseDelta(schema.Delta, code)
+	delta, err := ParseDelta(schema.Delta, protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +42,7 @@ func ParseCreateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, fmt.Errorf("parse create operation: delta doesn't match suffix data delta hash: %s", err.Error())
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, code)
+	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, protocol.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +73,7 @@ func parseCreateRequest(payload []byte) (*model.CreateRequest, error) {
 }
 
 // ParseDelta parses encoded delta string into delta model
-func ParseDelta(encoded string, code uint) (*model.DeltaModel, error) {
+func ParseDelta(encoded string, p protocol.Protocol) (*model.DeltaModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
@@ -86,7 +85,7 @@ func ParseDelta(encoded string, code uint) (*model.DeltaModel, error) {
 		return nil, err
 	}
 
-	if err := validateDelta(schema, code); err != nil {
+	if err := validateDelta(schema, p); err != nil {
 		return nil, err
 	}
 
@@ -94,7 +93,7 @@ func ParseDelta(encoded string, code uint) (*model.DeltaModel, error) {
 }
 
 // ParseSuffixData parses encoded suffix data into suffix data model
-func ParseSuffixData(encoded string, code uint) (*model.SuffixDataModel, error) {
+func ParseSuffixData(encoded string, p protocol.Protocol) (*model.SuffixDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
 		return nil, err
@@ -106,38 +105,42 @@ func ParseSuffixData(encoded string, code uint) (*model.SuffixDataModel, error) 
 		return nil, err
 	}
 
-	if err := validateSuffixData(schema, code); err != nil {
+	if err := validateSuffixData(schema, p); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func validateDelta(delta *model.DeltaModel, code uint) error {
+func validateDelta(delta *model.DeltaModel, protocol protocol.Protocol) error {
 	if len(delta.Patches) == 0 {
 		return errors.New("missing patches")
 	}
 
 	for _, p := range delta.Patches {
+		if p.GetAction() == patch.Replace && !protocol.EnableReplacePatch {
+			return fmt.Errorf("%s patch action is not enabled", p.GetAction())
+		}
+
 		if err := p.Validate(); err != nil {
 			return err
 		}
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(code)) {
-		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", code)
+	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(protocol.HashAlgorithmInMultiHashCode)) {
+		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", protocol.HashAlgorithmInMultiHashCode)
 	}
 
 	return nil
 }
 
-func validateSuffixData(suffixData *model.SuffixDataModel, code uint) error {
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(code)) {
-		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", code)
+func validateSuffixData(suffixData *model.SuffixDataModel, p protocol.Protocol) error {
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(p.HashAlgorithmInMultiHashCode)) {
+		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", p.HashAlgorithmInMultiHashCode)
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(code)) {
-		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", code)
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(p.HashAlgorithmInMultiHashCode)) {
+		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", p.HashAlgorithmInMultiHashCode)
 	}
 
 	return nil

@@ -29,7 +29,7 @@ func ParseUpdateOperation(request []byte, protocol protocol.Protocol) (*batch.Op
 		return nil, err
 	}
 
-	delta, err := ParseDelta(schema.Delta, protocol.HashAlgorithmInMultiHashCode)
+	delta, err := ParseDelta(schema.Delta, protocol)
 	if err != nil {
 		return nil, err
 	}

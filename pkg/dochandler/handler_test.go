@@ -177,6 +177,10 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
+	pc := mocks.NewMockProtocolClient()
+	pc.Protocol.EnableReplacePatch = true
+	dochandler.protocol = pc
+
 	result, err := dochandler.ResolveDocument(interopResolveDidWithInitialState)
 	require.NoError(t, err)
 	require.NotNil(t, result)

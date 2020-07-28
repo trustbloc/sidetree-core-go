@@ -126,7 +126,7 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 			return nil, err
 		}
 
-		_, err = operation.ParseDelta(delta, p.HashAlgorithmInMultiHashCode)
+		_, err = operation.ParseDelta(delta, p)
 		if err != nil {
 			return nil, fmt.Errorf("parse delta: %s", err.Error())
 		}
@@ -225,7 +225,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 			return nil, err
 		}
 
-		_, err = operation.ParseSuffixData(op.SuffixData, p.HashAlgorithmInMultiHashCode)
+		_, err = operation.ParseSuffixData(op.SuffixData, p)
 		if err != nil {
 			return nil, err
 		}
