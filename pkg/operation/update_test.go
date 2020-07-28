@@ -147,11 +147,15 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 
 func TestValidateUpdateDelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
+		p := protocol.Protocol{
+			HashAlgorithmInMultiHashCode: sha2_256,
+		}
+
 		delta, err := getUpdateDelta()
 		require.NoError(t, err)
 
 		delta.UpdateCommitment = ""
-		err = validateDelta(delta, sha2_256)
+		err = validateDelta(delta, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the required supported hash algorithm")

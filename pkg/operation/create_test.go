@@ -106,22 +106,30 @@ func TestParseCreateOperation(t *testing.T) {
 }
 
 func TestParseSuffixData(t *testing.T) {
-	suffixData, err := ParseSuffixData(interopEncodedSuffixData, sha2_256)
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+	}
+
+	suffixData, err := ParseSuffixData(interopEncodedSuffixData, p)
 	require.NoError(t, err)
 	require.NotNil(t, suffixData)
 
-	suffix, err := docutil.CalculateUniqueSuffix(interopEncodedSuffixData, sha2_256)
+	suffix, err := docutil.CalculateUniqueSuffix(interopEncodedSuffixData, p.HashAlgorithmInMultiHashCode)
 	require.NoError(t, err)
 	require.Equal(t, interopExpectedSuffix, suffix)
 }
 
 func TestValidateSuffixData(t *testing.T) {
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+	}
+
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		suffixData, err := getSuffixData()
 		require.NoError(t, err)
 
 		suffixData.DeltaHash = ""
-		err = validateSuffixData(suffixData, sha2_256)
+		err = validateSuffixData(suffixData, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the required supported hash algorithm")
 	})
@@ -130,25 +138,46 @@ func TestValidateSuffixData(t *testing.T) {
 		require.NoError(t, err)
 
 		suffixData.RecoveryCommitment = ""
-		err = validateSuffixData(suffixData, sha2_256)
+		err = validateSuffixData(suffixData, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required supported hash algorithm")
 	})
 }
 
 func TestParseDelta(t *testing.T) {
-	delta, err := ParseDelta(interopEncodedDelta, sha2_256)
-	require.NoError(t, err)
-	require.NotNil(t, delta)
+	t.Run("success - replace patch enabled", func(t *testing.T) {
+		p := protocol.Protocol{
+			HashAlgorithmInMultiHashCode: sha2_256,
+			EnableReplacePatch:           true,
+		}
+
+		delta, err := ParseDelta(interopEncodedDelta, p)
+		require.NoError(t, err)
+		require.NotNil(t, delta)
+	})
+	t.Run("error - replace patch disabled (default)", func(t *testing.T) {
+		p := protocol.Protocol{
+			HashAlgorithmInMultiHashCode: sha2_256,
+		}
+
+		delta, err := ParseDelta(interopEncodedDelta, p)
+		require.Error(t, err)
+		require.Nil(t, delta)
+		require.Contains(t, err.Error(), "replace patch action is not enabled")
+	})
 }
 
 func TestValidateDelta(t *testing.T) {
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+	}
+
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		delta, err := getDelta()
 		require.NoError(t, err)
 
 		delta.UpdateCommitment = ""
-		err = validateDelta(delta, sha2_256)
+		err = validateDelta(delta, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the required supported hash algorithm")
@@ -158,7 +187,7 @@ func TestValidateDelta(t *testing.T) {
 		require.NoError(t, err)
 
 		delta.Patches = []patch.Patch{}
-		err = validateDelta(delta, sha2_256)
+		err = validateDelta(delta, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing patches")

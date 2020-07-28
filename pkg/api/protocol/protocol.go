@@ -24,6 +24,8 @@ type Protocol struct {
 	MaxMapFileSize uint
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS
 	MaxChunkFileSize uint
+	// EnableReplacePatch is used to enable replace patch (action)
+	EnableReplacePatch bool
 }
 
 // Client defines interface for accessing protocol version/information
