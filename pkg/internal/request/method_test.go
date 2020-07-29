@@ -62,3 +62,14 @@ func TestGetParts(t *testing.T) {
 	require.Equal(t, initial.SuffixData, "xyz")
 	require.Equal(t, initial.Operation, model.OperationTypeCreate)
 }
+
+func TestGetInitialState(t *testing.T) {
+	req := &model.CreateRequest{
+		Operation:  "create",
+		SuffixData: "abc",
+		Delta:      "xyz",
+	}
+
+	resultInitialState := GetInitialState(req)
+	require.Equal(t, "abc"+initialStateSeparator+"xyz", resultInitialState)
+}

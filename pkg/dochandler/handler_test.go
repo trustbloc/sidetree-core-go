@@ -8,6 +8,7 @@ package dochandler
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -145,32 +146,65 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 	initialState := createReq.SuffixData + "." + createReq.Delta
 
-	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
-	require.NotNil(t, result)
-	require.Equal(t, false, result.MethodMetadata.Published)
+	t.Run("success", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, false, result.MethodMetadata.Published)
+		require.Equal(t, initialState, result.MethodMetadata.InitialState)
+	})
 
-	result, err = dochandler.ResolveDocument(docID + initialStateParam)
-	require.NotNil(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "initial state is present but empty")
+	t.Run("error - initial state is empty", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + initialStateParam)
+		require.NotNil(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "initial state is present but empty")
+	})
 
-	// create request not encoded
-	result, err = dochandler.ResolveDocument(docID + initialStateParam + "payload")
-	require.NotNil(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "initial state should have two parts: suffix data and delta")
+	t.Run("error - invalid initial state", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + initialStateParam + "payload")
+		require.NotNil(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "initial state should have two parts: suffix data and delta")
+	})
 
-	// did doesn't match the one created by parsing original create request
-	result, err = dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialStateParam + initialState)
-	require.NotNil(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "provided did doesn't match did created from initial state")
+	t.Run("error - did doesn't match the one created by parsing original create request", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialStateParam + initialState)
+		require.NotNil(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "provided did doesn't match did created from initial state")
+	})
 
-	// delta and suffix data not encoded (parse create operation fails)
-	result, err = dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
-	require.NotNil(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "invalid character")
+	t.Run("error - delta and suffix data not encoded (parse create operation fails)", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
+		require.NotNil(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "invalid character")
+	})
+
+	t.Run("error - transform create with initial state to external document", func(t *testing.T) {
+		dochandlerWithValidator := getDocumentHandler(mocks.NewMockOperationStore(nil))
+		require.NotNil(t, dochandler)
+
+		dochandlerWithValidator.validator = &mocks.MockDocumentValidator{TransformDocumentErr: errors.New("test error")}
+
+		result, err := dochandlerWithValidator.ResolveDocument(docID + initialStateParam + initialState)
+		require.NotNil(t, err)
+		require.Nil(t, result)
+		require.Equal(t, err.Error(), "failed to transform create with initial state to external document: test error")
+	})
+
+	t.Run("error - original (create) document is not valid", func(t *testing.T) {
+		dochandlerWithValidator := getDocumentHandler(mocks.NewMockOperationStore(nil))
+		require.NotNil(t, dochandler)
+
+		dochandlerWithValidator.validator = &mocks.MockDocumentValidator{IsValidOriginalDocumentErr: errors.New("test error")}
+
+		result, err := dochandlerWithValidator.ResolveDocument(docID + initialStateParam + initialState)
+		require.NotNil(t, err)
+		require.Nil(t, result)
+		require.Equal(t, err.Error(), "bad request: validate initial document: test error")
+	})
 }
 
 func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {

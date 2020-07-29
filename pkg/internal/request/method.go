@@ -14,8 +14,11 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-const methodParamTemplate = "-%s-initial-state"
-const minPartsInNamespace = 2
+const (
+	methodParamTemplate   = "-%s-initial-state"
+	minPartsInNamespace   = 2
+	initialStateSeparator = "."
+)
 
 // GetInitialStateParam returns initial state parameter for namespace (more specifically method)
 func GetInitialStateParam(namespace string) string {
@@ -51,7 +54,7 @@ func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
 
 	did := params[0:pos]
 
-	initialStateParts := strings.Split(params[adjustedPos:], ".")
+	initialStateParts := strings.Split(params[adjustedPos:], initialStateSeparator)
 
 	const twoParts = 2
 	if len(initialStateParts) != twoParts {
@@ -66,4 +69,9 @@ func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
 
 	// return did and initial state
 	return did, initial, nil
+}
+
+// GetInitialState return initial state string from create request
+func GetInitialState(req *model.CreateRequest) string {
+	return req.SuffixData + initialStateSeparator + req.Delta
 }

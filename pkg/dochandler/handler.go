@@ -169,7 +169,7 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 
 	// if document was not found on the blockchain and initial value has been provided resolve using initial value
 	if initial != nil && strings.Contains(err.Error(), "not found") {
-		return r.resolveRequestWithDocument(id, initial)
+		return r.resolveRequestWithInitialState(id, initial)
 	}
 
 	return nil, err
@@ -194,7 +194,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 	return externalResult, nil
 }
 
-func (r *DocumentHandler) resolveRequestWithDocument(id string, initial *model.CreateRequest) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *model.CreateRequest) (*document.ResolutionResult, error) {
 	// verify size of each delta does not exceed the maximum allowed limit
 	if len(initial.Delta) > int(r.protocol.Current().MaxDeltaByteSize) {
 		return nil, fmt.Errorf("%s: delta byte size exceeds protocol max delta byte size", badRequest)
@@ -215,11 +215,19 @@ func (r *DocumentHandler) resolveRequestWithDocument(id string, initial *model.C
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
-	if err := r.validateInitialDocument(op.DeltaModel.Patches); err != nil {
+	err = r.validateInitialDocument(op.DeltaModel.Patches)
+	if err != nil {
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
-	return r.getCreateResponse(op)
+	result, err := r.getCreateResponse(op)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform create with initial state to external document: %s", err.Error())
+	}
+
+	result.MethodMetadata.InitialState = request.GetInitialState(initial)
+
+	return result, nil
 }
 
 // helper function to transform internal into external document and return resolution result
