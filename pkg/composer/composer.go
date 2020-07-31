@@ -107,37 +107,74 @@ func applyRecover(replaceDoc interface{}) (document.Document, error) {
 func applyAddPublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying add public keys patch: %v", entry)
 
-	newPublicKeyArr := document.ParsePublicKeys(entry)
-	newPublicKeys := sliceToMapPK(newPublicKeyArr)
+	addPublicKeys := document.ParsePublicKeys(entry)
+	existingPublicKeysMap := sliceToMapPK(doc.PublicKeys())
 
-	existingPublicKeys := doc.PublicKeys()
-	for _, existing := range existingPublicKeys {
-		// NOTE: If a key ID already exists, we will just replace the existing key
-		// so new public keys will retain new version
-		if _, ok := newPublicKeys[existing.ID()]; !ok {
-			newPublicKeys[existing.ID()] = existing
+	var newPublicKeys []document.PublicKey
+	newPublicKeys = append(newPublicKeys, doc.PublicKeys()...)
+
+	for _, key := range addPublicKeys {
+		_, ok := existingPublicKeysMap[key.ID()]
+		if ok {
+			// if a key ID already exists, we will just replace the existing key
+			updateKey(newPublicKeys, key)
+		} else {
+			// new key - append it to existing keys
+			newPublicKeys = append(newPublicKeys, key)
 		}
 	}
 
-	doc[document.PublicKeyProperty] = mapToSlicePK(newPublicKeys)
+	doc[document.PublicKeyProperty] = convertPublicKeys(newPublicKeys)
 
 	return doc, nil
+}
+
+func updateKey(keys []document.PublicKey, key document.PublicKey) {
+	for index, pk := range keys {
+		if pk.ID() == key.ID() {
+			keys[index] = key
+		}
+	}
+}
+
+func convertPublicKeys(pubKeys []document.PublicKey) []interface{} {
+	var values []interface{}
+	for _, pk := range pubKeys {
+		values = append(values, pk.JSONLdObject())
+	}
+
+	return values
 }
 
 // remove public keys from the document
 func applyRemovePublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying remove public keys patch: %v", entry)
 
-	newPublicKeys := sliceToMapPK(doc.PublicKeys())
+	keysToRemove := sliceToMap(document.StringArray(entry))
 
-	keysToRemove := document.StringArray(entry)
-	for _, key := range keysToRemove {
-		delete(newPublicKeys, key)
+	var newPublicKeys []interface{}
+
+	for _, key := range doc.PublicKeys() {
+		_, ok := keysToRemove[key.ID()]
+		if !ok {
+			// not in remove list so add to resulting public keys
+			newPublicKeys = append(newPublicKeys, key.JSONLdObject())
+		}
 	}
 
-	doc[document.PublicKeyProperty] = mapToSlicePK(newPublicKeys)
+	doc[document.PublicKeyProperty] = newPublicKeys
 
 	return doc, nil
+}
+
+func sliceToMap(ids []string) map[string]bool {
+	// convert slice to map
+	values := make(map[string]bool)
+	for _, id := range ids {
+		values[id] = true
+	}
+
+	return values
 }
 
 func sliceToMapPK(publicKeys []document.PublicKey) map[string]document.PublicKey {
@@ -150,53 +187,68 @@ func sliceToMapPK(publicKeys []document.PublicKey) map[string]document.PublicKey
 	return values
 }
 
-func mapToSlicePK(mapValues map[string]document.PublicKey) []interface{} {
-	// convert map to slice of values
-	var values []interface{}
-	for _, pk := range mapValues {
-		values = append(values, pk.JSONLdObject())
-	}
-
-	return values
-}
-
 // adds service endpoints to document
 func applyAddServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying add service endpoints patch: %v", entry)
 
 	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
-	newServiceArr := document.ParseServices(entry)
+	addServices := document.ParseServices(entry)
+	existingServicesMap := sliceToMapServices(didDoc.Services())
 
-	// create an empty did document with service endpoints
-	newServices := sliceToMapServices(newServiceArr)
+	var newServices []document.Service
+	newServices = append(newServices, didDoc.Services()...)
 
-	existingServices := didDoc.Services()
-	for _, existing := range existingServices {
-		// NOTE: If a service ID already exists, we will just replace the existing service
-		// so new service endpoints will retain new version
-		if _, ok := newServices[existing.ID()]; !ok {
-			newServices[existing.ID()] = existing
+	for _, service := range addServices {
+		_, ok := existingServicesMap[service.ID()]
+		if ok {
+			// if a service ID already exists, we will just replace the existing service
+			updateService(newServices, service)
+		} else {
+			// new service - append it to existing services
+			newServices = append(newServices, service)
 		}
 	}
 
-	doc[document.ServiceProperty] = mapToSliceServices(newServices)
+	doc[document.ServiceProperty] = convertServices(newServices)
 
 	return doc, nil
+}
+
+func updateService(services []document.Service, service document.Service) {
+	for index, s := range services {
+		if s.ID() == service.ID() {
+			services[index] = service
+		}
+	}
+}
+
+func convertServices(services []document.Service) []interface{} {
+	var values []interface{}
+	for _, service := range services {
+		values = append(values, service.JSONLdObject())
+	}
+
+	return values
 }
 
 func applyRemoveServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying remove service endpoints patch: %v", entry)
 
-	diddoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
-	newServices := sliceToMapServices(diddoc.Services())
+	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	servicesToRemove := sliceToMap(document.StringArray(entry))
 
-	servicesToRemove := document.StringArray(entry)
-	for _, svc := range servicesToRemove {
-		delete(newServices, svc)
+	var newServices []interface{}
+
+	for _, service := range didDoc.Services() {
+		_, ok := servicesToRemove[service.ID()]
+		if !ok {
+			// not in remove list so add to resulting services
+			newServices = append(newServices, service.JSONLdObject())
+		}
 	}
 
-	doc[document.ServiceProperty] = mapToSliceServices(newServices)
+	doc[document.ServiceProperty] = newServices
 
 	return doc, nil
 }
@@ -206,16 +258,6 @@ func sliceToMapServices(services []document.Service) map[string]document.Service
 	values := make(map[string]document.Service)
 	for _, svc := range services {
 		values[svc.ID()] = svc
-	}
-
-	return values
-}
-
-func mapToSliceServices(mapValues map[string]document.Service) []interface{} {
-	// convert map to slice of values
-	var values []interface{}
-	for _, svc := range mapValues {
-		values = append(values, svc.JSONLdObject())
 	}
 
 	return values
