@@ -27,14 +27,12 @@ func ParseRecoverOperation(request []byte, protocol protocol.Protocol) (*batch.O
 		return nil, err
 	}
 
-	code := protocol.HashAlgorithmInMultiHashCode
-
 	delta, err := ParseDelta(schema.Delta, protocol)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = ParseSignedDataForRecover(schema.SignedData, code)
+	_, err = ParseSignedDataForRecover(schema.SignedData, protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +62,8 @@ func parseRecoverRequest(payload []byte) (*model.RecoverRequest, error) {
 }
 
 // ParseSignedDataForRecover will parse and validate signed data for recover
-func ParseSignedDataForRecover(compactJWS string, code uint) (*model.RecoverSignedDataModel, error) {
-	jws, err := parseSignedData(compactJWS)
+func ParseSignedDataForRecover(compactJWS string, p protocol.Protocol) (*model.RecoverSignedDataModel, error) {
+	jws, err := parseSignedData(compactJWS, p)
 	if err != nil {
 		return nil, fmt.Errorf("recover: %s", err.Error())
 	}
@@ -76,7 +74,7 @@ func ParseSignedDataForRecover(compactJWS string, code uint) (*model.RecoverSign
 		return nil, fmt.Errorf("failed to unmarshal signed data model for recover: %s", err.Error())
 	}
 
-	if err := validateSignedDataForRecovery(schema, code); err != nil {
+	if err := validateSignedDataForRecovery(schema, p.HashAlgorithmInMultiHashCode); err != nil {
 		return nil, err
 	}
 
@@ -99,7 +97,7 @@ func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, cod
 	return nil
 }
 
-func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
+func parseSignedData(compactJWS string, p protocol.Protocol) (*internal.JSONWebSignature, error) {
 	if compactJWS == "" {
 		return nil, errors.New("missing signed data")
 	}
@@ -109,7 +107,56 @@ func parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
 		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())
 	}
 
+	err = validateProtectedHeaders(jws.ProtectedHeaders, p.SignatureAlgorithms)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())
+	}
+
 	return jws, nil
+}
+
+func validateProtectedHeaders(headers jws.Headers, allowedAlgorithms []string) error {
+	if headers == nil {
+		return errors.New("missing protected headers")
+	}
+
+	// kid MUST be present in the protected header.
+	// alg MUST be present in the protected header, its value MUST NOT be none.
+	// no additional members may be present in the protected header.
+
+	// TODO: There is discrepancy between spec "kid MUST be present in the protected header"
+	// and reference implementation ('kid' is not present; only one 'alg' header expected)
+	// so disable this check for now
+	// _, ok := headers.KeyID()
+	// if !ok {
+	// return errors.New("kid must be present in the protected header")
+	// }
+
+	alg, ok := headers.Algorithm()
+	if !ok {
+		return errors.New("algorithm must be present in the protected header")
+	}
+
+	if alg == "" {
+		return errors.New("algorithm cannot be empty in the protected header")
+	}
+
+	var allowedHeaders = map[string]bool{
+		jws.HeaderAlgorithm: true,
+		jws.HeaderKeyID:     true,
+	}
+
+	for k := range headers {
+		if _, ok := allowedHeaders[k]; !ok {
+			return fmt.Errorf("invalid protected header: %s", k)
+		}
+	}
+
+	if !contains(allowedAlgorithms, alg) {
+		return errors.Errorf("algorithm '%s' is not in the allowed list %v", alg, allowedAlgorithms)
+	}
+
+	return nil
 }
 
 func validateRecoverRequest(recover *model.RecoverRequest) error {
@@ -134,4 +181,14 @@ func validateKey(key *jws.JWK) error {
 	}
 
 	return key.Validate()
+}
+
+func contains(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
 }

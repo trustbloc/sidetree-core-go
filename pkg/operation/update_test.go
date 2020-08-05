@@ -25,6 +25,7 @@ import (
 func TestParseUpdateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		SignatureAlgorithms:          []string{"alg"},
 	}
 	t.Run("success", func(t *testing.T) {
 		payload, err := getUpdateRequestBytes()
@@ -104,16 +105,21 @@ func TestParseUpdateOperation(t *testing.T) {
 }
 
 func TestParseSignedDataForUpdate(t *testing.T) {
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+		SignatureAlgorithms:          []string{"alg"},
+	}
+
 	t.Run("success", func(t *testing.T) {
 		req, err := getDefaultUpdateRequest()
 		require.NoError(t, err)
 
-		schema, err := ParseSignedDataForUpdate(req.SignedData, sha2_256)
+		schema, err := ParseSignedDataForUpdate(req.SignedData, p)
 		require.NoError(t, err)
 		require.NotNil(t, schema)
 	})
 	t.Run("invalid JWS compact format", func(t *testing.T) {
-		schema, err := ParseSignedDataForUpdate("invalid", sha2_256)
+		schema, err := ParseSignedDataForUpdate("invalid", p)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "invalid JWS compact format")
@@ -129,7 +135,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 
 		compactJWS, err := signutil.SignPayload(payload, NewMockSigner())
 
-		schema, err := ParseSignedDataForUpdate(compactJWS, sha2_256)
+		schema, err := ParseSignedDataForUpdate(compactJWS, p)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "delta hash is not computed with the latest supported hash algorithm")
@@ -138,7 +144,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())
 		require.NoError(t, err)
 
-		schema, err := ParseSignedDataForUpdate(compactJWS, sha2_256)
+		schema, err := ParseSignedDataForUpdate(compactJWS, p)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "invalid character")

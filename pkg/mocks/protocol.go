@@ -40,6 +40,7 @@ func NewMockProtocolClient() *MockProtocolClient {
 		MaxChunkFileSize:             maxBatchFileSize,
 		MaxMapFileSize:               maxBatchFileSize,
 		MaxAnchorFileSize:            maxBatchFileSize,
+		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
 	}
 
 	// has to be sorted for mock client to work

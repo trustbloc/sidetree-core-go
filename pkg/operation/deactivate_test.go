@@ -24,6 +24,7 @@ const sha2_256 = 18
 func TestParseDeactivateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		SignatureAlgorithms:          []string{"alg"},
 	}
 
 	t.Run("success", func(t *testing.T) {

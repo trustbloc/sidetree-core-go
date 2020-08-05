@@ -20,6 +20,7 @@ const namespace = "did:sidetree"
 func TestGetOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		SignatureAlgorithms:          []string{"alg"},
 	}
 
 	t.Run("create", func(t *testing.T) {

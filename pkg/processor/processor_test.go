@@ -750,7 +750,7 @@ func TestRecover(t *testing.T) {
 			RecoveryCommitment: getEncodedMultihash([]byte("different")),
 			DeltaHash:          getEncodedMultihash([]byte("{}")),
 		}
-		recoverOp.SignedData, err = signutil.SignModel(signedModel, ecsigner.New(privateKey, "P-256", ""))
+		recoverOp.SignedData, err = signutil.SignModel(signedModel, ecsigner.New(privateKey, "ES256", ""))
 
 		anchoredOp := getAnchoredOperation(recoverOp)
 
