@@ -26,6 +26,8 @@ type Protocol struct {
 	MaxChunkFileSize uint
 	// EnableReplacePatch is used to enable replace patch (action)
 	EnableReplacePatch bool
+	//SignatureAlgorithms is used to specify supported signature algorithms (e.g. EdDSA, ES256, ES384, ES512, ES256K)
+	SignatureAlgorithms []string
 }
 
 // Client defines interface for accessing protocol version/information

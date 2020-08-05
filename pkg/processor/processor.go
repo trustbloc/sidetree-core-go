@@ -268,7 +268,7 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	signedDataModel, err := operation.ParseSignedDataForUpdate(op.SignedData, p.HashAlgorithmInMultiHashCode)
+	signedDataModel, err := operation.ParseSignedDataForUpdate(op.SignedData, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal signed data model while applying update: %s", err.Error())
 	}
@@ -320,7 +320,7 @@ func (s *OperationProcessor) applyDeactivateOperation(op *batch.AnchoredOperatio
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
-	signedDataModel, err := operation.ParseSignedDataForDeactivate(op.SignedData)
+	signedDataModel, err := operation.ParseSignedDataForDeactivate(op.SignedData, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse signed data model while applying deactivate: %s", err.Error())
 	}
@@ -361,7 +361,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	signedDataModel, err := operation.ParseSignedDataForRecover(op.SignedData, p.HashAlgorithmInMultiHashCode)
+	signedDataModel, err := operation.ParseSignedDataForRecover(op.SignedData, p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse signed data model while applying recover: %s", err.Error())
 	}
@@ -430,21 +430,21 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 
 	switch op.Type {
 	case batch.OperationTypeUpdate:
-		signedDataModel, innerErr := operation.ParseSignedDataForUpdate(op.SignedData, p.HashAlgorithmInMultiHashCode)
+		signedDataModel, innerErr := operation.ParseSignedDataForUpdate(op.SignedData, p)
 		if innerErr != nil {
 			return "", fmt.Errorf("failed to parse signed data model for update: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.UpdateKey
 	case batch.OperationTypeDeactivate:
-		signedDataModel, innerErr := operation.ParseSignedDataForDeactivate(op.SignedData)
+		signedDataModel, innerErr := operation.ParseSignedDataForDeactivate(op.SignedData, p)
 		if innerErr != nil {
 			return "", fmt.Errorf("failed to parse signed data model for deactivate: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
 	case batch.OperationTypeRecover:
-		signedDataModel, innerErr := operation.ParseSignedDataForRecover(op.SignedData, p.HashAlgorithmInMultiHashCode)
+		signedDataModel, innerErr := operation.ParseSignedDataForRecover(op.SignedData, p)
 		if innerErr != nil {
 			return "", fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
 		}

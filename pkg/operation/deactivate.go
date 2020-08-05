@@ -23,7 +23,7 @@ func ParseDeactivateOperation(request []byte, p protocol.Protocol) (*batch.Opera
 		return nil, err
 	}
 
-	signedData, err := ParseSignedDataForDeactivate(schema.SignedData)
+	signedData, err := ParseSignedDataForDeactivate(schema.SignedData, p)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +67,8 @@ func validateDeactivateRequest(req *model.DeactivateRequest) error {
 }
 
 // ParseSignedDataForDeactivate will parse and validate signed data for deactivate
-func ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error) {
-	jws, err := parseSignedData(compactJWS)
+func ParseSignedDataForDeactivate(compactJWS string, p protocol.Protocol) (*model.DeactivateSignedDataModel, error) {
+	jws, err := parseSignedData(compactJWS, p)
 	if err != nil {
 		return nil, fmt.Errorf("deactivate: %s", err.Error())
 	}

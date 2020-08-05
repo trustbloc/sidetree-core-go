@@ -23,9 +23,15 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
+const (
+	kidKey = "kid"
+	algKey = "alg"
+)
+
 func TestParseRecoverOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		SignatureAlgorithms:          []string{"alg"},
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -161,6 +167,11 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 func TestParseSignedData(t *testing.T) {
 	mockSigner := NewMockSigner()
 
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+		SignatureAlgorithms:          []string{"alg"},
+	}
+
 	t.Run("success", func(t *testing.T) {
 		jwsSignature, err := internal.NewJWS(nil, nil, []byte("payload"), mockSigner)
 		require.NoError(t, err)
@@ -168,18 +179,18 @@ func TestParseSignedData(t *testing.T) {
 		compactJWS, err := jwsSignature.SerializeCompact(false)
 		require.NoError(t, err)
 
-		jws, err := parseSignedData(compactJWS)
+		jws, err := parseSignedData(compactJWS, p)
 		require.NoError(t, err)
 		require.NotNil(t, jws)
 	})
 	t.Run("missing signed data", func(t *testing.T) {
-		jws, err := parseSignedData("")
+		jws, err := parseSignedData("", p)
 		require.Error(t, err)
 		require.Nil(t, jws)
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 	t.Run("missing protected headers", func(t *testing.T) {
-		jws, err := parseSignedData(".cGF5bG9hZA.c2lnbmF0dXJl")
+		jws, err := parseSignedData(".cGF5bG9hZA.c2lnbmF0dXJl", p)
 		require.Error(t, err)
 		require.Nil(t, jws)
 		require.Contains(t, err.Error(), "unmarshal JSON headers: unexpected end of JSON input")
@@ -191,16 +202,28 @@ func TestParseSignedData(t *testing.T) {
 		compactJWS, err := jwsSignature.SerializeCompact(false)
 		require.NoError(t, err)
 
-		jws, err := parseSignedData(compactJWS)
+		jws, err := parseSignedData(compactJWS, p)
 		require.Error(t, err)
 		require.Nil(t, jws)
 		require.Contains(t, err.Error(), "compact jws payload is empty")
 	})
 	t.Run("missing signature", func(t *testing.T) {
-		jws, err := parseSignedData("eyJhbGciOiJhbGciLCJraWQiOiJraWQifQ.cGF5bG9hZA.")
+		jws, err := parseSignedData("eyJhbGciOiJhbGciLCJraWQiOiJraWQifQ.cGF5bG9hZA.", p)
 		require.Error(t, err)
 		require.Nil(t, jws)
 		require.Contains(t, err.Error(), "compact jws signature is empty")
+	})
+	t.Run("error - invalid signing algorithm", func(t *testing.T) {
+		jwsSignature, err := internal.NewJWS(nil, nil, []byte("payload"), mockSigner)
+		require.NoError(t, err)
+
+		compactJWS, err := jwsSignature.SerializeCompact(false)
+		require.NoError(t, err)
+
+		jws, err := parseSignedData(compactJWS, protocol.Protocol{SignatureAlgorithms: []string{"other"}})
+		require.Error(t, err)
+		require.Nil(t, jws)
+		require.Contains(t, err.Error(), "failed to parse signed data: algorithm 'alg' is not in the allowed list [other]")
 	})
 }
 
@@ -239,6 +262,81 @@ func TestValidateRecoverRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing delta")
 	})
+}
+
+func TestValidateProtectedHeader(t *testing.T) {
+	algs := []string{"alg-1", "alg-2"}
+
+	t.Run("success - kid can be empty", func(t *testing.T) {
+		protected := getHeaders("alg-1", "")
+
+		err := validateProtectedHeaders(protected, algs)
+		require.NoError(t, err)
+	})
+	t.Run("success - kid can be provided", func(t *testing.T) {
+		protected := getHeaders("alg-1", "kid-1")
+
+		err := validateProtectedHeaders(protected, algs)
+		require.NoError(t, err)
+	})
+	t.Run("error - missing header", func(t *testing.T) {
+		err := validateProtectedHeaders(nil, algs)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing protected headers")
+	})
+
+	//t.Run("err - kid must be present in the protected header", func(t *testing.T) {
+	//	protected := make(jws.Headers)
+	//	protected[algKey] = "alg-1"
+	//
+	//	err := validateProtectedHeaders(protected, algs)
+	//	require.Error(t, err)
+	//	require.Contains(t, err.Error(), "kid must be present in the protected header")
+	//})
+
+	t.Run("err - algorithm must be present in the protected header", func(t *testing.T) {
+		protected := make(jws.Headers)
+		protected[kidKey] = "kid-1"
+
+		err := validateProtectedHeaders(protected, algs)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "algorithm must be present in the protected header")
+	})
+
+	t.Run("err - algorithm cannot be empty", func(t *testing.T) {
+		protected := getHeaders("", "kid-1")
+
+		err := validateProtectedHeaders(protected, algs)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "algorithm cannot be empty in the protected header")
+	})
+
+	t.Run("err - invalid protected header value", func(t *testing.T) {
+		protected := make(jws.Headers)
+
+		protected["kid"] = "kid"
+		protected["alg"] = "alg"
+		protected["other"] = "value"
+
+		err := validateProtectedHeaders(protected, algs)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid protected header: other")
+	})
+	t.Run("error - algorithm not allowed", func(t *testing.T) {
+		protected := getHeaders("alg-other", "kid")
+
+		err := validateProtectedHeaders(protected, algs)
+		require.Error(t, err)
+		require.Equal(t, "algorithm 'alg-other' is not in the allowed list [alg-1 alg-2]", err.Error())
+	})
+}
+
+func getHeaders(alg, kid string) jws.Headers {
+	header := make(jws.Headers)
+	header[algKey] = alg
+	header[kidKey] = kid
+
+	return header
 }
 
 func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
