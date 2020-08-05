@@ -25,6 +25,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
+		KeyAlgorithms:                []string{"crv"},
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -98,6 +99,21 @@ func TestParseDeactivateOperation(t *testing.T) {
 		op, err := ParseDeactivateOperation(request, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for deactivate")
+		require.Nil(t, op)
+	})
+	t.Run("error - key algorithm not supported", func(t *testing.T) {
+		p := protocol.Protocol{
+			HashAlgorithmInMultiHashCode: sha2_256,
+			SignatureAlgorithms:          []string{"alg"},
+			KeyAlgorithms:                []string{"other"},
+		}
+
+		request, err := getDeactivateRequestBytes()
+		require.NoError(t, err)
+
+		op, err := ParseDeactivateOperation(request, p)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "signed data for deactivate: key algorithm 'crv' is not in the allowed list [other]")
 		require.Nil(t, op)
 	})
 }

@@ -74,23 +74,24 @@ func ParseSignedDataForRecover(compactJWS string, p protocol.Protocol) (*model.R
 		return nil, fmt.Errorf("failed to unmarshal signed data model for recover: %s", err.Error())
 	}
 
-	if err := validateSignedDataForRecovery(schema, p.HashAlgorithmInMultiHashCode); err != nil {
+	if err := validateSignedDataForRecovery(schema, p); err != nil {
 		return nil, err
 	}
 
 	return schema, nil
 }
 
-func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, code uint) error {
-	if err := validateKey(signedData.RecoveryKey); err != nil {
+func validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel, p protocol.Protocol) error {
+	if err := validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
 		return fmt.Errorf("signed data for recovery: %s", err.Error())
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, uint64(code)) {
+	code := uint64(p.HashAlgorithmInMultiHashCode)
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, code) {
 		return fmt.Errorf("next recovery commitment hash is not computed with the required hash algorithm: %d", code)
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, uint64(code)) {
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, code) {
 		return fmt.Errorf("patch data hash is not computed with the required hash algorithm: %d", code)
 	}
 
@@ -175,12 +176,21 @@ func validateRecoverRequest(recover *model.RecoverRequest) error {
 	return nil
 }
 
-func validateKey(key *jws.JWK) error {
+func validateSigningKey(key *jws.JWK, allowedAlgorithms []string) error {
 	if key == nil {
-		return errors.New("missing key")
+		return errors.New("missing signing key")
 	}
 
-	return key.Validate()
+	err := key.Validate()
+	if err != nil {
+		return fmt.Errorf("signing key validation failed: %s", err.Error())
+	}
+
+	if !contains(allowedAlgorithms, key.Crv) {
+		return errors.Errorf("key algorithm '%s' is not in the allowed list %v", key.Crv, allowedAlgorithms)
+	}
+
+	return nil
 }
 
 func contains(values []string, value string) bool {

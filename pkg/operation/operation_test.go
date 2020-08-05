@@ -21,6 +21,7 @@ func TestGetOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
+		KeyAlgorithms:                []string{"crv"},
 	}
 
 	t.Run("create", func(t *testing.T) {

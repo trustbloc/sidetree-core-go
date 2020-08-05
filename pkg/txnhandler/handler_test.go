@@ -289,8 +289,9 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 	}
 
 	info := &helper.DeactivateRequestInfo{
-		DidSuffix: fmt.Sprintf("did:sidetree:deactivate-%d", num),
-		Signer:    ecsigner.New(privateKey, "ES256", "")}
+		DidSuffix:   fmt.Sprintf("did:sidetree:deactivate-%d", num),
+		Signer:      ecsigner.New(privateKey, "ES256", ""),
+		RecoveryKey: testJWK}
 
 	request, err := helper.NewDeactivateRequest(info)
 	if err != nil {
@@ -339,6 +340,6 @@ func getTestPatch() (patch.Patch, error) {
 
 var testJWK = &jws.JWK{
 	Kty: "kty",
-	Crv: "crv",
+	Crv: "P-256",
 	X:   "x",
 }
