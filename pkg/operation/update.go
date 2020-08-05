@@ -71,7 +71,7 @@ func ParseSignedDataForUpdate(compactJWS string, p protocol.Protocol) (*model.Up
 		return nil, fmt.Errorf("failed to unmarshal signed data model for update: %s", err.Error())
 	}
 
-	if err := validateSignedDataForUpdate(schema, p.HashAlgorithmInMultiHashCode); err != nil {
+	if err := validateSignedDataForUpdate(schema, p); err != nil {
 		return nil, err
 	}
 
@@ -94,13 +94,14 @@ func validateUpdateRequest(update *model.UpdateRequest) error {
 	return nil
 }
 
-func validateSignedDataForUpdate(signedData *model.UpdateSignedDataModel, code uint) error {
-	if err := validateKey(signedData.UpdateKey); err != nil {
+func validateSignedDataForUpdate(signedData *model.UpdateSignedDataModel, p protocol.Protocol) error {
+	if err := validateSigningKey(signedData.UpdateKey, p.KeyAlgorithms); err != nil {
 		return fmt.Errorf("signed data for update: %s", err.Error())
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, uint64(code)) {
-		return errors.New("delta hash is not computed with the latest supported hash algorithm")
+	code := uint64(p.HashAlgorithmInMultiHashCode)
+	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, code) {
+		return fmt.Errorf("delta hash is not computed with the required hash algorithm: %d", code)
 	}
 
 	return nil

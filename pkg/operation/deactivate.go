@@ -79,5 +79,9 @@ func ParseSignedDataForDeactivate(compactJWS string, p protocol.Protocol) (*mode
 		return nil, fmt.Errorf("failed to unmarshal signed data model for deactivate: %s", err.Error())
 	}
 
+	if err := validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
+		return nil, fmt.Errorf("signed data for deactivate: %s", err.Error())
+	}
+
 	return signedData, nil
 }

@@ -32,6 +32,7 @@ func TestParseRecoverOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
+		KeyAlgorithms:                []string{"crv"},
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -134,31 +135,36 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := ParseRecoverOperation(request, p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed data for recovery: missing key")
+		require.Contains(t, err.Error(), "signed data for recovery: missing signing key")
 		require.Nil(t, op)
 	})
 }
 
 func TestValidateSignedDataForRecovery(t *testing.T) {
+	p := protocol.Protocol{
+		HashAlgorithmInMultiHashCode: sha2_256,
+		KeyAlgorithms:                []string{"crv"},
+	}
+
 	t.Run("missing recovery key", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.RecoveryKey = nil
-		err := validateSignedDataForRecovery(signed, sha2_256)
+		err := validateSignedDataForRecovery(signed, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"signed data for recovery: missing key")
+			"signed data for recovery: missing signing key")
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.DeltaHash = ""
-		err := validateSignedDataForRecovery(signed, sha2_256)
+		err := validateSignedDataForRecovery(signed, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the required hash algorithm")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.RecoveryCommitment = ""
-		err := validateSignedDataForRecovery(signed, sha2_256)
+		err := validateSignedDataForRecovery(signed, p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required hash algorithm")
 	})
@@ -224,6 +230,36 @@ func TestParseSignedData(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, jws)
 		require.Contains(t, err.Error(), "failed to parse signed data: algorithm 'alg' is not in the allowed list [other]")
+	})
+}
+
+func TestValidateSigningKey(t *testing.T) {
+	testJWK := &jws.JWK{
+		Kty: "kty",
+		Crv: "crv",
+		X:   "x",
+	}
+
+	allowedAlgorithms := []string{"crv"}
+
+	t.Run("success", func(t *testing.T) {
+		err := validateSigningKey(testJWK, allowedAlgorithms)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - required info is missing (kty)", func(t *testing.T) {
+		err := validateSigningKey(&jws.JWK{
+			Crv: "crv",
+			X:   "x",
+		}, allowedAlgorithms)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "signing key validation failed: JWK kty is missing")
+	})
+
+	t.Run("error - key algorithm not supported", func(t *testing.T) {
+		err := validateSigningKey(testJWK, []string{"other"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "key algorithm 'crv' is not in the allowed list [other]")
 	})
 }
 

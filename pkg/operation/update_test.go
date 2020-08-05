@@ -26,6 +26,7 @@ func TestParseUpdateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
+		KeyAlgorithms:                []string{"crv"},
 	}
 	t.Run("success", func(t *testing.T) {
 		payload, err := getUpdateRequestBytes()
@@ -108,6 +109,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
+		KeyAlgorithms:                []string{"crv"},
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -138,7 +140,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		schema, err := ParseSignedDataForUpdate(compactJWS, p)
 		require.Error(t, err)
 		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "delta hash is not computed with the latest supported hash algorithm")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
 	})
 	t.Run("payload not JSON object", func(t *testing.T) {
 		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())
