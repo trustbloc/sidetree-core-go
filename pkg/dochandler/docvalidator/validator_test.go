@@ -135,7 +135,7 @@ const validDocWithOpsKeys = `
   "publicKey": [
     {
       "id": "update-key",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
@@ -152,4 +152,4 @@ const validDocWithOpsKeys = `
   ]
 }`
 
-var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
+var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JsonWebKey2020"}]}`)

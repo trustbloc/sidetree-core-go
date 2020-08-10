@@ -13,7 +13,7 @@
     },
     {
       "id": "ops-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["ops"],
       "jwk": {
         "kty": "EC",
@@ -24,7 +24,7 @@
     },
     {
       "id": "dual-auth-gen",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["auth", "general"],
       "jwk": {
         "kty": "EC",
@@ -35,7 +35,7 @@
     },
     {
       "id": "auth-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["auth"],
       "jwk": {
         "kty": "EC",
@@ -46,7 +46,7 @@
     },
     {
       "id": "dual-assertion-gen",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["assertion", "general"],
       "jwk": {
         "kty": "EC",
@@ -57,7 +57,7 @@
     },
     {
       "id": "assertion-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["assertion"],
       "jwk": {
         "kty": "EC",
@@ -68,7 +68,7 @@
     },
     {
       "id": "dual-agreement-gen",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["agreement", "general"],
       "jwk": {
         "kty": "EC",
@@ -79,7 +79,7 @@
     },
     {
       "id": "agreement-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["agreement"],
       "jwk": {
         "kty": "EC",
@@ -90,7 +90,7 @@
     },
     {
       "id": "dual-invocation-gen",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["invocation", "general"],
       "jwk": {
         "kty": "EC",
@@ -101,7 +101,7 @@
     },
     {
       "id": "invocation-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["invocation"],
       "jwk": {
         "kty": "EC",
@@ -112,7 +112,7 @@
     },
     {
       "id": "dual-delegation-gen",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["delegation", "general"],
       "jwk": {
         "kty": "EC",
@@ -123,7 +123,7 @@
     },
     {
       "id": "delegation-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["delegation"],
       "jwk": {
         "kty": "EC",
@@ -134,7 +134,7 @@
     },
     {
       "id": "general-only",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["general"],
       "jwk": {
         "kty": "EC",

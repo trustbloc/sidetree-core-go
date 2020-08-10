@@ -278,7 +278,7 @@ var docWithContext = []byte(`{
 	"@context": ["https://w3id.org/did/v1"], 
 	"publicKey": [{
       	"id": "key-1",
-      	"type": "JwsVerificationKey2020",
+      	"type": "JsonWebKey2020",
       	"purpose": ["ops", "general"],
 		"jwk": {
 			"kty": "EC",
@@ -289,7 +289,7 @@ var docWithContext = []byte(`{
     }] 
 }`)
 
-var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JwsVerificationKey2020"}]}`)
+var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JsonWebKey2020"}]}`)
 var serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "endpoint": "https://example.com/hub"}]}`)
 var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
@@ -299,7 +299,7 @@ var invalidUpdate = []byte(`{ "patch": "" }`)
 var pubKeyWithController = []byte(`{
   "publicKey": [{
       "id": "key-1",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "controller": "did:example:123456789abcdefghi",
       "purpose": ["ops", "general"],
       "jwk": {
