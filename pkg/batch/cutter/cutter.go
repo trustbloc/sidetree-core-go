@@ -60,7 +60,7 @@ func (r *BatchCutter) Add(operation *batch.OperationInfo) (uint, error) {
 func (r *BatchCutter) Cut(force bool) ([]*batch.OperationInfo, uint, Committer, error) {
 	pending := r.pendingBatch.Len()
 
-	maxOperationsPerBatch := r.client.Current().MaxOperationsPerBatch
+	maxOperationsPerBatch := r.client.Current().MaxOperationCount
 	if !force && pending < maxOperationsPerBatch {
 		return nil, pending, nil, nil
 	}

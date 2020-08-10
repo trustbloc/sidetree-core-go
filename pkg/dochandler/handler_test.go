@@ -81,13 +81,13 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 	require.Contains(t, err.Error(), "expected array of interfaces")
 }
 
-func TestDocumentHandler_ProcessOperation_MaxDeltaSizeError(t *testing.T) {
+func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
 	// modify handler protocol client to decrease max operation size
 	protocol := mocks.NewMockProtocolClient()
-	protocol.Protocol.MaxDeltaByteSize = 2
+	protocol.Protocol.MaxOperationSize = 2
 	dochandler.protocol = protocol
 
 	createOp := getCreateOperation()
@@ -95,7 +95,7 @@ func TestDocumentHandler_ProcessOperation_MaxDeltaSizeError(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(createOp)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "delta byte size exceeds protocol max delta byte size")
+	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
 }
 
 func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
@@ -220,13 +220,13 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	require.NotNil(t, result)
 }
 
-func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testing.T) {
+func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
 	// modify handler protocol client to decrease max operation size
 	protocol := mocks.NewMockProtocolClient()
-	protocol.Protocol.MaxDeltaByteSize = 2
+	protocol.Protocol.MaxOperationSize = 2
 	dochandler.protocol = protocol
 
 	docID := getCreateOperation().ID
@@ -234,7 +234,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxDeltaSizeError(t *testi
 	result, err := dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
 	require.NotNil(t, err)
 	require.Nil(t, result)
-	require.Contains(t, err.Error(), "delta byte size exceeds protocol max delta byte size")
+	require.Contains(t, err.Error(), "bad request: operation byte size exceeds protocol max operation byte size")
 }
 
 func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {

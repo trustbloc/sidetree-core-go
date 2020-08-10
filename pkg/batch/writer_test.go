@@ -285,7 +285,7 @@ func TestAddAfterStop(t *testing.T) {
 
 func TestProcessBatchErrorRecovery(t *testing.T) {
 	ctx := newMockContext()
-	ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 2
+	ctx.ProtocolClient.Protocol.MaxOperationCount = 2
 	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
 
 	writer, err := New(namespace, ctx, WithBatchTimeout(500*time.Millisecond))
@@ -335,7 +335,7 @@ func TestStartWithExistingItems(t *testing.T) {
 	opQueue := &opqueue.MemQueue{}
 
 	ctx := newMockContext()
-	ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = maxOperationsPerBatch
+	ctx.ProtocolClient.Protocol.MaxOperationCount = maxOperationsPerBatch
 	ctx.OpQueue = opQueue
 
 	writer, err := New(namespace, ctx)
@@ -364,7 +364,7 @@ func TestProcessError(t *testing.T) {
 		q.PeekReturns(invalidQueue, nil)
 
 		ctx := newMockContext()
-		ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 1
+		ctx.ProtocolClient.Protocol.MaxOperationCount = 1
 		ctx.OpQueue = q
 
 		writer, err := New("test1", ctx, WithBatchTimeout(10*time.Millisecond))
@@ -387,7 +387,7 @@ func TestProcessError(t *testing.T) {
 		q.PeekReturns(nil, errExpected)
 
 		ctx := newMockContext()
-		ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 2
+		ctx.ProtocolClient.Protocol.MaxOperationCount = 2
 		ctx.OpQueue = q
 
 		writer, err := New("test1", ctx, WithBatchTimeout(10*time.Millisecond))
@@ -411,7 +411,7 @@ func TestProcessError(t *testing.T) {
 		q.RemoveReturns(0, 1, errExpected)
 
 		ctx := newMockContext()
-		ctx.ProtocolClient.Protocol.MaxOperationsPerBatch = 2
+		ctx.ProtocolClient.Protocol.MaxOperationCount = 2
 		ctx.OpQueue = q
 
 		writer, err := New("test2", ctx, WithBatchTimeout(10*time.Millisecond))

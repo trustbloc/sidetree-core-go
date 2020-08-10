@@ -25,7 +25,7 @@ var (
 
 func TestBatchCutter(t *testing.T) {
 	c := mocks.NewMockProtocolClient()
-	c.Protocol.MaxOperationsPerBatch = 3
+	c.Protocol.MaxOperationCount = 3
 	r := New(c, &opqueue.MemQueue{})
 
 	ops, pending, commit, err := r.Cut(false)

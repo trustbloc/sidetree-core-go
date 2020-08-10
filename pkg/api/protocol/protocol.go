@@ -8,14 +8,15 @@ package protocol
 
 // Protocol defines protocol parameters
 type Protocol struct {
-	// StartingBlockChainTime is inclusive starting logical blockchain time that this protocol applies to.
-	StartingBlockChainTime uint64
+	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to
+	// (e.g. block number in a blockchain)
+	GenesisTime uint64
 	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code
 	HashAlgorithmInMultiHashCode uint
-	// MaxOperationsPerBatch defines maximum operations per batch
-	MaxOperationsPerBatch uint
-	// MaxDeltaByteSize is maximum size of the `delta` property in bytes
-	MaxDeltaByteSize uint
+	// MaxOperationCount defines maximum number of operations per batch
+	MaxOperationCount uint
+	// MaxOperationSize is maximum uncompressed operation size
+	MaxOperationSize uint
 	// CompressionAlgorithm is file compression algorithm
 	CompressionAlgorithm string
 	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS
