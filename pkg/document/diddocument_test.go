@@ -24,7 +24,7 @@ func TestValid(t *testing.T) {
 	require.Equal(t, []PublicKey{
 		{
 			"id":      "key1",
-			"type":    "JwsVerificationKey2020",
+			"type":    "JsonWebKey2020",
 			"purpose": []interface{}{"ops", "general"},
 			"jwk": map[string]interface{}{
 				"kty": "EC",

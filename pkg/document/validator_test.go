@@ -372,7 +372,7 @@ func TestGeneralKeyPurpose(t *testing.T) {
 }
 
 func TestInvalidKeyPurpose(t *testing.T) {
-	pk := createMockPublicKeyWithTypeAndPurpose(jwsVerificationKey2020, []interface{}{"invalidpurpose"})
+	pk := createMockPublicKeyWithTypeAndPurpose(jsonWebKey2020, []interface{}{"invalidpurpose"})
 	err := ValidatePublicKeys([]PublicKey{pk})
 	require.Error(t, err, "invalid purpose")
 }

@@ -35,6 +35,7 @@ const (
 	general = "general"
 
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
+	jsonWebKey2020                    = "JsonWebKey2020"
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
 	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
 
@@ -65,11 +66,13 @@ type existenceMap map[string]string
 
 var allowedKeyTypesOps = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
+	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 }
 
 var allowedKeyTypesGeneral = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
+	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	Ed25519VerificationKey2018:        Ed25519VerificationKey2018,
 	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019,
@@ -77,6 +80,7 @@ var allowedKeyTypesGeneral = existenceMap{
 
 var allowedKeyTypesVerification = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
+	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	Ed25519VerificationKey2018:        Ed25519VerificationKey2018,
 }
@@ -84,6 +88,7 @@ var allowedKeyTypesVerification = existenceMap{
 var allowedKeyTypesAgreement = existenceMap{
 	// TODO: Verify appropriate agreement key types for JWS and Secp256k1
 	jwsVerificationKey2020:            jwsVerificationKey2020,
+	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019,
 }

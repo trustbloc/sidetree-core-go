@@ -404,7 +404,7 @@ const addPublicKeysPatch = `{
 	"action": "add-public-keys",
 	"public_keys": [{
 		"id": "key1",
-		"type": "JwsVerificationKey2020",
+		"type": "JsonWebKey2020",
 		"purpose": ["ops", "general"],
 		"jwk": {
 			"kty": "EC",
@@ -417,7 +417,7 @@ const addPublicKeysPatch = `{
 
 const testAddPublicKeys = `[{
 	"id": "key1",
-	"type": "JwsVerificationKey2020",
+	"type": "JsonWebKey2020",
 	"purpose": ["ops", "general"],
 	"jwk": {
 		"kty": "EC",
@@ -477,7 +477,7 @@ const removeServiceEndpoints = `{
 const testDoc = `{
 	"publicKey": [{
 		"id": "key1",
-		"type": "JwsVerificationKey2020",
+		"type": "JsonWebKey2020",
 		"purpose": ["ops", "general"],
 		"jwk": {
 			"kty": "EC",
@@ -498,7 +498,7 @@ const testDoc = `{
 const invalidKeysDoc = `{
 	"publicKey": [{
 		"id": "key1",	
-		"type": "JwsVerificationKey2020",
+		"type": "JsonWebKey2020",
 		"purpose": ["ops"],
 		"jwk": {
 			"kty": "EC",

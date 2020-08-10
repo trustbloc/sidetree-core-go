@@ -440,7 +440,7 @@ func getAnchoredCreateOperation() *batchapi.AnchoredOperation {
 const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
-		  "type": "JwsVerificationKey2020",
+		  "type": "JsonWebKey2020",
 		  "purpose": ["ops", "general"],
 		  "jwk": {
 			"kty": "EC",
@@ -454,7 +454,7 @@ const validDoc = `{
 const invalidDocNoPurpose = `{
 	"publicKey": [{
 		  "id": "key1",
-		  "type": "JwsVerificationKey2020",	
+		  "type": "JsonWebKey2020",	
 		  "purpose": [],
 		  "jwk": {
 			"kty": "EC",
