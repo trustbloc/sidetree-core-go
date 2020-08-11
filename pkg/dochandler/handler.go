@@ -195,14 +195,14 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 }
 
 func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *model.CreateRequest) (*document.ResolutionResult, error) {
-	// verify size of each delta does not exceed the maximum allowed limit
-	if len(initial.Delta) > int(r.protocol.Current().MaxDeltaByteSize) {
-		return nil, fmt.Errorf("%s: delta byte size exceeds protocol max delta byte size", badRequest)
-	}
-
 	initialBytes, err := json.Marshal(initial)
 	if err != nil {
 		return nil, fmt.Errorf("%s: marshal initial state: %s", badRequest, err.Error())
+	}
+
+	// verify size of create request does not exceed the maximum allowed limit
+	if len(initialBytes) > int(r.protocol.Current().MaxOperationSize) {
+		return nil, fmt.Errorf("%s: operation byte size exceeds protocol max operation byte size", badRequest)
 	}
 
 	op, err := operation.ParseCreateOperation(initialBytes, r.protocol.Current())
@@ -254,8 +254,8 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 // validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 	// check maximum operation size against protocol
-	if len(operation.Delta) > int(r.protocol.Current().MaxDeltaByteSize) {
-		return errors.New("delta byte size exceeds protocol max delta byte size")
+	if len(operation.OperationBuffer) > int(r.protocol.Current().MaxOperationSize) {
+		return errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
 	if operation.Type == batch.OperationTypeCreate {

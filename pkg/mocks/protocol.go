@@ -20,7 +20,7 @@ const DefaultNS = "did:sidetree"
 // maximum batch files size in bytes
 const maxBatchFileSize = 20000
 
-const maxDeltaByteSize = 2000
+const maxOperationByteSize = 2000
 
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
@@ -32,10 +32,10 @@ type MockProtocolClient struct {
 func NewMockProtocolClient() *MockProtocolClient {
 	//nolint:gomnd
 	latest := protocol.Protocol{
-		StartingBlockChainTime:       0,
+		GenesisTime:                  0,
 		HashAlgorithmInMultiHashCode: sha2_256,
-		MaxOperationsPerBatch:        2,
-		MaxDeltaByteSize:             maxDeltaByteSize,
+		MaxOperationCount:            2,
+		MaxOperationSize:             maxOperationByteSize,
 		CompressionAlgorithm:         "GZIP",
 		MaxChunkFileSize:             maxBatchFileSize,
 		MaxMapFileSize:               maxBatchFileSize,
@@ -61,7 +61,7 @@ func (m *MockProtocolClient) Current() protocol.Protocol {
 // Get mocks getting protocol version based on blockchain(transaction) time
 func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Protocol, error) {
 	for i := len(m.Versions) - 1; i >= 0; i-- {
-		if transactionTime >= m.Versions[i].StartingBlockChainTime {
+		if transactionTime >= m.Versions[i].GenesisTime {
 			return m.Versions[i], nil
 		}
 	}
