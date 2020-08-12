@@ -25,6 +25,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -146,20 +147,18 @@ func TestResolve(t *testing.T) {
 }
 
 func TestUpdateDocument(t *testing.T) {
-	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	recoveryKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, e)
 
-	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	updateKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, e)
 
 	pc := mocks.NewMockProtocolClient()
-
-	var updateOp *batch.AnchoredOperation
 
 	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		updateOp, updateKey, err = getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
 		err = store.Put(updateOp)
@@ -174,7 +173,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
-		updateOp, updateKey, err = getAnchoredUpdateOperation(updateKey, uniqueSuffix, 2)
+		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
 		require.Nil(t, err)
 		err = store.Put(updateOp)
 		require.Nil(t, err)
@@ -185,6 +184,112 @@ func TestUpdateDocument(t *testing.T) {
 		// check if service type value is updated again (done via json patch)
 		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
 		require.Equal(t, "special2", didDoc["test"])
+	})
+
+	t.Run("success -  operation with reused next commitment ignored", func(t *testing.T) {
+		// scenario: update 1 followed by update 2 followed by update 3 with reused commitment from 1
+
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+
+		delta1, err := operation.ParseDelta(updateOp.Delta, pc.Protocol)
+		require.NoError(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated (done via json patch)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special1", didDoc["test"])
+
+		// test consecutive update
+		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
+		require.Nil(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// service type value is updated since operation is valid
+		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special2", didDoc["test"])
+
+		// two successful update operations - next update with reused commitment from op 1
+		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+
+		delta3, err := operation.ParseDelta(updateOp.Delta, pc.Protocol)
+		require.NoError(t, err)
+		delta3.UpdateCommitment = delta1.UpdateCommitment
+
+		delta3Bytes, err := canonicalizer.MarshalCanonical(delta3)
+		require.NoError(t, err)
+
+		updateOp.Delta = docutil.EncodeToString(delta3Bytes)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// service type value is not updated since commitment value was reused
+		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special2", didDoc["test"])
+	})
+
+	t.Run("success - operation with same commitment as next operation commitment is ignored", func(t *testing.T) {
+		// scenario: update 1 followed by update 2 with same operation commitment as next operation commitment
+
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+
+		delta1, err := operation.ParseDelta(updateOp.Delta, pc.Protocol)
+		require.NoError(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated (done via json patch)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special1", didDoc["test"])
+
+		// update operation commitment is the same as next operation commitment
+		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+
+		delta2, err := operation.ParseDelta(updateOp.Delta, pc.Protocol)
+		require.NoError(t, err)
+		delta2.UpdateCommitment = delta1.UpdateCommitment
+
+		delta2Bytes, err := canonicalizer.MarshalCanonical(delta2)
+		require.NoError(t, err)
+
+		updateOp.Delta = docutil.EncodeToString(delta2Bytes)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// service type value is not updated since commitment value was reused
+		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special1", didDoc["test"])
 	})
 
 	t.Run("missing signed data error", func(t *testing.T) {
@@ -574,20 +679,18 @@ func TestDeactivate(t *testing.T) {
 }
 
 func TestRecover(t *testing.T) {
-	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	recoveryKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, e)
 
-	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
+	updateKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, e)
 
 	pc := mocks.NewMockProtocolClient()
-
-	var recoverOp *batch.AnchoredOperation
 
 	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		recoverOp, recoveryKey, err = getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
+		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
@@ -602,7 +705,7 @@ func TestRecover(t *testing.T) {
 		require.Contains(t, string(docBytes), "recovered")
 
 		// apply recover again - consecutive recoveries are valid
-		recoverOp, _, err = getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
+		recoverOp, _, err = getAnchoredRecoverOperation(nextRecoveryKey, updateKey, uniqueSuffix, 2)
 		require.NoError(t, err)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
@@ -635,7 +738,7 @@ func TestRecover(t *testing.T) {
 		require.Contains(t, string(docBytes), "key1")
 
 		// now generate valid recovery operation with same recoveryKey
-		recoverOp, _, err = getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
+		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
 
@@ -883,7 +986,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		value, err := p.getOperationCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "operation type not supported for generating operation commitment")
+		require.Contains(t, err.Error(), "operation type not supported for getting operation commitment")
 	})
 
 	t.Run("error - unmarshall signed models", func(t *testing.T) {
@@ -933,6 +1036,137 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
+	})
+}
+
+func TestGetNextOperationCommitment(t *testing.T) {
+	recoveryKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	pc := mocks.NewMockProtocolClient()
+
+	store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+	p := New("test", store, pc)
+
+	t.Run("success - recover", func(t *testing.T) {
+		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		value, err := p.getNextOperationCommitment(recoverOp)
+		require.NoError(t, err)
+		require.NotEmpty(t, value)
+
+		c, err := getCommitment(nextRecoveryKey)
+		require.NoError(t, err)
+		require.Equal(t, c, value)
+	})
+
+	t.Run("success - update", func(t *testing.T) {
+		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		value, err := p.getNextOperationCommitment(updateOp)
+		require.NoError(t, err)
+		require.NotEmpty(t, value)
+
+		c, err := getCommitment(nextUpdateKey)
+		require.NoError(t, err)
+		require.Equal(t, c, value)
+	})
+
+	t.Run("success - deactivate", func(t *testing.T) {
+		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix)
+		require.NoError(t, err)
+
+		value, err := p.getNextOperationCommitment(deactivateOp)
+		require.NoError(t, err)
+		require.Empty(t, value)
+	})
+
+	t.Run("error - protocol error", func(t *testing.T) {
+		pcWithoutProtocols := mocks.NewMockProtocolClient()
+		pcWithoutProtocols.Versions = []protocol.Protocol{}
+		store, _ := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		value, err := New("test", store, pcWithoutProtocols).getNextOperationCommitment(updateOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
+	})
+
+	t.Run("error - create operation is currently not supported", func(t *testing.T) {
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		value, err := p.getNextOperationCommitment(createOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "operation type not supported for getting next operation commitment")
+	})
+
+	t.Run("error - missing signed data", func(t *testing.T) {
+		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+		require.NoError(t, err)
+
+		recoverOp.SignedData = ""
+
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		value, err := p.getNextOperationCommitment(anchoredOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
+
+	t.Run("error - invalid delta", func(t *testing.T) {
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		updateOp.Delta = "whatever"
+
+		value, err := p.getNextOperationCommitment(updateOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "failed to parse delta for update")
+	})
+
+	t.Run("error - operation type not supported", func(t *testing.T) {
+		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+		require.NoError(t, err)
+
+		recoverOp.Type = "other"
+
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		value, err := p.getNextOperationCommitment(anchoredOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "operation type not supported for getting next operation commitment")
+	})
+
+	t.Run("error - unmarshall signed model for recovery", func(t *testing.T) {
+		// test recover signed model
+		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+		require.NoError(t, err)
+
+		recoverSigner := ecsigner.New(recoveryKey, "ES256", "")
+		recoverCompactJWS, err := signutil.SignPayload([]byte("recover payload"), recoverSigner)
+		require.NoError(t, err)
+
+		recoverOp.SignedData = recoverCompactJWS
+
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		value, err := p.getNextOperationCommitment(anchoredOp)
+		require.Error(t, err)
+		require.Empty(t, value)
+		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
 	})
 }
 
