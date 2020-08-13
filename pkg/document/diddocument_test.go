@@ -25,7 +25,7 @@ func TestValid(t *testing.T) {
 		{
 			"id":      "key1",
 			"type":    "JsonWebKey2020",
-			"purpose": []interface{}{"ops", "general"},
+			"purpose": []interface{}{"auth", "general"},
 			"jwk": map[string]interface{}{
 				"kty": "EC",
 				"crv": "P-256K",

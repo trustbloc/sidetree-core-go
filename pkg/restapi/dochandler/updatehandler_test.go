@@ -259,8 +259,8 @@ type operationSchema struct {
 const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
-		  "type": "JwsVerificationKey2020",
-		  "purpose": ["ops", "general"],
+		  "type": "JsonWebKey2020",
+		  "purpose": ["general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -273,8 +273,8 @@ const validDoc = `{
 const recoverDoc = `{
 	"publicKey": [{
 		"id": "recoverKey",
-		"type": "JwsVerificationKey2020",
-		"purpose": ["ops"],
+		"type": "JsonWebKey2020",
+		"purpose": ["general"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",

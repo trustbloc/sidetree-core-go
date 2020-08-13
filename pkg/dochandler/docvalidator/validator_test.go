@@ -136,7 +136,7 @@ const validDocWithOpsKeys = `
     {
       "id": "update-key",
       "type": "JsonWebKey2020",
-      "purpose": ["ops"],
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",

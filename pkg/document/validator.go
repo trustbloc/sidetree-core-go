@@ -19,8 +19,6 @@ var (
 )
 
 const (
-	// ops defines key purpose as operations key
-	ops = "ops"
 	// auth defines key purpose as authentication key
 	auth = "auth"
 	// assertion defines key purpose as assertion key
@@ -53,7 +51,6 @@ const (
 )
 
 var allowedOps = map[string]string{
-	ops:        ops,
 	auth:       auth,
 	general:    general,
 	assertion:  assertion,
@@ -63,12 +60,6 @@ var allowedOps = map[string]string{
 }
 
 type existenceMap map[string]string
-
-var allowedKeyTypesOps = existenceMap{
-	jwsVerificationKey2020:            jwsVerificationKey2020,
-	jsonWebKey2020:                    jsonWebKey2020,
-	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
-}
 
 var allowedKeyTypesGeneral = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
@@ -94,7 +85,6 @@ var allowedKeyTypesAgreement = existenceMap{
 }
 
 var allowedKeyTypes = map[string]existenceMap{
-	ops:        allowedKeyTypesOps,
 	general:    allowedKeyTypesGeneral,
 	auth:       allowedKeyTypesVerification,
 	assertion:  allowedKeyTypesVerification,
@@ -125,12 +115,6 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 
 		if err := validateKeyPurpose(pubKey); err != nil {
 			return err
-		}
-
-		if IsOperationsKey(pubKey.Purpose()) {
-			if err := ValidateOperationsKey(pubKey); err != nil {
-				return err
-			}
 		}
 
 		if !validateKeyTypePurpose(pubKey) {
@@ -258,15 +242,6 @@ func validateKeyTypePurpose(pubKey PublicKey) bool {
 	return true
 }
 
-// ValidateOperationsKey validates operation key
-func ValidateOperationsKey(pubKey PublicKey) error {
-	if !IsOperationsKey(pubKey.Purpose()) {
-		return fmt.Errorf("key '%s' is not an operations key", pubKey.ID())
-	}
-
-	return ValidateJWK(pubKey.JWK())
-}
-
 // ValidateJWK validates JWK
 func ValidateJWK(jwk JWK) error {
 	if jwk == nil {
@@ -290,11 +265,6 @@ func ValidateJWK(jwk JWK) error {
 	}
 
 	return nil
-}
-
-// IsOperationsKey returns true if key is an operations key
-func IsOperationsKey(purposes []string) bool {
-	return isPurposeKey(purposes, ops)
 }
 
 // IsGeneralKey returns true if key is a general key

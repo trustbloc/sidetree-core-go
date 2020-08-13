@@ -170,7 +170,7 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["ops", "general"],
+		  "purpose": ["general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",

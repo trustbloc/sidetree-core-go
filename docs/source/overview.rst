@@ -26,4 +26,4 @@ Document resolution is based on ID or encoded original document.
 
 -- ID : The latest document will be returned if found.
 
--- ID with initial-values parameter: The ID is passed in along with the initial-values parameter as follows: <ID>;initial-values=<encoded-DID-document>. Standard resolution is performed if the DID is found in the document store. If the document cannot be found then the encoded DID Document is used to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to the same validation as an original DID Document in a create operation.
+-- ID with initial-state parameter: The ID is passed in along with the initial-values parameter as follows: <ID>;initial-values=<encoded-DID-document>. Standard resolution is performed if the DID is found in the document store. If the document cannot be found then the encoded DID Document is used to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to the same validation as an original DID Document in a create operation.

@@ -279,7 +279,7 @@ var docWithContext = []byte(`{
 	"publicKey": [{
       	"id": "key-1",
       	"type": "JsonWebKey2020",
-      	"purpose": ["ops", "general"],
+      	"purpose": ["general"],
 		"jwk": {
 			"kty": "EC",
         	"crv": "P-256K",
@@ -301,7 +301,7 @@ var pubKeyWithController = []byte(`{
       "id": "key-1",
       "type": "JsonWebKey2020",
       "controller": "did:example:123456789abcdefghi",
-      "purpose": ["ops", "general"],
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",

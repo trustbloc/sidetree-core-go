@@ -3,18 +3,7 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "purpose": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation"],
-      "jwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-    },
-    {
-      "id": "ops-only",
-      "type": "JsonWebKey2020",
-      "purpose": ["ops"],
+      "purpose": ["general", "auth", "assertion", "agreement", "delegation", "invocation"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
