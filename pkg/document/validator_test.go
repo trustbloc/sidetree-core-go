@@ -175,14 +175,6 @@ func TestValidateServices(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service endpoint is not valid URI")
 	})
-	t.Run("success - service property not allowed", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(serviceDocPropertyNotAllowed))
-		require.NoError(t, err)
-
-		err = ValidateServices(doc.Services())
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "property 'test' is not allowed for service")
-	})
 	t.Run("success - didcomm service", func(t *testing.T) {
 		doc, err := DIDDocumentFromReader(reader(t, "testdata/doc.json"))
 		require.NoError(t, err)
@@ -660,15 +652,6 @@ const serviceDocOptionalProperty = `{
 	"service": [{
 		"id": "vcs",
 		"routingKeys": "value",
-		"type": "VerifiableCredentialService",
-		"endpoint": "https://example.com/vc/"
-	}]
-}`
-
-const serviceDocPropertyNotAllowed = `{
-	"service": [{
-		"id": "vcs",
-		"test": "value",
 		"type": "VerifiableCredentialService",
 		"endpoint": "https://example.com/vc/"
 	}]

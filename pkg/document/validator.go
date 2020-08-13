@@ -103,31 +103,6 @@ var allowedKeyTypes = map[string]existenceMap{
 	invocation: allowedKeyTypesVerification,
 }
 
-const (
-	recipientKeys = "recipientKeys"
-	routingKeys   = "routingKeys"
-	priority      = "priority"
-)
-
-// GetOptionalServiceProperties returns allowed optional properties
-// Note that id, type and service endpoint are required properties
-func GetOptionalServiceProperties() []string {
-	return []string{recipientKeys, routingKeys, priority}
-}
-
-func validateServiceProperty(property string) error {
-	required := []string{IDProperty, TypeProperty, EndpointProperty}
-	optional := GetOptionalServiceProperties()
-	allowed := append(required, optional...)
-	for _, prop := range allowed {
-		if property == prop {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("property '%s' is not allowed for service", property)
-}
-
 // ValidatePublicKeys validates public keys
 func ValidatePublicKeys(pubKeys []PublicKey) error {
 	ids := make(map[string]string)
@@ -221,11 +196,7 @@ func validateService(service Service) error {
 		return err
 	}
 
-	for key := range service {
-		if err := validateServiceProperty(key); err != nil {
-			return err
-		}
-	}
+	// TODO: validate against configured allowed properties (issue #373)
 
 	return nil
 }
