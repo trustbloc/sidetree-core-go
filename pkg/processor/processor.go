@@ -68,7 +68,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}
 
 	// apply 'create' operations first
-	rm = s.applyFirstValidOperation(createOps, rm)
+	rm = s.applyFirstValidCreateOperation(createOps, rm)
 	if rm == nil {
 		return nil, errors.New("valid create operation not found")
 	}
@@ -145,25 +145,34 @@ func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber
 func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *resolutionModel, commitmentFnc fnc) *resolutionModel {
 	opMap := s.createOperationHashMap(ops)
 
+	commitmentMap := make(map[string]bool)
+
 	var state = rm
 
-	commitmentOps, ok := opMap[commitmentFnc(state)]
+	c := commitmentFnc(state)
+
+	commitmentOps, ok := opMap[c]
 	for ok {
-		newState := s.applyFirstValidOperation(commitmentOps, state)
+		newState := s.applyFirstValidOperation(commitmentOps, state, c, commitmentMap)
 
 		// can't find a valid operation to apply
 		if newState == nil {
 			break
 		}
 
+		// commitment has been processed successfully
+		commitmentMap[c] = true
 		state = newState
 
+		// get next commitment to be processed
+		c = commitmentFnc(state)
+
 		// stop if we just applied deactivate
-		if commitmentFnc(state) == "" {
+		if c == "" {
 			return state
 		}
 
-		commitmentOps, ok = opMap[commitmentFnc(state)]
+		commitmentOps, ok = opMap[c]
 	}
 
 	return state
@@ -179,10 +188,48 @@ func getRecoveryCommitment(rm *resolutionModel) string {
 	return rm.RecoveryCommitment
 }
 
-func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOperation, rm *resolutionModel) *resolutionModel {
+func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*batch.AnchoredOperation, rm *resolutionModel) *resolutionModel {
+	for _, op := range createOps {
+		var state *resolutionModel
+		var err error
+
+		if state, err = s.applyOperation(op, rm); err != nil {
+			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			continue
+		}
+
+		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		return state
+	}
+
+	return nil
+}
+
+// this function should be used for update, recover and deactivate operations (create is handled differently)
+func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOperation, rm *resolutionModel, currCommitment string, processedCommitments map[string]bool) *resolutionModel {
 	for _, op := range ops {
 		var state *resolutionModel
 		var err error
+
+		nextCommitment, err := s.getNextOperationCommitment(op)
+		if err != nil {
+			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			continue
+		}
+
+		if currCommitment == nextCommitment {
+			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation commitment equals next operation commitment", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
+			continue
+		}
+
+		if nextCommitment != "" {
+			// for recovery and update operations check if next commitment has been used already; if so skip to next operation
+			_, processed := processedCommitments[nextCommitment]
+			if processed {
+				logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: next operation commitment has already been used", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
+				continue
+			}
+		}
 
 		if state, err = s.applyOperation(op, rm); err != nil {
 			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
@@ -436,6 +483,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 		}
 
 		commitmentKey = signedDataModel.UpdateKey
+
 	case batch.OperationTypeDeactivate:
 		signedDataModel, innerErr := operation.ParseSignedDataForDeactivate(op.SignedData, p)
 		if innerErr != nil {
@@ -443,6 +491,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
+
 	case batch.OperationTypeRecover:
 		signedDataModel, innerErr := operation.ParseSignedDataForRecover(op.SignedData, p)
 		if innerErr != nil {
@@ -450,14 +499,50 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
+
 	default:
-		return "", errors.New("operation type not supported for generating operation commitment")
+		return "", errors.New("operation type not supported for getting operation commitment")
 	}
 
-	c, err := commitment.Calculate(commitmentKey, p.HashAlgorithmInMultiHashCode)
+	currentCommitment, err := commitment.Calculate(commitmentKey, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return "", fmt.Errorf("failed to calculate operation commitment for key: %s", err.Error())
 	}
 
-	return c, nil
+	return currentCommitment, nil
+}
+
+func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperation) (string, error) { // nolint: gocyclo
+	p, err := s.pc.Get(op.TransactionTime)
+	if err != nil {
+		return "", fmt.Errorf("get next operation commitment: %s", err.Error())
+	}
+
+	var nextCommitment string
+
+	switch op.Type {
+	case batch.OperationTypeUpdate:
+		delta, innerErr := operation.ParseDelta(op.Delta, p)
+		if innerErr != nil {
+			return "", fmt.Errorf("failed to parse delta for %s: %s", op.Type, innerErr.Error())
+		}
+
+		nextCommitment = delta.UpdateCommitment
+
+	case batch.OperationTypeDeactivate:
+		nextCommitment = ""
+
+	case batch.OperationTypeRecover:
+		signedDataModel, innerErr := operation.ParseSignedDataForRecover(op.SignedData, p)
+		if innerErr != nil {
+			return "", fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
+		}
+
+		nextCommitment = signedDataModel.RecoveryCommitment
+
+	default:
+		return "", errors.New("operation type not supported for getting next operation commitment")
+	}
+
+	return nextCommitment, nil
 }
