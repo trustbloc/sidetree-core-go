@@ -20,15 +20,15 @@ import (
 const (
 	didSuffix = "did_suffix"
 
-	didContext       = "https://www.w3.org/ns/did/v1"
-	trustblocContext = "https://trustbloc.github.io/context/did/trustbloc-v1.jsonld"
+	didContext = "https://www.w3.org/ns/did/v1"
 
 	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
 )
 
 // Validator is responsible for validating did operations and sidetree rules
 type Validator struct {
-	store OperationStoreClient
+	store     OperationStoreClient
+	methodCtx []string // used for setting additional contexts during resolution
 }
 
 // OperationStoreClient defines interface for retrieving all operations related to document
@@ -39,11 +39,28 @@ type OperationStoreClient interface {
 }
 
 // New creates a new did validator
-func New(store OperationStoreClient) *Validator {
-	return &Validator{
+func New(store OperationStoreClient, opts ...Option) *Validator {
+	validator := &Validator{
 		store: store,
 	}
+
+	// apply options
+	for _, opt := range opts {
+		opt(validator)
+	}
+
+	return validator
 }
+
+// WithMethodContext sets optional method context(s)
+func WithMethodContext(ctx []string) Option {
+	return func(opts *Validator) {
+		opts.methodCtx = ctx
+	}
+}
+
+// Option is a registry instance option
+type Option func(opts *Validator)
 
 // IsValidPayload verifies that the given payload is a valid Sidetree specific payload
 // that can be accepted by the Sidetree update operations
@@ -109,8 +126,15 @@ func (v *Validator) TransformDocument(doc document.Document) (*document.Resoluti
 	// start with empty document
 	external := document.DidDocumentFromJSONLDObject(make(document.DIDDocument))
 
-	// add context and id
-	external[document.ContextProperty] = []interface{}{didContext, trustblocContext}
+	// add main context
+	ctx := []interface{}{didContext}
+
+	// add optional method contexts
+	for _, c := range v.methodCtx {
+		ctx = append(ctx, c)
+	}
+
+	external[document.ContextProperty] = ctx
 	external[document.IDProperty] = internal.ID()
 
 	result := &document.ResolutionResult{
