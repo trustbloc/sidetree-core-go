@@ -40,8 +40,6 @@ import (
 var logger = log.New("sidetree-core-dochandler")
 
 const (
-	keyID = "id"
-
 	badRequest = "bad request"
 )
 
@@ -117,10 +115,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 }
 
 func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*document.ResolutionResult, error) {
-	doc, err := getInitialDocument(operation.DeltaModel.Patches)
-	if err != nil {
-		return nil, err
-	}
+	doc := composer.ApplyPatches(newDocWithID(operation.ID), operation.DeltaModel.Patches)
 
 	externalResult, err := r.transformToExternalDoc(doc, operation.ID)
 	if err != nil {
@@ -237,7 +232,7 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 	}
 
 	// apply id to document so it can be added to all keys and services
-	internal[keyID] = id
+	internal[document.IDProperty] = id
 
 	return r.validator.TransformDocument(internal)
 }
@@ -266,10 +261,7 @@ func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 }
 
 func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
-	doc, err := getInitialDocument(patches)
-	if err != nil {
-		return err
-	}
+	doc := composer.ApplyPatches(make(document.Document), patches)
 
 	docBytes, err := json.Marshal(doc)
 	if err != nil {
@@ -295,6 +287,9 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 	return idOrDocument[adjustedPos:], nil
 }
 
-func getInitialDocument(patches []patch.Patch) (document.Document, error) {
-	return composer.ApplyPatches(make(document.Document), patches)
+func newDocWithID(id string) document.Document {
+	doc := make(document.Document)
+	doc[document.IDProperty] = id
+
+	return doc
 }

@@ -294,10 +294,7 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(make(document.Document), delta.Patches)
-	if err != nil {
-		return nil, err
-	}
+	doc := composer.ApplyPatches(newDocWithID(op.UniqueSuffix), delta.Patches)
 
 	return &resolutionModel{
 		Doc:                            doc,
@@ -347,10 +344,7 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(rm.Doc, delta.Patches)
-	if err != nil {
-		return nil, err
-	}
+	doc := composer.ApplyPatches(rm.Doc, delta.Patches)
 
 	return &resolutionModel{
 		Doc:                            doc,
@@ -440,10 +434,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
 
-	doc, err := composer.ApplyPatches(make(document.Document), delta.Patches)
-	if err != nil {
-		return nil, err
-	}
+	doc := composer.ApplyPatches(newDocWithID(op.UniqueSuffix), delta.Patches)
 
 	return &resolutionModel{
 		Doc:                            doc,
@@ -545,4 +536,11 @@ func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperat
 	}
 
 	return nextCommitment, nil
+}
+
+func newDocWithID(id string) document.Document {
+	doc := make(document.Document)
+	doc[document.IDProperty] = id
+
+	return doc
 }

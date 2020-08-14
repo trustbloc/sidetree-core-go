@@ -81,12 +81,9 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*doc
 		doc = make(document.Document)
 	}
 
-	doc, err := composer.ApplyPatches(doc, operation.DeltaModel.Patches)
-	if err != nil {
-		return nil, err
-	}
-
 	doc = applyID(doc, operation.ID)
+
+	doc = composer.ApplyPatches(doc, operation.DeltaModel.Patches)
 
 	m.store[operation.ID] = doc
 
@@ -143,12 +140,9 @@ func (m *MockDocumentHandler) resolveWithInitialState(idOrDocument string) (*doc
 		return nil, err
 	}
 
-	doc, err := composer.ApplyPatches(make(document.Document), delta.Patches)
-	if err != nil {
-		return nil, err
-	}
+	doc := applyID(make(document.Document), id)
+	doc = composer.ApplyPatches(doc, delta.Patches)
 
-	doc = applyID(doc, id)
 	return &document.ResolutionResult{
 		Document: doc,
 	}, nil
