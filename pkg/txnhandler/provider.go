@@ -230,7 +230,8 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 			return nil, err
 		}
 
-		// TODO: they are assembling operation buffer in reference implementation (might be easier for version manager)
+		// TODO: they are assembling operation buffer in reference implementation - issue-380
+		// (might be easier for version manager)
 		create := &batch.AnchoredOperation{
 			Type:         batch.OperationTypeCreate,
 			UniqueSuffix: suffix,
