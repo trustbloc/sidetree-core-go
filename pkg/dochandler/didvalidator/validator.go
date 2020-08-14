@@ -20,8 +20,7 @@ import (
 const (
 	didSuffix = "did_suffix"
 
-	didContext = "https://www.w3.org/ns/did/v1"
-	//sidetreeContext = "https://identity.foundation/sidetree/context-v1.jsonld"
+	didContext       = "https://www.w3.org/ns/did/v1"
 	trustblocContext = "https://trustbloc.github.io/context/did/trustbloc-v1.jsonld"
 
 	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
@@ -111,7 +110,6 @@ func (v *Validator) TransformDocument(doc document.Document) (*document.Resoluti
 	external := document.DidDocumentFromJSONLDObject(make(document.DIDDocument))
 
 	// add context and id
-	// TODO: Add sidetree context once it gets fixed
 	external[document.ContextProperty] = []interface{}{didContext, trustblocContext}
 	external[document.IDProperty] = internal.ID()
 

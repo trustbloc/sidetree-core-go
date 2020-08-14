@@ -125,7 +125,7 @@ func validateProtectedHeaders(headers jws.Headers, allowedAlgorithms []string) e
 	// alg MUST be present in the protected header, its value MUST NOT be none.
 	// no additional members may be present in the protected header.
 
-	// TODO: There is discrepancy between spec "kid MUST be present in the protected header"
+	// TODO: There is discrepancy between spec "kid MUST be present in the protected header" (issue-365)
 	// and reference implementation ('kid' is not present; only one 'alg' header expected)
 	// so disable this check for now
 	// _, ok := headers.KeyID()
