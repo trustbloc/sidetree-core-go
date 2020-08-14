@@ -405,7 +405,7 @@ const addPublicKeysPatch = `{
 	"public_keys": [{
 		"id": "key1",
 		"type": "JsonWebKey2020",
-		"purpose": ["ops", "general"],
+		"purpose": ["general"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -418,7 +418,7 @@ const addPublicKeysPatch = `{
 const testAddPublicKeys = `[{
 	"id": "key1",
 	"type": "JsonWebKey2020",
-	"purpose": ["ops", "general"],
+	"purpose": ["general"],
 	"jwk": {
 		"kty": "EC",
 		"crv": "P-256K",
@@ -478,7 +478,7 @@ const testDoc = `{
 	"publicKey": [{
 		"id": "key1",
 		"type": "JsonWebKey2020",
-		"purpose": ["ops", "general"],
+		"purpose": ["general"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -499,7 +499,7 @@ const invalidKeysDoc = `{
 	"publicKey": [{
 		"id": "key1",	
 		"type": "JsonWebKey2020",
-		"purpose": ["ops"],
+		"purpose": ["general"],
 		"jwk": {
 			"kty": "EC",
 			"crv": "P-256K"

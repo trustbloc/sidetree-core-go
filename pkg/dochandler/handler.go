@@ -136,15 +136,15 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*docume
 
 // ResolveDocument fetches the latest DID Document of a DID. Two forms of string can be passed in the URI:
 //
-// 1. Standard DID format: did:sidetree:<unique-portion>
+// 1. Standard DID format: did:METHOD:<did-suffix>
 //
-// 2. DID with initial-values DID parameter:
-// did:sidetree:<unique-portion>;initial-values=<encoded-original-did-document>
+// 2. DID with initial-state DID parameter (Long-Form DID URIs)
+// did:METHOD:<did-suffix>?initial-state=<create-suffix-data-object>.<create-delta-object>
 //
 // Standard resolution is performed if the DID is found to be registered on the blockchain.
-// If the DID Document cannot be found, the encoded DID Document given in the initial-values DID parameter is used
-// to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to
-// the same validation as an original DID Document in a create operation
+// If the DID Document cannot be found, the <create-suffix-data-object> and <create-delta-object> given
+// in the initial-state DID parameter are used to generate and return resolved DID Document. In this case the supplied
+// encoded delta and suffix objects are subject to the same validation as during processing create operation.
 func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.ResolutionResult, error) {
 	if !strings.HasPrefix(idOrInitialDoc, r.namespace+docutil.NamespaceDelimiter) {
 		return nil, errors.New("must start with configured namespace")

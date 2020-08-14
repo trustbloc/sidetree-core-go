@@ -43,7 +43,7 @@ func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
 
 	pos := strings.Index(params, initialMatch)
 	if pos == -1 {
-		// there is no initial-values so params contains only did
+		// there is no initial-state so params contains only did
 		return params, nil, nil
 	}
 

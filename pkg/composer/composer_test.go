@@ -417,7 +417,7 @@ const testDoc = `{
 		{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["ops"],
+		  "purpose": ["general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -428,7 +428,7 @@ const testDoc = `{
 		{
 		  "id": "key2",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["ops", "general"],
+		  "purpose": ["general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -454,7 +454,7 @@ const testDoc = `{
 const addKeys = `[{
 		  "id": "key3",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["ops", "general"],
+		  "purpose": ["general"],
 		  "jwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -466,7 +466,7 @@ const addKeys = `[{
 const updateExistingKey = `[{
 	"id": "key2",
 	"type": "JsonWebKey2020",
-	"purpose": ["ops"],
+	"purpose": ["general"],
 	"jwk": {
 			"kty": "EC",
 			"crv": "P-256K",

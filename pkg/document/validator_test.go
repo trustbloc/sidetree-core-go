@@ -200,31 +200,6 @@ func TestValidateID(t *testing.T) {
 	})
 }
 
-func TestValidateOperationsKey(t *testing.T) {
-	pk := NewPublicKey(map[string]interface{}{})
-	pk["id"] = "kid"
-
-	err := ValidateOperationsKey(pk)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "is not an operations key")
-
-	pk[purposeKey] = []interface{}{ops}
-	err = ValidateOperationsKey(pk)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "key has to be in JWK format")
-
-	jwk := map[string]interface{}{
-		"kty": "kty",
-		"crv": "crv",
-		"x":   "x",
-		"y":   "y",
-	}
-
-	pk["jwk"] = jwk
-	err = ValidateOperationsKey(pk)
-	require.NoError(t, err)
-}
-
 func TestValidateJWK(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		jwk := JWK{
@@ -369,10 +344,6 @@ func TestInvalidKeyPurpose(t *testing.T) {
 	require.Error(t, err, "invalid purpose")
 }
 
-func TestOpsKeyPurpose(t *testing.T) {
-	testKeyPurpose(t, allowedKeyTypesOps, ops)
-}
-
 func TestVerificationKeyPurpose(t *testing.T) {
 	testKeyPurpose(t, allowedKeyTypesVerification, assertion)
 	testKeyPurpose(t, allowedKeyTypesVerification, auth)
@@ -440,8 +411,8 @@ const moreProperties = `{
     {
       "id": "key1",
       "other": "unknown",
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops"], 
+      "type": "JsonWebKey2020",
+      "purpose": ["general"], 
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -456,7 +427,7 @@ const noPurpose = `{
   "publicKey": [
     {
       "id": "key1",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": [], 
       "jwk": {
         "kty": "EC",
@@ -472,7 +443,7 @@ const wrongPurpose = `{
   "publicKey": [
     {
       "id": "key1",
-      "type": "JwsVerificationKey2020",
+      "type": "JsonWebKey2020",
       "purpose": ["invalid"],
       "jwk": {
         "kty": "EC",
@@ -488,8 +459,8 @@ const tooMuchPurpose = `{
   "publicKey": [
     {
       "id": "key1",
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops", "general", "auth", "assertion", "agreement", "delegation", "invocation", "other"],
+      "type": "JsonWebKey2020",
+      "purpose": ["general", "auth", "assertion", "agreement", "delegation", "invocation", "other"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -504,8 +475,8 @@ const noJWK = `{
   "publicKey": [
     {
       "id": "key1",
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops"],
+      "type": "JsonWebKey2020",
+      "purpose": ["general"],
       "jwk": {}
     }
   ]
@@ -515,8 +486,8 @@ const idLong = `{
   "publicKey": [
     {
       "id": "idwihmorethan50characters123456789012345678901234567890",
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops"],
+      "type": "JsonWebKey2020",
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -529,8 +500,8 @@ const idLong = `{
 const noID = `{
   "publicKey": [
     {
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops"],
+      "type": "JsonWebKey2020",
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -561,8 +532,8 @@ const duplicateID = `{
   "publicKey": [
     {
       "id": "key1",
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops"],
+      "type": "JsonWebKey2020",
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -572,8 +543,8 @@ const duplicateID = `{
     },
     {
       "id": "key1",
-      "type": "JwsVerificationKey2020",
-      "purpose": ["ops"],
+      "type": "JsonWebKey2020",
+      "purpose": ["general"],
       "jwk": {
         "kty": "EC",
         "crv": "P-256K",
