@@ -26,8 +26,21 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	v := New(mocks.NewMockOperationStore(nil))
+	store := mocks.NewMockOperationStore(nil)
+
+	v := New(store)
 	require.NotNil(t, v)
+	require.Empty(t, v.methodCtx)
+
+	const ctx1 = "ctx-1"
+	v = New(store, WithMethodContext([]string{ctx1}))
+	require.Equal(t, 1, len(v.methodCtx))
+	require.Equal(t, ctx1, v.methodCtx[0])
+
+	const ctx2 = "ctx-2"
+	v = New(store, WithMethodContext([]string{ctx1, ctx2}))
+	require.Equal(t, 2, len(v.methodCtx))
+	require.Equal(t, ctx2, v.methodCtx[1])
 }
 
 func TestIsValidOriginalDocument(t *testing.T) {
@@ -154,6 +167,7 @@ func TestTransformDocument(t *testing.T) {
 
 	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(didDoc.Context()))
 	require.Equal(t, didContext, didDoc.Context()[0])
 
 	// validate services
@@ -190,6 +204,24 @@ func TestTransformDocument(t *testing.T) {
 
 	expectedInvocationKeys := []string{"master", "dual-invocation-gen", "invocation-only"}
 	require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKey()))
+}
+
+func TestWithMethodContext(t *testing.T) {
+	doc := newDocWithID("doc:abc:123")
+
+	v := New(mocks.NewMockOperationStore(nil), WithMethodContext([]string{"ctx-1", "ctx-2"}))
+
+	result, err := v.TransformDocument(doc)
+	require.NoError(t, err)
+
+	jsonTransformed, err := json.Marshal(result.Document)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
+	require.Equal(t, 3, len(didDoc.Context()))
+	require.Equal(t, "ctx-1", didDoc.Context()[1])
+	require.Equal(t, "ctx-2", didDoc.Context()[2])
 }
 
 func TestEd25519VerificationKey2018(t *testing.T) {
@@ -272,6 +304,13 @@ func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.Nil(t, err)
 	return f
+}
+
+func newDocWithID(id string) document.Document {
+	doc := make(document.Document)
+	doc[document.IDProperty] = id
+
+	return doc
 }
 
 var docWithContext = []byte(`{ 
