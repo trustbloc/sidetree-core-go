@@ -65,19 +65,20 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
 
-	publicKeysPatch, err := patch.NewAddPublicKeysPatch("{}")
+	replacePatch, err := patch.NewAddPublicKeysPatch("{}")
 	require.NoError(t, err)
-	publicKeysPatch["publicKeys"] = "invalid"
+	replacePatch["publicKeys"] = "invalid"
 
 	createOp := getCreateOperation()
 
 	createOp.DeltaModel = &model.DeltaModel{
-		Patches: []patch.Patch{publicKeysPatch},
+		Patches: []patch.Patch{replacePatch},
 	}
 
 	doc, err := dochandler.ProcessOperation(createOp)
-	require.Nil(t, err)
-	require.Equal(t, 0, len(doc.Document.PublicKeys()))
+	require.NotNil(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "expected array of interfaces")
 }
 
 func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
@@ -268,7 +269,7 @@ func TestTransformToExternalDocument(t *testing.T) {
 	result, err = dochandler.transformToExternalDoc(doc, "abc")
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Equal(t, "abc", result.Document[document.IDProperty])
+	require.Equal(t, "abc", result.Document[keyID])
 }
 
 func TestGetUniquePortion(t *testing.T) {

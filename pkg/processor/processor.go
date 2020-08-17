@@ -21,6 +21,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 )
@@ -33,6 +34,7 @@ type OperationProcessor struct {
 	name  string
 	store OperationStoreClient
 	pc    protocol.Client
+	dc    docComposer
 }
 
 // OperationStoreClient defines interface for retrieving all operations related to document
@@ -41,9 +43,13 @@ type OperationStoreClient interface {
 	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
 }
 
+type docComposer interface {
+	ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error)
+}
+
 // New returns new operation processor with the given name. (Note that name is only used for logging.)
 func New(name string, store OperationStoreClient, pc protocol.Client) *OperationProcessor {
-	return &OperationProcessor{name: name, store: store, pc: pc}
+	return &OperationProcessor{name: name, store: store, pc: pc, dc: composer.New()}
 }
 
 // Resolve document based on the given unique suffix
@@ -294,7 +300,10 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
 
-	doc := composer.ApplyPatches(newDocWithID(op.UniqueSuffix), delta.Patches)
+	doc, err := s.dc.ApplyPatches(make(document.Document), delta.Patches)
+	if err != nil {
+		return nil, err
+	}
 
 	return &resolutionModel{
 		Doc:                            doc,
@@ -344,7 +353,10 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
 
-	doc := composer.ApplyPatches(rm.Doc, delta.Patches)
+	doc, err := s.dc.ApplyPatches(rm.Doc, delta.Patches)
+	if err != nil {
+		return nil, err
+	}
 
 	return &resolutionModel{
 		Doc:                            doc,
@@ -434,7 +446,10 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
 	}
 
-	doc := composer.ApplyPatches(newDocWithID(op.UniqueSuffix), delta.Patches)
+	doc, err := s.dc.ApplyPatches(make(document.Document), delta.Patches)
+	if err != nil {
+		return nil, err
+	}
 
 	return &resolutionModel{
 		Doc:                            doc,
@@ -536,11 +551,4 @@ func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperat
 	}
 
 	return nextCommitment, nil
-}
-
-func newDocWithID(id string) document.Document {
-	doc := make(document.Document)
-	doc[document.IDProperty] = id
-
-	return doc
 }

@@ -8,7 +8,6 @@ package composer
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -20,37 +19,27 @@ import (
 
 var logger = log.New("sidetree-core-composer")
 
-// ApplyPatches applies patches to the document
-func ApplyPatches(doc document.Document, patches []patch.Patch) document.Document {
-	result, err := applyPatches(doc, patches)
-	if err != nil {
-		logger.Infof(err.Error())
-	}
-
-	return result
+// DocumentComposer applies patches to the document
+type DocumentComposer struct {
 }
 
-// applyPatches is helper method that applies patches to the document
-// If an error is encountered it will continue with the next patch
-func applyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
-	var errMsg string
+// New creates new document composer
+func New() *DocumentComposer {
+	return &DocumentComposer{}
+}
 
-	result := doc
-	for index, p := range patches {
-		temp, err := applyPatch(result, p)
+// ApplyPatches applies patches to the document
+func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
+	var err error
+
+	for _, p := range patches {
+		doc, err = applyPatch(doc, p)
 		if err != nil {
-			errMsg += fmt.Sprintf("[%d]: %s ", index, err.Error())
-			continue
+			return nil, err
 		}
-		result = temp
 	}
 
-	if errMsg != "" {
-		errMsg = fmt.Sprintf("[%s] Skipped bad patches: %s", doc.ID(), errMsg)
-		return result, errors.New(errMsg)
-	}
-
-	return result, nil
+	return doc, nil
 }
 
 // applyPatch applies a patch to the document
