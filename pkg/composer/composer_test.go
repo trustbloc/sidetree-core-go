@@ -18,6 +18,8 @@ import (
 const invalid = "invalid"
 
 func TestApplyPatches(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("succes - add one key to existing doc with two keys", func(t *testing.T) {
 		original, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -26,8 +28,9 @@ func TestApplyPatches(t *testing.T) {
 		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
 		require.NoError(t, err)
 
-		doc := ApplyPatches(original, []patch.Patch{addPublicKeys})
-		require.NotNil(t, original)
+		doc, err := documentComposer.ApplyPatches(original, []patch.Patch{addPublicKeys})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
 
 		didDoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 3, len(didDoc.PublicKeys()))
@@ -35,26 +38,28 @@ func TestApplyPatches(t *testing.T) {
 		require.Equal(t, "key2", didDoc.PublicKeys()[1].ID())
 		require.Equal(t, "key3", didDoc.PublicKeys()[2].ID())
 	})
-	t.Run("error - invalid patch action (doc will not be changed)", func(t *testing.T) {
-		original, err := setupDefaultDoc()
-		require.NoError(t, err)
 
+	t.Run("action not supported", func(t *testing.T) {
 		p, err := patch.NewAddServiceEndpointsPatch("{}")
 		require.NoError(t, err)
 
 		p["action"] = invalid
 
-		doc := ApplyPatches(original, []patch.Patch{p})
-		require.Equal(t, doc, original)
+		doc, err := documentComposer.ApplyPatches(make(document.Document), []patch.Patch{p})
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "not supported")
 	})
 }
 
 func TestApplyPatches_PatchesFromOpaqueDoc(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("success", func(t *testing.T) {
 		patches, err := patch.PatchesFromDocument(testDoc)
 		require.NoError(t, err)
 
-		doc, err := applyPatches(make(document.Document), patches)
+		doc, err := documentComposer.ApplyPatches(make(document.Document), patches)
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -65,11 +70,13 @@ func TestApplyPatches_PatchesFromOpaqueDoc(t *testing.T) {
 }
 
 func TestApplyPatches_ReplacePatch(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("success", func(t *testing.T) {
 		replace, err := patch.NewReplacePatch(replaceDoc)
 		require.NoError(t, err)
 
-		doc, err := applyPatches(make(document.Document), []patch.Patch{replace})
+		doc, err := documentComposer.ApplyPatches(make(document.Document), []patch.Patch{replace})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -80,6 +87,8 @@ func TestApplyPatches_ReplacePatch(t *testing.T) {
 }
 
 func TestApplyPatches_JSON(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("success", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -87,7 +96,7 @@ func TestApplyPatches_JSON(t *testing.T) {
 		ietf, err := patch.NewJSONPatch(patches)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{ietf})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{ietf})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 	})
@@ -100,9 +109,9 @@ func TestApplyPatches_JSON(t *testing.T) {
 
 		ietf["patches"] = invalid
 
-		new, err := applyPatches(doc, []patch.Patch{ietf})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{ietf})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array")
 	})
 	t.Run("invalid operation", func(t *testing.T) {
@@ -112,14 +121,16 @@ func TestApplyPatches_JSON(t *testing.T) {
 		ietf, err := patch.NewJSONPatch(invalidPatches)
 		require.NoError(t, err)
 
-		new, err := applyPatches(doc, []patch.Patch{ietf})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{ietf})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "Unexpected kind: invalid")
 	})
 }
 
 func TestApplyPatches_AddPublicKeys(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("succes - add one key to existing two keys", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -127,7 +138,7 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{addPublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addPublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -145,7 +156,7 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		require.NoError(t, err)
 
 		// existing public key will be replaced with new one that has type 'updatedKeyType'
-		doc, err = applyPatches(doc, []patch.Patch{addPublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addPublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -161,7 +172,7 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{addPublicKeys, addPublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addPublicKeys, addPublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -176,14 +187,16 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		require.NoError(t, err)
 		addPublicKeys["public_keys"] = invalid
 
-		new, err := applyPatches(doc, []patch.Patch{addPublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addPublicKeys})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array of interfaces")
 	})
 }
 
 func TestApplyPatches_RemovePublicKeys(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("success - remove existing key", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -191,7 +204,7 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		removePublicKeys, err := patch.NewRemovePublicKeysPatch(`["key1"]`)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{removePublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -206,7 +219,7 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		removePublicKeys, err := patch.NewRemovePublicKeysPatch(`["key1", "key3"]`)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{removePublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -221,9 +234,9 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		require.NoError(t, err)
 		removePublicKeys["public_keys"] = invalid
 
-		new, err := applyPatches(doc, []patch.Patch{removePublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array")
 	})
 	t.Run("invalid public key ids", func(t *testing.T) {
@@ -234,9 +247,9 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		require.NoError(t, err)
 		removePublicKeys["public_keys"] = []interface{}{"a&b"}
 
-		new, err := applyPatches(doc, []patch.Patch{removePublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("success - add and remove same key; doc stays at two keys", func(t *testing.T) {
@@ -246,14 +259,14 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{addPublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addPublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
 		removePublicKeys, err := patch.NewRemovePublicKeysPatch(`["key3"]`)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{removePublicKeys})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -263,6 +276,8 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 }
 
 func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("success - add new service to existing two services", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -270,7 +285,7 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{addServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -288,7 +303,7 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 		require.NoError(t, err)
 
 		// existing service will be replaced with new one that has type 'updatedService'
-		doc, err = applyPatches(doc, []patch.Patch{addServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -304,7 +319,7 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{addServices, addServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addServices, addServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -319,14 +334,16 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		addServices["service_endpoints"] = invalid
 
-		new, err := applyPatches(doc, []patch.Patch{addServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addServices})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array")
 	})
 }
 
 func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
+	documentComposer := New()
+
 	t.Run("success - remove existing service", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -334,7 +351,7 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 		removeServices, err := patch.NewRemoveServiceEndpointsPatch(`["svc1"]`)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{removeServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -349,7 +366,7 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 		removeServices, err := patch.NewRemoveServiceEndpointsPatch(`["svc1", "svc3"]`)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{removeServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -364,9 +381,9 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		removeServices["ids"] = invalid
 
-		new, err := applyPatches(doc, []patch.Patch{removeServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "expected array")
 	})
 	t.Run("invalid service ids", func(t *testing.T) {
@@ -377,9 +394,9 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		removeServices["ids"] = []interface{}{"svc", "a&b"}
 
-		new, err := applyPatches(doc, []patch.Patch{removeServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
 		require.Error(t, err)
-		require.Equal(t, doc, new)
+		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("success - add and remove same service; doc stays at two services", func(t *testing.T) {
@@ -389,14 +406,14 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{addServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
 		removeServices, err := patch.NewRemoveServiceEndpointsPatch(`["svc3"]`)
 		require.NoError(t, err)
 
-		doc, err = applyPatches(doc, []patch.Patch{removeServices})
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 
@@ -406,12 +423,14 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 }
 
 func setupDefaultDoc() (document.Document, error) {
+	documentComposer := New()
+
 	patches, err := patch.PatchesFromDocument(testDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	return applyPatches(make(document.Document), patches)
+	return documentComposer.ApplyPatches(make(document.Document), patches)
 }
 
 const invalidPatches = `[

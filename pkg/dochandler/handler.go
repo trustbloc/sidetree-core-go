@@ -40,6 +40,8 @@ import (
 var logger = log.New("sidetree-core-dochandler")
 
 const (
+	keyID = "id"
+
 	badRequest = "bad request"
 )
 
@@ -50,6 +52,7 @@ type DocumentHandler struct {
 	writer    BatchWriter
 	validator DocumentValidator
 	namespace string
+	composer  docComposer
 }
 
 // OperationProcessor is an interface which resolves the document based on the ID
@@ -69,6 +72,10 @@ type DocumentValidator interface {
 	TransformDocument(doc document.Document) (*document.ResolutionResult, error)
 }
 
+type docComposer interface {
+	ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error)
+}
+
 // New creates a new requestHandler with the context
 func New(namespace string, protocol protocol.Client, validator DocumentValidator, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
 	return &DocumentHandler{
@@ -77,6 +84,7 @@ func New(namespace string, protocol protocol.Client, validator DocumentValidator
 		writer:    writer,
 		validator: validator,
 		namespace: namespace,
+		composer:  composer.New(),
 	}
 }
 
@@ -115,7 +123,10 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 }
 
 func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*document.ResolutionResult, error) {
-	doc := composer.ApplyPatches(newDocWithID(operation.ID), operation.DeltaModel.Patches)
+	doc, err := r.getInitialDocument(operation.DeltaModel.Patches)
+	if err != nil {
+		return nil, err
+	}
 
 	externalResult, err := r.transformToExternalDoc(doc, operation.ID)
 	if err != nil {
@@ -232,7 +243,7 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 	}
 
 	// apply id to document so it can be added to all keys and services
-	internal[document.IDProperty] = id
+	internal[keyID] = id
 
 	return r.validator.TransformDocument(internal)
 }
@@ -261,7 +272,10 @@ func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
 }
 
 func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
-	doc := composer.ApplyPatches(make(document.Document), patches)
+	doc, err := r.getInitialDocument(patches)
+	if err != nil {
+		return err
+	}
 
 	docBytes, err := json.Marshal(doc)
 	if err != nil {
@@ -287,9 +301,6 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 	return idOrDocument[adjustedPos:], nil
 }
 
-func newDocWithID(id string) document.Document {
-	doc := make(document.Document)
-	doc[document.IDProperty] = id
-
-	return doc
+func (r *DocumentHandler) getInitialDocument(patches []patch.Patch) (document.Document, error) {
+	return r.composer.ApplyPatches(make(document.Document), patches)
 }

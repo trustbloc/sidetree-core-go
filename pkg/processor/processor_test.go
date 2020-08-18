@@ -144,6 +144,19 @@ func TestResolve(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "create delta doesn't match suffix data delta hash")
 	})
+
+	t.Run("error - document composer error", func(t *testing.T) {
+		store, _ := getDefaultStore(recoveryKey, updateKey)
+		p := New("test", store, pc)
+
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		p.dc = &mockDocComposer{Err: errors.New("doc composer err")}
+		_, err = p.applyOperation(createOp, &resolutionModel{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "doc composer err")
+	})
 }
 
 func TestUpdateDocument(t *testing.T) {
@@ -403,6 +416,27 @@ func TestUpdateDocument(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "update delta doesn't match delta hash")
+	})
+
+	t.Run("error - document composer error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		p := New("test", store, pc)
+
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		rm, err := p.applyOperation(createOp, &resolutionModel{})
+		require.NoError(t, err)
+
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.NoError(t, err)
+
+		p.dc = &mockDocComposer{Err: errors.New("document composer error")}
+
+		rm, err = p.applyOperation(updateOp, rm)
+		require.Error(t, err)
+		require.Nil(t, rm)
+		require.Contains(t, err.Error(), "document composer error")
 	})
 }
 
@@ -883,6 +917,28 @@ func TestRecover(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "recover delta doesn't match delta hash")
+	})
+
+	t.Run("error - document composer error", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		p := New("test", store, pc)
+
+		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		rm, err := p.applyOperation(createOp, &resolutionModel{})
+		require.NoError(t, err)
+
+		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+		require.NoError(t, err)
+
+		anchoredOp := getAnchoredOperation(recoverOp)
+
+		p.dc = &mockDocComposer{Err: errors.New("doc composer error")}
+		rm, err = p.applyOperation(anchoredOp, rm)
+		require.Error(t, err)
+		require.Nil(t, rm)
+		require.Contains(t, err.Error(), "doc composer error")
 	})
 }
 
@@ -1636,3 +1692,16 @@ const recoveredDoc = `{
 		  }
 	}]
 }`
+
+type mockDocComposer struct {
+	Err error
+}
+
+// ApplyPatches mocks applying patches to the document
+func (m *mockDocComposer) ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+
+	return make(document.Document), nil
+}
