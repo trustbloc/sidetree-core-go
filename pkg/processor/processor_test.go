@@ -750,13 +750,13 @@ func TestRecover(t *testing.T) {
 		require.NotNil(t, doc)
 	})
 
-	t.Run("success - invalid recover operation rejected", func(t *testing.T) {
+	t.Run("success - operation with invalid signature rejected", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
 		invalidRecoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		invalidRecoverOp.Delta = ""
+		invalidRecoverOp.SignedData = ""
 
 		invalidAnchoredOp := getAnchoredOperation(invalidRecoverOp)
 
@@ -785,6 +785,27 @@ func TestRecover(t *testing.T) {
 		docBytes, err = result.Document.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered")
+	})
+
+	t.Run("success - operation with valid signature and invalid delta accepted", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		invalidRecoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+		require.NoError(t, err)
+
+		invalidRecoverOp.Delta = ""
+
+		invalidAnchoredOp := getAnchoredOperation(invalidRecoverOp)
+
+		err = store.Put(invalidAnchoredOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, result.Document, make(document.Document))
+		require.Empty(t, result.MethodMetadata.UpdateCommitment, "")
 	})
 
 	t.Run("missing signed data error", func(t *testing.T) {
@@ -904,7 +925,7 @@ func TestRecover(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		rm, err := p.applyOperation(createOp, &resolutionModel{})
+		createResult, err := p.applyOperation(createOp, &resolutionModel{})
 		require.NoError(t, err)
 
 		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
@@ -914,10 +935,11 @@ func TestRecover(t *testing.T) {
 
 		anchoredOp := getAnchoredOperation(recoverOp)
 
-		rm, err = p.applyOperation(anchoredOp, rm)
-		require.Error(t, err)
-		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "recover delta doesn't match delta hash")
+		recoverResult, err := p.applyOperation(anchoredOp, createResult)
+		require.NoError(t, err)
+		require.NotNil(t, recoverResult)
+		require.Equal(t, recoverResult.Doc, make(document.Document))
+		require.NotEqual(t, recoverResult.RecoveryCommitment, createResult.RecoveryCommitment)
 	})
 
 	t.Run("error - document composer error", func(t *testing.T) {
@@ -927,7 +949,7 @@ func TestRecover(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		rm, err := p.applyOperation(createOp, &resolutionModel{})
+		createResult, err := p.applyOperation(createOp, &resolutionModel{})
 		require.NoError(t, err)
 
 		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
@@ -936,10 +958,11 @@ func TestRecover(t *testing.T) {
 		anchoredOp := getAnchoredOperation(recoverOp)
 
 		p.dc = &mockDocComposer{Err: errors.New("doc composer error")}
-		rm, err = p.applyOperation(anchoredOp, rm)
-		require.Error(t, err)
-		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "doc composer error")
+		recoverResult, err := p.applyOperation(anchoredOp, createResult)
+		require.NoError(t, err)
+		require.NotNil(t, recoverResult)
+		require.Equal(t, recoverResult.Doc, make(document.Document))
+		require.NotEqual(t, recoverResult.RecoveryCommitment, createResult.RecoveryCommitment)
 	})
 }
 
