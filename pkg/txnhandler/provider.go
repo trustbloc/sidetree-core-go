@@ -51,12 +51,12 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 		return nil, err
 	}
 
-	pc, err := h.pcp.ForNamespace(txn.Namespace)
+	txnProtocol, err := h.protocolAtTime(txn.Namespace, txn.TransactionTime)
 	if err != nil {
 		return nil, err
 	}
 
-	af, err := h.getAnchorFile(anchorData.AnchorAddress, pc.Current())
+	af, err := h.getAnchorFile(anchorData.AnchorAddress, txnProtocol)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +71,13 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 		return anchorOps.Deactivate, nil
 	}
 
-	mf, err := h.getMapFile(af.MapFileHash, pc.Current())
+	mf, err := h.getMapFile(af.MapFileHash, txnProtocol)
 	if err != nil {
 		return nil, err
 	}
 
 	chunkAddress := mf.Chunks[0].ChunkFileURI
-	cf, err := h.getChunkFile(chunkAddress, pc.Current())
+	cf, err := h.getChunkFile(chunkAddress, txnProtocol)
 	if err != nil {
 		return nil, err
 	}
@@ -308,6 +308,15 @@ func (h *OperationProvider) getProtocol(txn *txn.SidetreeTxn) (protocol.Protocol
 	}
 
 	return pc.Get(txn.TransactionTime)
+}
+
+func (h *OperationProvider) protocolAtTime(ns string, time uint64) (protocol.Protocol, error) {
+	pc, err := h.pcp.ForNamespace(ns)
+	if err != nil {
+		return protocol.Protocol{}, err
+	}
+
+	return pc.Get(time)
 }
 
 // MapOperations contains parsed operations from map file

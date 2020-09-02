@@ -96,7 +96,12 @@ func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (str
 
 	logger.Debugf("%s file: %s", alias, string(bytes))
 
-	compressedBytes, err := h.cp.Compress(h.protocol.Current().CompressionAlgorithm, bytes)
+	currentProtocol, err := h.protocol.Current()
+	if err != nil {
+		return "", err
+	}
+
+	compressedBytes, err := h.cp.Compress(currentProtocol.CompressionAlgorithm, bytes)
 	if err != nil {
 		return "", err
 	}

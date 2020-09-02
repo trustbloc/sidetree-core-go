@@ -26,6 +26,7 @@ const maxOperationByteSize = 2000
 type MockProtocolClient struct {
 	Protocol protocol.Protocol // current version (separated for easier testing)
 	Versions []protocol.Protocol
+	Err      error
 }
 
 // NewMockProtocolClient creates mock protocol client
@@ -54,12 +55,20 @@ func NewMockProtocolClient() *MockProtocolClient {
 }
 
 // Current mocks getting last protocol version
-func (m *MockProtocolClient) Current() protocol.Protocol {
-	return m.Protocol
+func (m *MockProtocolClient) Current() (protocol.Protocol, error) {
+	if m.Err != nil {
+		return protocol.Protocol{}, m.Err
+	}
+
+	return m.Protocol, nil
 }
 
 // Get mocks getting protocol version based on blockchain(transaction) time
 func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Protocol, error) {
+	if m.Err != nil {
+		return protocol.Protocol{}, m.Err
+	}
+
 	for i := len(m.Versions) - 1; i >= 0; i-- {
 		if transactionTime >= m.Versions[i].GenesisTime {
 			return m.Versions[i], nil

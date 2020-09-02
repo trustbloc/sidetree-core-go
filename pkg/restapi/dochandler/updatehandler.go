@@ -70,5 +70,10 @@ func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, er
 }
 
 func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, error) {
-	return operation.ParseOperation(h.processor.Namespace(), operationBuffer, h.processor.Protocol().Current())
+	currentProtocol, err := h.processor.Protocol().Current()
+	if err != nil {
+		return nil, err
+	}
+
+	return operation.ParseOperation(h.processor.Namespace(), operationBuffer, currentProtocol)
 }
