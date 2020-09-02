@@ -107,6 +107,13 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 
 	logger.Debugf("successfully parsed map operations: update[%d]", len(mapOps.Update))
 
+	// check for duplicate suffixes for this combination anchor/map files
+	txnSuffixes := append(anchorOps.Suffixes, mapOps.Suffixes...)
+	err = checkForDuplicates(txnSuffixes)
+	if err != nil {
+		return nil, fmt.Errorf("check for duplicate suffixes in anchor/map files: %s", err.Error())
+	}
+
 	var operations []*batch.AnchoredOperation
 	operations = append(operations, anchorOps.Create...)
 	operations = append(operations, anchorOps.Recover...)
@@ -135,6 +142,26 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	}
 
 	return operations, nil
+}
+
+func checkForDuplicates(values []string) error {
+	var duplicates []string
+
+	valuesMap := make(map[string]bool)
+
+	for _, val := range values {
+		if _, ok := valuesMap[val]; !ok {
+			valuesMap[val] = true
+		} else {
+			duplicates = append(duplicates, val)
+		}
+	}
+
+	if len(duplicates) > 0 {
+		return fmt.Errorf("duplicate values found %v", duplicates)
+	}
+
+	return nil
 }
 
 // getAnchorFile will download anchor file from cas and parse it into anchor file model

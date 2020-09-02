@@ -466,6 +466,46 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			"number of create+recover+update operations[2] doesn't match number of deltas[1]")
 	})
 
+	t.Run("error - duplicate operations found in anchor/map files", func(t *testing.T) {
+		provider := NewOperationProvider(nil, pcp, nil)
+
+		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		require.NoError(t, err)
+
+		updateOp, err := generateOperation(2, batch.OperationTypeUpdate)
+		require.NoError(t, err)
+
+		deactivateOp, err := generateOperation(3, batch.OperationTypeDeactivate)
+		require.NoError(t, err)
+
+		af := &models.AnchorFile{
+			MapFileHash: "hash",
+			Operations: models.Operations{
+				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
+				Deactivate: []models.SignedOperation{
+					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData},
+					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
+			},
+		}
+
+		mf := &models.MapFile{
+			Chunks: []models.Chunk{},
+			Operations: models.Operations{
+				Update: []models.SignedOperation{
+					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData},
+					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData}},
+			},
+		}
+
+		cf := &models.ChunkFile{Deltas: []string{createOp.Delta}}
+
+		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(),
+			"check for duplicate suffixes in anchor/map files: duplicate values found [deactivate-3 update-2]")
+	})
+
 	t.Run("error - invalid delta", func(t *testing.T) {
 		provider := NewOperationProvider(nil, pcp, nil)
 
