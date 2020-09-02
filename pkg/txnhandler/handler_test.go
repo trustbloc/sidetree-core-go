@@ -267,7 +267,7 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 	}
 
 	info := &helper.RecoverRequestInfo{
-		DidSuffix:          fmt.Sprintf("did:sidetree:recover-%d", num),
+		DidSuffix:          fmt.Sprintf("recover-%d", num),
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: c,
 		UpdateCommitment:   c,
@@ -289,7 +289,7 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 	}
 
 	info := &helper.DeactivateRequestInfo{
-		DidSuffix:   fmt.Sprintf("did:sidetree:deactivate-%d", num),
+		DidSuffix:   fmt.Sprintf("deactivate-%d", num),
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
 		RecoveryKey: testJWK}
 
@@ -318,7 +318,7 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 	}
 
 	info := &helper.UpdateRequestInfo{
-		DidSuffix:        fmt.Sprintf("did:sidetree:update-%d", num),
+		DidSuffix:        fmt.Sprintf("update-%d", num),
 		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
 		UpdateCommitment: c,
 		UpdateKey:        testJWK,
