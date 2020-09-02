@@ -206,12 +206,17 @@ func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *mod
 		return nil, fmt.Errorf("%s: marshal initial state: %s", badRequest, err.Error())
 	}
 
+	currentProtocol, err := r.protocol.Current()
+	if err != nil {
+		return nil, err
+	}
+
 	// verify size of create request does not exceed the maximum allowed limit
-	if len(initialBytes) > int(r.protocol.Current().MaxOperationSize) {
+	if len(initialBytes) > int(currentProtocol.MaxOperationSize) {
 		return nil, fmt.Errorf("%s: operation byte size exceeds protocol max operation byte size", badRequest)
 	}
 
-	op, err := operation.ParseCreateOperation(initialBytes, r.protocol.Current())
+	op, err := operation.ParseCreateOperation(initialBytes, currentProtocol)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
@@ -259,8 +264,13 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 
 // validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
+	currentProtocol, err := r.protocol.Current()
+	if err != nil {
+		return err
+	}
+
 	// check maximum operation size against protocol
-	if len(operation.OperationBuffer) > int(r.protocol.Current().MaxOperationSize) {
+	if len(operation.OperationBuffer) > int(currentProtocol.MaxOperationSize) {
 		return errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 

@@ -294,17 +294,39 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 }
 
 func (r *Writer) process(ops []*batch.OperationInfo) error {
+	operations, err := r.parseOperations(ops)
+	if err != nil {
+		return err
+	}
+
+	anchorString, err := r.opsHandler.PrepareTxnFiles(operations)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
+
+	// Create Sidetree transaction in blockchain (write anchor string)
+	return r.context.Blockchain().WriteAnchor(anchorString)
+}
+
+func (r *Writer) parseOperations(ops []*batch.OperationInfo) ([]*batch.Operation, error) {
 	if len(ops) == 0 {
-		return errors.New("create batch called with no pending operations, should not happen")
+		return nil, errors.New("create batch called with no pending operations, should not happen")
 	}
 
 	batchSuffixes := make(map[string]bool)
 
+	currentProtocol, err := r.protocol.Current()
+	if err != nil {
+		return nil, err
+	}
+
 	var operations []*batch.Operation
 	for _, d := range ops {
-		op, err := operation.ParseOperation(d.Namespace, d.Data, r.protocol.Current())
-		if err != nil {
-			return err
+		op, e := operation.ParseOperation(d.Namespace, d.Data, currentProtocol)
+		if e != nil {
+			return nil, e
 		}
 
 		_, ok := batchSuffixes[op.UniqueSuffix]
@@ -317,15 +339,7 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 		batchSuffixes[op.UniqueSuffix] = true
 	}
 
-	anchorString, err := r.opsHandler.PrepareTxnFiles(operations)
-	if err != nil {
-		return err
-	}
-
-	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
-
-	// Create Sidetree transaction in blockchain (write anchor string)
-	return r.context.Blockchain().WriteAnchor(anchorString)
+	return operations, nil
 }
 
 func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.Time {

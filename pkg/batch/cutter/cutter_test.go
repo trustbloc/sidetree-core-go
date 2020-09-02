@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cutter
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,16 @@ func TestBatchCutter(t *testing.T) {
 	c.Protocol.MaxOperationCount = 3
 	r := New(c, &opqueue.MemQueue{})
 
+	c.Err = fmt.Errorf("injected protocol error")
 	ops, pending, commit, err := r.Cut(false)
+	require.EqualError(t, err, c.Err.Error())
+	require.Empty(t, ops)
+	require.Zero(t, pending)
+	require.Nil(t, commit)
+
+	c.Err = nil
+
+	ops, pending, commit, err = r.Cut(false)
 	require.NoError(t, err)
 	require.Empty(t, ops)
 	require.Zero(t, pending)

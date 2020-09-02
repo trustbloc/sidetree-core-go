@@ -37,7 +37,7 @@ type Protocol struct {
 type Client interface {
 
 	// Current returns latest version of protocol
-	Current() Protocol
+	Current() (Protocol, error)
 
 	Get(transactionTime uint64) (Protocol, error)
 }

@@ -9,6 +9,7 @@ package dochandler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -98,6 +99,19 @@ func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
 }
 
+func TestDocumentHandler_ProcessOperation_ProtocolError(t *testing.T) {
+	pc := mocks.NewMockProtocolClient()
+	pc.Err = fmt.Errorf("injected protocol error")
+	dochandler := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+	require.NotNil(t, dochandler)
+
+	createOp := getCreateOperation()
+
+	doc, err := dochandler.ProcessOperation(createOp)
+	require.EqualError(t, err, pc.Err.Error())
+	require.Nil(t, doc)
+}
+
 func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	dochandler := getDocumentHandler(store)
@@ -135,7 +149,8 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	pc := mocks.NewMockProtocolClient()
+	dochandler := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 	require.NotNil(t, dochandler)
 
 	createReq, err := getCreateRequest()
@@ -204,6 +219,15 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		require.NotNil(t, err)
 		require.Nil(t, result)
 		require.Equal(t, err.Error(), "bad request: validate initial document: test error")
+	})
+
+	t.Run("error - protocol error", func(t *testing.T) {
+		pc.Err = fmt.Errorf("injected protocol error")
+		defer func() { pc.Err = nil }()
+
+		result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
+		require.EqualError(t, err, pc.Err.Error())
+		require.Nil(t, result)
 	})
 }
 
@@ -339,8 +363,10 @@ func (m *BatchContext) OperationQueue() cutter.OperationQueue {
 }
 
 func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
-	protocol := mocks.NewMockProtocolClient()
+	return getDocumentHandlerWithProtocolClient(store, mocks.NewMockProtocolClient())
+}
 
+func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, protocol *mocks.MockProtocolClient) *DocumentHandler {
 	validator := docvalidator.New(store)
 	processor := processor.New("test", store, mocks.NewMockProtocolClient())
 

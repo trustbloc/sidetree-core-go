@@ -137,6 +137,22 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.Empty(t, anchorString)
 		require.Contains(t, err.Error(), "failed to store anchor file: CAS error")
 	})
+
+	t.Run("error - protocol error", func(t *testing.T) {
+		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
+
+		pc := mocks.NewMockProtocolClient()
+		pc.Err = fmt.Errorf("injected protocol error")
+
+		handler := NewOperationHandler(
+			mocks.NewMockCasClient(nil),
+			pc,
+			compression)
+
+		anchorString, err := handler.PrepareTxnFiles(ops)
+		require.EqualError(t, err, pc.Err.Error())
+		require.Empty(t, anchorString)
+	})
 }
 
 func TestWriteModelToCAS(t *testing.T) {
@@ -247,7 +263,12 @@ func generateCreateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
-	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
+	cp, err := mocks.NewMockProtocolClient().Current()
+	if err != nil {
+		panic(err)
+	}
+
+	return operation.ParseOperation(defaultNS, request, cp)
 }
 
 func generateRecoverOperation(num int) (*batch.Operation, error) {
@@ -279,7 +300,13 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 	if err != nil {
 		return nil, err
 	}
-	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
+
+	cp, err := mocks.NewMockProtocolClient().Current()
+	if err != nil {
+		panic(err)
+	}
+
+	return operation.ParseOperation(defaultNS, request, cp)
 }
 
 func generateDeactivateOperation(num int) (*batch.Operation, error) {
@@ -298,7 +325,12 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
-	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
+	cp, err := mocks.NewMockProtocolClient().Current()
+	if err != nil {
+		panic(err)
+	}
+
+	return operation.ParseOperation(defaultNS, request, cp)
 }
 
 func generateUpdateOperation(num int) (*batch.Operation, error) {
@@ -331,7 +363,12 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 		return nil, err
 	}
 
-	return operation.ParseOperation(defaultNS, request, mocks.NewMockProtocolClient().Current())
+	cp, err := mocks.NewMockProtocolClient().Current()
+	if err != nil {
+		panic(err)
+	}
+
+	return operation.ParseOperation(defaultNS, request, cp)
 }
 
 func getTestPatch() (patch.Patch, error) {
