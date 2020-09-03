@@ -35,6 +35,7 @@ func NewMockProtocolClient() *MockProtocolClient {
 	latest := protocol.Protocol{
 		GenesisTime:                  0,
 		HashAlgorithmInMultiHashCode: sha2_256,
+		HashAlgorithm:                5, // crypto code for sha256 hash function
 		MaxOperationCount:            2,
 		MaxOperationSize:             maxOperationByteSize,
 		CompressionAlgorithm:         "GZIP",

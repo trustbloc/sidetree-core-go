@@ -13,6 +13,8 @@ type Protocol struct {
 	GenesisTime uint64
 	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code
 	HashAlgorithmInMultiHashCode uint
+	// HashAlgorithm is hash algorithm
+	HashAlgorithm uint
 	// MaxOperationCount defines maximum number of operations per batch
 	MaxOperationCount uint
 	// MaxOperationSize is maximum uncompressed operation size

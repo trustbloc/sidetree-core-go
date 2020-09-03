@@ -8,6 +8,7 @@ package dochandler
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -132,12 +133,12 @@ func TestUpdateHandler_Update(t *testing.T) {
 }
 
 func getCreateRequestInfo() (*helper.CreateRequestInfo, error) {
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +168,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		panic(err)
 	}
@@ -207,12 +208,12 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 		panic(err)
 	}
 
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		panic(err)
 	}
