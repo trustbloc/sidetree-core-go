@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -558,7 +559,7 @@ func getSuffixData(delta []byte) (*model.SuffixDataModel, error) {
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256)
+	c, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}

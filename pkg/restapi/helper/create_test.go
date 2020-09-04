@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package helper
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -34,7 +35,7 @@ func TestNewCreateRequest(t *testing.T) {
 	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	require.NoError(t, err)
 
-	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
 	require.NoError(t, err)
 
 	t.Run("missing opaque document", func(t *testing.T) {

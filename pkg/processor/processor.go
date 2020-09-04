@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
+	"crypto"
 	"errors"
 	"fmt"
 	"sort"
@@ -326,7 +327,7 @@ func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to unmarshal signed data model while applying update: %s", err.Error())
 	}
 
-	updateCommitment, err := commitment.Calculate(signedDataModel.UpdateKey, p.HashAlgorithmInMultiHashCode)
+	updateCommitment, err := commitment.Calculate(signedDataModel.UpdateKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +384,7 @@ func (s *OperationProcessor) applyDeactivateOperation(op *batch.AnchoredOperatio
 		return nil, errors.New("did suffix doesn't match signed value")
 	}
 
-	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode)
+	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +420,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, fmt.Errorf("failed to parse signed data model while applying recover: %s", err.Error())
 	}
 
-	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode)
+	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +511,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 		return "", errors.New("operation type not supported for getting operation commitment")
 	}
 
-	currentCommitment, err := commitment.Calculate(commitmentKey, p.HashAlgorithmInMultiHashCode)
+	currentCommitment, err := commitment.Calculate(commitmentKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return "", fmt.Errorf("failed to calculate operation commitment for key: %s", err.Error())
 	}

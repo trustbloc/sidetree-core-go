@@ -8,6 +8,7 @@ package diddochandler
 
 import (
 	"bytes"
+	"crypto"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -121,7 +122,7 @@ func getDelta() (*model.DeltaModel, error) {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +134,7 @@ func getDelta() (*model.DeltaModel, error) {
 }
 
 func getSuffixData() (*model.SuffixDataModel, error) {
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}

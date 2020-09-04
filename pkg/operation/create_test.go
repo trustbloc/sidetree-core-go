@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
+	"crypto"
 	"encoding/json"
 	"testing"
 
@@ -279,7 +280,7 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		X:   "x",
 	}
 
-	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}
