@@ -74,7 +74,7 @@ type errorWrapper struct {
 //swagger:parameters resolveDocParams
 //nolint:deadcode,unused
 type resolveDocumentParams struct {
-	// The DID or the DID with initial-state parameter that contains create operation delta and suffix objects.
+	// The DID or the DID with initial state value that contains create operation delta and suffix objects.
 	//
 	// in: path
 	// required: true

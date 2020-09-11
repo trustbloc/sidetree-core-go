@@ -144,8 +144,11 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*docume
 //
 // 1. Standard DID format: did:METHOD:<did-suffix>
 //
-// 2. DID with initial-state DID parameter (Long-Form DID URIs)
+// 2. Long Form DID format that can be in the following formats:
+// a) DID with initial-state parameter
 // did:METHOD:<did-suffix>?initial-state=<create-suffix-data-object>.<create-delta-object>
+// b) DID followed by initial state
+// did:METHOD:<did-suffix>:<create-suffix-data-object>.<create-delta-object>
 //
 // Standard resolution is performed if the DID is found to be registered on the blockchain.
 // If the DID Document cannot be found, the <create-suffix-data-object> and <create-delta-object> given
