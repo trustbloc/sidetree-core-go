@@ -22,8 +22,12 @@ Upon successful validation against configured validator an operation will be add
 
 **Resolution**
 
-Document resolution is based on ID or encoded original document.
+Document resolution is based on ID or initial state values.
 
--- ID : The latest document will be returned if found.
+-- DID : The latest document will be returned if found.
 
--- ID with initial-state parameter: The ID is passed in along with the initial-values parameter as follows: <ID>;initial-values=<encoded-DID-document>. Standard resolution is performed if the DID is found in the document store. If the document cannot be found then the encoded DID Document is used to generate and return as the resolved DID Document, in which case the supplied encoded DID Document is subject to the same validation as an original DID Document in a create operation.
+-- Long Form DID can be requested in the following two formats:
+    a) DID with initial-state parameter
+    did:METHOD:<did-suffix>?initial-state=<create-suffix-data-object>.<create-delta-object>
+    b) DID followed by initial state
+    did:METHOD:<did-suffix>:<create-suffix-data-object>.<create-delta-object>

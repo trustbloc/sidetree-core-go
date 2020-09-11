@@ -38,23 +38,34 @@ func getMethod(namespace string) string {
 
 // GetParts inspects params string and returns did and optional initial state value
 func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
-	initialParam := GetInitialStateParam(namespace)
-	initialMatch := "?" + initialParam + "="
+	initialStateParam := GetInitialStateParam(namespace)
+	initialMatch := "?" + initialStateParam + "="
 
-	pos := strings.Index(params, initialMatch)
-	if pos == -1 {
-		// there is no initial-state so params contains only did
+	posInitialStateParam := strings.Index(params, initialMatch)
+	posDot := strings.Index(params, initialStateSeparator)
+
+	if posInitialStateParam == -1 && posDot == -1 {
+		// there is short form did
 		return params, nil, nil
 	}
 
-	adjustedPos := pos + len(initialMatch)
-	if adjustedPos >= len(params) {
-		return "", nil, errors.New("initial state is present but empty")
+	var did, longFormDID string
+	if posInitialStateParam > 0 {
+		did = params[0:posInitialStateParam]
+		adjustedPos := posInitialStateParam + len(initialMatch)
+		if adjustedPos >= len(params) {
+			return "", nil, errors.New("initial state is present but empty")
+		}
+
+		longFormDID = params[adjustedPos:]
+	} else {
+		endOfDIDPos := strings.LastIndex(params, ":")
+
+		did = params[0:endOfDIDPos]
+		longFormDID = params[endOfDIDPos+1:]
 	}
 
-	did := params[0:pos]
-
-	initialStateParts := strings.Split(params[adjustedPos:], initialStateSeparator)
+	initialStateParts := strings.Split(longFormDID, initialStateSeparator)
 
 	const twoParts = 2
 	if len(initialStateParts) != twoParts {

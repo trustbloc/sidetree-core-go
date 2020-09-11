@@ -61,6 +61,13 @@ func TestGetParts(t *testing.T) {
 	require.Equal(t, initial.Delta, "123")
 	require.Equal(t, initial.SuffixData, "xyz")
 	require.Equal(t, initial.Operation, model.OperationTypeCreate)
+
+	did, initial, err = GetParts(namespace, testDID+":xyz.123")
+	require.NoError(t, err)
+	require.Equal(t, testDID, did)
+	require.Equal(t, initial.Delta, "123")
+	require.Equal(t, initial.SuffixData, "xyz")
+	require.Equal(t, initial.Operation, model.OperationTypeCreate)
 }
 
 func TestGetInitialState(t *testing.T) {
