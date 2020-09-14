@@ -24,9 +24,11 @@ const maxOperationByteSize = 2000
 
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
-	Protocol protocol.Protocol // current version (separated for easier testing)
-	Versions []protocol.Protocol
-	Err      error
+	Protocol       protocol.Protocol // current version (separated for easier testing)
+	CurrentVersion *ProtocolVersion
+	Versions       []*ProtocolVersion
+	Err            error
+	CasClient      *MockCasClient
 }
 
 // NewMockProtocolClient creates mock protocol client
@@ -46,37 +48,46 @@ func NewMockProtocolClient() *MockProtocolClient {
 		KeyAlgorithms:                []string{"Ed25519", "P-256"},
 	}
 
+	latestVersion := &ProtocolVersion{}
+	latestVersion.OperationApplierReturns(&OperationApplier{})
+	latestVersion.OperationParserReturns(&OperationParser{})
+	latestVersion.DocumentComposerReturns(&DocumentComposer{})
+	latestVersion.DocumentValidatorReturns(&DocumentValidator{})
+
+	latestVersion.ProtocolReturns(latest)
+
 	// has to be sorted for mock client to work
-	versions := []protocol.Protocol{latest}
+	versions := []*ProtocolVersion{latestVersion}
 
 	return &MockProtocolClient{
-		Protocol: latest,
-		Versions: versions,
+		Protocol:       latest,
+		CurrentVersion: latestVersion,
+		Versions:       versions,
 	}
 }
 
 // Current mocks getting last protocol version
-func (m *MockProtocolClient) Current() (protocol.Protocol, error) {
+func (m *MockProtocolClient) Current() (protocol.Version, error) {
 	if m.Err != nil {
-		return protocol.Protocol{}, m.Err
+		return nil, m.Err
 	}
 
-	return m.Protocol, nil
+	return m.CurrentVersion, nil
 }
 
 // Get mocks getting protocol version based on blockchain(transaction) time
-func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Protocol, error) {
+func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Version, error) {
 	if m.Err != nil {
-		return protocol.Protocol{}, m.Err
+		return nil, m.Err
 	}
 
 	for i := len(m.Versions) - 1; i >= 0; i-- {
-		if transactionTime >= m.Versions[i].GenesisTime {
+		if transactionTime >= m.Versions[i].Protocol().GenesisTime {
 			return m.Versions[i], nil
 		}
 	}
 
-	return protocol.Protocol{}, fmt.Errorf("protocol parameters are not defined for blockchain time: %d", transactionTime)
+	return nil, fmt.Errorf("protocol parameters are not defined for blockchain time: %d", transactionTime)
 }
 
 // NewMockProtocolClientProvider creates new mock protocol client provider
@@ -92,6 +103,13 @@ func NewMockProtocolClientProvider() *MockProtocolClientProvider {
 // MockProtocolClientProvider implements mock protocol client provider
 type MockProtocolClientProvider struct {
 	ProtocolClients map[string]protocol.Client
+}
+
+// WithProtocolClient sets the protocol client
+func (m *MockProtocolClientProvider) WithProtocolClient(ns string, pc protocol.Client) *MockProtocolClientProvider {
+	m.ProtocolClients[ns] = pc
+
+	return m
 }
 
 // ForNamespace will return protocol client for that namespace

@@ -64,8 +64,10 @@ type AnchoredOperation struct {
 
 	//The logical blockchain time (block number) that this operation was anchored on the blockchain
 	TransactionTime uint64 `json:"transaction_time"`
+
 	//The transaction number of the transaction this operation was batched within
 	TransactionNumber uint64 `json:"transaction_number"`
+
 	//The index this operation was assigned to in the batch
 	OperationIndex uint `json:"operation_index"`
 }

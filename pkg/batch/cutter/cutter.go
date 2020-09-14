@@ -65,7 +65,7 @@ func (r *BatchCutter) Cut(force bool) ([]*batch.OperationInfo, uint, Committer, 
 		return nil, 0, nil, err
 	}
 
-	maxOperationsPerBatch := currentProtocol.MaxOperationCount
+	maxOperationsPerBatch := currentProtocol.Protocol().MaxOperationCount
 	if !force && pending < maxOperationsPerBatch {
 		return nil, pending, nil, nil
 	}

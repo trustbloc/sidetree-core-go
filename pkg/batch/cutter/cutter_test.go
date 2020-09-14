@@ -27,6 +27,8 @@ var (
 func TestBatchCutter(t *testing.T) {
 	c := mocks.NewMockProtocolClient()
 	c.Protocol.MaxOperationCount = 3
+	c.CurrentVersion.ProtocolReturns(c.Protocol)
+
 	r := New(c, &opqueue.MemQueue{})
 
 	c.Err = fmt.Errorf("injected protocol error")

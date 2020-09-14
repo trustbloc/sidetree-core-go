@@ -25,6 +25,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
 
 const (
@@ -34,8 +37,9 @@ const (
 
 func TestUpdateHandler_Update(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(basePath, docHandler)
+		pc := newMockProtocolClient()
+		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(pc)
+		handler := NewUpdateHandler(basePath, docHandler, pc)
 		require.Equal(t, basePath+"/operations", handler.Path())
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
@@ -65,8 +69,9 @@ func TestUpdateHandler_Update(t *testing.T) {
 
 func TestUpdateHandler_Update_Error(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewUpdateHandler(basePath, docHandler)
+		pc := newMockProtocolClient()
+		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(pc)
+		handler := NewUpdateHandler(basePath, docHandler, pc)
 
 		createRequest, err := getCreateRequest()
 		require.NoError(t, err)
@@ -185,4 +190,18 @@ var testJWK = &jws.JWK{
 	Kty: "kty",
 	Crv: "crv",
 	X:   "x",
+}
+
+func newMockProtocolClient() *mocks.MockProtocolClient {
+	pc := mocks.NewMockProtocolClient()
+	parser := operationparser.New(pc.Protocol)
+	dc := doccomposer.New()
+	oa := operationapplier.New(pc.Protocol, parser, dc)
+
+	pv := pc.CurrentVersion
+	pv.OperationParserReturns(parser)
+	pv.OperationApplierReturns(oa)
+	pv.DocumentComposerReturns(dc)
+
+	return pc
 }
