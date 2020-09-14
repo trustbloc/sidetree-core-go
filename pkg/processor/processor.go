@@ -81,13 +81,21 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}
 
 	// apply 'full' operations first
-	rm = s.applyOperations(fullOps, rm, getRecoveryCommitment)
-	if rm.Doc == nil {
-		return nil, errors.New("document was deactivated")
+	if len(fullOps) > 0 {
+		logger.Debugf("[%s] Applying %d full operations for unique suffix [%s]", s.name, len(fullOps), uniqueSuffix)
+
+		rm = s.applyOperations(fullOps, rm, getRecoveryCommitment)
+		if rm.Doc == nil {
+			return nil, errors.New("document was deactivated")
+		}
 	}
 
 	// next apply update ops since last 'full' transaction
-	rm = s.applyOperations(getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber), rm, getUpdateCommitment)
+	filteredUpdateOps := getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber)
+	if len(filteredUpdateOps) > 0 {
+		logger.Debugf("[%s] Applying %d update operations after last full operation for unique suffix [%s]", s.name, len(filteredUpdateOps), uniqueSuffix)
+		rm = s.applyOperations(filteredUpdateOps, rm, getUpdateCommitment)
+	}
 
 	return &document.ResolutionResult{
 		Document: rm.Doc,
@@ -148,22 +156,34 @@ func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber
 
 	return nil
 }
-
 func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *resolutionModel, commitmentFnc fnc) *resolutionModel {
+	if len(ops) == 0 {
+		// nothing to do; shouldn't be called without operations
+		return rm
+	}
+
+	// suffix for logging
+	uniqueSuffix := ops[0].UniqueSuffix
+
 	opMap := s.createOperationHashMap(ops)
 
+	// holds applied commitments
 	commitmentMap := make(map[string]bool)
 
 	var state = rm
 
 	c := commitmentFnc(state)
+	logger.Debugf("[%s] Processing commitment '%s' {UniqueSuffix: %s}", s.name, c, uniqueSuffix)
 
 	commitmentOps, ok := opMap[c]
 	for ok {
+		logger.Debugf("[%s] Found %d operation(s) for commitment '%s' {UniqueSuffix: %s}", s.name, len(commitmentOps), c, uniqueSuffix)
+
 		newState := s.applyFirstValidOperation(commitmentOps, state, c, commitmentMap)
 
 		// can't find a valid operation to apply
 		if newState == nil {
+			logger.Infof("[%s] Unable to apply valid operation for commitment '%s' {UniqueSuffix: %s}", s.name, c, uniqueSuffix)
 			break
 		}
 
@@ -171,15 +191,23 @@ func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm 
 		commitmentMap[c] = true
 		state = newState
 
+		logger.Debugf("[%s] Successfully processed commitment '%s' {UniqueSuffix: %s}", s.name, c, uniqueSuffix)
+
 		// get next commitment to be processed
 		c = commitmentFnc(state)
 
-		// stop if we just applied deactivate
+		logger.Debugf("[%s] Next commitment to process is '%s' {UniqueSuffix: %s}", s.name, c, uniqueSuffix)
+
+		// stop if there is no next commitment
 		if c == "" {
 			return state
 		}
 
 		commitmentOps, ok = opMap[c]
+	}
+
+	if len(commitmentMap) != len(ops) {
+		logger.Infof("[%s] Number of commitments applied '%d' doesn't match number of operations '%d' {UniqueSuffix: %s}", s.name, len(commitmentMap), len(ops), uniqueSuffix)
 	}
 
 	return state
@@ -205,7 +233,7 @@ func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*batch.A
 			continue
 		}
 
-		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		logger.Debugf("[%s] After applying create op %+v, recover commitment[%s], update commitment[%s], New doc: %s", s.name, op, state.RecoveryCommitment, state.UpdateCommitment, state.Doc)
 		return state
 	}
 
@@ -243,7 +271,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOpera
 			continue
 		}
 
-		logger.Debugf("[%s] After applying op %+v, New doc: %s", s.name, op, rm.Doc)
+		logger.Debugf("[%s] After applying op %+v, recover commitment[%s], update commitment[%s], New doc: %s", s.name, op, state.RecoveryCommitment, state.UpdateCommitment, state.Doc)
 		return state
 	}
 
