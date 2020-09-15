@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
@@ -67,6 +68,21 @@ func TestGetParts(t *testing.T) {
 	require.Equal(t, testDID, did)
 	require.Equal(t, initial.Delta, "123")
 	require.Equal(t, initial.SuffixData, "xyz")
+	require.Equal(t, initial.Operation, model.OperationTypeCreate)
+
+	namespaceWithDot := "did:bloc:trustbloc.dev"
+	didWithDot := namespaceWithDot + docutil.NamespaceDelimiter + "EiB2gB7F-aDjg8qPsTuZfVqWkJtIWXn4nObHSgtZ1IzMaQ"
+	did, initial, err = GetParts(namespaceWithDot, didWithDot)
+	require.NoError(t, err)
+	require.Equal(t, didWithDot, did)
+	require.Nil(t, initial)
+
+	didWithDotWithInitialState := didWithDot + ":abc.123"
+	did, initial, err = GetParts(namespaceWithDot, didWithDotWithInitialState)
+	require.NoError(t, err)
+	require.Equal(t, didWithDot, did)
+	require.Equal(t, initial.Delta, "123")
+	require.Equal(t, initial.SuffixData, "abc")
 	require.Equal(t, initial.Operation, model.OperationTypeCreate)
 }
 

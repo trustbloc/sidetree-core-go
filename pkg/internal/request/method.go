@@ -42,7 +42,9 @@ func GetParts(namespace, params string) (string, *model.CreateRequest, error) {
 	initialMatch := "?" + initialStateParam + "="
 
 	posInitialStateParam := strings.Index(params, initialMatch)
-	posDot := strings.Index(params, initialStateSeparator)
+	// namespace can have a . so strip namespace from params
+	paramsWithoutNamespace := strings.ReplaceAll(params, namespace, "")
+	posDot := strings.Index(paramsWithoutNamespace, initialStateSeparator)
 
 	if posInitialStateParam == -1 && posDot == -1 {
 		// there is short form did
