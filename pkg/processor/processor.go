@@ -458,34 +458,43 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 		return nil, fmt.Errorf("commitment generated from recovery key doesn't match recovery commitment: [%s][%s]", recoveryCommitment, rm.RecoveryCommitment)
 	}
 
-	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
-	if err != nil {
-		return nil, fmt.Errorf("recover delta doesn't match delta hash: %s", err.Error())
-	}
-
 	// verify signature
 	_, err = internal.VerifyJWS(op.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
+	// from this point any error should advance recovery commitment
+	result := &resolutionModel{
+		Doc:                            make(document.Document),
+		LastOperationTransactionTime:   op.TransactionTime,
+		LastOperationTransactionNumber: op.TransactionNumber,
+		RecoveryCommitment:             signedDataModel.RecoveryCommitment}
+
+	// verify the delta against the signed delta hash
+	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
+	if err != nil {
+		logger.Infof("[%s] recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		return result, nil
+	}
+
 	delta, err := operation.ParseDelta(op.Delta, p)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
+		logger.Infof("[%s] parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		return result, nil
 	}
+
+	result.UpdateCommitment = delta.UpdateCommitment
 
 	doc, err := s.dc.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
-		return nil, err
+		logger.Infof("[%s] apply patches failed; advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		return result, nil
 	}
 
-	return &resolutionModel{
-		Doc:                            doc,
-		LastOperationTransactionTime:   op.TransactionTime,
-		LastOperationTransactionNumber: op.TransactionNumber,
-		UpdateCommitment:               delta.UpdateCommitment,
-		RecoveryCommitment:             signedDataModel.RecoveryCommitment}, nil
+	result.Doc = doc
+
+	return result, nil
 }
 
 func sortOperations(ops []*batch.AnchoredOperation) {
