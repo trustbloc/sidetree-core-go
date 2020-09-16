@@ -99,18 +99,10 @@ func TestResolve(t *testing.T) {
 	t.Run("resolution error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
-		jsonPatch, err := patch.NewJSONPatch("[]")
-		require.NoError(t, err)
-		jsonPatch["patches"] = "invalid"
-
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		deltaBytes, err := json.Marshal(&model.DeltaModel{
-			Patches: []patch.Patch{jsonPatch},
-		})
-
-		createOp.Delta = docutil.EncodeToString(deltaBytes)
+		createOp.SuffixData = "invalid"
 
 		err = store.Put(createOp)
 		require.Nil(t, err)
@@ -140,13 +132,14 @@ func TestResolve(t *testing.T) {
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
-		doc, err := p.applyCreateOperation(anchoredOp, pc.Protocol, &resolutionModel{})
-		require.Nil(t, doc)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "create delta doesn't match suffix data delta hash")
+		rm, err := p.applyCreateOperation(anchoredOp, pc.Protocol, &resolutionModel{})
+		require.NoError(t, err)
+		require.Equal(t, make(document.Document), rm.Doc)
+		require.NotEmpty(t, rm.RecoveryCommitment)
+		require.Empty(t, rm.UpdateCommitment)
 	})
 
-	t.Run("error - document composer error", func(t *testing.T) {
+	t.Run("error - apply patches (document composer) error", func(t *testing.T) {
 		store, _ := getDefaultStore(recoveryKey, updateKey)
 		p := New("test", store, pc)
 
@@ -154,9 +147,11 @@ func TestResolve(t *testing.T) {
 		require.NoError(t, err)
 
 		p.dc = &mockDocComposer{Err: errors.New("doc composer err")}
-		_, err = p.applyOperation(createOp, &resolutionModel{})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "doc composer err")
+		rm, err := p.applyOperation(createOp, &resolutionModel{})
+		require.NoError(t, err)
+		require.Equal(t, make(document.Document), rm.Doc)
+		require.NotEmpty(t, rm.RecoveryCommitment)
+		require.NotEmpty(t, rm.UpdateCommitment)
 	})
 }
 

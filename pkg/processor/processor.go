@@ -318,29 +318,37 @@ func (s *OperationProcessor) applyCreateOperation(op *batch.AnchoredOperation, p
 		return nil, fmt.Errorf("failed to parse suffix data: %s", err.Error())
 	}
 
+	// from this point any error should advance recovery commitment
+	result := &resolutionModel{
+		Doc:                            make(document.Document),
+		LastOperationTransactionTime:   op.TransactionTime,
+		LastOperationTransactionNumber: op.TransactionNumber,
+		RecoveryCommitment:             suffixData.RecoveryCommitment}
+
 	// verify actual delta hash matches expected delta hash
 	err = docutil.IsValidHash(op.Delta, suffixData.DeltaHash)
 	if err != nil {
-		return nil, fmt.Errorf("create delta doesn't match suffix data delta hash: %s", err.Error())
+		logger.Infof("[%s] delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		return result, nil
 	}
 
 	delta, err := operation.ParseDelta(op.Delta, p)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
+		logger.Infof("[%s] parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		return result, nil
 	}
+
+	result.UpdateCommitment = delta.UpdateCommitment
 
 	doc, err := s.dc.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
-		return nil, err
+		logger.Infof("[%s] apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		return result, nil
 	}
 
-	return &resolutionModel{
-		Doc:                            doc,
-		LastOperationTransactionTime:   op.TransactionTime,
-		LastOperationTransactionNumber: op.TransactionNumber,
-		UpdateCommitment:               delta.UpdateCommitment,
-		RecoveryCommitment:             suffixData.RecoveryCommitment,
-	}, nil
+	result.Doc = doc
+
+	return result, nil
 }
 
 func (s *OperationProcessor) applyUpdateOperation(op *batch.AnchoredOperation, p protocol.Protocol, rm *resolutionModel) (*resolutionModel, error) { //nolint:dupl
@@ -488,7 +496,7 @@ func (s *OperationProcessor) applyRecoverOperation(op *batch.AnchoredOperation, 
 
 	doc, err := s.dc.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
-		logger.Infof("[%s] apply patches failed; advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("[%s] apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 		return result, nil
 	}
 
