@@ -13,26 +13,26 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
 // Processor processes document operations
 type Processor interface {
 	Namespace() string
-	Protocol() protocol.Client
 	ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error)
 }
 
 // UpdateHandler handles the creation and update of documents
 type UpdateHandler struct {
 	processor Processor
+	protocol  protocol.Client
 }
 
 // NewUpdateHandler returns a new document update handler
-func NewUpdateHandler(processor Processor) *UpdateHandler {
+func NewUpdateHandler(processor Processor, pc protocol.Client) *UpdateHandler {
 	return &UpdateHandler{
 		processor: processor,
+		protocol:  pc,
 	}
 }
 
@@ -70,10 +70,10 @@ func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, er
 }
 
 func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, error) {
-	currentProtocol, err := h.processor.Protocol().Current()
+	currentProtocol, err := h.protocol.Current()
 	if err != nil {
 		return nil, err
 	}
 
-	return operation.ParseOperation(h.processor.Namespace(), operationBuffer, currentProtocol)
+	return currentProtocol.OperationParser().Parse(h.processor.Namespace(), operationBuffer)
 }

@@ -27,13 +27,9 @@ import (
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
-	"github.com/trustbloc/sidetree-core-go/pkg/compression"
-	"github.com/trustbloc/sidetree-core-go/pkg/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
 )
 
 var logger = log.New("sidetree-core-writer")
@@ -65,7 +61,6 @@ type Writer struct {
 	sendChan     chan process
 	exitChan     chan struct{}
 	batchTimeout time.Duration
-	opsHandler   TxnHandler
 	stopped      uint32
 	protocol     protocol.Client
 }
@@ -76,7 +71,6 @@ type Writer struct {
 // 3) blockchain client
 type Context interface {
 	Protocol() protocol.Client
-	CAS() cas.Client
 	Blockchain() BlockchainClient
 	OperationQueue() cutter.OperationQueue
 }
@@ -87,13 +81,6 @@ type BlockchainClient interface {
 	WriteAnchor(anchor string) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
-}
-
-// TxnHandler defines an interface for creating chunks, map and anchor files
-type TxnHandler interface {
-
-	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string
-	PrepareTxnFiles(ops []*batch.Operation) (string, error)
 }
 
 // CompressionProvider defines an interface for handling different types of compression
@@ -118,20 +105,6 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 		batchTimeout = rOpts.BatchTimeout
 	}
 
-	var compressionProvider CompressionProvider
-	if rOpts.CompressionProvider != nil {
-		compressionProvider = rOpts.CompressionProvider
-	} else {
-		compressionProvider = compression.New(compression.WithDefaultAlgorithms())
-	}
-
-	var txnHandler TxnHandler
-	if rOpts.OpsHandler != nil {
-		txnHandler = rOpts.OpsHandler
-	} else {
-		txnHandler = txnhandler.NewOperationHandler(context.CAS(), context.Protocol(), compressionProvider)
-	}
-
 	return &Writer{
 		namespace:    namespace,
 		batchCutter:  cutter.New(context.Protocol(), context.OperationQueue()),
@@ -139,7 +112,6 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 		exitChan:     make(chan struct{}),
 		batchTimeout: batchTimeout,
 		context:      context,
-		opsHandler:   txnHandler,
 		protocol:     context.Protocol(),
 	}, nil
 }
@@ -299,7 +271,12 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 		return err
 	}
 
-	anchorString, err := r.opsHandler.PrepareTxnFiles(operations)
+	p, err := r.protocol.Current()
+	if err != nil {
+		return err
+	}
+
+	anchorString, err := p.OperationHandler().PrepareTxnFiles(operations)
 	if err != nil {
 		return err
 	}
@@ -322,9 +299,11 @@ func (r *Writer) parseOperations(ops []*batch.OperationInfo) ([]*batch.Operation
 		return nil, err
 	}
 
+	parser := currentProtocol.OperationParser()
+
 	var operations []*batch.Operation
 	for _, d := range ops {
-		op, e := operation.ParseOperation(d.Namespace, d.Data, currentProtocol)
+		op, e := parser.Parse(d.Namespace, d.Data)
 		if e != nil {
 			return nil, e
 		}
@@ -366,27 +345,9 @@ func WithBatchTimeout(batchTimeout time.Duration) Option {
 	}
 }
 
-//WithOperationHandler allows for specifying handler for creating anchor/batch files
-func WithOperationHandler(opsHandler TxnHandler) Option {
-	return func(o *Options) error {
-		o.OpsHandler = opsHandler
-		return nil
-	}
-}
-
-//WithCompressionProvider allows for specifying compression provider
-func WithCompressionProvider(compressionProvider CompressionProvider) Option {
-	return func(o *Options) error {
-		o.CompressionProvider = compressionProvider
-		return nil
-	}
-}
-
 // Options allows the user to specify more advanced options
 type Options struct {
-	BatchTimeout        time.Duration
-	OpsHandler          TxnHandler
-	CompressionProvider CompressionProvider
+	BatchTimeout time.Duration
 }
 
 //prepareOptsFromOptions reads options

@@ -14,11 +14,11 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 )
 
 // NewMockDocumentHandler returns a new mock document handler
@@ -81,7 +81,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*doc
 		doc = make(document.Document)
 	}
 
-	doc, err := composer.New().ApplyPatches(doc, operation.DeltaModel.Patches)
+	doc, err := doccomposer.New().ApplyPatches(doc, operation.DeltaModel.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (m *MockDocumentHandler) resolveWithInitialState(idOrDocument string) (*doc
 		return nil, err
 	}
 
-	doc, err := composer.New().ApplyPatches(make(document.Document), delta.Patches)
+	doc, err := doccomposer.New().ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
 		return nil, err
 	}

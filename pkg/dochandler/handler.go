@@ -28,11 +28,9 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/composer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
-	"github.com/trustbloc/sidetree-core-go/pkg/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
@@ -47,12 +45,11 @@ const (
 
 // DocumentHandler implements document handler
 type DocumentHandler struct {
-	protocol  protocol.Client
-	processor OperationProcessor
-	writer    BatchWriter
-	validator DocumentValidator
-	namespace string
-	composer  docComposer
+	protocol    protocol.Client
+	processor   OperationProcessor
+	writer      BatchWriter
+	transformer DocumentTransformer
+	namespace   string
 }
 
 // OperationProcessor is an interface which resolves the document based on the ID
@@ -65,26 +62,19 @@ type BatchWriter interface {
 	Add(operation *batch.OperationInfo) error
 }
 
-// DocumentValidator is an interface for validating document operations
-type DocumentValidator interface {
-	IsValidOriginalDocument(payload []byte) error
-	IsValidPayload(payload []byte) error
+// DocumentTransformer transforms a document from internal to external form
+type DocumentTransformer interface {
 	TransformDocument(doc document.Document) (*document.ResolutionResult, error)
 }
 
-type docComposer interface {
-	ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error)
-}
-
 // New creates a new requestHandler with the context
-func New(namespace string, protocol protocol.Client, validator DocumentValidator, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
+func New(namespace string, pc protocol.Client, transformer DocumentTransformer, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
 	return &DocumentHandler{
-		protocol:  protocol,
-		processor: processor,
-		writer:    writer,
-		validator: validator,
-		namespace: namespace,
-		composer:  composer.New(),
+		protocol:    pc,
+		processor:   processor,
+		writer:      writer,
+		transformer: transformer,
+		namespace:   namespace,
 	}
 }
 
@@ -93,15 +83,15 @@ func (r *DocumentHandler) Namespace() string {
 	return r.namespace
 }
 
-// Protocol returns the protocol provider
-func (r *DocumentHandler) Protocol() protocol.Client {
-	return r.protocol
-}
-
 //ProcessOperation validates operation and adds it to the batch
 func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error) {
+	pv, err := r.protocol.Current()
+	if err != nil {
+		return nil, err
+	}
+
 	// perform validation for operation request
-	if err := r.validateOperation(operation); err != nil {
+	if err := r.validateOperation(operation, pv); err != nil {
 		logger.Warnf("Failed to validate operation: %s", err.Error())
 		return nil, err
 	}
@@ -116,14 +106,14 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 
 	// create operation will also return document
 	if operation.Type == batch.OperationTypeCreate {
-		return r.getCreateResponse(operation)
+		return r.getCreateResponse(operation, pv)
 	}
 
 	return nil, nil
 }
 
-func (r *DocumentHandler) getCreateResponse(operation *batch.Operation) (*document.ResolutionResult, error) {
-	doc, err := r.getInitialDocument(operation.DeltaModel.Patches)
+func (r *DocumentHandler) getCreateResponse(operation *batch.Operation, pv protocol.Version) (*document.ResolutionResult, error) {
+	doc, err := r.getInitialDocument(operation.DeltaModel.Patches, pv)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +168,12 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 
 	// if document was not found on the blockchain and initial value has been provided resolve using initial value
 	if initial != nil && strings.Contains(err.Error(), "not found") {
-		return r.resolveRequestWithInitialState(id, initial)
+		pv, e := r.protocol.Current()
+		if e != nil {
+			return nil, e
+		}
+
+		return r.resolveRequestWithInitialState(id, initial, pv)
 	}
 
 	return nil, err
@@ -203,23 +198,18 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 	return externalResult, nil
 }
 
-func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *model.CreateRequest) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *model.CreateRequest, pv protocol.Version) (*document.ResolutionResult, error) {
 	initialBytes, err := json.Marshal(initial)
 	if err != nil {
 		return nil, fmt.Errorf("%s: marshal initial state: %s", badRequest, err.Error())
 	}
 
-	currentProtocol, err := r.protocol.Current()
-	if err != nil {
-		return nil, err
-	}
-
 	// verify size of create request does not exceed the maximum allowed limit
-	if len(initialBytes) > int(currentProtocol.MaxOperationSize) {
+	if len(initialBytes) > int(pv.Protocol().MaxOperationSize) {
 		return nil, fmt.Errorf("%s: operation byte size exceeds protocol max operation byte size", badRequest)
 	}
 
-	op, err := operation.ParseCreateOperation(initialBytes, currentProtocol)
+	op, err := pv.OperationParser().ParseCreateOperation(initialBytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
@@ -229,12 +219,12 @@ func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *mod
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
-	err = r.validateInitialDocument(op.DeltaModel.Patches)
+	err = r.validateInitialDocument(op.DeltaModel.Patches, pv)
 	if err != nil {
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
-	result, err := r.getCreateResponse(op)
+	result, err := r.getCreateResponse(op, pv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform create with initial state to external document: %s", err.Error())
 	}
@@ -253,7 +243,7 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 	// apply id to document so it can be added to all keys and services
 	internal[keyID] = id
 
-	return r.validator.TransformDocument(internal)
+	return r.transformer.TransformDocument(internal)
 }
 
 // helper namespace for adding operations to the batch
@@ -266,26 +256,21 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
 }
 
 // validateOperation validates the operation
-func (r *DocumentHandler) validateOperation(operation *batch.Operation) error {
-	currentProtocol, err := r.protocol.Current()
-	if err != nil {
-		return err
-	}
-
+func (r *DocumentHandler) validateOperation(operation *batch.Operation, pv protocol.Version) error {
 	// check maximum operation size against protocol
-	if len(operation.OperationBuffer) > int(currentProtocol.MaxOperationSize) {
+	if len(operation.OperationBuffer) > int(pv.Protocol().MaxOperationSize) {
 		return errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
 	if operation.Type == batch.OperationTypeCreate {
-		return r.validateInitialDocument(operation.DeltaModel.Patches)
+		return r.validateInitialDocument(operation.DeltaModel.Patches, pv)
 	}
 
-	return r.validator.IsValidPayload(operation.OperationBuffer)
+	return pv.DocumentValidator().IsValidPayload(operation.OperationBuffer)
 }
 
-func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
-	doc, err := r.getInitialDocument(patches)
+func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch, pv protocol.Version) error {
+	doc, err := r.getInitialDocument(patches, pv)
 	if err != nil {
 		return err
 	}
@@ -295,7 +280,7 @@ func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch) error {
 		return err
 	}
 
-	return r.validator.IsValidOriginalDocument(docBytes)
+	return pv.DocumentValidator().IsValidOriginalDocument(docBytes)
 }
 
 // getSuffix fetches unique portion of ID which is string after namespace
@@ -314,6 +299,6 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 	return idOrDocument[adjustedPos:], nil
 }
 
-func (r *DocumentHandler) getInitialDocument(patches []patch.Patch) (document.Document, error) {
-	return r.composer.ApplyPatches(make(document.Document), patches)
+func (r *DocumentHandler) getInitialDocument(patches []patch.Patch, pv protocol.Version) (document.Document, error) {
+	return pv.DocumentComposer().ApplyPatches(make(document.Document), patches)
 }

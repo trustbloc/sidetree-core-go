@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/dochandler"
 )
 
@@ -19,12 +20,12 @@ type UpdateHandler struct {
 }
 
 // NewUpdateHandler returns a new DID document update handler
-func NewUpdateHandler(basePath string, processor dochandler.Processor) *UpdateHandler {
+func NewUpdateHandler(basePath string, processor dochandler.Processor, pc protocol.Client) *UpdateHandler {
 	return &UpdateHandler{
 		handler: newHandler(
 			fmt.Sprintf("%s/operations", basePath),
 			http.MethodPost,
-			dochandler.NewUpdateHandler(processor).Update,
+			dochandler.NewUpdateHandler(processor, pc).Update,
 		),
 	}
 }

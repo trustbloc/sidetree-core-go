@@ -26,8 +26,11 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
-	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler"
-	"github.com/trustbloc/sidetree-core-go/pkg/txnhandler/models"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
 
 //go:generate counterfeiter -o ../mocks/operationqueue.gen.go --fake-name OperationQueue ./cutter OperationQueue
@@ -52,13 +55,11 @@ func TestNew(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to read opts: test error")
 	require.Nil(t, writer)
 
-	opsHandler := &mockOpsHandler{}
-	writer, err = New(namespace, ctx, WithOperationHandler(opsHandler))
+	writer, err = New(namespace, ctx)
 	require.Nil(t, err)
 	require.NotNil(t, writer)
-	require.EqualValues(t, writer.opsHandler, opsHandler)
 
-	writer, err = New(namespace, ctx, WithCompressionProvider(compression.New(compression.WithDefaultAlgorithms())))
+	writer, err = New(namespace, ctx)
 	require.Nil(t, err)
 	require.NotNil(t, writer)
 }
@@ -83,11 +84,11 @@ func TestStart(t *testing.T) {
 	// we should have 4 anchors: 8 operations % max 2 operations per batch
 	require.Equal(t, 4, len(ctx.BlockchainClient.GetAnchors()))
 
-	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
 	require.NoError(t, err)
 
 	// Check that first anchor has two operations per batch
-	af, mf, cf, err := getBatchFiles(ctx.CasClient, ad.AnchorAddress)
+	af, mf, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.AnchorAddress)
 	require.Nil(t, err)
 
 	require.Equal(t, 2, len(af.Operations.Create))
@@ -169,10 +170,10 @@ func TestBatchTimer(t *testing.T) {
 
 	require.Equal(t, 1, len(ctx.BlockchainClient.GetAnchors()))
 
-	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
 	require.NoError(t, err)
 
-	af, mf, cf, err := getBatchFiles(ctx.CasClient, ad.AnchorAddress)
+	af, mf, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.AnchorAddress)
 	require.Nil(t, err)
 
 	require.Equal(t, 1, len(af.Operations.Create))
@@ -207,11 +208,11 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	// we should have 1 anchors: 2 operations % max 2 operations per batch
 	require.Equal(t, 1, len(ctx.BlockchainClient.GetAnchors()))
 
-	ad, err := txnhandler.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
 	require.NoError(t, err)
 
 	// Check that first anchor has one operation per batch; second one has been discarded
-	af, mf, cf, err := getBatchFiles(ctx.CasClient, ad.AnchorAddress)
+	af, mf, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.AnchorAddress)
 	require.Nil(t, err)
 
 	require.Equal(t, 1, len(af.Operations.Create))
@@ -225,12 +226,10 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 
 func TestProcessOperationsError(t *testing.T) {
 	ctx := newMockContext()
-	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
+	ctx.ProtocolClient.CasClient.SetError(fmt.Errorf("CAS Error"))
 
 	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
-
-	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
 
 	writer.Start()
 	defer writer.Stop()
@@ -287,7 +286,7 @@ func TestAddAfterStop(t *testing.T) {
 func TestProcessBatchErrorRecovery(t *testing.T) {
 	ctx := newMockContext()
 	ctx.ProtocolClient.Protocol.MaxOperationCount = 2
-	ctx.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
+	ctx.ProtocolClient.CasClient = mocks.NewMockCasClient(fmt.Errorf("CAS Error"))
 
 	writer, err := New(namespace, ctx, WithBatchTimeout(500*time.Millisecond))
 	require.Nil(t, err)
@@ -309,7 +308,7 @@ func TestProcessBatchErrorRecovery(t *testing.T) {
 	}
 
 	// Clear the error. The batch writer should recover by processing all of the pending batches
-	ctx.CasClient.SetError(nil)
+	ctx.ProtocolClient.CasClient.SetError(nil)
 	time.Sleep(1 * time.Second)
 
 	require.Equal(t, numBatchesExpected, len(ctx.BlockchainClient.GetAnchors()))
@@ -337,6 +336,7 @@ func TestStartWithExistingItems(t *testing.T) {
 
 	ctx := newMockContext()
 	ctx.ProtocolClient.Protocol.MaxOperationCount = maxOperationsPerBatch
+	ctx.ProtocolClient.CurrentVersion.ProtocolReturns(ctx.ProtocolClient.Protocol)
 	ctx.OpQueue = opQueue
 
 	writer, err := New(namespace, ctx)
@@ -481,21 +481,17 @@ func generateOperation(num int) (*batch.OperationInfo, error) {
 // mockContext implements mock batch writer context
 type mockContext struct {
 	ProtocolClient   *mocks.MockProtocolClient
-	CasClient        *mocks.MockCasClient
 	BlockchainClient *mocks.MockBlockchainClient
 	OpQueue          cutter.OperationQueue
 }
 
 // newMockContext returns a new mockContext object
 func newMockContext() *mockContext {
-	ctx := &mockContext{
-		ProtocolClient:   mocks.NewMockProtocolClient(),
-		CasClient:        mocks.NewMockCasClient(nil),
+	return &mockContext{
+		ProtocolClient:   newMockProtocolClient(),
 		BlockchainClient: mocks.NewMockBlockchainClient(nil),
 		OpQueue:          &opqueue.MemQueue{},
 	}
-
-	return ctx
 }
 
 // Protocol returns the Client
@@ -508,20 +504,25 @@ func (m *mockContext) Blockchain() BlockchainClient {
 	return m.BlockchainClient
 }
 
-// CAS returns the CAS client
-func (m *mockContext) CAS() cas.Client {
-	return m.CasClient
-}
-
 // OperationQueue returns the queue containing the pending operations
 func (m *mockContext) OperationQueue() cutter.OperationQueue {
 	return m.OpQueue
 }
 
-// mockOpsHandler mocks creating batch files from operations
-type mockOpsHandler struct{}
+func newMockProtocolClient() *mocks.MockProtocolClient {
+	pc := mocks.NewMockProtocolClient()
+	parser := operationparser.New(pc.Protocol)
+	dc := doccomposer.New()
+	oa := operationapplier.New(pc.Protocol, parser, dc)
 
-// PrepareTxnFiles mocks preparing batch files from operations
-func (h *mockOpsHandler) PrepareTxnFiles(ops []*batch.Operation) (string, error) {
-	return "", nil
+	pc.CasClient = mocks.NewMockCasClient(nil)
+	th := txnprovider.NewOperationHandler(pc.Protocol, pc.CasClient, compression.New(compression.WithDefaultAlgorithms()))
+
+	pv := pc.CurrentVersion
+	pv.OperationParserReturns(parser)
+	pv.OperationApplierReturns(oa)
+	pv.DocumentComposerReturns(dc)
+	pv.OperationHandlerReturns(th)
+
+	return pc
 }

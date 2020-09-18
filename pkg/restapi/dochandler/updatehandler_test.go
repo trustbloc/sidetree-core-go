@@ -30,6 +30,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
 
 const (
@@ -40,8 +43,9 @@ const (
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
-	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-	handler := NewUpdateHandler(docHandler)
+	pc := newMockProtocolClient()
+	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(pc)
+	handler := NewUpdateHandler(docHandler, pc)
 
 	req, err := getCreateRequestInfo()
 	require.NoError(t, err)
@@ -122,7 +126,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		errExpected := errors.New("create doc error")
 		docHandlerWithErr := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
-		handler := NewUpdateHandler(docHandlerWithErr)
+		handler := NewUpdateHandler(docHandlerWithErr, newMockProtocolClient())
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(create))
@@ -284,3 +288,17 @@ const recoverDoc = `{
 			}
 	}]
 }`
+
+func newMockProtocolClient() *mocks.MockProtocolClient {
+	pc := mocks.NewMockProtocolClient()
+	parser := operationparser.New(pc.Protocol)
+	dc := doccomposer.New()
+	oa := operationapplier.New(pc.Protocol, parser, dc)
+
+	pv := pc.CurrentVersion
+	pv.OperationParserReturns(parser)
+	pv.OperationApplierReturns(oa)
+	pv.DocumentComposerReturns(dc)
+
+	return pc
+}
