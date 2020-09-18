@@ -85,7 +85,7 @@ func TestPatchesFromDocument(t *testing.T) {
 		p, err := PatchesFromDocument(invalidKeysDoc)
 		require.Error(t, err)
 		require.Nil(t, p)
-		require.Contains(t, err.Error(), "invalid number of JWK properties")
+		require.Contains(t, err.Error(), "JWK x is missing")
 	})
 }
 

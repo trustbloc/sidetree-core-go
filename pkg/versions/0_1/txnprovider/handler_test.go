@@ -342,7 +342,7 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
 		UpdateCommitment: c,
 		UpdateKey:        testJWK,
-		Patch:            testPatch,
+		Patches:          []patch.Patch{testPatch},
 		MultihashCode:    sha2_256,
 	}
 

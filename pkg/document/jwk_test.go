@@ -31,3 +31,44 @@ func TestJWK(t *testing.T) {
 	require.Equal(t, "x", jwk.X())
 	require.Equal(t, "y", jwk.Y())
 }
+
+func TestValidate(t *testing.T) {
+	t.Run("missing kty", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK kty is missing")
+	})
+
+	t.Run("missing crv", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "kty",
+			"crv": "",
+			"x":   "x",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK crv is missing")
+	})
+
+	t.Run("missing x", func(t *testing.T) {
+		jwk := JWK{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "",
+			"y":   "y",
+		}
+
+		err := ValidateJWK(jwk)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK x is missing")
+	})
+}
