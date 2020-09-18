@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
@@ -37,7 +38,16 @@ func TestNewRecoverRequest(t *testing.T) {
 		request, err := NewRecoverRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
-		require.Contains(t, err.Error(), "missing opaque document")
+		require.Contains(t, err.Error(), "either opaque document or patches have to be supplied")
+	})
+	t.Run("cannot provide both opaque document and patches", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+		info.Patches = []patch.Patch{{}}
+
+		request, err := NewRecoverRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "cannot provide both opaque document and patches")
 	})
 	t.Run("missing recovery key", func(t *testing.T) {
 		info := getRecoverRequestInfo()
@@ -75,9 +85,38 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), signerErr)
 	})
-
-	t.Run("success", func(t *testing.T) {
+	t.Run("error - malformed opaque doc", func(t *testing.T) {
 		info := getRecoverRequestInfo()
+		info.OpaqueDocument = "{,}"
+
+		request, err := NewRecoverRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "invalid character ','")
+	})
+	t.Run("success - opaque document", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+
+		bytes, err := NewRecoverRequest(info)
+		require.NoError(t, err)
+		require.NotEmpty(t, bytes)
+
+		var request map[string]interface{}
+		err = json.Unmarshal(bytes, &request)
+		require.NoError(t, err)
+
+		require.Equal(t, "recover", request["type"])
+		require.Equal(t, didSuffix, request["did_suffix"])
+	})
+
+	t.Run("success - json patches", func(t *testing.T) {
+		p, err := patch.NewAddPublicKeysPatch(addKeys)
+		require.NoError(t, err)
+
+		// default request info is constructed with opaque document; switch to patches
+		info := getRecoverRequestInfo()
+		info.OpaqueDocument = ""
+		info.Patches = []patch.Patch{p}
 
 		bytes, err := NewRecoverRequest(info)
 		require.NoError(t, err)

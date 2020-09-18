@@ -29,6 +29,10 @@ type RecoverRequestInfo struct {
 	// opaque content
 	OpaqueDocument string
 
+	// patches that will be used to create document
+	// required if opaque document is not specified
+	Patches []patch.Patch
+
 	// recovery commitment to be used for the next recovery
 	RecoveryCommitment string
 
@@ -50,7 +54,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	patches, err := patch.PatchesFromDocument(info.OpaqueDocument)
+	patches, err := getPatches(info.OpaqueDocument, info.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +95,12 @@ func validateRecoverRequest(info *RecoverRequestInfo) error {
 		return errors.New("missing did unique suffix")
 	}
 
-	if info.OpaqueDocument == "" {
-		return errors.New("missing opaque document")
+	if info.OpaqueDocument == "" && len(info.Patches) == 0 {
+		return errors.New("either opaque document or patches have to be supplied")
+	}
+
+	if info.OpaqueDocument != "" && len(info.Patches) > 0 {
+		return errors.New("cannot provide both opaque document and patches")
 	}
 
 	if err := validateSigner(info.Signer); err != nil {

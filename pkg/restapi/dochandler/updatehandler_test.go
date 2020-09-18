@@ -179,7 +179,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 
 	return &helper.UpdateRequestInfo{
 		DidSuffix:        uniqueSuffix,
-		Patch:            patchJSON,
+		Patches:          []patch.Patch{patchJSON},
 		UpdateKey:        pubKey,
 		UpdateCommitment: updateCommitment,
 		MultihashCode:    sha2_256,

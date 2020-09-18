@@ -23,8 +23,8 @@ type UpdateRequestInfo struct {
 	// DID Suffix of the document to be updated
 	DidSuffix string
 
-	// Patch is one of standard patch actions
-	Patch patch.Patch
+	// Patches is an array of standard patch actions
+	Patches []patch.Patch
 
 	// update commitment to be used for the next update
 	UpdateCommitment string
@@ -45,8 +45,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	patches := []patch.Patch{info.Patch}
-	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, patches)
+	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, info.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +80,21 @@ func validateUpdateRequest(info *UpdateRequestInfo) error {
 		return errors.New("missing did unique suffix")
 	}
 
-	if info.Patch == nil {
+	if len(info.Patches) == 0 {
 		return errors.New("missing update information")
 	}
 
+	if err := validateUpdateKey(info.UpdateKey); err != nil {
+		return err
+	}
+
 	return validateSigner(info.Signer)
+}
+
+func validateUpdateKey(key *jws.JWK) error {
+	if key == nil {
+		return errors.New("missing update key")
+	}
+
+	return key.Validate()
 }

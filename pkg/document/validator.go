@@ -40,7 +40,6 @@ const (
 	// Ed25519VerificationKey2018 requires special handling (convert to base58)
 	Ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
 
-	maxJwkProperties       = 4
 	maxPublicKeyProperties = 4
 
 	// public keys, services id length
@@ -248,23 +247,7 @@ func ValidateJWK(jwk JWK) error {
 		return errors.New("key has to be in JWK format")
 	}
 
-	if len(jwk) != maxJwkProperties {
-		return errors.New("invalid number of JWK properties")
-	}
-
-	if jwk.Crv() == "" {
-		return errors.New("JWK crv is missing")
-	}
-
-	if jwk.Kty() == "" {
-		return errors.New("JWK kty is missing")
-	}
-
-	if jwk.X() == "" {
-		return errors.New("JWK x is missing")
-	}
-
-	return nil
+	return jwk.Validate()
 }
 
 // IsGeneralKey returns true if key is a general key

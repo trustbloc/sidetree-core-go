@@ -23,8 +23,14 @@ import (
 func TestNewUpdateRequest(t *testing.T) {
 	const didSuffix = "whatever"
 
-	patch, err := getTestPatch()
+	patches, err := getTestPatches()
 	require.NoError(t, err)
+
+	updateJWK := &jws.JWK{
+		Crv: "crv",
+		Kty: "kty",
+		X:   "x",
+	}
 
 	signer := NewMockSigner(nil)
 
@@ -47,7 +53,8 @@ func TestNewUpdateRequest(t *testing.T) {
 	t.Run("multihash not supported", func(t *testing.T) {
 		info := &UpdateRequestInfo{
 			DidSuffix: didSuffix,
-			Patch:     patch,
+			Patches:   patches,
+			UpdateKey: updateJWK,
 			Signer:    signer}
 
 		request, err := NewUpdateRequest(info)
@@ -55,14 +62,30 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "algorithm not supported")
 	})
+	t.Run("missing update key", func(t *testing.T) {
+		signer = NewMockSigner(nil)
+		signer.MockHeaders = make(jws.Headers)
+
+		info := &UpdateRequestInfo{
+			DidSuffix:     didSuffix,
+			Patches:       patches,
+			MultihashCode: sha2_256,
+			Signer:        signer}
+
+		request, err := NewUpdateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing update key")
+	})
 	t.Run("kid must be present in the protected header", func(t *testing.T) {
 		signer = NewMockSigner(nil)
 		signer.MockHeaders = make(jws.Headers)
 
 		info := &UpdateRequestInfo{
 			DidSuffix:     didSuffix,
-			Patch:         patch,
+			Patches:       patches,
 			MultihashCode: sha2_256,
+			UpdateKey:     updateJWK,
 			Signer:        signer}
 
 		request, err := NewUpdateRequest(info)
@@ -73,8 +96,9 @@ func TestNewUpdateRequest(t *testing.T) {
 	t.Run("signing error", func(t *testing.T) {
 		info := &UpdateRequestInfo{
 			DidSuffix:     didSuffix,
-			Patch:         patch,
+			Patches:       patches,
 			MultihashCode: sha2_256,
+			UpdateKey:     updateJWK,
 			Signer:        NewMockSigner(errors.New(signerErr))}
 
 		request, err := NewUpdateRequest(info)
@@ -90,8 +114,9 @@ func TestNewUpdateRequest(t *testing.T) {
 
 		info := &UpdateRequestInfo{
 			DidSuffix:     didSuffix,
-			Patch:         patch,
+			Patches:       patches,
 			MultihashCode: sha2_256,
+			UpdateKey:     updateJWK,
 			Signer:        signer,
 		}
 
@@ -101,6 +126,10 @@ func TestNewUpdateRequest(t *testing.T) {
 	})
 }
 
-func getTestPatch() (patch.Patch, error) {
-	return patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "Jane"}]`)
+func getTestPatches() ([]patch.Patch, error) {
+	p, err := patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "Jane"}]`)
+	if err != nil {
+		return nil, err
+	}
+	return []patch.Patch{p}, nil
 }

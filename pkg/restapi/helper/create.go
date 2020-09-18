@@ -25,6 +25,10 @@ type CreateRequestInfo struct {
 	// required
 	OpaqueDocument string
 
+	// patches that will be used to create document
+	// required if opaque document is not specified
+	Patches []patch.Patch
+
 	// the recovery commitment
 	// required
 	RecoveryCommitment string
@@ -43,7 +47,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	patches, err := patch.PatchesFromDocument(info.OpaqueDocument)
+	patches, err := getPatches(info.OpaqueDocument, info.Patches)
 	if err != nil {
 		return nil, err
 	}
@@ -77,9 +81,27 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	return canonicalizer.MarshalCanonical(schema)
 }
 
+func getPatches(opaque string, patches []patch.Patch) ([]patch.Patch, error) {
+	if opaque != "" {
+		return patch.PatchesFromDocument(opaque)
+	}
+
+	for _, p := range patches {
+		if err := p.Validate(); err != nil {
+			return nil, err
+		}
+	}
+
+	return patches, nil
+}
+
 func validateCreateRequest(info *CreateRequestInfo) error {
-	if info.OpaqueDocument == "" {
-		return errors.New("missing opaque document")
+	if info.OpaqueDocument == "" && len(info.Patches) == 0 {
+		return errors.New("either opaque document or patches have to be supplied")
+	}
+
+	if info.OpaqueDocument != "" && len(info.Patches) > 0 {
+		return errors.New("cannot provide both opaque document and patches")
 	}
 
 	supported := multihash.ValidCode(uint64(info.MultihashCode))

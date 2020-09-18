@@ -77,14 +77,6 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "public key: id exceeds maximum length")
 	})
-	t.Run("invalid number of JWK properties", func(t *testing.T) {
-		doc, err := DidDocumentFromBytes([]byte(noJWK))
-		require.Nil(t, err)
-
-		err = ValidatePublicKeys(doc.PublicKeys())
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid number of JWK properties")
-	})
 	t.Run("duplicate id", func(t *testing.T) {
 		doc, err := DidDocumentFromBytes([]byte(duplicateID))
 		require.Nil(t, err)
@@ -212,19 +204,6 @@ func TestValidateJWK(t *testing.T) {
 		err := ValidateJWK(jwk)
 		require.NoError(t, err)
 	})
-	t.Run("invalid property", func(t *testing.T) {
-		jwk := JWK{
-			"kty":   "kty",
-			"crv":   "crv",
-			"x":     "x",
-			"y":     "y",
-			"other": "value",
-		}
-
-		err := ValidateJWK(jwk)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid number of JWK properties")
-	})
 
 	t.Run("missing kty", func(t *testing.T) {
 		jwk := JWK{
@@ -237,32 +216,6 @@ func TestValidateJWK(t *testing.T) {
 		err := ValidateJWK(jwk)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "JWK kty is missing")
-	})
-
-	t.Run("missing crv", func(t *testing.T) {
-		jwk := JWK{
-			"kty": "kty",
-			"crv": "",
-			"x":   "x",
-			"y":   "y",
-		}
-
-		err := ValidateJWK(jwk)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "JWK crv is missing")
-	})
-
-	t.Run("missing x", func(t *testing.T) {
-		jwk := JWK{
-			"kty": "kty",
-			"crv": "crv",
-			"x":   "",
-			"y":   "y",
-		}
-
-		err := ValidateJWK(jwk)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "JWK x is missing")
 	})
 }
 
@@ -467,17 +420,6 @@ const tooMuchPurpose = `{
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
       }
-    }
-  ]
-}`
-
-const noJWK = `{
-  "publicKey": [
-    {
-      "id": "key1",
-      "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {}
     }
   ]
 }`
