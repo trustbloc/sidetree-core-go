@@ -20,7 +20,7 @@ const invalid = "invalid"
 func TestApplyPatches(t *testing.T) {
 	documentComposer := New()
 
-	t.Run("succes - add one key to existing doc with two keys", func(t *testing.T) {
+	t.Run("success - add one key to existing doc with two keys", func(t *testing.T) {
 		original, err := setupDefaultDoc()
 		require.NoError(t, err)
 		require.Equal(t, 2, len(original.PublicKeys()))
@@ -37,6 +37,9 @@ func TestApplyPatches(t *testing.T) {
 		require.Equal(t, "key1", didDoc.PublicKeys()[0].ID())
 		require.Equal(t, "key2", didDoc.PublicKeys()[1].ID())
 		require.Equal(t, "key3", didDoc.PublicKeys()[2].ID())
+
+		// make sure that original document is not modified
+		require.Equal(t, 2, len(original.PublicKeys()))
 	})
 
 	t.Run("action not supported", func(t *testing.T) {
@@ -49,6 +52,15 @@ func TestApplyPatches(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "not supported")
+	})
+	t.Run("error - original document deep copy fails (not json)", func(t *testing.T) {
+		doc := make(document.Document)
+		doc["key"] = make(chan int)
+
+		doc, err := documentComposer.ApplyPatches(doc, nil)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "json: unsupported type: chan int")
 	})
 }
 

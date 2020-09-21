@@ -30,16 +30,19 @@ func New() *DocumentComposer {
 
 // ApplyPatches applies patches to the document
 func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
-	var err error
+	result, err := deepCopy(doc)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, p := range patches {
-		doc, err = applyPatch(doc, p)
+		result, err = applyPatch(result, p)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return doc, nil
+	return result, nil
 }
 
 // applyPatch applies a patch to the document
@@ -270,4 +273,20 @@ func sliceToMapServices(services []document.Service) map[string]document.Service
 	}
 
 	return values
+}
+
+// deepCopy returns deep copy of JSON object
+func deepCopy(doc document.Document) (document.Document, error) {
+	bytes, err := json.Marshal(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	var result document.Document
+	err = json.Unmarshal(bytes, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
