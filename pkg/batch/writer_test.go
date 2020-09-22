@@ -75,7 +75,7 @@ func TestStart(t *testing.T) {
 	operations := generateOperations(8)
 
 	for _, op := range operations {
-		err = writer.Add(op)
+		err = writer.Add(op, 0)
 		require.Nil(t, err)
 	}
 
@@ -161,7 +161,7 @@ func TestBatchTimer(t *testing.T) {
 	testOp, err := generateOperation(0)
 	require.NoError(t, err)
 
-	err = writer.Add(testOp)
+	err = writer.Add(testOp, 0)
 	require.Nil(t, err)
 
 	// Batch will be cut after 2 seconds even though
@@ -196,11 +196,11 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	operation, err := generateOperation(1)
 	require.NoError(t, err)
 
-	err = writer.Add(operation)
+	err = writer.Add(operation, 0)
 	require.Nil(t, err)
 
 	// add same operation again
-	err = writer.Add(operation)
+	err = writer.Add(operation, 0)
 	require.Nil(t, err)
 
 	time.Sleep(time.Second)
@@ -236,7 +236,7 @@ func TestProcessOperationsError(t *testing.T) {
 
 	operations := generateOperations(3)
 	for _, op := range operations {
-		err = writer.Add(op)
+		err = writer.Add(op, 0)
 		require.Nil(t, err)
 	}
 
@@ -256,7 +256,7 @@ func TestBlockchainError(t *testing.T) {
 
 	operations := generateOperations(3)
 	for _, op := range operations {
-		err = writer.Add(op)
+		err = writer.Add(op, 0)
 		require.Nil(t, err)
 	}
 
@@ -276,10 +276,10 @@ func TestAddAfterStop(t *testing.T) {
 
 	require.True(t, writer.Stopped())
 
-	testOp, err := generateOperation(100)
+	testOp, err := generateOperation(0)
 	require.NoError(t, err)
 
-	err = writer.Add(testOp)
+	err = writer.Add(testOp, 0)
 	require.EqualError(t, err, "writer is stopped")
 }
 
@@ -300,11 +300,11 @@ func TestProcessBatchErrorRecovery(t *testing.T) {
 	firstOp, err := generateOperation(0)
 	require.NoError(t, err)
 
-	require.NoError(t, writer.Add(firstOp))
+	require.NoError(t, writer.Add(firstOp, 0))
 	time.Sleep(1 * time.Second)
 
 	for _, op := range generateOperations(n) {
-		require.NoError(t, writer.Add(op))
+		require.NoError(t, writer.Add(op, 0))
 	}
 
 	// Clear the error. The batch writer should recover by processing all of the pending batches
@@ -324,7 +324,7 @@ func TestAddError(t *testing.T) {
 
 	writer, err := New(namespace, ctx)
 	require.NoError(t, err)
-	require.EqualError(t, writer.Add(&batch.OperationInfo{}), errExpected.Error())
+	require.EqualError(t, writer.Add(&batch.OperationInfo{}, 0), errExpected.Error())
 }
 
 func TestStartWithExistingItems(t *testing.T) {
@@ -344,7 +344,7 @@ func TestStartWithExistingItems(t *testing.T) {
 
 	// Add operations to the queue directly
 	for _, op := range generateOperations(numOperations) {
-		_, err = opQueue.Add(op)
+		_, err = opQueue.Add(op, 0)
 		require.Nil(t, err)
 	}
 
@@ -359,7 +359,7 @@ func TestProcessError(t *testing.T) {
 	t.Run("process operation error", func(t *testing.T) {
 		q := &mocks.OperationQueue{}
 
-		invalidQueue := []*batch.OperationInfo{{Data: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}
+		invalidQueue := []*batch.OperationInfoAtTime{{OperationInfo: batch.OperationInfo{Data: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}}
 
 		q.LenReturns(1)
 		q.PeekReturns(invalidQueue, nil)
@@ -408,7 +408,7 @@ func TestProcessError(t *testing.T) {
 
 		const numOperations = 3
 		q.LenReturns(numOperations)
-		q.PeekReturns(generateOperations(numOperations), nil)
+		q.PeekReturns(generateOperationsAtTime(numOperations, 0), nil)
 		q.RemoveReturns(0, 1, errExpected)
 
 		ctx := newMockContext()
@@ -442,6 +442,21 @@ func generateOperations(numOfOperations int) (ops []*batch.OperationInfo) {
 		}
 
 		ops = append(ops, op)
+	}
+	return
+}
+
+func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (ops []*batch.OperationInfoAtTime) {
+	for j := 1; j <= numOfOperations; j++ {
+		op, err := generateOperation(j)
+		if err != nil {
+			panic(err)
+		}
+
+		ops = append(ops, &batch.OperationInfoAtTime{
+			OperationInfo:       *op,
+			ProtocolGenesisTime: protocolGenesisTime,
+		})
 	}
 	return
 }

@@ -55,19 +55,21 @@ func TestDocumentHandler_Protocol(t *testing.T) {
 }
 
 func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp)
+	doc, err := dochandler.ProcessOperation(createOp, 0)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 }
 
 func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	replacePatch, err := patch.NewAddPublicKeysPatch("{}")
 	require.NoError(t, err)
@@ -79,15 +81,16 @@ func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
 		Patches: []patch.Patch{replacePatch},
 	}
 
-	doc, err := dochandler.ProcessOperation(createOp)
+	doc, err := dochandler.ProcessOperation(createOp, 0)
 	require.NotNil(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "expected array of interfaces")
 }
 
 func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	// modify handler protocol client to decrease max operation size
 	pc := newMockProtocolClient()
@@ -97,7 +100,7 @@ func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp)
+	doc, err := dochandler.ProcessOperation(createOp, 0)
 	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
@@ -106,20 +109,22 @@ func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 func TestDocumentHandler_ProcessOperation_ProtocolError(t *testing.T) {
 	pc := newMockProtocolClient()
 	pc.Err = fmt.Errorf("injected protocol error")
-	dochandler := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+	dochandler, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp)
+	doc, err := dochandler.ProcessOperation(createOp, 0)
 	require.EqualError(t, err, pc.Err.Error())
 	require.Nil(t, doc)
 }
 
 func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
-	dochandler := getDocumentHandler(store)
+	dochandler, cleanup := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	docID := getCreateOperation().ID
 
@@ -154,8 +159,9 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 
 func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	pc := newMockProtocolClient()
-	dochandler := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+	dochandler, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	createReq, err := getCreateRequest()
 	require.NoError(t, err)
@@ -202,8 +208,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	})
 
 	t.Run("error - transform create with initial state to external document", func(t *testing.T) {
-		dochandlerWithValidator := getDocumentHandler(mocks.NewMockOperationStore(nil))
+		dochandlerWithValidator, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 		require.NotNil(t, dochandlerWithValidator)
+		defer cleanup()
 
 		dochandlerWithValidator.transformer = &mocks.MockDocumentTransformer{Err: errors.New("test error")}
 
@@ -220,8 +227,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		pc := newMockProtocolClient()
 		pc.CurrentVersion.DocumentValidatorReturns(dv)
 
-		dochandlerWithValidator := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+		dochandlerWithValidator, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 		require.NotNil(t, dochandlerWithValidator)
+		defer cleanup()
 
 		result, err := dochandlerWithValidator.ResolveDocument(docID + initialStateParam + initialState)
 		require.Error(t, err)
@@ -233,8 +241,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		pc := newMockProtocolClient()
 		pc.Err = fmt.Errorf("injected protocol error")
 
-		dochandler := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+		dochandler, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 		require.NotNil(t, dochandler)
+		defer cleanup()
 
 		result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
 		require.EqualError(t, err, pc.Err.Error())
@@ -255,8 +264,9 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 
 	pc.CurrentVersion.ProtocolReturns(pc.Protocol)
 
-	dochandler := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+	dochandler, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	dochandler.protocol = pc
 
@@ -266,8 +276,9 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	// modify handler protocol client to decrease max operation size
 	protocol := newMockProtocolClient()
@@ -284,8 +295,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 }
 
 func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
-	dochandler := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	createReq, err := getCreateRequestWithDoc(invalidDocNoPurpose)
 	require.NoError(t, err)
@@ -304,7 +316,8 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 }
 
 func TestTransformToExternalDocument(t *testing.T) {
-	dochandler := getDocumentHandler(nil)
+	dochandler, cleanup := getDocumentHandler(nil)
+	defer cleanup()
 
 	result, err := dochandler.transformToExternalDoc(nil, "abc")
 	require.Error(t, err)
@@ -340,8 +353,9 @@ func TestGetUniquePortion(t *testing.T) {
 
 func TestProcessOperation_Update(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
-	dochandler := getDocumentHandler(store)
+	dochandler, cleanup := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
+	defer cleanup()
 
 	// insert document in the store
 	err := store.Put(getAnchoredCreateOperation())
@@ -351,7 +365,7 @@ func TestProcessOperation_Update(t *testing.T) {
 	//validator := didvalidator.New(store)
 	//dochandler.validator = validator
 
-	doc, err := dochandler.ProcessOperation(getUpdateOperation())
+	doc, err := dochandler.ProcessOperation(getUpdateOperation(), 0)
 	require.Nil(t, err)
 	require.Nil(t, doc)
 }
@@ -384,11 +398,13 @@ func (m *BatchContext) OperationQueue() cutter.OperationQueue {
 	return m.OpQueue
 }
 
-func getDocumentHandler(store processor.OperationStoreClient) *DocumentHandler {
+type cleanup func()
+
+func getDocumentHandler(store processor.OperationStoreClient) (*DocumentHandler, cleanup) {
 	return getDocumentHandlerWithProtocolClient(store, newMockProtocolClient())
 }
 
-func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, protocol *mocks.MockProtocolClient) *DocumentHandler {
+func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, protocol *mocks.MockProtocolClient) (*DocumentHandler, cleanup) {
 	transformer := doctransformer.New()
 	processor := processor.New("test", store, protocol)
 
@@ -406,7 +422,7 @@ func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, 
 	// start go routine for cutting batches
 	writer.Start()
 
-	return New(namespace, protocol, transformer, writer, processor)
+	return New(namespace, protocol, transformer, writer, processor), func() { writer.Stop() }
 }
 
 func getCreateOperation() *batchapi.Operation {

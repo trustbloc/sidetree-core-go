@@ -26,7 +26,7 @@ func NewMockBlockchainClient(err error) *MockBlockchainClient {
 }
 
 // WriteAnchor writes the anchor file hash as a transaction to blockchain.
-func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string) error {
+func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string, _ uint64) error {
 	if m.err != nil {
 		return m.err
 	}

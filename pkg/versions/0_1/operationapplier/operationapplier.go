@@ -77,7 +77,7 @@ func (s *Applier) applyCreateOperation(op *batch.AnchoredOperation, rm *protocol
 	// verify actual delta hash matches expected delta hash
 	err = docutil.IsValidHash(op.Delta, suffixData.DeltaHash)
 	if err != nil {
-		logger.Infof("Selta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 		return result, nil
 	}
 

@@ -59,7 +59,7 @@ type OperationProcessor interface {
 
 // BatchWriter is an interface to add an operation to the batch
 type BatchWriter interface {
-	Add(operation *batch.OperationInfo) error
+	Add(operation *batch.OperationInfo, protocolGenesisTime uint64) error
 }
 
 // DocumentTransformer transforms a document from internal to external form
@@ -84,8 +84,8 @@ func (r *DocumentHandler) Namespace() string {
 }
 
 //ProcessOperation validates operation and adds it to the batch
-func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error) {
-	pv, err := r.protocol.Current()
+func (r *DocumentHandler) ProcessOperation(operation *batch.Operation, protocolGenesisTime uint64) (*document.ResolutionResult, error) {
+	pv, err := r.protocol.Get(protocolGenesisTime)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation) (*documen
 	}
 
 	// validated operation will be added to the batch
-	if err := r.addToBatch(operation); err != nil {
+	if err := r.addToBatch(operation, pv.Protocol().GenesisTime); err != nil {
 		logger.Errorf("Failed to add operation to batch: %s", err.Error())
 		return nil, err
 	}
@@ -247,12 +247,13 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 }
 
 // helper namespace for adding operations to the batch
-func (r *DocumentHandler) addToBatch(operation *batch.Operation) error {
-	return r.writer.Add(&batch.OperationInfo{
-		Namespace:    r.namespace,
-		UniqueSuffix: operation.UniqueSuffix,
-		Data:         operation.OperationBuffer,
-	})
+func (r *DocumentHandler) addToBatch(operation *batch.Operation, genesisTime uint64) error {
+	return r.writer.Add(
+		&batch.OperationInfo{
+			Namespace:    r.namespace,
+			UniqueSuffix: operation.UniqueSuffix,
+			Data:         operation.OperationBuffer,
+		}, genesisTime)
 }
 
 // validateOperation validates the operation

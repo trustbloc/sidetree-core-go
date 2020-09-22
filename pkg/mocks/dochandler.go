@@ -66,7 +66,7 @@ func (m *MockDocumentHandler) Protocol() protocol.Client {
 }
 
 // ProcessOperation mocks process operation
-func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error) {
+func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation, _ uint64) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

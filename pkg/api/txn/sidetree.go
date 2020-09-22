@@ -8,8 +8,9 @@ package txn
 
 // SidetreeTxn defines info about sidetree transaction
 type SidetreeTxn struct {
-	TransactionTime   uint64
-	TransactionNumber uint64
-	AnchorString      string
-	Namespace         string
+	TransactionTime     uint64
+	TransactionNumber   uint64
+	AnchorString        string
+	Namespace           string
+	ProtocolGenesisTime uint64
 }
