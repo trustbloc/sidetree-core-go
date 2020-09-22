@@ -43,8 +43,8 @@ const (
 type Option func(opts *Options) error
 
 type batchCutter interface {
-	Add(operation *batch.OperationInfo) (uint, error)
-	Cut(force bool) (ops []*batch.OperationInfo, pending uint, commit cutter.Committer, err error)
+	Add(operation *batch.OperationInfo, protocolGenesisTime uint64) (uint, error)
+	Cut(force bool) (cutter.Result, error)
 }
 
 type process struct {
@@ -78,7 +78,7 @@ type Context interface {
 // BlockchainClient defines an interface to access the underlying blockchain
 type BlockchainClient interface {
 	// WriteAnchor writes the anchor file hash as a transaction to blockchain
-	WriteAnchor(anchor string) error
+	WriteAnchor(anchor string, protocolGenesisTime uint64) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
 }
@@ -142,12 +142,12 @@ func (r *Writer) Stopped() bool {
 }
 
 // Add the given operation to a queue of operations to be batched and anchored on blockchain.
-func (r *Writer) Add(operation *batch.OperationInfo) error {
+func (r *Writer) Add(operation *batch.OperationInfo, protocolGenesisTime uint64) error {
 	if r.Stopped() {
 		return errors.New("writer is stopped")
 	}
 
-	_, err := r.batchCutter.Add(operation)
+	_, err := r.batchCutter.Add(operation, protocolGenesisTime)
 	if err != nil {
 		return err
 	}
@@ -232,46 +232,46 @@ func (r *Writer) drain() (pending uint, err error) {
 }
 
 func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, err error) {
-	operations, pending, commit, err := r.batchCutter.Cut(forceCut)
+	result, err := r.batchCutter.Cut(forceCut)
 	if err != nil {
 		logger.Errorf("[%s] Error cutting batch: %s", r.namespace, err)
-		return 0, pending, err
+		return 0, 0, err
 	}
 
-	if len(operations) == 0 {
+	if len(result.Operations) == 0 {
 		logger.Debugf("[%s] No operations to be processed", r.namespace)
-		return 0, pending, nil
+		return 0, result.Pending, nil
 	}
 
-	logger.Infof("[%s] processing %d batch operations ...", r.namespace, len(operations))
+	logger.Infof("[%s] processing %d batch operations ...", r.namespace, len(result.Operations))
 
-	err = r.process(operations)
+	err = r.process(result.Operations, result.ProtocolGenesisTime)
 	if err != nil {
-		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(operations), err)
-		return 0, pending + uint(len(operations)), err
+		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(result.Operations), err)
+		return 0, result.Pending + uint(len(result.Operations)), err
 	}
 
-	logger.Infof("[%s] Successfully processed %d batch operations. Committing to batch cutter ...", r.namespace, len(operations))
+	logger.Infof("[%s] Successfully processed %d batch operations. Committing to batch cutter ...", r.namespace, len(result.Operations))
 
-	pending, err = commit()
+	pending, err = result.Commit()
 	if err != nil {
-		logger.Errorf("[%s] Batch operations were committed but could not be removed from the queue due to error [%s]. Stopping the batch writer so that no further operations are added.", r.namespace, err)
+		logger.Errorf("[%s] Batch operations were committed but could not be removed from the queue due to error [%s]. Stopping the batch writer so that no further ops are added.", r.namespace, err)
 		r.Stop()
 		return 0, pending, errors.WithMessagef(err, "operations were committed but could not be removed from the queue")
 	}
 
 	logger.Infof("[%s] Successfully committed to batch cutter. Pending operations: %d", r.namespace, pending)
 
-	return len(operations), pending, nil
+	return len(result.Operations), pending, nil
 }
 
-func (r *Writer) process(ops []*batch.OperationInfo) error {
-	operations, err := r.parseOperations(ops)
+func (r *Writer) process(ops []*batch.OperationInfo, protocolGenesisTime uint64) error {
+	operations, err := r.parseOperations(ops, protocolGenesisTime)
 	if err != nil {
 		return err
 	}
 
-	p, err := r.protocol.Current()
+	p, err := r.protocol.Get(protocolGenesisTime)
 	if err != nil {
 		return err
 	}
@@ -284,22 +284,22 @@ func (r *Writer) process(ops []*batch.OperationInfo) error {
 	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
 
 	// Create Sidetree transaction in blockchain (write anchor string)
-	return r.context.Blockchain().WriteAnchor(anchorString)
+	return r.context.Blockchain().WriteAnchor(anchorString, protocolGenesisTime)
 }
 
-func (r *Writer) parseOperations(ops []*batch.OperationInfo) ([]*batch.Operation, error) {
+func (r *Writer) parseOperations(ops []*batch.OperationInfo, protocolGenesisTime uint64) ([]*batch.Operation, error) {
 	if len(ops) == 0 {
 		return nil, errors.New("create batch called with no pending operations, should not happen")
 	}
 
 	batchSuffixes := make(map[string]bool)
 
-	currentProtocol, err := r.protocol.Current()
+	pv, err := r.protocol.Get(protocolGenesisTime)
 	if err != nil {
 		return nil, err
 	}
 
-	parser := currentProtocol.OperationParser()
+	parser := pv.OperationParser()
 
 	var operations []*batch.Operation
 	for _, d := range ops {

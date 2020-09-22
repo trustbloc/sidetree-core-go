@@ -19,7 +19,7 @@ import (
 // Processor processes document operations
 type Processor interface {
 	Namespace() string
-	ProcessOperation(operation *batch.Operation) (*document.ResolutionResult, error)
+	ProcessOperation(operation *batch.Operation, protocolGenesisTime uint64) (*document.ResolutionResult, error)
 }
 
 // UpdateHandler handles the creation and update of documents
@@ -53,14 +53,19 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, error) {
-	operation, err := h.getOperation(request)
+	currentProtocol, err := h.protocol.Current()
+	if err != nil {
+		return nil, err
+	}
+
+	operation, err := h.getOperation(request, currentProtocol)
 	if err != nil {
 		logger.Warnf("operation validation error: %s", err.Error())
 		return nil, common.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	// operation has been validated, now process it
-	result, err := h.processor.ProcessOperation(operation)
+	result, err := h.processor.ProcessOperation(operation, currentProtocol.Protocol().GenesisTime)
 	if err != nil {
 		logger.Errorf("internal server error:  %s", err.Error())
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
@@ -69,11 +74,6 @@ func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, er
 	return result, nil
 }
 
-func (h *UpdateHandler) getOperation(operationBuffer []byte) (*batch.Operation, error) {
-	currentProtocol, err := h.protocol.Current()
-	if err != nil {
-		return nil, err
-	}
-
-	return currentProtocol.OperationParser().Parse(h.processor.Namespace(), operationBuffer)
+func (h *UpdateHandler) getOperation(operationBuffer []byte, pv protocol.Version) (*batch.Operation, error) {
+	return pv.OperationParser().Parse(h.processor.Namespace(), operationBuffer)
 }

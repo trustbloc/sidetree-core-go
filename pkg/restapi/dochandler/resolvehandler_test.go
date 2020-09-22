@@ -44,7 +44,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 			ID:         id,
 			DeltaModel: delta,
 			Delta:      create.Delta,
-		})
+		}, 0)
 		require.NoError(t, err)
 
 		getID = func(namespace string, req *http.Request) string { return result.Document.ID() }
@@ -152,13 +152,13 @@ func TestResolveHandler_Resolve(t *testing.T) {
 			ID:         id,
 			DeltaModel: delta,
 			Delta:      create.Delta,
-		})
+		}, 0)
 		require.NoError(t, err)
 
 		_, err = docHandler.ProcessOperation(&batch.Operation{
 			Type: batch.OperationTypeDeactivate,
 			ID:   result.Document.ID(),
-		})
+		}, 0)
 		require.NoError(t, err)
 
 		getID = func(namespace string, req *http.Request) string { return result.Document.ID() }

@@ -28,17 +28,17 @@ func TestMemQueue(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, ops)
 
-	l, err := q.Add(op1)
+	l, err := q.Add(op1, 10)
 	require.NoError(t, err)
 	require.Equal(t, uint(1), l)
 	require.Equal(t, uint(1), q.Len())
 
-	l, err = q.Add(op2)
+	l, err = q.Add(op2, 10)
 	require.NoError(t, err)
 	require.Equal(t, uint(2), l)
 	require.Equal(t, uint(2), q.Len())
 
-	l, err = q.Add(op3)
+	l, err = q.Add(op3, 10)
 	require.NoError(t, err)
 	require.Equal(t, uint(3), l)
 	require.Equal(t, uint(3), q.Len())
@@ -46,14 +46,14 @@ func TestMemQueue(t *testing.T) {
 	ops, err = q.Peek(1)
 	require.NoError(t, err)
 	require.Len(t, ops, 1)
-	require.Equal(t, ops[0], op1)
+	require.Equal(t, *op1, ops[0].OperationInfo)
 
 	ops, err = q.Peek(4)
 	require.NoError(t, err)
 	require.Len(t, ops, 3)
-	require.Equal(t, ops[0], op1)
-	require.Equal(t, ops[1], op2)
-	require.Equal(t, ops[2], op3)
+	require.Equal(t, *op1, ops[0].OperationInfo)
+	require.Equal(t, *op2, ops[1].OperationInfo)
+	require.Equal(t, *op3, ops[2].OperationInfo)
 
 	n, l, err := q.Remove(1)
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestMemQueue(t *testing.T) {
 	ops, err = q.Peek(1)
 	require.NoError(t, err)
 	require.Len(t, ops, 1)
-	require.Equal(t, ops[0], op2)
+	require.Equal(t, *op2, ops[0].OperationInfo)
 
 	n, l, err = q.Remove(5)
 	require.NoError(t, err)

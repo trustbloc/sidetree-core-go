@@ -70,6 +70,9 @@ type AnchoredOperation struct {
 
 	//The index this operation was assigned to in the batch
 	OperationIndex uint `json:"operation_index"`
+
+	//The genesis time of the protocol that was used for this operation
+	ProtocolGenesisTime uint64 `json:"protocol_genesis_time"`
 }
 
 // OperationType defines valid values for operation type
@@ -95,4 +98,10 @@ type OperationInfo struct {
 	Data         []byte
 	UniqueSuffix string
 	Namespace    string
+}
+
+// OperationInfoAtTime contains OperationInfo at a given protocol genesis time
+type OperationInfoAtTime struct {
+	OperationInfo
+	ProtocolGenesisTime uint64
 }

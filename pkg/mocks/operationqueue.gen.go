@@ -8,10 +8,11 @@ import (
 )
 
 type OperationQueue struct {
-	AddStub        func(data *batch.OperationInfo) (uint, error)
+	AddStub        func(data *batch.OperationInfo, protocolGenesisTime uint64) (uint, error)
 	addMutex       sync.RWMutex
 	addArgsForCall []struct {
-		data *batch.OperationInfo
+		data                *batch.OperationInfo
+		protocolGenesisTime uint64
 	}
 	addReturns struct {
 		result1 uint
@@ -36,17 +37,17 @@ type OperationQueue struct {
 		result2 uint
 		result3 error
 	}
-	PeekStub        func(num uint) ([]*batch.OperationInfo, error)
+	PeekStub        func(num uint) ([]*batch.OperationInfoAtTime, error)
 	peekMutex       sync.RWMutex
 	peekArgsForCall []struct {
 		num uint
 	}
 	peekReturns struct {
-		result1 []*batch.OperationInfo
+		result1 []*batch.OperationInfoAtTime
 		result2 error
 	}
 	peekReturnsOnCall map[int]struct {
-		result1 []*batch.OperationInfo
+		result1 []*batch.OperationInfoAtTime
 		result2 error
 	}
 	LenStub        func() uint
@@ -62,16 +63,17 @@ type OperationQueue struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OperationQueue) Add(data *batch.OperationInfo) (uint, error) {
+func (fake *OperationQueue) Add(data *batch.OperationInfo, protocolGenesisTime uint64) (uint, error) {
 	fake.addMutex.Lock()
 	ret, specificReturn := fake.addReturnsOnCall[len(fake.addArgsForCall)]
 	fake.addArgsForCall = append(fake.addArgsForCall, struct {
-		data *batch.OperationInfo
-	}{data})
-	fake.recordInvocation("Add", []interface{}{data})
+		data                *batch.OperationInfo
+		protocolGenesisTime uint64
+	}{data, protocolGenesisTime})
+	fake.recordInvocation("Add", []interface{}{data, protocolGenesisTime})
 	fake.addMutex.Unlock()
 	if fake.AddStub != nil {
-		return fake.AddStub(data)
+		return fake.AddStub(data, protocolGenesisTime)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -85,10 +87,10 @@ func (fake *OperationQueue) AddCallCount() int {
 	return len(fake.addArgsForCall)
 }
 
-func (fake *OperationQueue) AddArgsForCall(i int) *batch.OperationInfo {
+func (fake *OperationQueue) AddArgsForCall(i int) (*batch.OperationInfo, uint64) {
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
-	return fake.addArgsForCall[i].data
+	return fake.addArgsForCall[i].data, fake.addArgsForCall[i].protocolGenesisTime
 }
 
 func (fake *OperationQueue) AddReturns(result1 uint, result2 error) {
@@ -167,7 +169,7 @@ func (fake *OperationQueue) RemoveReturnsOnCall(i int, result1 uint, result2 uin
 	}{result1, result2, result3}
 }
 
-func (fake *OperationQueue) Peek(num uint) ([]*batch.OperationInfo, error) {
+func (fake *OperationQueue) Peek(num uint) ([]*batch.OperationInfoAtTime, error) {
 	fake.peekMutex.Lock()
 	ret, specificReturn := fake.peekReturnsOnCall[len(fake.peekArgsForCall)]
 	fake.peekArgsForCall = append(fake.peekArgsForCall, struct {
@@ -196,24 +198,24 @@ func (fake *OperationQueue) PeekArgsForCall(i int) uint {
 	return fake.peekArgsForCall[i].num
 }
 
-func (fake *OperationQueue) PeekReturns(result1 []*batch.OperationInfo, result2 error) {
+func (fake *OperationQueue) PeekReturns(result1 []*batch.OperationInfoAtTime, result2 error) {
 	fake.PeekStub = nil
 	fake.peekReturns = struct {
-		result1 []*batch.OperationInfo
+		result1 []*batch.OperationInfoAtTime
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *OperationQueue) PeekReturnsOnCall(i int, result1 []*batch.OperationInfo, result2 error) {
+func (fake *OperationQueue) PeekReturnsOnCall(i int, result1 []*batch.OperationInfoAtTime, result2 error) {
 	fake.PeekStub = nil
 	if fake.peekReturnsOnCall == nil {
 		fake.peekReturnsOnCall = make(map[int]struct {
-			result1 []*batch.OperationInfo
+			result1 []*batch.OperationInfoAtTime
 			result2 error
 		})
 	}
 	fake.peekReturnsOnCall[i] = struct {
-		result1 []*batch.OperationInfo
+		result1 []*batch.OperationInfoAtTime
 		result2 error
 	}{result1, result2}
 }

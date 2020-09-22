@@ -88,6 +88,8 @@ func updateAnchoredOperation(op *batch.AnchoredOperation, index uint, sidetreeTx
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
 	op.TransactionNumber = sidetreeTxn.TransactionNumber
+	// The genesis time of the protocol that was used for this operation
+	op.ProtocolGenesisTime = sidetreeTxn.ProtocolGenesisTime
 	// The index this operation was assigned to in the batch
 	op.OperationIndex = index
 

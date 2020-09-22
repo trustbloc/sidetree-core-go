@@ -88,9 +88,9 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 			continue
 		}
 
-		v, err := pc.Get(txn.TransactionTime)
+		v, err := pc.Get(txn.ProtocolGenesisTime)
 		if err != nil {
-			logger.Warnf("Failed to get processor for transaction time [%d]: %s", txn.TransactionTime, err.Error())
+			logger.Warnf("Failed to get processor for transaction time [%d]: %s", txn.ProtocolGenesisTime, err.Error())
 			continue
 		}
 

@@ -268,7 +268,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOpera
 }
 
 func (s *OperationProcessor) applyOperation(operation *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	p, err := s.pc.Get(operation.TransactionTime)
+	p, err := s.pc.Get(operation.ProtocolGenesisTime)
 	if err != nil {
 		return nil, fmt.Errorf("apply '%s' operation: %s", operation.Type, err.Error())
 	}
@@ -291,7 +291,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 		return "", errors.New("create operation doesn't have reveal value")
 	}
 
-	p, err := s.pc.Get(op.TransactionTime)
+	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
 		return "", fmt.Errorf("get operation commitment: %s", err.Error())
 	}
@@ -336,7 +336,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 }
 
 func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperation) (string, error) { // nolint: gocyclo
-	p, err := s.pc.Get(op.TransactionTime)
+	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
 		return "", fmt.Errorf("get next operation commitment: %s", err.Error())
 	}
