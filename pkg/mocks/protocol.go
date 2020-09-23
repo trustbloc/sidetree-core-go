@@ -17,10 +17,11 @@ import (
 // DefaultNS is default namespace used in mocks
 const DefaultNS = "did:sidetree"
 
-// maximum batch files size in bytes
-const maxBatchFileSize = 20000
+// MaxBatchFileSize is maximum batch files size in bytes
+const MaxBatchFileSize = 20000
 
-const maxOperationByteSize = 2000
+// MaxOperationByteSize is maximum operation size in bytes
+const MaxOperationByteSize = 2000
 
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
@@ -39,22 +40,16 @@ func NewMockProtocolClient() *MockProtocolClient {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		HashAlgorithm:                5, // crypto code for sha256 hash function
 		MaxOperationCount:            2,
-		MaxOperationSize:             maxOperationByteSize,
+		MaxOperationSize:             MaxOperationByteSize,
 		CompressionAlgorithm:         "GZIP",
-		MaxChunkFileSize:             maxBatchFileSize,
-		MaxMapFileSize:               maxBatchFileSize,
-		MaxAnchorFileSize:            maxBatchFileSize,
+		MaxChunkFileSize:             MaxBatchFileSize,
+		MaxMapFileSize:               MaxBatchFileSize,
+		MaxAnchorFileSize:            MaxBatchFileSize,
 		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
 		KeyAlgorithms:                []string{"Ed25519", "P-256"},
 	}
 
-	latestVersion := &ProtocolVersion{}
-	latestVersion.OperationApplierReturns(&OperationApplier{})
-	latestVersion.OperationParserReturns(&OperationParser{})
-	latestVersion.DocumentComposerReturns(&DocumentComposer{})
-	latestVersion.DocumentValidatorReturns(&DocumentValidator{})
-
-	latestVersion.ProtocolReturns(latest)
+	latestVersion := GetProtocolVersion(latest)
 
 	// has to be sorted for mock client to work
 	versions := []*ProtocolVersion{latestVersion}
@@ -120,4 +115,17 @@ func (m *MockProtocolClientProvider) ForNamespace(namespace string) (protocol.Cl
 	}
 
 	return pc, nil
+}
+
+// GetProtocolVersion returns mock protocol version
+func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
+	v := &ProtocolVersion{}
+	v.OperationApplierReturns(&OperationApplier{})
+	v.OperationParserReturns(&OperationParser{})
+	v.DocumentComposerReturns(&DocumentComposer{})
+	v.DocumentValidatorReturns(&DocumentValidator{})
+
+	v.ProtocolReturns(p)
+
+	return v
 }

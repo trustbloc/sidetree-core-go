@@ -69,11 +69,12 @@ type OperationParser interface {
 
 // ResolutionModel contains temporary data during document resolution
 type ResolutionModel struct {
-	Doc                            document.Document
-	LastOperationTransactionTime   uint64
-	LastOperationTransactionNumber uint64
-	UpdateCommitment               string
-	RecoveryCommitment             string
+	Doc                              document.Document
+	LastOperationTransactionTime     uint64
+	LastOperationTransactionNumber   uint64
+	LastOperationProtocolGenesisTime uint64
+	UpdateCommitment                 string
+	RecoveryCommitment               string
 }
 
 // OperationApplier applies the given operation to the document

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package operationapplier
 
 import (
-	"crypto"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
@@ -69,10 +67,11 @@ func (s *Applier) applyCreateOperation(op *batch.AnchoredOperation, rm *protocol
 
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
-		Doc:                            make(document.Document),
-		LastOperationTransactionTime:   op.TransactionTime,
-		LastOperationTransactionNumber: op.TransactionNumber,
-		RecoveryCommitment:             suffixData.RecoveryCommitment}
+		Doc:                              make(document.Document),
+		LastOperationTransactionTime:     op.TransactionTime,
+		LastOperationTransactionNumber:   op.TransactionNumber,
+		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
+		RecoveryCommitment:               suffixData.RecoveryCommitment}
 
 	// verify actual delta hash matches expected delta hash
 	err = docutil.IsValidHash(op.Delta, suffixData.DeltaHash)
@@ -112,16 +111,6 @@ func (s *Applier) applyUpdateOperation(op *batch.AnchoredOperation, rm *protocol
 		return nil, fmt.Errorf("failed to unmarshal signed data model while applying update: %s", err.Error())
 	}
 
-	updateCommitment, err := commitment.Calculate(signedDataModel.UpdateKey, s.HashAlgorithmInMultiHashCode, crypto.Hash(s.HashAlgorithm))
-	if err != nil {
-		return nil, err
-	}
-
-	// verify that update commitments match
-	if updateCommitment != rm.UpdateCommitment {
-		return nil, fmt.Errorf("commitment generated from update key doesn't match update commitment: [%s][%s]", updateCommitment, rm.UpdateCommitment)
-	}
-
 	// verify the delta against the signed delta hash
 	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
@@ -145,11 +134,12 @@ func (s *Applier) applyUpdateOperation(op *batch.AnchoredOperation, rm *protocol
 	}
 
 	return &protocol.ResolutionModel{
-		Doc:                            doc,
-		LastOperationTransactionTime:   op.TransactionTime,
-		LastOperationTransactionNumber: op.TransactionNumber,
-		UpdateCommitment:               delta.UpdateCommitment,
-		RecoveryCommitment:             rm.RecoveryCommitment}, nil
+		Doc:                              doc,
+		LastOperationTransactionTime:     op.TransactionTime,
+		LastOperationTransactionNumber:   op.TransactionNumber,
+		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
+		UpdateCommitment:                 delta.UpdateCommitment,
+		RecoveryCommitment:               rm.RecoveryCommitment}, nil
 }
 
 func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
@@ -169,16 +159,6 @@ func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *prot
 		return nil, errors.New("did suffix doesn't match signed value")
 	}
 
-	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, s.HashAlgorithmInMultiHashCode, crypto.Hash(s.HashAlgorithm))
-	if err != nil {
-		return nil, err
-	}
-
-	// verify that recovery commitments match
-	if recoveryCommitment != rm.RecoveryCommitment {
-		return nil, fmt.Errorf("commitment generated from recovery key doesn't match recovery commitment: [%s][%s]", recoveryCommitment, rm.RecoveryCommitment)
-	}
-
 	// verify signature
 	_, err = internal.VerifyJWS(op.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
@@ -186,11 +166,12 @@ func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *prot
 	}
 
 	return &protocol.ResolutionModel{
-		Doc:                            nil,
-		LastOperationTransactionTime:   op.TransactionTime,
-		LastOperationTransactionNumber: op.TransactionNumber,
-		UpdateCommitment:               "",
-		RecoveryCommitment:             ""}, nil
+		Doc:                              nil,
+		LastOperationTransactionTime:     op.TransactionTime,
+		LastOperationTransactionNumber:   op.TransactionNumber,
+		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
+		UpdateCommitment:                 "",
+		RecoveryCommitment:               ""}, nil
 }
 
 func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
@@ -205,16 +186,6 @@ func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protoco
 		return nil, fmt.Errorf("failed to parse signed data model while applying recover: %s", err.Error())
 	}
 
-	recoveryCommitment, err := commitment.Calculate(signedDataModel.RecoveryKey, s.HashAlgorithmInMultiHashCode, crypto.Hash(s.HashAlgorithm))
-	if err != nil {
-		return nil, err
-	}
-
-	// verify that recovery commitments match
-	if recoveryCommitment != rm.RecoveryCommitment {
-		return nil, fmt.Errorf("commitment generated from recovery key doesn't match recovery commitment: [%s][%s]", recoveryCommitment, rm.RecoveryCommitment)
-	}
-
 	// verify signature
 	_, err = internal.VerifyJWS(op.SignedData, signedDataModel.RecoveryKey)
 	if err != nil {
@@ -223,10 +194,11 @@ func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protoco
 
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
-		Doc:                            make(document.Document),
-		LastOperationTransactionTime:   op.TransactionTime,
-		LastOperationTransactionNumber: op.TransactionNumber,
-		RecoveryCommitment:             signedDataModel.RecoveryCommitment}
+		Doc:                              make(document.Document),
+		LastOperationTransactionTime:     op.TransactionTime,
+		LastOperationTransactionNumber:   op.TransactionNumber,
+		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
+		RecoveryCommitment:               signedDataModel.RecoveryCommitment}
 
 	// verify the delta against the signed delta hash
 	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)

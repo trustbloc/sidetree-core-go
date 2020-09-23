@@ -658,16 +658,17 @@ const interopResolveDidWithInitialState = `did:sidetree:EiBFsUlzmZ3zJtSFeQKwJNtn
 
 func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()
-	parser := operationparser.New(pc.Protocol)
-	dc := doccomposer.New()
-	oa := operationapplier.New(pc.Protocol, parser, dc)
-	dv := &mocks.DocumentValidator{}
 
-	pv := pc.CurrentVersion
-	pv.OperationParserReturns(parser)
-	pv.OperationApplierReturns(oa)
-	pv.DocumentComposerReturns(dc)
-	pv.DocumentValidatorReturns(dv)
+	for _, v := range pc.Versions {
+		parser := operationparser.New(v.Protocol())
+		dc := doccomposer.New()
+		oa := operationapplier.New(v.Protocol(), parser, dc)
+		dv := &mocks.DocumentValidator{}
+		v.OperationParserReturns(parser)
+		v.OperationApplierReturns(oa)
+		v.DocumentComposerReturns(dc)
+		v.DocumentValidatorReturns(dv)
+	}
 
 	return pc
 }

@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -124,7 +125,9 @@ func TestUpdateDocument(t *testing.T) {
 	updateKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, e)
 
+	// protocol version switches at block 100
 	pc := newMockProtocolClient()
+
 	parser := operationparser.New(pc.Protocol)
 
 	t.Run("success", func(t *testing.T) {
@@ -156,6 +159,68 @@ func TestUpdateDocument(t *testing.T) {
 		// check if service type value is updated again (done via json patch)
 		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
 		require.Equal(t, "special2", didDoc["test"])
+	})
+
+	t.Run("success - protocol version changed between create/update", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		// protocol value for hashing algorithm changed at block 100
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 200)
+		require.Nil(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated (done via json patch)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special200", didDoc["test"])
+	})
+
+	t.Run("success - protocol version changed between consecutive updates", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 50)
+		require.Nil(t, err)
+
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated (done via json patch)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special50", didDoc["test"])
+
+		// protocol value for hashing algorithm changed at block 100
+		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 500)
+		require.Nil(t, err)
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special500", didDoc["test"])
+
+		// test consecutive update within new protocol value
+		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 700)
+		require.Nil(t, err)
+		err = store.Put(updateOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated again (done via json patch)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		require.Equal(t, "special700", didDoc["test"])
 	})
 
 	t.Run("success -  operation with reused next commitment ignored", func(t *testing.T) {
@@ -389,7 +454,7 @@ func TestRecover(t *testing.T) {
 		// test for recovered key
 		docBytes, err := result.Document.Bytes()
 		require.NoError(t, err)
-		require.Contains(t, string(docBytes), "recovered")
+		require.Contains(t, string(docBytes), "recovered1")
 
 		// apply recover again - consecutive recoveries are valid
 		recoverOp, _, err = getAnchoredRecoverOperation(nextRecoveryKey, updateKey, uniqueSuffix, 2)
@@ -397,9 +462,80 @@ func TestRecover(t *testing.T) {
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
 
-		doc, err := p.Resolve(uniqueSuffix)
+		result, err = p.Resolve(uniqueSuffix)
 		require.NoError(t, err)
-		require.NotNil(t, doc)
+		require.NotNil(t, result)
+
+		docBytes, err = result.Document.Bytes()
+		require.NoError(t, err)
+		require.Contains(t, string(docBytes), "recovered2")
+	})
+
+	t.Run("success - protocol version changed between create and recover", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		// hashing algorithm changed at block 100
+		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 200)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
+
+		// test for recovered key
+		docBytes, err := result.Document.Bytes()
+		require.NoError(t, err)
+		require.Contains(t, string(docBytes), "recovered200")
+
+		// apply recover again - consecutive recoveries within new protocol version
+		recoverOp, _, err = getAnchoredRecoverOperation(nextRecoveryKey, updateKey, uniqueSuffix, 300)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// test for recovered key
+		docBytes, err = result.Document.Bytes()
+		require.NoError(t, err)
+		require.Contains(t, string(docBytes), "recovered300")
+	})
+
+	t.Run("success - protocol version changed between recoveries", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 50)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
+
+		p := New("test", store, pc)
+		result, err := p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
+
+		// test for recovered key
+		docBytes, err := result.Document.Bytes()
+		require.NoError(t, err)
+		require.Contains(t, string(docBytes), "recovered50")
+
+		// apply recover again - there was a protocol change at 100 (new hashing algorithm)
+		recoverOp, _, err = getAnchoredRecoverOperation(nextRecoveryKey, updateKey, uniqueSuffix, 200)
+		require.NoError(t, err)
+		err = store.Put(recoverOp)
+		require.Nil(t, err)
+
+		result, err = p.Resolve(uniqueSuffix)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// test for recovered key
+		docBytes, err = result.Document.Bytes()
+		require.NoError(t, err)
+		require.Contains(t, string(docBytes), "recovered200")
 	})
 }
 
@@ -419,11 +555,15 @@ func TestGetOperationCommitment(t *testing.T) {
 		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, err := p.getOperationCommitment(recoverOp)
+		reveal, p, err := p.getOperationRevealValue(recoverOp)
 		require.NoError(t, err)
-		require.NotEmpty(t, value)
+		require.NotNil(t, reveal)
+		require.NotEmpty(t, p)
 
-		c, err := getCommitment(recoveryKey)
+		value, err := commitment.Calculate(reveal, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+		require.NoError(t, err)
+
+		c, err := getCommitment(recoveryKey, getProtocol(1))
 		require.NoError(t, err)
 		require.Equal(t, c, value)
 	})
@@ -432,11 +572,14 @@ func TestGetOperationCommitment(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, err := p.getOperationCommitment(updateOp)
+		reveal, p, err := p.getOperationRevealValue(updateOp)
 		require.NoError(t, err)
-		require.NotEmpty(t, value)
+		require.NotNil(t, reveal)
 
-		c, err := getCommitment(updateKey)
+		value, err := commitment.Calculate(reveal, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+		require.NoError(t, err)
+
+		c, err := getCommitment(updateKey, getProtocol(1))
 		require.NoError(t, err)
 		require.Equal(t, c, value)
 	})
@@ -445,11 +588,14 @@ func TestGetOperationCommitment(t *testing.T) {
 		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		value, err := p.getOperationCommitment(deactivateOp)
+		reveal, p, err := p.getOperationRevealValue(deactivateOp)
 		require.NoError(t, err)
-		require.NotEmpty(t, value)
+		require.NotNil(t, reveal)
 
-		c, err := getCommitment(recoveryKey)
+		value, err := commitment.Calculate(reveal, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+		require.NoError(t, err)
+
+		c, err := getCommitment(recoveryKey, getProtocol(1))
 		require.NoError(t, err)
 		require.Equal(t, c, value)
 	})
@@ -462,7 +608,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, err := New("test", store, pcWithoutProtocols).getOperationCommitment(updateOp)
+		value, _, err := New("test", store, pcWithoutProtocols).getOperationRevealValue(updateOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
@@ -472,9 +618,10 @@ func TestGetOperationCommitment(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		value, err := p.getOperationCommitment(createOp)
+		value, p, err := p.getOperationRevealValue(createOp)
 		require.Error(t, err)
 		require.Empty(t, value)
+		require.Equal(t, p, protocol.Protocol{})
 		require.Contains(t, err.Error(), "create operation doesn't have reveal value")
 	})
 
@@ -486,9 +633,10 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp := getAnchoredOperation(recoverOp)
 
-		value, err := p.getOperationCommitment(anchoredOp)
+		value, p, err := p.getOperationRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
+		require.Equal(t, p, protocol.Protocol{})
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 
@@ -500,9 +648,10 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp := getAnchoredOperation(recoverOp)
 
-		value, err := p.getOperationCommitment(anchoredOp)
+		value, p, err := p.getOperationRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
+		require.Equal(t, p, protocol.Protocol{})
 		require.Contains(t, err.Error(), "operation type not supported for getting operation commitment")
 	})
 
@@ -519,9 +668,10 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp := getAnchoredOperation(recoverOp)
 
-		value, err := p.getOperationCommitment(anchoredOp)
+		value, pv, err := p.getOperationRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
+		require.Equal(t, pv, protocol.Protocol{})
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
 
 		// test deactivate signed model
@@ -532,9 +682,10 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp = getAnchoredOperation(deactivateOp)
 
-		value, err = p.getOperationCommitment(anchoredOp)
+		value, pv, err = p.getOperationRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
+		require.Equal(t, pv, protocol.Protocol{})
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for deactivate")
 
 		// test deactivate signed model
@@ -549,9 +700,10 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp = getAnchoredOperation(updateOp)
 
-		value, err = p.getOperationCommitment(anchoredOp)
+		value, pv, err = p.getOperationRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
+		require.Equal(t, pv, protocol.Protocol{})
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
 	})
 }
@@ -576,7 +728,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
 
-		c, err := getCommitment(nextRecoveryKey)
+		c, err := getCommitment(nextRecoveryKey, getProtocol(1))
 		require.NoError(t, err)
 		require.Equal(t, c, value)
 	})
@@ -589,7 +741,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
 
-		c, err := getCommitment(nextUpdateKey)
+		c, err := getCommitment(nextUpdateKey, getProtocol(1))
 		require.NoError(t, err)
 		require.Equal(t, c, value)
 	})
@@ -710,26 +862,26 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 	require.Equal(t, 1, len(txns))
 }
 
-func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
 	s := ecsigner.New(privateKey, "ES256", updateKeyID)
 
-	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, operationNumber)
+	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, blockNum)
 }
 
-func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
-	op, nextUpdateKey, err := getUpdateOperation(privateKey, uniqueSuffix, operationNumber)
+func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+	op, nextUpdateKey, err := getUpdateOperation(privateKey, uniqueSuffix, blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return getAnchoredOperationWithBlockNum(op, uint64(operationNumber)), nextUpdateKey, nil
+	return getAnchoredOperationWithBlockNum(op, blockNumber), nextUpdateKey, nil
 }
 
-func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/test",
-		"value": "special" + strconv.Itoa(int(operationNumber)),
+		"value": "special" + strconv.Itoa(int(blockNumber)),
 	}
 
 	patchBytes, err := canonicalizer.MarshalCanonical([]map[string]interface{}{p})
@@ -742,7 +894,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
-	nextUpdateKey, updateCommitment, err := generateKeyAndCommitment()
+	nextUpdateKey, updateCommitment, err := generateKeyAndCommitment(getProtocol(blockNumber))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -763,7 +915,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 	}
 
 	signedData := &model.UpdateSignedDataModel{
-		DeltaHash: getEncodedMultihash(deltaBytes),
+		DeltaHash: getEncodedMultihash(deltaBytes, getProtocol(blockNumber)),
 		UpdateKey: updatePubKey,
 	}
 
@@ -785,7 +937,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 	return operation, nextUpdateKey, nil
 }
 
-func generateKeyAndCommitment() (*ecdsa.PrivateKey, string, error) {
+func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, "", err
@@ -796,7 +948,7 @@ func generateKeyAndCommitment() (*ecdsa.PrivateKey, string, error) {
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return nil, "", err
 	}
@@ -845,22 +997,26 @@ func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.Pr
 }
 
 func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, *ecdsa.PrivateKey, error) {
-	signer := ecsigner.New(recoveryKey, "ES256", "")
-
-	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix)
+	return getRecoverOperationWithBlockNum(recoveryKey, updateKey, uniqueSuffix, 1)
 }
 
-func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
-	op, nextRecoveryKey, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+func getRecoverOperationWithBlockNum(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
+	signer := ecsigner.New(recoveryKey, "ES256", "")
+
+	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix, blockNum)
+}
+
+func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+	op, nextRecoveryKey, err := getRecoverOperationWithBlockNum(recoveryKey, updateKey, uniqueSuffix, blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return getAnchoredOperationWithBlockNum(op, uint64(operationNumber)), nextRecoveryKey, nil
+	return getAnchoredOperationWithBlockNum(op, blockNumber), nextRecoveryKey, nil
 }
 
-func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, *ecdsa.PrivateKey, error) {
-	recoverRequest, nextRecoveryKey, err := getDefaultRecoverRequest(signer, recoveryKey, updateKey)
+func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
+	recoverRequest, nextRecoveryKey, err := getDefaultRecoverRequest(signer, recoveryKey, updateKey, blockNum)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -870,10 +1026,12 @@ func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey 
 		return nil, nil, err
 	}
 
-	_, updateCommitment, err := generateKeyAndCommitment()
+	_, updateCommitment, err := generateKeyAndCommitment(getProtocol(blockNum))
 	if err != nil {
 		return nil, nil, err
 	}
+
+	recoveredDoc := fmt.Sprintf(recoveredDocTemplate, strconv.Itoa(int(blockNum)))
 
 	delta, err := getDeltaModel(recoveredDoc, updateCommitment)
 	if err != nil {
@@ -891,13 +1049,14 @@ func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey 
 	}, nextRecoveryKey, nil
 }
 
-func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
+func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel, blockNum uint64) (*model.RecoverRequest, error) {
 	deltaBytes, err := canonicalizer.MarshalCanonical(deltaModel)
 	if err != nil {
 		return nil, err
 	}
 
-	signedDataModel.DeltaHash = getEncodedMultihash(deltaBytes)
+	// TODO: review block number
+	signedDataModel.DeltaHash = getEncodedMultihash(deltaBytes, getProtocol(blockNum))
 
 	jws, err := signutil.SignModel(signedDataModel, signer)
 	if err != nil {
@@ -912,11 +1071,15 @@ func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signe
 	}, nil
 }
 
-func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey) (*model.RecoverRequest, *ecdsa.PrivateKey, error) {
-	updateCommitment, err := getCommitment(updateKey)
+func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, blockNum uint64) (*model.RecoverRequest, *ecdsa.PrivateKey, error) {
+	p := getProtocol(blockNum)
+
+	updateCommitment, err := getCommitment(updateKey, p)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	recoveredDoc := fmt.Sprintf(recoveredDocTemplate, strconv.Itoa(int(blockNum)))
 
 	delta, err := getDeltaModel(recoveredDoc, updateCommitment)
 	if err != nil {
@@ -933,7 +1096,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	nextRecoveryKey, recoveryCommitment, err := generateKeyAndCommitment()
+	nextRecoveryKey, recoveryCommitment, err := generateKeyAndCommitment(p)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -941,10 +1104,10 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 	recoverSignedData := &model.RecoverSignedDataModel{
 		RecoveryKey:        recoveryPubKey,
 		RecoveryCommitment: recoveryCommitment,
-		DeltaHash:          getEncodedMultihash(deltaBytes),
+		DeltaHash:          getEncodedMultihash(deltaBytes, p),
 	}
 
-	req, err := getRecoverRequest(signer, delta, recoverSignedData)
+	req, err := getRecoverRequest(signer, delta, recoverSignedData, blockNum)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -969,8 +1132,10 @@ func getDefaultStore(recoveryKey, updateKey *ecdsa.PrivateKey) (*mocks.MockOpera
 	return store, createOp.UniqueSuffix
 }
 
-func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string) (*batch.Operation, error) {
-	createRequest, err := getCreateRequest(recoveryKey, updateKey)
+func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string, blockNum uint64) (*batch.Operation, error) {
+	p := getProtocol(blockNum)
+
+	createRequest, err := getCreateRequest(recoveryKey, updateKey, p)
 	if err != nil {
 		return nil, err
 	}
@@ -985,7 +1150,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	updateCommitment, err := getCommitment(updateKey)
+	updateCommitment, err := getCommitment(updateKey, p)
 	if err != nil {
 		return nil, err
 	}
@@ -1000,7 +1165,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	suffixData, err := getSuffixData(recoveryKey, deltaBytes)
+	suffixData, err := getSuffixData(recoveryKey, deltaBytes, p)
 	if err != nil {
 		return nil, err
 	}
@@ -1018,12 +1183,12 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 	}, nil
 }
 
-func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.Operation, error) {
-	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc)
+func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey, blockNum uint64) (*batch.Operation, error) {
+	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc, blockNum)
 }
 
 func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.AnchoredOperation, error) {
-	op, err := getCreateOperation(recoveryKey, updateKey)
+	op, err := getCreateOperation(recoveryKey, updateKey, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -1044,11 +1209,12 @@ func getAnchoredOperation(op *batch.Operation) *batch.AnchoredOperation {
 func getAnchoredOperationWithBlockNum(op *batch.Operation, blockNum uint64) *batch.AnchoredOperation {
 	anchored := getAnchoredOperation(op)
 	anchored.TransactionTime = blockNum
+	anchored.ProtocolGenesisTime = getProtocol(blockNum).GenesisTime
 	return anchored
 }
 
-func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRequest, error) {
-	updateCommitment, err := getCommitment(updateKey)
+func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey, p protocol.Protocol) (*model.CreateRequest, error) {
+	updateCommitment, err := getCommitment(updateKey, p)
 	if err != nil {
 		return nil, err
 	}
@@ -1063,7 +1229,7 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 		return nil, err
 	}
 
-	suffixData, err := getSuffixData(recoveryKey, deltaBytes)
+	suffixData, err := getSuffixData(recoveryKey, deltaBytes, p)
 	if err != nil {
 		return nil, err
 	}
@@ -1080,6 +1246,16 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 	}, nil
 }
 
+func getProtocol(blockNum uint64) protocol.Protocol {
+	pc := newMockProtocolClient()
+	pv, err := pc.Get(blockNum)
+	if err != nil {
+		panic(err)
+	}
+
+	return pv.Protocol()
+}
+
 func getDeltaModel(doc string, updateCommitment string) (*model.DeltaModel, error) {
 	patches, err := patch.PatchesFromDocument(doc)
 	if err != nil {
@@ -1092,13 +1268,13 @@ func getDeltaModel(doc string, updateCommitment string) (*model.DeltaModel, erro
 	}, nil
 }
 
-func getCommitment(key *ecdsa.PrivateKey) (string, error) {
+func getCommitment(key *ecdsa.PrivateKey, p protocol.Protocol) (string, error) {
 	pubKey, err := pubkey.GetPublicKeyJWK(&key.PublicKey)
 	if err != nil {
 		return "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return "", err
 	}
@@ -1106,20 +1282,20 @@ func getCommitment(key *ecdsa.PrivateKey) (string, error) {
 	return c, nil
 }
 
-func getSuffixData(privateKey *ecdsa.PrivateKey, delta []byte) (*model.SuffixDataModel, error) {
-	recoveryCommitment, err := getCommitment(privateKey)
+func getSuffixData(privateKey *ecdsa.PrivateKey, delta []byte, p protocol.Protocol) (*model.SuffixDataModel, error) {
+	recoveryCommitment, err := getCommitment(privateKey, p)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.SuffixDataModel{
-		DeltaHash:          getEncodedMultihash(delta),
+		DeltaHash:          getEncodedMultihash(delta, p),
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
 
-func getEncodedMultihash(data []byte) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, data)
+func getEncodedMultihash(data []byte, p protocol.Protocol) string {
+	mh, err := docutil.ComputeMultihash(p.HashAlgorithmInMultiHashCode, data)
 	if err != nil {
 		panic(err)
 	}
@@ -1140,9 +1316,9 @@ const validDoc = `{
 	}]
 }`
 
-const recoveredDoc = `{
+const recoveredDocTemplate = `{
 	"publicKey": [{
-		  "id": "recovered",
+		  "id": "recovered%s",
 		  "type": "JsonWebKey2020",
 		  "purpose": ["general"],
 		  "jwk": {
@@ -1167,16 +1343,40 @@ func (m *mockDocComposer) ApplyPatches(doc document.Document, patches []patch.Pa
 	return make(document.Document), nil
 }
 
+// mock protocol client with two protocol versions, first one effective at block 0, second at block 100
 func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()
-	parser := operationparser.New(pc.Protocol)
-	dc := doccomposer.New()
-	oa := operationapplier.New(pc.Protocol, parser, dc)
 
-	pv := pc.CurrentVersion
-	pv.OperationParserReturns(parser)
-	pv.OperationApplierReturns(oa)
-	pv.DocumentComposerReturns(dc)
+	//nolint:gomnd
+	latest := protocol.Protocol{
+		GenesisTime:                  100,
+		HashAlgorithmInMultiHashCode: sha2_256,
+		HashAlgorithm:                7, // crypto code for sha512 hash function
+		MaxOperationCount:            2,
+		MaxOperationSize:             mocks.MaxOperationByteSize,
+		CompressionAlgorithm:         "GZIP",
+		MaxChunkFileSize:             mocks.MaxBatchFileSize,
+		MaxMapFileSize:               mocks.MaxBatchFileSize,
+		MaxAnchorFileSize:            mocks.MaxBatchFileSize,
+		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
+		KeyAlgorithms:                []string{"Ed25519", "P-256"},
+	}
+
+	latestVersion := mocks.GetProtocolVersion(latest)
+
+	// has to be sorted for mock client to work
+	pc.Versions = append(pc.Versions, latestVersion)
+
+	pc.CurrentVersion = latestVersion
+
+	for _, v := range pc.Versions {
+		parser := operationparser.New(v.Protocol())
+		dc := doccomposer.New()
+		oa := operationapplier.New(v.Protocol(), parser, dc)
+		v.OperationParserReturns(parser)
+		v.OperationApplierReturns(oa)
+		v.DocumentComposerReturns(dc)
+	}
 
 	return pc
 }
