@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
@@ -95,19 +96,48 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}, nil
 }
 
-func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperation) map[string][]*batch.AnchoredOperation {
+func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperation, params *commitmentParams) map[string][]*batch.AnchoredOperation {
+	const keyFormat = "%s_%s"
+
 	opMap := make(map[string][]*batch.AnchoredOperation)
 
+	previousVersions := make(map[string]*commitmentParams)
+	if params != nil {
+		previousVersions[fmt.Sprintf(keyFormat, uintToStr(params.MultihashCode), uintToStr(params.HashCode))] = params
+	}
+
 	for _, op := range ops {
-		commitmentValue, err := s.getOperationCommitment(op)
+		r, p, err := s.getOperationRevealValue(op)
 		if err != nil {
 			logger.Infof("[%s] Skipped bad operation while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+			continue
 		}
 
-		opMap[commitmentValue] = append(opMap[commitmentValue], op)
+		key := fmt.Sprintf(keyFormat, uintToStr(p.HashAlgorithmInMultiHashCode), uintToStr(p.HashAlgorithm))
+
+		if _, ok := previousVersions[key]; !ok {
+			previousVersions[key] = &commitmentParams{
+				HashCode:      p.HashAlgorithm,
+				MultihashCode: p.HashAlgorithmInMultiHashCode,
+			}
+		}
+		for _, val := range previousVersions {
+			c, err := commitment.Calculate(r, val.MultihashCode, crypto.Hash(val.HashCode))
+			if err != nil {
+				logger.Infof("[%s] Skipped calculating commitment while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
+				continue
+			}
+
+			opMap[c] = append(opMap[c], op)
+		}
 	}
 
 	return opMap
+}
+
+func uintToStr(val uint) string {
+	return strconv.Itoa(int(val))
 }
 
 func splitOperations(ops []*batch.AnchoredOperation) (createOps, updateOps, fullOps []*batch.AnchoredOperation) {
@@ -145,7 +175,7 @@ func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber
 
 	return nil
 }
-func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel { //nolint: funclen
 	if len(ops) == 0 {
 		// nothing to do; shouldn't be called without operations
 		return rm
@@ -154,12 +184,22 @@ func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm 
 	// suffix for logging
 	uniqueSuffix := ops[0].UniqueSuffix
 
-	opMap := s.createOperationHashMap(ops)
+	var state = rm
+
+	p, err := s.pc.Get(rm.LastOperationProtocolGenesisTime)
+	if err != nil {
+		logger.Infof("[%s] Unable to apply operations due to protocol error '%s' {UniqueSuffix: %s}", s.name, uniqueSuffix)
+
+		return state
+	}
+
+	opMap := s.createOperationHashMap(ops, &commitmentParams{
+		HashCode:      p.Protocol().HashAlgorithm,
+		MultihashCode: p.Protocol().HashAlgorithmInMultiHashCode,
+	})
 
 	// holds applied commitments
 	commitmentMap := make(map[string]bool)
-
-	var state = rm
 
 	c := commitmentFnc(state)
 	logger.Debugf("[%s] Processing commitment '%s' {UniqueSuffix: %s}", s.name, c, uniqueSuffix)
@@ -286,14 +326,14 @@ func sortOperations(ops []*batch.AnchoredOperation) {
 	})
 }
 
-func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation) (string, error) { // nolint: gocyclo
+func (s *OperationProcessor) getOperationRevealValue(op *batch.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) { // nolint: gocyclo
 	if op.Type == batch.OperationTypeCreate {
-		return "", errors.New("create operation doesn't have reveal value")
+		return nil, protocol.Protocol{}, errors.New("create operation doesn't have reveal value")
 	}
 
 	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
-		return "", fmt.Errorf("get operation commitment: %s", err.Error())
+		return nil, protocol.Protocol{}, fmt.Errorf("get operation commitment: %s", err.Error())
 	}
 
 	var commitmentKey *jws.JWK
@@ -302,7 +342,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 	case batch.OperationTypeUpdate:
 		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForUpdate(op.SignedData)
 		if innerErr != nil {
-			return "", fmt.Errorf("failed to parse signed data model for update: %s", innerErr.Error())
+			return nil, protocol.Protocol{}, fmt.Errorf("failed to parse signed data model for update: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.UpdateKey
@@ -310,7 +350,7 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 	case batch.OperationTypeDeactivate:
 		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForDeactivate(op.SignedData)
 		if innerErr != nil {
-			return "", fmt.Errorf("failed to parse signed data model for deactivate: %s", innerErr.Error())
+			return nil, protocol.Protocol{}, fmt.Errorf("failed to parse signed data model for deactivate: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
@@ -318,21 +358,16 @@ func (s *OperationProcessor) getOperationCommitment(op *batch.AnchoredOperation)
 	case batch.OperationTypeRecover:
 		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForRecover(op.SignedData)
 		if innerErr != nil {
-			return "", fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
+			return nil, protocol.Protocol{}, fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
 		}
 
 		commitmentKey = signedDataModel.RecoveryKey
 
 	default:
-		return "", errors.New("operation type not supported for getting operation commitment")
+		return nil, protocol.Protocol{}, errors.New("operation type not supported for getting operation commitment")
 	}
 
-	currentCommitment, err := commitment.Calculate(commitmentKey, p.Protocol().HashAlgorithmInMultiHashCode, crypto.Hash(p.Protocol().HashAlgorithm))
-	if err != nil {
-		return "", fmt.Errorf("failed to calculate operation commitment for key: %s", err.Error())
-	}
-
-	return currentCommitment, nil
+	return commitmentKey, p.Protocol(), nil
 }
 
 func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperation) (string, error) { // nolint: gocyclo
@@ -368,4 +403,9 @@ func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperat
 	}
 
 	return nextCommitment, nil
+}
+
+type commitmentParams struct {
+	MultihashCode uint
+	HashCode      uint
 }

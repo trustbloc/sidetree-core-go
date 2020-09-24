@@ -304,24 +304,6 @@ func TestUpdateDocument(t *testing.T) {
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying update")
 	})
 
-	t.Run("invalid update commitment error", func(t *testing.T) {
-		applier := New(p, parser, dc)
-
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
-		require.NoError(t, err)
-
-		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
-		require.NoError(t, err)
-
-		updateOp, _, err := getAnchoredUpdateOperation(recoveryKey, uniqueSuffix, 77)
-		require.NoError(t, err)
-
-		rm, err = applier.Apply(updateOp, rm)
-		require.Error(t, err)
-		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "commitment generated from update key doesn't match update commitment")
-	})
-
 	t.Run("invalid signature error", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
@@ -396,9 +378,6 @@ func TestDeactivate(t *testing.T) {
 	require.NoError(t, err)
 
 	updateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-
-	updatePubKey, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
 	require.NoError(t, err)
 
 	createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
@@ -536,33 +515,6 @@ func TestDeactivate(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "did suffix doesn't match signed value")
-	})
-
-	t.Run("deactivate recovery reveal value doesn't match recovery commitment", func(t *testing.T) {
-		applier := New(p, parser, dc)
-
-		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
-		require.NoError(t, err)
-
-		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix)
-		require.NoError(t, err)
-
-		s := ecsigner.New(recoveryKey, "ES256", "")
-
-		jws, err := signutil.SignModel(&model.DeactivateSignedDataModel{
-			DidSuffix:   uniqueSuffix,
-			RecoveryKey: updatePubKey,
-		}, s)
-		require.NoError(t, err)
-
-		deactivateOp.SignedData = jws
-
-		anchoredOp := getAnchoredOperation(deactivateOp)
-
-		rm, err = applier.Apply(anchoredOp, rm)
-		require.Error(t, err)
-		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "commitment generated from recovery key doesn't match recovery commitment")
 	})
 }
 
@@ -716,35 +668,6 @@ func TestRecover(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "ecdsa: invalid signature")
-	})
-
-	t.Run("invalid recovery commitment error", func(t *testing.T) {
-		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		require.NoError(t, err)
-
-		privatePubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
-		require.NoError(t, err)
-
-		applier := New(p, parser, dc)
-
-		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
-		require.NoError(t, err)
-
-		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
-		require.NoError(t, err)
-		signedModel := model.RecoverSignedDataModel{
-			RecoveryKey:        privatePubKey,
-			RecoveryCommitment: getEncodedMultihash([]byte("different")),
-			DeltaHash:          getEncodedMultihash([]byte("{}")),
-		}
-		recoverOp.SignedData, err = signutil.SignModel(signedModel, ecsigner.New(privateKey, "ES256", ""))
-
-		anchoredOp := getAnchoredOperation(recoverOp)
-
-		rm, err = applier.Apply(anchoredOp, rm)
-		require.Error(t, err)
-		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "commitment generated from recovery key doesn't match recovery commitment")
 	})
 
 	t.Run("delta hash doesn't match delta error", func(t *testing.T) {
