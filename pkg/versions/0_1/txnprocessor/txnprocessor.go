@@ -60,14 +60,14 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, s
 	batchSuffixes := make(map[string]bool)
 
 	var ops []*batch.AnchoredOperation
-	for index, op := range txnOps {
+	for _, op := range txnOps {
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
 			logger.Warnf("[%s] duplicate suffix[%s] found in transaction operations: discarding operation %v", sidetreeTxn.Namespace, op.UniqueSuffix, op)
 			continue
 		}
 
-		updatedOp := updateAnchoredOperation(op, uint(index), sidetreeTxn)
+		updatedOp := updateAnchoredOperation(op, sidetreeTxn)
 
 		logger.Debugf("updated operation with blockchain time: %s", updatedOp.UniqueSuffix)
 		ops = append(ops, updatedOp)
@@ -83,15 +83,13 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, s
 	return nil
 }
 
-func updateAnchoredOperation(op *batch.AnchoredOperation, index uint, sidetreeTxn txn.SidetreeTxn) *batch.AnchoredOperation {
+func updateAnchoredOperation(op *batch.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) *batch.AnchoredOperation {
 	//  The logical blockchain time that this operation was anchored on the blockchain
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
 	op.TransactionNumber = sidetreeTxn.TransactionNumber
 	// The genesis time of the protocol that was used for this operation
 	op.ProtocolGenesisTime = sidetreeTxn.ProtocolGenesisTime
-	// The index this operation was assigned to in the batch
-	op.OperationIndex = index
 
 	return op
 }
