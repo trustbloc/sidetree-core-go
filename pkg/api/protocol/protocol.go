@@ -26,29 +26,29 @@ import (
 type Protocol struct {
 	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to
 	// (e.g. block number in a blockchain)
-	GenesisTime uint64
+	GenesisTime uint64 `json:"genesis_time"`
 	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code
-	HashAlgorithmInMultiHashCode uint
+	HashAlgorithmInMultiHashCode uint `json:"multi_hash_algorithm"`
 	// HashAlgorithm is hash algorithm
-	HashAlgorithm uint
+	HashAlgorithm uint `json:"hash_algorithm"`
 	// MaxOperationCount defines maximum number of operations per batch
-	MaxOperationCount uint
+	MaxOperationCount uint `json:"max_operation_count"`
 	// MaxOperationSize is maximum uncompressed operation size
-	MaxOperationSize uint
+	MaxOperationSize uint `json:"max_operation_size"`
 	// CompressionAlgorithm is file compression algorithm
-	CompressionAlgorithm string
+	CompressionAlgorithm string `json:"compression_algorithm"`
 	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS
-	MaxAnchorFileSize uint
+	MaxAnchorFileSize uint `json:"max_anchor_file_size"`
 	// MaxMapFileSize is maximum allowed size (in bytes) of map file stored in CAS
-	MaxMapFileSize uint
+	MaxMapFileSize uint `json:"max_map_file_size"`
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS
-	MaxChunkFileSize uint
+	MaxChunkFileSize uint `json:"max_chunk_file_size"`
 	// EnableReplacePatch is used to enable replace patch (action)
-	EnableReplacePatch bool
+	EnableReplacePatch bool `json:"enable_replace_patch"`
 	//SignatureAlgorithms contain supported signature algorithms for signed operations (e.g. EdDSA, ES256, ES384, ES512, ES256K)
-	SignatureAlgorithms []string
+	SignatureAlgorithms []string `json:"signature_algorithms"`
 	//KeyAlgorithms contain supported key algorithms for signed operations (e.g. secp256k1, P-256, P-384, P-512, Ed25519)
-	KeyAlgorithms []string
+	KeyAlgorithms []string `json:"key_algorithms"`
 }
 
 // TxnProcessor defines the functions for processing a Sidetree transaction
