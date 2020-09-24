@@ -88,10 +88,9 @@ func TestProcessTxnOperations(t *testing.T) {
 func TestUpdateOperation(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
 		updatedOps := updateAnchoredOperation(&batch.AnchoredOperation{UniqueSuffix: "abc"},
-			1, txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
+			txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.Equal(t, uint64(20), updatedOps.TransactionTime)
 		require.Equal(t, uint64(2), updatedOps.TransactionNumber)
-		require.Equal(t, uint(1), updatedOps.OperationIndex)
 	})
 }
 

@@ -68,9 +68,6 @@ type AnchoredOperation struct {
 	//The transaction number of the transaction this operation was batched within
 	TransactionNumber uint64 `json:"transaction_number"`
 
-	//The index this operation was assigned to in the batch
-	OperationIndex uint `json:"operation_index"`
-
 	//The genesis time of the protocol that was used for this operation
 	ProtocolGenesisTime uint64 `json:"protocol_genesis_time"`
 }
