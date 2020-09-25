@@ -106,6 +106,7 @@ type DocumentValidator interface {
 
 // Version contains the protocol and corresponding implementations that are compatible with the protocol version.
 type Version interface {
+	Version() string
 	Protocol() Protocol
 	TransactionProcessor() TxnProcessor
 	OperationParser() OperationParser
