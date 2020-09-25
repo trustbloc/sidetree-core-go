@@ -23,6 +23,9 @@ const MaxBatchFileSize = 20000
 // MaxOperationByteSize is maximum operation size in bytes
 const MaxOperationByteSize = 2000
 
+// CurrentVersion is the current protocol version
+const CurrentVersion = "0.1"
+
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
 	Protocol       protocol.Protocol // current version (separated for easier testing)
@@ -120,6 +123,7 @@ func (m *MockProtocolClientProvider) ForNamespace(namespace string) (protocol.Cl
 // GetProtocolVersion returns mock protocol version
 func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 	v := &ProtocolVersion{}
+	v.VersionReturns(CurrentVersion)
 	v.OperationApplierReturns(&OperationApplier{})
 	v.OperationParserReturns(&OperationParser{})
 	v.DocumentComposerReturns(&DocumentComposer{})

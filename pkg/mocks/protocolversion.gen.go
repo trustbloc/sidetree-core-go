@@ -8,6 +8,15 @@ import (
 )
 
 type ProtocolVersion struct {
+	VersionStub        func() string
+	versionMutex       sync.RWMutex
+	versionArgsForCall []struct{}
+	versionReturns     struct {
+		result1 string
+	}
+	versionReturnsOnCall map[int]struct {
+		result1 string
+	}
 	ProtocolStub        func() protocol.Protocol
 	protocolMutex       sync.RWMutex
 	protocolArgsForCall []struct{}
@@ -82,6 +91,46 @@ type ProtocolVersion struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ProtocolVersion) Version() string {
+	fake.versionMutex.Lock()
+	ret, specificReturn := fake.versionReturnsOnCall[len(fake.versionArgsForCall)]
+	fake.versionArgsForCall = append(fake.versionArgsForCall, struct{}{})
+	fake.recordInvocation("Version", []interface{}{})
+	fake.versionMutex.Unlock()
+	if fake.VersionStub != nil {
+		return fake.VersionStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.versionReturns.result1
+}
+
+func (fake *ProtocolVersion) VersionCallCount() int {
+	fake.versionMutex.RLock()
+	defer fake.versionMutex.RUnlock()
+	return len(fake.versionArgsForCall)
+}
+
+func (fake *ProtocolVersion) VersionReturns(result1 string) {
+	fake.VersionStub = nil
+	fake.versionReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *ProtocolVersion) VersionReturnsOnCall(i int, result1 string) {
+	fake.VersionStub = nil
+	if fake.versionReturnsOnCall == nil {
+		fake.versionReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.versionReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
 }
 
 func (fake *ProtocolVersion) Protocol() protocol.Protocol {
@@ -407,6 +456,8 @@ func (fake *ProtocolVersion) DocumentValidatorReturnsOnCall(i int, result1 proto
 func (fake *ProtocolVersion) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.versionMutex.RLock()
+	defer fake.versionMutex.RUnlock()
 	fake.protocolMutex.RLock()
 	defer fake.protocolMutex.RUnlock()
 	fake.transactionProcessorMutex.RLock()
