@@ -39,8 +39,7 @@ import (
 const (
 	namespace = "did:sidetree"
 
-	sha2_256          = 18
-	initialStateParam = "?-sidetree-initial-state="
+	sha2_256 = 18
 )
 
 func TestDocumentHandler_Namespace(t *testing.T) {
@@ -163,59 +162,36 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	require.NotNil(t, dochandler)
 	defer cleanup()
 
-	createReq, err := getCreateRequest()
-	require.NoError(t, err)
-
 	createOp := getCreateOperation()
 	docID := createOp.ID
 
-	initialState := createReq.SuffixData + "." + createReq.Delta
-
-	createReqJCS, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
+	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
 		Delta:      createOp.DeltaModel,
 		SuffixData: createOp.SuffixDataModel,
 	})
+	require.NoError(t, err)
 
-	t.Run("success - initial state parameter", func(t *testing.T) {
-		result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
+	longFormPart := ":" + docutil.EncodeToString(createReq)
+
+	t.Run("success - initial state", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + longFormPart)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.Equal(t, false, result.MethodMetadata.Published)
 	})
 
-	t.Run("success - initial state JCS", func(t *testing.T) {
-		result, err := dochandler.ResolveDocument(docID + ":" + docutil.EncodeToString(createReqJCS))
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Equal(t, false, result.MethodMetadata.Published)
-	})
-
-	t.Run("error - initial state is empty", func(t *testing.T) {
-		result, err := dochandler.ResolveDocument(docID + initialStateParam)
+	t.Run("error - invalid initial state format (not encoded JCS)", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + ":payload")
 		require.NotNil(t, err)
 		require.Nil(t, result)
-		require.Contains(t, err.Error(), "initial state is present but empty")
-	})
-
-	t.Run("error - invalid initial state", func(t *testing.T) {
-		result, err := dochandler.ResolveDocument(docID + initialStateParam + "payload")
-		require.NotNil(t, err)
-		require.Nil(t, result)
-		require.Contains(t, err.Error(), "initial state should have two parts: suffix data and delta")
+		require.Contains(t, err.Error(), "bad request: invalid character")
 	})
 
 	t.Run("error - did doesn't match the one created by parsing original create request", func(t *testing.T) {
-		result, err := dochandler.ResolveDocument(dochandler.namespace + ":someID" + initialStateParam + initialState)
+		result, err := dochandler.ResolveDocument(dochandler.namespace + ":someID" + longFormPart)
 		require.NotNil(t, err)
 		require.Nil(t, result)
 		require.Contains(t, err.Error(), "provided did doesn't match did created from initial state")
-	})
-
-	t.Run("error - delta and suffix data not encoded (parse create operation fails)", func(t *testing.T) {
-		result, err := dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
-		require.NotNil(t, err)
-		require.Nil(t, result)
-		require.Contains(t, err.Error(), "invalid character")
 	})
 
 	t.Run("error - transform create with initial state to external document", func(t *testing.T) {
@@ -225,7 +201,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 		dochandlerWithValidator.transformer = &mocks.MockDocumentTransformer{Err: errors.New("test error")}
 
-		result, err := dochandlerWithValidator.ResolveDocument(docID + initialStateParam + initialState)
+		result, err := dochandlerWithValidator.ResolveDocument(docID + longFormPart)
 		require.NotNil(t, err)
 		require.Nil(t, result)
 		require.Equal(t, err.Error(), "failed to transform create with initial state to external document: test error")
@@ -242,7 +218,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		require.NotNil(t, dochandlerWithValidator)
 		defer cleanup()
 
-		result, err := dochandlerWithValidator.ResolveDocument(docID + initialStateParam + initialState)
+		result, err := dochandlerWithValidator.ResolveDocument(docID + longFormPart)
 		require.Error(t, err)
 		require.Nil(t, result)
 		require.Equal(t, err.Error(), "bad request: validate initial document: test error")
@@ -256,7 +232,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		require.NotNil(t, dochandler)
 		defer cleanup()
 
-		result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
+		result, err := dochandler.ResolveDocument(docID + longFormPart)
 		require.EqualError(t, err, pc.Err.Error())
 		require.Nil(t, result)
 	})
@@ -297,9 +273,18 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 	protocol.CurrentVersion.ProtocolReturns(protocol.Protocol)
 	dochandler.protocol = protocol
 
-	docID := getCreateOperation().ID
+	createOp := getCreateOperation()
+	docID := createOp.ID
 
-	result, err := dochandler.ResolveDocument(docID + initialStateParam + "abc.123")
+	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
+		Delta:      createOp.DeltaModel,
+		SuffixData: createOp.SuffixDataModel,
+	})
+	require.NoError(t, err)
+
+	longFormPart := ":" + docutil.EncodeToString(createReq)
+
+	result, err := dochandler.ResolveDocument(docID + longFormPart)
 	require.NotNil(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "bad request: operation byte size exceeds protocol max operation byte size")
@@ -318,9 +303,15 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 
 	docID := createOp.ID
 
-	initialState := createReq.SuffixData + "." + createReq.Delta
+	initialReq, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
+		Delta:      createOp.DeltaModel,
+		SuffixData: createOp.SuffixDataModel,
+	})
+	require.NoError(t, err)
 
-	result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
+	longFormPart := ":" + docutil.EncodeToString(initialReq)
+
+	result, err := dochandler.ResolveDocument(docID + longFormPart)
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "missing purpose")
@@ -665,7 +656,7 @@ func getUpdateOperation() *batchapi.Operation {
 }
 
 // test value taken from reference implementation
-const interopResolveDidWithInitialState = `did:sidetree:EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag?-sidetree-initial-state=eyJkZWx0YV9oYXNoIjoiRWlCWE00b3RMdVAyZkc0WkE3NS1hbnJrV1ZYMDYzN3hadE1KU29Lb3AtdHJkdyIsInJlY292ZXJ5X2NvbW1pdG1lbnQiOiJFaUM4RzRJZGJEN0Q0Q281N0dqTE5LaG1ERWFicnprTzF3c0tFOU1RZVV2T2d3In0.eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpQ0lQY1hCempqUWFKVUljUjUyZXVJMHJJWHpoTlpfTWxqc0tLOXp4WFR5cVEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoic2lnbmluZ0tleSIsInR5cGUiOiJFY2RzYVNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoieTlrenJWQnFYeDI0c1ZNRVFRazRDZS0wYnFaMWk1VHd4bGxXQ2t6QTd3VSIsInkiOiJjMkpIeFFxVVV0eVdJTEFJaWNtcEJHQzQ3UGdtSlQ0NjV0UG9jRzJxMThrIn0sInB1cnBvc2UiOlsiYXV0aCIsImdlbmVyYWwiXX1dLCJzZXJ2aWNlX2VuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsImVuZHBvaW50IjoiaHR0cHM6Ly93d3cudXJsLmNvbSJ9XX19XX0`
+const interopResolveDidWithInitialState = `did:sidetree:EiDahaOGH-liLLdDtTxEAdc8i-cfCz-WUcQdRJheMVNn3A:eyJkZWx0YSI6eyJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoiYW55U2lnbmluZ0tleUlkIiwiandrIjp7ImNydiI6InNlY3AyNTZrMSIsImt0eSI6IkVDIiwieCI6Ikg2MXZxQW1fLVRDM09yRlNxUHJFZlNmZzQyMk5SOFFIUHFyMG1MeDY0RE0iLCJ5IjoiczBXbldZODdKcmlCamJ5b1kzRmRVbWlmSzdKSlJMUjY1R3RQdGhYZXl1YyJ9LCJwdXJwb3NlIjpbImF1dGgiXSwidHlwZSI6IkVjZHNhU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOSJ9XSwic2VydmljZV9lbmRwb2ludHMiOlt7ImVuZHBvaW50IjoiaHR0cDovL2FueS5lbmRwb2ludCIsImlkIjoiYW55U2VydmljZUVuZHBvaW50SWQiLCJ0eXBlIjoiYW55VHlwZSJ9XX19XSwidXBkYXRlX2NvbW1pdG1lbnQiOiJFaUJNV0UySkZhRmlwUGR0aGNGaVFlay1TWFRNaTVJV0lGWEFOOGhLRkN5TEp3In0sInN1ZmZpeF9kYXRhIjp7ImRlbHRhX2hhc2giOiJFaUJQNmdBT3h4M1lPTDhQWlBaRzNtZWRGZ2RxV1NEYXlWWDN1MVcyZi1JUEVRIiwicmVjb3ZlcnlfY29tbWl0bWVudCI6IkVpQmc4b3F2VTBacV9INUJvcW1XZjBJcmhldFE5MXdYYzVmRFBwSWpCOXdXNXcifX0`
 
 func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()

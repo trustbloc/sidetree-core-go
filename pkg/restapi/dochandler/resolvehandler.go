@@ -15,7 +15,6 @@ import (
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
@@ -78,16 +77,5 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 }
 
 var getID = func(namespace string, req *http.Request) string {
-	return mux.Vars(req)["id"] + getInitialState(namespace, req)
-}
-
-func getInitialState(namespace string, req *http.Request) string {
-	initialParam := request.GetInitialStateParam(namespace)
-	initialParamValue := req.URL.Query().Get(initialParam)
-
-	if initialParamValue != "" {
-		return "?" + initialParam + "=" + initialParamValue
-	}
-
-	return ""
+	return mux.Vars(req)["id"]
 }

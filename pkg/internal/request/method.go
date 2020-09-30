@@ -9,7 +9,6 @@ package request
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
@@ -18,81 +17,31 @@ import (
 )
 
 const (
-	methodParamTemplate   = "-%s-initial-state"
-	minPartsInNamespace   = 2
-	initialStateSeparator = "."
-	longFormSeparator     = ":"
-	didSeparator          = ":"
+	longFormSeparator = ":"
+	didSeparator      = ":"
 )
 
-// GetInitialStateParam returns initial state parameter for namespace (more specifically method)
-func GetInitialStateParam(namespace string) string {
-	method := getMethod(namespace)
-	return fmt.Sprintf(methodParamTemplate, method)
-}
-
-// getMethod returns method from namespace
-func getMethod(namespace string) string {
-	parts := strings.Split(namespace, ":")
-	if len(parts) < minPartsInNamespace {
-		return ""
-	}
-
-	return parts[1]
-}
-
 // GetParts inspects params string and returns did and optional initial state value
-func GetParts(namespace, params string) (string, []byte, error) {
+func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
 	var err error
 
-	initialStateParam := GetInitialStateParam(namespace)
-	initialMatch := "?" + initialStateParam + "="
+	withoutNamespace := strings.ReplaceAll(shortOrLongFormDID, namespace+didSeparator, "")
+	posLongFormSeparator := strings.Index(withoutNamespace, longFormSeparator)
 
-	posInitialStateParam := strings.Index(params, initialMatch)
-
-	paramsWithoutNamespace := strings.ReplaceAll(params, namespace+didSeparator, "")
-	posLongFormSeparator := strings.Index(paramsWithoutNamespace, longFormSeparator)
-
-	if posInitialStateParam == -1 && posLongFormSeparator == -1 {
+	if posLongFormSeparator == -1 {
 		// there is short form did
-		return params, nil, nil
+		return shortOrLongFormDID, nil, nil
 	}
 
-	var did string
-	var createRequest interface{}
-	if posInitialStateParam > 0 {
-		// TODO: This part will be deprecated - issue-425
-		did = params[0:posInitialStateParam]
-		adjustedPos := posInitialStateParam + len(initialMatch)
-		if adjustedPos >= len(params) {
-			return "", nil, errors.New("initial state is present but empty")
-		}
+	// long form format: '<namespace>:<unique-portion>:Base64url(JCS({suffix-data, delta}))'
+	endOfDIDPos := strings.LastIndex(shortOrLongFormDID, longFormSeparator)
 
-		longFormDID := params[adjustedPos:]
+	did := shortOrLongFormDID[0:endOfDIDPos]
+	longFormDID := shortOrLongFormDID[endOfDIDPos+1:]
 
-		initialStateParts := strings.Split(longFormDID, initialStateSeparator)
-
-		const twoParts = 2
-		if len(initialStateParts) != twoParts {
-			return "", nil, errors.New("initial state should have two parts: suffix data and delta")
-		}
-
-		createRequest = &model.CreateRequest{
-			Operation:  model.OperationTypeCreate,
-			SuffixData: initialStateParts[0],
-			Delta:      initialStateParts[1],
-		}
-	} else {
-		// 'did:<methodName>:<unique-portion>:Base64url(JCS({suffix-data, delta}))'
-		endOfDIDPos := strings.LastIndex(params, ":")
-
-		did = params[0:endOfDIDPos]
-		longFormDID := params[endOfDIDPos+1:]
-
-		createRequest, err = getCreateRequestFromEncodedJCS(longFormDID)
-		if err != nil {
-			return "", nil, err
-		}
+	createRequest, err := getCreateRequest(longFormDID)
+	if err != nil {
+		return "", nil, err
 	}
 
 	createRequestBytes, err := canonicalizer.MarshalCanonical(createRequest)
@@ -104,7 +53,8 @@ func GetParts(namespace, params string) (string, []byte, error) {
 	return did, createRequestBytes, nil
 }
 
-func getCreateRequestFromEncodedJCS(initialStateJCS string) (*model.CreateRequestJCS, error) {
+// get create request from encoded initial value JCS
+func getCreateRequest(initialStateJCS string) (*model.CreateRequestJCS, error) {
 	decodedJCS, err := docutil.DecodeString(initialStateJCS)
 	if err != nil {
 		return nil, err
@@ -128,9 +78,4 @@ func getCreateRequestFromEncodedJCS(initialStateJCS string) (*model.CreateReques
 	createRequestJCS.Operation = model.OperationTypeCreate
 
 	return &createRequestJCS, nil
-}
-
-// GetInitialState return initial state string from create request
-func GetInitialState(req *model.CreateRequest) string {
-	return req.SuffixData + initialStateSeparator + req.Delta
 }
