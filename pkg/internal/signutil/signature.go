@@ -9,7 +9,7 @@ package signutil
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )

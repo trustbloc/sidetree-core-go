@@ -10,12 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
@@ -96,25 +94,30 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation, _ uin
 }
 
 //ResolveDocument mocks resolve document
-func (m *MockDocumentHandler) ResolveDocument(idOrDocument string) (*document.ResolutionResult, error) {
+func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-
-	if strings.Contains(idOrDocument, request.GetInitialStateParam(m.namespace)) {
-		return m.resolveWithInitialState(idOrDocument)
+	const badRequest = "bad request"
+	did, initial, err := request.GetParts(m.namespace, didOrDocument)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	if _, ok := m.store[idOrDocument]; !ok {
+	if initial != nil {
+		return m.resolveWithInitialState(did, initial)
+	}
+
+	if _, ok := m.store[didOrDocument]; !ok {
 		return nil, errors.New("not found")
 	}
 
-	if m.store[idOrDocument] == nil {
+	if m.store[didOrDocument] == nil {
 		return nil, errors.New("was deactivated")
 	}
 
 	return &document.ResolutionResult{
-		Document: m.store[idOrDocument],
+		Document: m.store[didOrDocument],
 	}, nil
 }
 
@@ -125,30 +128,19 @@ func applyID(doc document.Document, id string) document.Document {
 	return doc
 }
 
-func (m *MockDocumentHandler) resolveWithInitialState(idOrDocument string) (*document.ResolutionResult, error) {
-	const badRequest = "bad request"
-	id, initialState, err := request.GetParts(m.namespace, idOrDocument)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
-	}
-
-	decodedDelta, err := docutil.DecodeString(initialState.Delta)
+func (m *MockDocumentHandler) resolveWithInitialState(did string, initial []byte) (*document.ResolutionResult, error) {
+	var createReq model.CreateRequestJCS
+	err := json.Unmarshal(initial, &createReq)
 	if err != nil {
 		return nil, err
 	}
 
-	var delta model.DeltaModel
-	err = json.Unmarshal(decodedDelta, &delta)
+	doc, err := doccomposer.New().ApplyPatches(make(document.Document), createReq.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
 
-	doc, err := doccomposer.New().ApplyPatches(make(document.Document), delta.Patches)
-	if err != nil {
-		return nil, err
-	}
-
-	doc = applyID(doc, id)
+	doc = applyID(doc, did)
 	return &document.ResolutionResult{
 		Document: doc,
 	}, nil

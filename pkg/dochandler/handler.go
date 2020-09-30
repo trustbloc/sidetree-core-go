@@ -32,7 +32,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 var logger = log.New("sidetree-core-dochandler")
@@ -144,18 +143,18 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation, pv proto
 // If the DID Document cannot be found, the <create-suffix-data-object> and <create-delta-object> given
 // in the initial-state DID parameter are used to generate and return resolved DID Document. In this case the supplied
 // encoded delta and suffix objects are subject to the same validation as during processing create operation.
-func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.ResolutionResult, error) {
-	if !strings.HasPrefix(idOrInitialDoc, r.namespace+docutil.NamespaceDelimiter) {
+func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.ResolutionResult, error) {
+	if !strings.HasPrefix(shortOrLongFormDID, r.namespace+docutil.NamespaceDelimiter) {
 		return nil, errors.New("must start with configured namespace")
 	}
 
 	// extract did and optional initial document value
-	id, initial, err := request.GetParts(r.namespace, idOrInitialDoc)
+	shortFormDID, createReq, err := request.GetParts(r.namespace, shortOrLongFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	uniquePortion, err := getSuffix(r.namespace, id)
+	uniquePortion, err := getSuffix(r.namespace, shortFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
@@ -167,13 +166,13 @@ func (r *DocumentHandler) ResolveDocument(idOrInitialDoc string) (*document.Reso
 	}
 
 	// if document was not found on the blockchain and initial value has been provided resolve using initial value
-	if initial != nil && strings.Contains(err.Error(), "not found") {
+	if createReq != nil && strings.Contains(err.Error(), "not found") {
 		pv, e := r.protocol.Current()
 		if e != nil {
 			return nil, e
 		}
 
-		return r.resolveRequestWithInitialState(id, initial, pv)
+		return r.resolveRequestWithInitialState(shortFormDID, shortOrLongFormDID, createReq, pv)
 	}
 
 	return nil, err
@@ -198,12 +197,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 	return externalResult, nil
 }
 
-func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *model.CreateRequest, pv protocol.Version) (*document.ResolutionResult, error) {
-	initialBytes, err := json.Marshal(initial)
-	if err != nil {
-		return nil, fmt.Errorf("%s: marshal initial state: %s", badRequest, err.Error())
-	}
-
+func (r *DocumentHandler) resolveRequestWithInitialState(shortFormDID, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
 	// verify size of create request does not exceed the maximum allowed limit
 	if len(initialBytes) > int(pv.Protocol().MaxOperationSize) {
 		return nil, fmt.Errorf("%s: operation byte size exceeds protocol max operation byte size", badRequest)
@@ -214,10 +208,12 @@ func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *mod
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	op.ID = r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
-	if id != op.ID {
+	expectedShortFormDID := r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
+	if shortFormDID != expectedShortFormDID {
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
+
+	op.ID = longFormDID
 
 	err = r.validateInitialDocument(op.DeltaModel.Patches, pv)
 	if err != nil {
@@ -228,8 +224,6 @@ func (r *DocumentHandler) resolveRequestWithInitialState(id string, initial *mod
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform create with initial state to external document: %s", err.Error())
 	}
-
-	result.MethodMetadata.InitialState = request.GetInitialState(initial)
 
 	return result, nil
 }

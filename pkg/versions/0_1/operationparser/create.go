@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -20,28 +21,28 @@ import (
 
 // ParseCreateOperation will parse create operation
 func (p *Parser) ParseCreateOperation(request []byte) (*batch.Operation, error) {
-	schema, err := p.ParseCreateRequest(request)
+	schema, err := p.parseCreateRequest(request)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixData, err := p.ParseSuffixData(schema.SuffixData)
+	err = p.validateSuffixData(schema.SuffixData)
 	if err != nil {
 		return nil, err
 	}
 
-	delta, err := p.ParseDelta(schema.Delta)
+	err = p.validateDelta(schema.Delta)
 	if err != nil {
 		return nil, err
 	}
 
 	// verify actual delta hash matches expected delta hash
-	err = docutil.IsValidHash(schema.Delta, suffixData.DeltaHash)
+	err = docutil.IsValidHash(schema.EncodedDelta, schema.SuffixData.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("parse create operation: delta doesn't match suffix data delta hash: %s", err.Error())
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(schema.SuffixData, p.HashAlgorithmInMultiHashCode)
+	uniqueSuffix, err := docutil.CalculateJCSUniqueSuffix(schema.SuffixData, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
@@ -50,26 +51,74 @@ func (p *Parser) ParseCreateOperation(request []byte) (*batch.Operation, error) 
 		OperationBuffer: request,
 		Type:            batch.OperationTypeCreate,
 		UniqueSuffix:    uniqueSuffix,
-		DeltaModel:      delta,
-		Delta:           schema.Delta,
-		SuffixDataModel: suffixData,
-		SuffixData:      schema.SuffixData,
+		DeltaModel:      schema.Delta,
+		Delta:           schema.EncodedDelta,
+		SuffixDataModel: schema.SuffixData,
+		SuffixData:      schema.EncodedSuffixData,
 	}, nil
 }
 
-// ParseCreateRequest parses a 'create' request
-func (p *Parser) ParseCreateRequest(payload []byte) (*model.CreateRequest, error) {
+// this type is required until SIP-1 file structure is implemented
+type internalCreateRequest struct {
+	model.CreateRequestJCS
+	EncodedDelta      string
+	EncodedSuffixData string
+}
+
+// parseCreateRequest parses a 'create' request
+func (p *Parser) parseCreateRequest(payload []byte) (*internalCreateRequest, error) {
 	schema := &model.CreateRequest{}
 	err := json.Unmarshal(payload, schema)
+	if err != nil {
+		return p.parseCreateRequestJCS(payload)
+	}
+
+	if err = p.validateCreateRequest(schema); err != nil {
+		return nil, err
+	}
+
+	delta, err := p.ParseDelta(schema.Delta)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := p.validateCreateRequest(schema); err != nil {
+	suffix, err := p.ParseSuffixData(schema.SuffixData)
+	if err != nil {
 		return nil, err
 	}
 
-	return schema, nil
+	return &internalCreateRequest{
+		CreateRequestJCS: model.CreateRequestJCS{
+			Operation:  schema.Operation,
+			SuffixData: suffix,
+			Delta:      delta,
+		},
+		EncodedDelta:      schema.Delta,
+		EncodedSuffixData: schema.SuffixData}, nil
+}
+
+// parseCreateRequest parses a 'create' request
+func (p *Parser) parseCreateRequestJCS(payload []byte) (*internalCreateRequest, error) {
+	schema := model.CreateRequestJCS{}
+	err := json.Unmarshal(payload, &schema)
+	if err != nil {
+		return nil, err
+	}
+
+	suffixBytes, err := canonicalizer.MarshalCanonical(schema.SuffixData)
+	if err != nil {
+		return nil, err
+	}
+
+	deltaBytes, err := canonicalizer.MarshalCanonical(schema.Delta)
+	if err != nil {
+		return nil, err
+	}
+
+	return &internalCreateRequest{
+		CreateRequestJCS:  schema,
+		EncodedDelta:      docutil.EncodeToString(deltaBytes),
+		EncodedSuffixData: docutil.EncodeToString(suffixBytes)}, nil
 }
 
 // ParseDelta parses encoded delta string into delta model

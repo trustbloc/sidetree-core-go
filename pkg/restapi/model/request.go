@@ -15,7 +15,7 @@ import (
 type CreateRequest struct {
 	// operation
 	// Required: true
-	Operation OperationType `json:"type"`
+	Operation OperationType `json:"type,omitempty"`
 
 	// Encoded suffix data object
 	// Required: true
@@ -26,24 +26,39 @@ type CreateRequest struct {
 	Delta string `json:"delta"`
 }
 
+// CreateRequestJCS is the struct for create payload JCS
+type CreateRequestJCS struct {
+	// operation
+	// Required: true
+	Operation OperationType `json:"type,omitempty"`
+
+	// Encoded suffix data object
+	// Required: true
+	SuffixData *SuffixDataModel `json:"suffix_data,omitempty"`
+
+	// Encoded delta object
+	// Required: true
+	Delta *DeltaModel `json:"delta,omitempty"`
+}
+
 // SuffixDataModel is part of create request
 type SuffixDataModel struct {
 
 	// Hash of the delta object
-	DeltaHash string `json:"delta_hash"`
+	DeltaHash string `json:"delta_hash,omitempty"`
 
 	// Commitment hash for the next recovery or deactivate operation
-	RecoveryCommitment string `json:"recovery_commitment"`
+	RecoveryCommitment string `json:"recovery_commitment,omitempty"`
 }
 
 // DeltaModel contains patch data (patches used for create, recover, update)
 type DeltaModel struct {
 
 	// Commitment hash for the next update operation
-	UpdateCommitment string `json:"update_commitment"`
+	UpdateCommitment string `json:"update_commitment,omitempty"`
 
 	// Patches defines document patches
-	Patches []patch.Patch `json:"patches"`
+	Patches []patch.Patch `json:"patches,omitempty"`
 }
 
 //UpdateRequest is the struct for update request
