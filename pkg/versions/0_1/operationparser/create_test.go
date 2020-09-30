@@ -15,9 +15,9 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
@@ -28,6 +28,7 @@ const invalid = "invalid"
 func TestParseCreateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		EnableReplacePatch:           true,
 	}
 
 	parser := New(p)
@@ -40,6 +41,13 @@ func TestParseCreateOperation(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, batch.OperationTypeCreate, op.Type)
 	})
+
+	t.Run("success - JCS", func(t *testing.T) {
+		op, err := parser.ParseCreateOperation([]byte(jcsRequest))
+		require.NoError(t, err)
+		require.Equal(t, batch.OperationTypeCreate, op.Type)
+	})
+
 	t.Run("parse create request error", func(t *testing.T) {
 		schema, err := parser.ParseCreateOperation([]byte(""))
 		require.Error(t, err)
@@ -344,3 +352,5 @@ const validDoc = `{
 const interopEncodedDelta = `eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpQ0lQY1hCempqUWFKVUljUjUyZXVJMHJJWHpoTlpfTWxqc0tLOXp4WFR5cVEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoic2lnbmluZ0tleSIsInR5cGUiOiJFY2RzYVNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoieTlrenJWQnFYeDI0c1ZNRVFRazRDZS0wYnFaMWk1VHd4bGxXQ2t6QTd3VSIsInkiOiJjMkpIeFFxVVV0eVdJTEFJaWNtcEJHQzQ3UGdtSlQ0NjV0UG9jRzJxMThrIn0sInB1cnBvc2UiOlsiYXV0aCIsImdlbmVyYWwiXX1dLCJzZXJ2aWNlX2VuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsImVuZHBvaW50IjoiaHR0cHM6Ly93d3cudXJsLmNvbSJ9XX19XX0`
 const interopEncodedSuffixData = `eyJkZWx0YV9oYXNoIjoiRWlCWE00b3RMdVAyZkc0WkE3NS1hbnJrV1ZYMDYzN3hadE1KU29Lb3AtdHJkdyIsInJlY292ZXJ5X2NvbW1pdG1lbnQiOiJFaUM4RzRJZGJEN0Q0Q281N0dqTE5LaG1ERWFicnprTzF3c0tFOU1RZVV2T2d3In0`
 const interopExpectedSuffix = "EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag"
+
+const jcsRequest = `{"delta":{"patches":[{"action":"replace","document":{"public_keys":[{"id":"anySigningKeyId","jwk":{"crv":"secp256k1","kty":"EC","x":"H61vqAm_-TC3OrFSqPrEfSfg422NR8QHPqr0mLx64DM","y":"s0WnWY87JriBjbyoY3FdUmifK7JJRLR65GtPthXeyuc"},"purpose":["auth"],"type":"EcdsaSecp256k1VerificationKey2019"}],"service_endpoints":[{"endpoint":"http://any.endpoint","id":"anyServiceEndpointId","type":"anyType"}]}}],"update_commitment":"EiBMWE2JFaFipPdthcFiQek-SXTMi5IWIFXAN8hKFCyLJw"},"suffix_data":{"delta_hash":"EiBP6gAOxx3YOL8PZPZG3medFgdqWSDayVX3u1W2f-IPEQ","recovery_commitment":"EiBg8oqvU0Zq_H5BoqmWf0IrhetQ91wXc5fDPpIjB9wW5w"},"type":"create"}`

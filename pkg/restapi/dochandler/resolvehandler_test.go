@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
@@ -60,16 +60,16 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().
 			WithNamespace(namespace)
 
-		create, err := getCreateRequest()
+		create, err := getCreateRequestJCS()
 		require.NoError(t, err)
 
-		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
+		id, err := docutil.CalculateJCSID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
-		initialParam := request.GetInitialStateParam(namespace)
-		initialParamValue := create.SuffixData + "." + create.Delta
+		initialStateJCS, err := canonicalizeThenEncode(create)
+		require.NoError(t, err)
 
-		initialState := "?" + initialParam + "=" + initialParamValue
+		initialState := ":" + initialStateJCS
 
 		getID = func(namespace string, req *http.Request) string { return id + initialState }
 		handler := NewResolveHandler(docHandler)
@@ -202,6 +202,28 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		Delta:      docutil.EncodeToString(deltaBytes),
 		SuffixData: docutil.EncodeToString(suffixDataBytes),
 	}, nil
+}
+
+func getCreateRequestJCS() (*model.CreateRequestJCS, error) {
+	delta, err := getDelta()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.CreateRequestJCS{
+		Operation:  model.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: getSuffixData(),
+	}, nil
+}
+
+func canonicalizeThenEncode(value interface{}) (string, error) {
+	jcsBytes, err := canonicalizer.MarshalCanonical(value)
+	if err != nil {
+		return "", err
+	}
+
+	return docutil.EncodeToString(jcsBytes), nil
 }
 
 func getDelta() (*model.DeltaModel, error) {

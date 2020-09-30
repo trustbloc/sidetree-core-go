@@ -21,11 +21,11 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/transformer/doctransformer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -171,12 +171,23 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 	initialState := createReq.SuffixData + "." + createReq.Delta
 
-	t.Run("success", func(t *testing.T) {
+	createReqJCS, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
+		Delta:      createOp.DeltaModel,
+		SuffixData: createOp.SuffixDataModel,
+	})
+
+	t.Run("success - initial state parameter", func(t *testing.T) {
 		result, err := dochandler.ResolveDocument(docID + initialStateParam + initialState)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.Equal(t, false, result.MethodMetadata.Published)
-		require.Equal(t, initialState, result.MethodMetadata.InitialState)
+	})
+
+	t.Run("success - initial state JCS", func(t *testing.T) {
+		result, err := dochandler.ResolveDocument(docID + ":" + docutil.EncodeToString(createReqJCS))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, false, result.MethodMetadata.Published)
 	})
 
 	t.Run("error - initial state is empty", func(t *testing.T) {
