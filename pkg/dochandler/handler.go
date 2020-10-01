@@ -133,16 +133,13 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation, pv proto
 //
 // 1. Standard DID format: did:METHOD:<did-suffix>
 //
-// 2. Long Form DID format that can be in the following formats:
-// a) DID with initial-state parameter
-// did:METHOD:<did-suffix>?initial-state=<create-suffix-data-object>.<create-delta-object>
-// b) DID followed by initial state
-// did:METHOD:<did-suffix>:<create-suffix-data-object>.<create-delta-object>
+// 2. Long Form DID format:
+// did:METHOD:<did-suffix>:Base64url(JCS({suffix-data-object, delta-object}))
 //
 // Standard resolution is performed if the DID is found to be registered on the blockchain.
-// If the DID Document cannot be found, the <create-suffix-data-object> and <create-delta-object> given
-// in the initial-state DID parameter are used to generate and return resolved DID Document. In this case the supplied
-// encoded delta and suffix objects are subject to the same validation as during processing create operation.
+// If the DID Document cannot be found, the <suffix-data-object> and <delta-object> are used
+// to generate and return resolved DID Document. In this case the supplied delta and suffix objects
+// are subject to the same validation as during processing create operation.
 func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.ResolutionResult, error) {
 	if !strings.HasPrefix(shortOrLongFormDID, r.namespace+docutil.NamespaceDelimiter) {
 		return nil, errors.New("must start with configured namespace")

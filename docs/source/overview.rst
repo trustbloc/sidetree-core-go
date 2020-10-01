@@ -26,8 +26,5 @@ Document resolution is based on ID or initial state values.
 
 -- DID : The latest document will be returned if found.
 
--- Long Form DID can be requested in the following two formats:
-    a) DID with initial-state parameter
-    did:METHOD:<did-suffix>?initial-state=<create-suffix-data-object>.<create-delta-object>
-    b) DID followed by initial state
-    did:METHOD:<did-suffix>:<create-suffix-data-object>.<create-delta-object>
+-- Long Form DID can be requested in the following format:
+    did:METHOD:<unique-portion>:Base64url(JCS({suffix-data, delta}))

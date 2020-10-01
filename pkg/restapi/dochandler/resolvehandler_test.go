@@ -18,7 +18,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -79,24 +78,6 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusOK, rw.Code)
 		fmt.Printf("Response: %s\n", rw.Body.String())
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
-	})
-	t.Run("invalid initial state - bad request error", func(t *testing.T) {
-		docHandler := mocks.NewMockDocumentHandler().
-			WithNamespace(namespace)
-
-		id := namespace + docutil.NamespaceDelimiter + "abc"
-
-		initialParam := request.GetInitialStateParam(namespace)
-
-		// pass parameter without value
-		initialState := "?" + initialParam + "="
-
-		getID = func(namespace string, req *http.Request) string { return id + initialState }
-		handler := NewResolveHandler(docHandler)
-		rw := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/document", nil)
-		handler.Resolve(rw, req)
-		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
 
 	t.Run("Invalid ID", func(t *testing.T) {
@@ -169,16 +150,6 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		handler.Resolve(rw, req)
 		require.Equal(t, http.StatusGone, rw.Code)
 	})
-}
-
-func TestGetInitialState(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/document", nil)
-	initialState := getInitialState(namespace, req)
-	require.Empty(t, initialState)
-
-	req = httptest.NewRequest(http.MethodGet, "/document?-sidetree-initial-state=abc", nil)
-	initialState = getInitialState(namespace, req)
-	require.Equal(t, "?-sidetree-initial-state=abc", initialState)
 }
 
 func getCreateRequest() (*model.CreateRequest, error) {
