@@ -38,18 +38,21 @@ import (
 
 const (
 	namespace = "did:sidetree"
+	alias     = "did:domain.com"
 
 	sha2_256 = 18
 )
 
-func TestDocumentHandler_Namespace(t *testing.T) {
-	dh := New(namespace, nil, nil, nil, nil)
+func TestDocumentHandler_New(t *testing.T) {
+	aliases := []string{"alias1", "alias2"}
+	dh := New(namespace, aliases, nil, nil, nil, nil)
 	require.Equal(t, namespace, dh.Namespace())
+	require.Equal(t, aliases, dh.aliases)
 }
 
 func TestDocumentHandler_Protocol(t *testing.T) {
 	pc := newMockProtocolClient()
-	dh := New("", pc, nil, nil, nil)
+	dh := New("", nil, pc, nil, nil, nil)
 	require.NotNil(t, dh)
 }
 
@@ -126,6 +129,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	defer cleanup()
 
 	docID := getCreateOperation().ID
+	uniqueSuffix := getCreateOperation().UniqueSuffix
 
 	// scenario: not found in the store
 	result, err := dochandler.ResolveDocument(docID)
@@ -143,8 +147,17 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.NotNil(t, result)
 	require.Equal(t, true, result.MethodMetadata.Published)
 
+	// scenario: resolve document with alias namespace (success)
+	aliasID := alias + ":" + uniqueSuffix
+	result, err = dochandler.ResolveDocument(aliasID)
+	require.Nil(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, true, result.MethodMetadata.Published)
+	require.Equal(t, result.Document[canonicalID], docID)
+	require.Equal(t, result.Document[keyID], aliasID)
+
 	// scenario: invalid namespace
-	result, err = dochandler.ResolveDocument("doc:invalid:")
+	result, err = dochandler.ResolveDocument("doc:invalid")
 	require.NotNil(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "must start with configured namespace")
@@ -424,7 +437,7 @@ func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, 
 	// start go routine for cutting batches
 	writer.Start()
 
-	return New(namespace, protocol, transformer, writer, processor), func() { writer.Stop() }
+	return New(namespace, []string{alias}, protocol, transformer, writer, processor), func() { writer.Stop() }
 }
 
 func getCreateOperation() *batchapi.Operation {
