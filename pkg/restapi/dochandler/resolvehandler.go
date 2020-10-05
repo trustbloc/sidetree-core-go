@@ -22,7 +22,6 @@ var logger = log.New("sidetree-core-restapi-dochandler")
 
 // Resolver resolves documents
 type Resolver interface {
-	Namespace() string
 	ResolveDocument(idOrDocument string) (*document.ResolutionResult, error)
 }
 
@@ -40,7 +39,7 @@ func NewResolveHandler(resolver Resolver) *ResolveHandler {
 
 // Resolve resolves a document
 func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
-	id := getID(o.resolver.Namespace(), req)
+	id := getID(req)
 	logger.Debugf("Resolving DID document for ID [%s]", id)
 	response, err := o.doResolve(id)
 	if err != nil {
@@ -52,11 +51,6 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error) {
-	if !strings.HasPrefix(id, o.resolver.Namespace()) {
-		logger.Errorf("DID ID [%s] does not start with supported namespace [%s]", id, o.resolver.Namespace())
-		return nil, common.NewHTTPError(http.StatusBadRequest, errors.New("must start with supported namespace"))
-	}
-
 	doc, err := o.resolver.ResolveDocument(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "bad request") {
@@ -76,6 +70,6 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 	return doc, nil
 }
 
-var getID = func(namespace string, req *http.Request) string {
+var getID = func(req *http.Request) string {
 	return mux.Vars(req)["id"]
 }

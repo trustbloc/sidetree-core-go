@@ -46,7 +46,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		}, 0)
 		require.NoError(t, err)
 
-		getID = func(namespace string, req *http.Request) string { return result.Document.ID() }
+		getID = func(req *http.Request) string { return result.Document.ID() }
 		handler := NewResolveHandler(docHandler)
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -70,7 +70,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 
 		initialState := ":" + initialStateJCS
 
-		getID = func(namespace string, req *http.Request) string { return id + initialState }
+		getID = func(req *http.Request) string { return id + initialState }
 		handler := NewResolveHandler(docHandler)
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -81,7 +81,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 	})
 
 	t.Run("Invalid ID", func(t *testing.T) {
-		getID = func(namespace string, req *http.Request) string { return "someid" }
+		getID = func(req *http.Request) string { return "someid" }
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
 		handler := NewResolveHandler(docHandler)
 
@@ -91,7 +91,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 	})
 	t.Run("Not found", func(t *testing.T) {
-		getID = func(namespace string, req *http.Request) string {
+		getID = func(req *http.Request) string {
 			return namespace + docutil.NamespaceDelimiter + "someid"
 		}
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
@@ -103,7 +103,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, rw.Code)
 	})
 	t.Run("Error", func(t *testing.T) {
-		getID = func(namespace string, req *http.Request) string {
+		getID = func(req *http.Request) string {
 			return namespace + docutil.NamespaceDelimiter + "someid"
 		}
 		errExpected := errors.New("get doc error")
@@ -142,7 +142,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		}, 0)
 		require.NoError(t, err)
 
-		getID = func(namespace string, req *http.Request) string { return result.Document.ID() }
+		getID = func(req *http.Request) string { return result.Document.ID() }
 		handler := NewResolveHandler(docHandler)
 
 		rw := httptest.NewRecorder()

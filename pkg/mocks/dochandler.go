@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -98,7 +99,12 @@ func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.R
 	if m.err != nil {
 		return nil, m.err
 	}
+
 	const badRequest = "bad request"
+	if !strings.HasPrefix(didOrDocument, m.namespace) {
+		return nil, fmt.Errorf("%s: must start with supported namespace", badRequest)
+	}
+
 	did, initial, err := request.GetParts(m.namespace, didOrDocument)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())

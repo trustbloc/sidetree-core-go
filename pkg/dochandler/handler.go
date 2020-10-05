@@ -38,6 +38,8 @@ var logger = log.New("sidetree-core-dochandler")
 
 const (
 	keyID = "id"
+	// name may change based on https://github.com/w3c/did-core/issues/421
+	canonicalID = "canonicalId"
 
 	badRequest = "bad request"
 )
@@ -49,6 +51,7 @@ type DocumentHandler struct {
 	writer      BatchWriter
 	transformer DocumentTransformer
 	namespace   string
+	aliases     []string // namespace aliases
 }
 
 // OperationProcessor is an interface which resolves the document based on the ID
@@ -67,13 +70,14 @@ type DocumentTransformer interface {
 }
 
 // New creates a new requestHandler with the context
-func New(namespace string, pc protocol.Client, transformer DocumentTransformer, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
+func New(namespace string, aliases []string, pc protocol.Client, transformer DocumentTransformer, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
 	return &DocumentHandler{
 		protocol:    pc,
 		processor:   processor,
 		writer:      writer,
 		transformer: transformer,
 		namespace:   namespace,
+		aliases:     aliases,
 	}
 }
 
@@ -141,23 +145,24 @@ func (r *DocumentHandler) getCreateResponse(operation *batch.Operation, pv proto
 // to generate and return resolved DID Document. In this case the supplied delta and suffix objects
 // are subject to the same validation as during processing create operation.
 func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.ResolutionResult, error) {
-	if !strings.HasPrefix(shortOrLongFormDID, r.namespace+docutil.NamespaceDelimiter) {
-		return nil, errors.New("must start with configured namespace")
-	}
-
-	// extract did and optional initial document value
-	shortFormDID, createReq, err := request.GetParts(r.namespace, shortOrLongFormDID)
+	ns, err := r.getNamespace(shortOrLongFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	uniquePortion, err := getSuffix(r.namespace, shortFormDID)
+	// extract did and optional initial document value
+	shortFormDID, createReq, err := request.GetParts(ns, shortOrLongFormDID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
+	}
+
+	uniquePortion, err := getSuffix(ns, shortFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	// resolve document from the blockchain
-	doc, err := r.resolveRequestWithID(uniquePortion)
+	doc, err := r.resolveRequestWithID(ns, uniquePortion)
 	if err == nil {
 		return doc, nil
 	}
@@ -169,22 +174,43 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 			return nil, e
 		}
 
-		return r.resolveRequestWithInitialState(shortFormDID, shortOrLongFormDID, createReq, pv)
+		return r.resolveRequestWithInitialState(uniquePortion, shortOrLongFormDID, createReq, pv)
 	}
 
 	return nil, err
 }
 
-func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error) {
+	// check namespace
+	if strings.HasPrefix(shortOrLongFormDID, r.namespace+docutil.NamespaceDelimiter) {
+		return r.namespace, nil
+	}
+
+	// check aliases
+	for _, ns := range r.aliases {
+		if strings.HasPrefix(shortOrLongFormDID, ns+docutil.NamespaceDelimiter) {
+			return ns, nil
+		}
+	}
+
+	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
+}
+
+func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
 		logger.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 		return nil, err
 	}
 
-	externalResult, err := r.transformToExternalDoc(internalResult.Document, r.namespace+docutil.NamespaceDelimiter+uniquePortion)
+	externalResult, err := r.transformToExternalDoc(internalResult.Document, namespace+docutil.NamespaceDelimiter+uniquePortion)
 	if err != nil {
 		return nil, err
+	}
+
+	if r.namespace != namespace {
+		// we got here using alias; suggest using namespace
+		externalResult.Document[canonicalID] = r.namespace + docutil.NamespaceDelimiter + uniquePortion
 	}
 
 	externalResult.MethodMetadata.Published = true
@@ -194,7 +220,7 @@ func (r *DocumentHandler) resolveRequestWithID(uniquePortion string) (*document.
 	return externalResult, nil
 }
 
-func (r *DocumentHandler) resolveRequestWithInitialState(shortFormDID, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
 	// verify size of create request does not exceed the maximum allowed limit
 	if len(initialBytes) > int(pv.Protocol().MaxOperationSize) {
 		return nil, fmt.Errorf("%s: operation byte size exceeds protocol max operation byte size", badRequest)
@@ -205,8 +231,7 @@ func (r *DocumentHandler) resolveRequestWithInitialState(shortFormDID, longFormD
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	expectedShortFormDID := r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
-	if shortFormDID != expectedShortFormDID {
+	if uniqueSuffix != op.UniqueSuffix {
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
