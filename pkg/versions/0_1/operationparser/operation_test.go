@@ -22,6 +22,7 @@ func TestGetOperation(t *testing.T) {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
 		KeyAlgorithms:                []string{"crv"},
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -62,6 +63,7 @@ func TestGetOperation(t *testing.T) {
 		// set-up invalid hash algorithm in protocol configuration
 		invalid := protocol.Protocol{
 			HashAlgorithmInMultiHashCode: 55,
+			Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 		}
 
 		operation, err := getRecoverRequestBytes()

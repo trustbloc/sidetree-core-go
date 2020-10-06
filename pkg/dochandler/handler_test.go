@@ -253,7 +253,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	pc := newMockProtocolClient()
-	pc.Protocol.EnableReplacePatch = true
+	pc.Protocol.Patches = []string{"replace", "add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"}
 
 	parser := operationparser.New(pc.Protocol)
 	oa := operationapplier.New(pc.Protocol, parser, doccomposer.New())

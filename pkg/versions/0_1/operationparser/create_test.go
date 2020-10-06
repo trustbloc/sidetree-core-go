@@ -28,7 +28,7 @@ const invalid = "invalid"
 func TestParseCreateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
-		EnableReplacePatch:           true,
+		Patches:                      []string{"replace", "add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -163,7 +163,7 @@ func TestParseDelta(t *testing.T) {
 	t.Run("success - replace patch enabled", func(t *testing.T) {
 		p := protocol.Protocol{
 			HashAlgorithmInMultiHashCode: sha2_256,
-			EnableReplacePatch:           true,
+			Patches:                      []string{"replace", "add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 		}
 
 		parser := New(p)
@@ -189,6 +189,7 @@ func TestParseDelta(t *testing.T) {
 func TestValidateDelta(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 	}
 
 	parser := New(p)

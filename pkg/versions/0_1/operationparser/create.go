@@ -167,7 +167,7 @@ func (p *Parser) validateDelta(delta *model.DeltaModel) error {
 	}
 
 	for _, ptch := range delta.Patches {
-		if ptch.GetAction() == patch.Replace && !p.EnableReplacePatch {
+		if !p.isPatchEnabled(ptch.GetAction()) {
 			return fmt.Errorf("%s patch action is not enabled", ptch.GetAction())
 		}
 
@@ -181,6 +181,16 @@ func (p *Parser) validateDelta(delta *model.DeltaModel) error {
 	}
 
 	return nil
+}
+
+func (p *Parser) isPatchEnabled(action patch.Action) bool {
+	for _, allowed := range p.Patches {
+		if patch.Action(allowed) == action {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p *Parser) validateSuffixData(suffixData *model.SuffixDataModel) error {
