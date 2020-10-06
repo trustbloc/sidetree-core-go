@@ -1360,6 +1360,7 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 		MaxAnchorFileSize:            mocks.MaxBatchFileSize,
 		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
 		KeyAlgorithms:                []string{"Ed25519", "P-256"},
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 	}
 
 	latestVersion := mocks.GetProtocolVersion(latest)

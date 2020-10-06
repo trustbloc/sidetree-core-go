@@ -27,6 +27,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		HashAlgorithmInMultiHashCode: sha2_256,
 		SignatureAlgorithms:          []string{"alg"},
 		KeyAlgorithms:                []string{"crv"},
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -162,6 +163,7 @@ func TestValidateUpdateDelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		p := protocol.Protocol{
 			HashAlgorithmInMultiHashCode: sha2_256,
+			Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
 		}
 
 		parser := New(p)

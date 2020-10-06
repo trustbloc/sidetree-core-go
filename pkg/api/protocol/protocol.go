@@ -43,8 +43,8 @@ type Protocol struct {
 	MaxMapFileSize uint `json:"max_map_file_size"`
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS
 	MaxChunkFileSize uint `json:"max_chunk_file_size"`
-	// EnableReplacePatch is used to enable replace patch (action)
-	EnableReplacePatch bool `json:"enable_replace_patch"`
+	// Patches contains the list of allowed patches
+	Patches []string `json:"patches"`
 	//SignatureAlgorithms contain supported signature algorithms for signed operations (e.g. EdDSA, ES256, ES384, ES512, ES256K)
 	SignatureAlgorithms []string `json:"signature_algorithms"`
 	//KeyAlgorithms contain supported key algorithms for signed operations (e.g. secp256k1, P-256, P-384, P-512, Ed25519)
