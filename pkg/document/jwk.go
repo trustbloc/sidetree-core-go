@@ -8,35 +8,35 @@ package document
 
 import "errors"
 
-// JWK represents public key in JWK format
+// JWK represents public key in JWK format.
 type JWK map[string]interface{}
 
-// NewJWK creates new JWK
+// NewJWK creates new JWK.
 func NewJWK(jwk map[string]interface{}) JWK {
 	return jwk
 }
 
-// Kty is key type
+// Kty is key type.
 func (jwk JWK) Kty() string {
 	return stringEntry(jwk["kty"])
 }
 
-// Crv is curve
+// Crv is curve.
 func (jwk JWK) Crv() string {
 	return stringEntry(jwk["crv"])
 }
 
-// X is x
+// X is x.
 func (jwk JWK) X() string {
 	return stringEntry(jwk["x"])
 }
 
-// Y is y
+// Y is y.
 func (jwk JWK) Y() string {
 	return stringEntry(jwk["y"])
 }
 
-// Validate will validate JWK properties
+// Validate will validate JWK properties.
 func (jwk JWK) Validate() error {
 	// TODO: validation of the JWK fields depends on the algorithm (issue-409)
 	// For now check required fields for currently supported algorithms secp256k1, P-256, P-384, P-512 and Ed25519

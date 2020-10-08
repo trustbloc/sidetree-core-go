@@ -16,7 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// ParseUpdateOperation will parse update operation
+// ParseUpdateOperation will parse update operation.
 func (p *Parser) ParseUpdateOperation(request []byte) (*batch.Operation, error) {
 	schema, err := p.parseUpdateRequest(request)
 	if err != nil {
@@ -57,7 +57,7 @@ func (p *Parser) parseUpdateRequest(payload []byte) (*model.UpdateRequest, error
 	return schema, nil
 }
 
-// ParseSignedDataForUpdate will parse and validate signed data for update
+// ParseSignedDataForUpdate will parse and validate signed data for update.
 func (p *Parser) ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error) {
 	jws, err := p.parseSignedData(compactJWS)
 	if err != nil {

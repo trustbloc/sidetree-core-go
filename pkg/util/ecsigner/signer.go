@@ -18,14 +18,14 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
-// Signer implements signer interface
+// Signer implements signer interface.
 type Signer struct {
 	alg        string
 	kid        string
 	privateKey *ecdsa.PrivateKey
 }
 
-// New creates new ECDSA signer
+// New creates new ECDSA signer.
 func New(privKey *ecdsa.PrivateKey, alg, kid string) *Signer {
 	return &Signer{privateKey: privKey, kid: kid, alg: alg}
 }
@@ -39,7 +39,7 @@ func (signer *Signer) Headers() jws.Headers {
 	return headers
 }
 
-// Sign signs msg and returns signature value
+// Sign signs msg and returns signature value.
 func (signer *Signer) Sign(msg []byte) ([]byte, error) {
 	if signer.privateKey == nil {
 		return nil, errors.New("private key not provided")

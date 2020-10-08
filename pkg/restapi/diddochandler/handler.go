@@ -10,7 +10,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
-// handler resolves DID documents
+// handler resolves DID documents.
 type handler struct {
 	path       string
 	method     string
@@ -25,17 +25,17 @@ func newHandler(path, method string, reqHandler common.HTTPRequestHandler) *hand
 	}
 }
 
-// Path returns the context path
+// Path returns the context path.
 func (h *handler) Path() string {
 	return h.path
 }
 
-// Method returns the HTTP method
+// Method returns the HTTP method.
 func (h *handler) Method() string {
 	return h.method
 }
 
-// Handler returns the handler
+// Handler returns the handler.
 func (h *handler) Handler() common.HTTPRequestHandler {
 	return h.reqHandler
 }

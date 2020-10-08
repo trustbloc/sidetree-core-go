@@ -72,16 +72,21 @@ linters-settings:
     allow-multiline-assign: true
     allow-case-traling-whitespace: true
     allow-cuddle-declarations: false
+  godot:
+    check-all: false
 
 linters:
   enable-all: true
   disable:
+    - testpackage
     - maligned
     - prealloc
+    - goerr113 # TODO enable
     - gochecknoglobals # TODO enable
     - wsl # TODO enable
     - lll # TODO enable
     - gocritic # TODO enable
+    - noctx # TODO enable
 
 issues:
   exclude-use-default: false
@@ -106,6 +111,10 @@ issues:
         - gocyclo
         - gocognit
         - whitespace
+        - nlreturn
+        - godot
+        - nestif
+        - gofumpt
   exclude:
     # Allow package logger variables (for now)
     - \`logger\` is a global variable

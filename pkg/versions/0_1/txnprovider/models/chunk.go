@@ -12,14 +12,14 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
-// ChunkFile defines chunk file schema
+// ChunkFile defines chunk file schema.
 type ChunkFile struct {
 	// Deltas included in this chunk file, each delta is an encoded string
 	Deltas []string `json:"deltas"`
 }
 
-// CreateChunkFile will combine all operation deltas into chunk file
-// returns chunk file model
+// CreateChunkFile will combine all operation deltas into chunk file.
+// returns chunk file model.
 func CreateChunkFile(ops []*batch.Operation) *ChunkFile {
 	var deltas []string
 
@@ -30,7 +30,7 @@ func CreateChunkFile(ops []*batch.Operation) *ChunkFile {
 	return &ChunkFile{Deltas: deltas}
 }
 
-// ParseChunkFile will parse chunk file model from content
+// ParseChunkFile will parse chunk file model from content.
 func ParseChunkFile(content []byte) (*ChunkFile, error) {
 	cf, err := getChunkFile(content)
 	if err != nil {
@@ -51,12 +51,12 @@ func getDeltas(filter batch.OperationType, ops []*batch.Operation) []string {
 	return deltas
 }
 
-// get chunk file struct from bytes
+// get chunk file struct from bytes.
 var getChunkFile = func(bytes []byte) (*ChunkFile, error) {
 	return unmarshalChunkFile(bytes)
 }
 
-// unmarshal chunk file bytes into chunk file model
+// unmarshal chunk file bytes into chunk file model.
 func unmarshalChunkFile(bytes []byte) (*ChunkFile, error) {
 	file := &ChunkFile{}
 	err := json.Unmarshal(bytes, file)

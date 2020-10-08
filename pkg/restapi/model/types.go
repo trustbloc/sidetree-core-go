@@ -11,15 +11,15 @@ package model
 type OperationType string
 
 const (
-	// OperationTypeCreate captures enum value "create"
+	// OperationTypeCreate captures enum value "create".
 	OperationTypeCreate OperationType = "create"
 
-	// OperationTypeUpdate captures enum value "update"
+	// OperationTypeUpdate captures enum value "update".
 	OperationTypeUpdate OperationType = "update"
 
-	// OperationTypeDeactivate captures enum value "deactivate"
+	// OperationTypeDeactivate captures enum value "deactivate".
 	OperationTypeDeactivate OperationType = "deactivate"
 
-	// OperationTypeRecover captures enum value "recover"
+	// OperationTypeRecover captures enum value "recover".
 	OperationTypeRecover OperationType = "recover"
 )

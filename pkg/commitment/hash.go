@@ -19,7 +19,7 @@ import (
 
 var logger = log.New("sidetree-core-commitment")
 
-//Calculate will calculate commitment hash from JWK
+// Calculate will calculate commitment hash from JWK.
 func Calculate(jwk *jws.JWK, multihashCode uint, hash crypto.Hash) (string, error) {
 	data, err := canonicalizer.MarshalCanonical(jwk)
 	if err != nil {

@@ -20,22 +20,22 @@ const (
 	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
 )
 
-// Option is a registry instance option
+// Option is a registry instance option.
 type Option func(opts *Transformer)
 
-// WithMethodContext sets optional method context(s)
+// WithMethodContext sets optional method context(s).
 func WithMethodContext(ctx []string) Option {
 	return func(opts *Transformer) {
 		opts.methodCtx = ctx
 	}
 }
 
-// Transformer is responsible for transforming internal to external document
+// Transformer is responsible for transforming internal to external document.
 type Transformer struct {
 	methodCtx []string // used for setting additional contexts during resolution
 }
 
-// New creates a new DID Transformer
+// New creates a new DID Transformer.
 func New(opts ...Option) *Transformer {
 	transformer := &Transformer{}
 
@@ -47,7 +47,7 @@ func New(opts ...Option) *Transformer {
 	return transformer
 }
 
-// TransformDocument takes internal representation of document and transforms it to required representation
+// TransformDocument takes internal representation of document and transforms it to required representation.
 func (v *Transformer) TransformDocument(doc document.Document) (*document.ResolutionResult, error) {
 	internal := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
@@ -83,7 +83,7 @@ func (v *Transformer) TransformDocument(doc document.Document) (*document.Resolu
 	return result, nil
 }
 
-// processServices will process services and add them to external document
+// processServices will process services and add them to external document.
 func processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
 	var services []document.Service
 
@@ -125,8 +125,8 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // (same rules as for auth)
 // -- invocation: the key MUST be included in the capabilityInvocation section of the resolved DID Document
 // (same rules as for auth)
-// -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint: gocyclo,funlen, gocognit
+// -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata.
+func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint:gocyclo,funlen,gocognit
 	var authentication []interface{}
 	var assertionMethod []interface{}
 	var agreementKey []interface{}
@@ -156,7 +156,7 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		}
 
 		purposes := pk.Purpose()
-		if document.IsGeneralKey(purposes) {
+		if document.IsGeneralKey(purposes) { //nolint:nestif
 			publicKeys = append(publicKeys, externalPK)
 
 			// add into authentication by reference if the key has both auth and general purpose
@@ -224,7 +224,8 @@ func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
 		Crv: pkJWK.Crv(),
 		Kty: pkJWK.Kty(),
 		X:   pkJWK.X(),
-		Y:   pkJWK.Y()}
+		Y:   pkJWK.Y(),
+	}
 
 	return internaljws.GetED25519PublicKey(jwk)
 }

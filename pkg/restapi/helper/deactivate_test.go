@@ -122,13 +122,13 @@ func TestValidateSigner(t *testing.T) {
 	})
 }
 
-// MockSigner implements signer interface
+// MockSigner implements signer interface.
 type MockSigner struct {
 	MockHeaders jws.Headers
 	Err         error
 }
 
-// New creates new mock signer (default to recovery signer)
+// New creates new mock signer (default to recovery signer).
 func NewMockSigner(err error) *MockSigner {
 	return &MockSigner{Err: err}
 }
@@ -146,7 +146,7 @@ func (ms *MockSigner) Headers() jws.Headers {
 	return ms.MockHeaders
 }
 
-// Sign signs msg and returns mock signature value
+// Sign signs msg and returns mock signature value.
 func (ms *MockSigner) Sign(msg []byte) ([]byte, error) {
 	if ms.Err != nil {
 		return nil, ms.Err

@@ -89,5 +89,6 @@ func TestArrayStringEntry(t *testing.T) {
 func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.Nil(t, err)
+
 	return f
 }

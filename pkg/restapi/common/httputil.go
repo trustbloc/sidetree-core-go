@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-// WriteResponse writes a response to the response writer
+// WriteResponse writes a response to the response writer.
 func WriteResponse(rw http.ResponseWriter, status int, v interface{}) {
 	rw.Header().Set("Content-Type", "application/did+ld+json")
 	rw.WriteHeader(status)
@@ -21,7 +21,7 @@ func WriteResponse(rw http.ResponseWriter, status int, v interface{}) {
 	}
 }
 
-// WriteError writes an error to the response writer
+// WriteError writes an error to the response writer.
 func WriteError(rw http.ResponseWriter, status int, err error) {
 	logger.Warnf("returning error status: %d, message: %s", status, err.Error())
 

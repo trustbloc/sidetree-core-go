@@ -19,17 +19,17 @@ var (
 )
 
 const (
-	// auth defines key purpose as authentication key
+	// auth defines key purpose as authentication key.
 	auth = "auth"
-	// assertion defines key purpose as assertion key
+	// assertion defines key purpose as assertion key.
 	assertion = "assertion"
-	// agreement defines key purpose as agreement key
+	// agreement defines key purpose as agreement key.
 	agreement = "agreement"
-	// delegation defines key purpose as delegation key
+	// delegation defines key purpose as delegation key.
 	delegation = "delegation"
-	// invocation defines key purpose as invocation key
+	// invocation defines key purpose as invocation key.
 	invocation = "invocation"
-	// general defines key purpose as general key
+	// general defines key purpose as general key.
 	general = "general"
 
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
@@ -37,12 +37,12 @@ const (
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
 	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
 
-	// Ed25519VerificationKey2018 requires special handling (convert to base58)
+	// Ed25519VerificationKey2018 requires special handling (convert to base58).
 	Ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
 
 	maxPublicKeyProperties = 4
 
-	// public keys, services id length
+	// public keys, services id length.
 	maxIDLength = 50
 
 	maxServiceTypeLength     = 30
@@ -92,7 +92,7 @@ var allowedKeyTypes = map[string]existenceMap{
 	invocation: allowedKeyTypesVerification,
 }
 
-// ValidatePublicKeys validates public keys
+// ValidatePublicKeys validates public keys.
 func ValidatePublicKeys(pubKeys []PublicKey) error {
 	ids := make(map[string]string)
 
@@ -140,7 +140,7 @@ func validateKID(kid string) error {
 	return nil
 }
 
-// ValidateID validates id
+// ValidateID validates id.
 func ValidateID(id string) error {
 	if len(id) > maxIDLength {
 		return fmt.Errorf("id exceeds maximum length: %d", maxIDLength)
@@ -153,7 +153,7 @@ func ValidateID(id string) error {
 	return nil
 }
 
-// ValidateServices validates services
+// ValidateServices validates services.
 func ValidateServices(services []Service) error {
 	for _, service := range services {
 		if err := validateService(service); err != nil {
@@ -224,7 +224,7 @@ func validateServiceEndpoint(serviceEndpoint string) error {
 	return nil
 }
 
-// validateKeyTypePurpose validates if the public key type is valid for a certain purpose
+// validateKeyTypePurpose validates if the public key type is valid for a certain purpose.
 func validateKeyTypePurpose(pubKey PublicKey) bool {
 	for _, purpose := range pubKey.Purpose() {
 		allowed, ok := allowedKeyTypes[purpose]
@@ -241,7 +241,7 @@ func validateKeyTypePurpose(pubKey PublicKey) bool {
 	return true
 }
 
-// ValidateJWK validates JWK
+// ValidateJWK validates JWK.
 func ValidateJWK(jwk JWK) error {
 	if jwk == nil {
 		return errors.New("key has to be in JWK format")
@@ -250,32 +250,32 @@ func ValidateJWK(jwk JWK) error {
 	return jwk.Validate()
 }
 
-// IsGeneralKey returns true if key is a general key
+// IsGeneralKey returns true if key is a general key.
 func IsGeneralKey(purposes []string) bool {
 	return isPurposeKey(purposes, general)
 }
 
-// IsAuthenticationKey returns true if key is an authentication key
+// IsAuthenticationKey returns true if key is an authentication key.
 func IsAuthenticationKey(purposes []string) bool {
 	return isPurposeKey(purposes, auth)
 }
 
-// IsAssertionKey returns true if key is an assertion key
+// IsAssertionKey returns true if key is an assertion key.
 func IsAssertionKey(purposes []string) bool {
 	return isPurposeKey(purposes, assertion)
 }
 
-// IsAgreementKey returns true if key is an agreement key
+// IsAgreementKey returns true if key is an agreement key.
 func IsAgreementKey(purposes []string) bool {
 	return isPurposeKey(purposes, agreement)
 }
 
-// IsDelegationKey returns true if key is an delegation key
+// IsDelegationKey returns true if key is an delegation key.
 func IsDelegationKey(purposes []string) bool {
 	return isPurposeKey(purposes, delegation)
 }
 
-// IsInvocationKey returns true if key is an invocation key
+// IsInvocationKey returns true if key is an invocation key.
 func IsInvocationKey(purposes []string) bool {
 	return isPurposeKey(purposes, invocation)
 }
@@ -293,7 +293,7 @@ func isPurposeKey(purposes []string, mode string) bool {
 // The object MUST include a purpose property, and its value MUST be an array that includes one or more of the following:
 // - ops: the key is allowed to generate DID operations for the DID.
 // - general: the key is to be included in the publicKeys section of the resolved DID Document.
-// - auth: the key is to be included in the authentication section of the resolved DID Document
+// - auth: the key is to be included in the authentication section of the resolved DID Document.
 func validateKeyPurpose(pubKey PublicKey) error {
 	if len(pubKey.Purpose()) == 0 {
 		return fmt.Errorf("key '%s' is missing purpose", pubKey.ID())

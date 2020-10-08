@@ -15,7 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// ParseDeactivateOperation will parse deactivate operation
+// ParseDeactivateOperation will parse deactivate operation.
 func (p *Parser) ParseDeactivateOperation(request []byte) (*batch.Operation, error) {
 	schema, err := p.parseDeactivateRequest(request)
 	if err != nil {
@@ -65,7 +65,7 @@ func (p *Parser) validateDeactivateRequest(req *model.DeactivateRequest) error {
 	return nil
 }
 
-// ParseSignedDataForDeactivate will parse and validate signed data for deactivate
+// ParseSignedDataForDeactivate will parse and validate signed data for deactivate.
 func (p *Parser) ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error) {
 	jws, err := p.parseSignedData(compactJWS)
 	if err != nil {

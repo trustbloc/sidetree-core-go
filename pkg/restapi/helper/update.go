@@ -17,10 +17,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-//UpdateRequestInfo is the information required to create update request
+// UpdateRequestInfo is the information required to create update request.
 type UpdateRequestInfo struct {
 
-	// DID Suffix of the document to be updated
+	// DidSuffix is the suffix of the document to be updated
 	DidSuffix string
 
 	// Patches is an array of standard patch actions
@@ -39,7 +39,7 @@ type UpdateRequestInfo struct {
 	Signer Signer
 }
 
-// NewUpdateRequest is utility function to create payload for 'update' request
+// NewUpdateRequest is utility function to create payload for 'update' request.
 func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	if err := validateUpdateRequest(info); err != nil {
 		return nil, err

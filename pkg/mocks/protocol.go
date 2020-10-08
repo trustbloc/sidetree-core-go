@@ -14,17 +14,20 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
-// DefaultNS is default namespace used in mocks
-const DefaultNS = "did:sidetree"
+const (
 
-// MaxBatchFileSize is maximum batch files size in bytes
-const MaxBatchFileSize = 20000
+	// DefaultNS is default namespace used in mocks.
+	DefaultNS = "did:sidetree"
 
-// MaxOperationByteSize is maximum operation size in bytes
-const MaxOperationByteSize = 2000
+	// MaxBatchFileSize is maximum batch files size in bytes.
+	MaxBatchFileSize = 20000
 
-// CurrentVersion is the current protocol version
-const CurrentVersion = "0.1"
+	// MaxOperationByteSize is maximum operation size in bytes.
+	MaxOperationByteSize = 2000
+
+	// CurrentVersion is the current protocol version.
+	CurrentVersion = "0.1"
+)
 
 // MockProtocolClient mocks protocol for testing purposes.
 type MockProtocolClient struct {
@@ -35,7 +38,7 @@ type MockProtocolClient struct {
 	CasClient      *MockCasClient
 }
 
-// NewMockProtocolClient creates mock protocol client
+// NewMockProtocolClient creates mock protocol client.
 func NewMockProtocolClient() *MockProtocolClient {
 	//nolint:gomnd
 	latest := protocol.Protocol{
@@ -65,7 +68,7 @@ func NewMockProtocolClient() *MockProtocolClient {
 	}
 }
 
-// Current mocks getting last protocol version
+// Current mocks getting last protocol version.
 func (m *MockProtocolClient) Current() (protocol.Version, error) {
 	if m.Err != nil {
 		return nil, m.Err
@@ -74,7 +77,7 @@ func (m *MockProtocolClient) Current() (protocol.Version, error) {
 	return m.CurrentVersion, nil
 }
 
-// Get mocks getting protocol version based on blockchain(transaction) time
+// Get mocks getting protocol version based on blockchain(transaction) time.
 func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Version, error) {
 	if m.Err != nil {
 		return nil, m.Err
@@ -89,29 +92,30 @@ func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Version, erro
 	return nil, fmt.Errorf("protocol parameters are not defined for blockchain time: %d", transactionTime)
 }
 
-// NewMockProtocolClientProvider creates new mock protocol client provider
+// NewMockProtocolClientProvider creates new mock protocol client provider.
 func NewMockProtocolClientProvider() *MockProtocolClientProvider {
 	m := make(map[string]protocol.Client)
 
 	m[DefaultNS] = NewMockProtocolClient()
+
 	return &MockProtocolClientProvider{
 		ProtocolClients: m,
 	}
 }
 
-// MockProtocolClientProvider implements mock protocol client provider
+// MockProtocolClientProvider implements mock protocol client provider.
 type MockProtocolClientProvider struct {
 	ProtocolClients map[string]protocol.Client
 }
 
-// WithProtocolClient sets the protocol client
+// WithProtocolClient sets the protocol client.
 func (m *MockProtocolClientProvider) WithProtocolClient(ns string, pc protocol.Client) *MockProtocolClientProvider {
 	m.ProtocolClients[ns] = pc
 
 	return m
 }
 
-// ForNamespace will return protocol client for that namespace
+// ForNamespace will return protocol client for that namespace.
 func (m *MockProtocolClientProvider) ForNamespace(namespace string) (protocol.Client, error) {
 	pc, ok := m.ProtocolClients[namespace]
 	if !ok {
@@ -121,7 +125,7 @@ func (m *MockProtocolClientProvider) ForNamespace(namespace string) (protocol.Cl
 	return pc, nil
 }
 
-// GetProtocolVersion returns mock protocol version
+// GetProtocolVersion returns mock protocol version.
 func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 	v := &ProtocolVersion{}
 	v.VersionReturns(CurrentVersion)

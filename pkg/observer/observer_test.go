@@ -111,6 +111,7 @@ func (m *mockOperationStore) Put(ops []*batch.AnchoredOperation) error {
 	if m.putFunc != nil {
 		return m.putFunc(ops)
 	}
+
 	return nil
 }
 
@@ -118,6 +119,7 @@ func (m *mockOperationStore) Get(suffix string) ([]*batch.AnchoredOperation, err
 	if m.getFunc != nil {
 		return m.getFunc(suffix)
 	}
+
 	return nil, nil
 }
 

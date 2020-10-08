@@ -21,7 +21,7 @@ import (
 
 var logger = log.New("sidetree-core-txnhandler")
 
-// DCAS interface to access content addressable storage
+// DCAS interface to access content addressable storage.
 type DCAS interface {
 	Read(key string) ([]byte, error)
 }
@@ -30,7 +30,7 @@ type decompressionProvider interface {
 	Decompress(alg string, data []byte) ([]byte, error)
 }
 
-// OperationProvider is an operation provider
+// OperationProvider is an operation provider.
 type OperationProvider struct {
 	protocol.Protocol
 	parser protocol.OperationParser
@@ -38,7 +38,7 @@ type OperationProvider struct {
 	dp     decompressionProvider
 }
 
-// NewOperationProvider returns a new operation provider
+// NewOperationProvider returns a new operation provider.
 func NewOperationProvider(p protocol.Protocol, parser protocol.OperationParser, cas DCAS, dp decompressionProvider) *OperationProvider {
 	return &OperationProvider{
 		Protocol: p,
@@ -48,7 +48,7 @@ func NewOperationProvider(p protocol.Protocol, parser protocol.OperationParser, 
 	}
 }
 
-// GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files
+// GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files.
 func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
 	// ParseAnchorData anchor address and number of operations from anchor string
 	anchorData, err := ParseAnchorData(txn.AnchorString)
@@ -161,7 +161,7 @@ func checkForDuplicates(values []string) error {
 	return nil
 }
 
-// getAnchorFile will download anchor file from cas and parse it into anchor file model
+// getAnchorFile will download anchor file from cas and parse it into anchor file model.
 func (h *OperationProvider) getAnchorFile(address string) (*models.AnchorFile, error) {
 	content, err := h.readFromCAS(address, h.CompressionAlgorithm, h.MaxAnchorFileSize)
 	if err != nil {
@@ -176,7 +176,7 @@ func (h *OperationProvider) getAnchorFile(address string) (*models.AnchorFile, e
 	return af, nil
 }
 
-// getMapFile will download map file from cas and parse it into map file model
+// getMapFile will download map file from cas and parse it into map file model.
 func (h *OperationProvider) getMapFile(address string) (*models.MapFile, error) {
 	content, err := h.readFromCAS(address, h.CompressionAlgorithm, h.MaxMapFileSize)
 	if err != nil {
@@ -191,7 +191,7 @@ func (h *OperationProvider) getMapFile(address string) (*models.MapFile, error) 
 	return mf, nil
 }
 
-// getChunkFile will download chunk file from cas and parse it into chunk file model
+// getChunkFile will download chunk file from cas and parse it into chunk file model.
 func (h *OperationProvider) getChunkFile(address string) (*models.ChunkFile, error) {
 	content, err := h.readFromCAS(address, h.CompressionAlgorithm, h.MaxChunkFileSize)
 	if err != nil {
@@ -224,7 +224,7 @@ func (h *OperationProvider) readFromCAS(address, alg string, maxSize uint) ([]by
 	return content, nil
 }
 
-// anchorOperations contains parsed operations from anchor file
+// anchorOperations contains parsed operations from anchor file.
 type anchorOperations struct {
 	Create     []*batch.AnchoredOperation
 	Recover    []*batch.AnchoredOperation
@@ -232,7 +232,7 @@ type anchorOperations struct {
 	Suffixes   []string
 }
 
-func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) { //nolint: funlen
+func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) {
 	logger.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
 
 	var suffixes []string
@@ -293,7 +293,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	}, nil
 }
 
-// MapOperations contains parsed operations from map file
+// MapOperations contains parsed operations from map file.
 type MapOperations struct {
 	Update   []*batch.AnchoredOperation
 	Suffixes []string

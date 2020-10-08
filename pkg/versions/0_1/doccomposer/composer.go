@@ -19,16 +19,16 @@ import (
 
 var logger = log.New("sidetree-core-composer")
 
-// DocumentComposer applies patches to the document
+// DocumentComposer applies patches to the document.
 type DocumentComposer struct {
 }
 
-// New creates new document composer
+// New creates new document composer.
 func New() *DocumentComposer {
 	return &DocumentComposer{}
 }
 
-// ApplyPatches applies patches to the document
+// ApplyPatches applies patches to the document.
 func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
 	result, err := deepCopy(doc)
 	if err != nil {
@@ -45,7 +45,7 @@ func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.P
 	return result, nil
 }
 
-// applyPatch applies a patch to the document
+// applyPatch applies a patch to the document.
 func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func applyRecover(replaceDoc interface{}) (document.Document, error) {
 	return doc, nil
 }
 
-// adds public keys to document
+// adds public keys to document.
 func applyAddPublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying add public keys patch: %v", entry)
 
@@ -158,7 +158,7 @@ func convertPublicKeys(pubKeys []document.PublicKey) []interface{} {
 	return values
 }
 
-// remove public keys from the document
+// remove public keys from the document.
 func applyRemovePublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying remove public keys patch: %v", entry)
 
@@ -199,7 +199,7 @@ func sliceToMapPK(publicKeys []document.PublicKey) map[string]document.PublicKey
 	return values
 }
 
-// adds service endpoints to document
+// adds service endpoints to document.
 func applyAddServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
 	logger.Debugf("applying add service endpoints patch: %v", entry)
 
@@ -275,7 +275,7 @@ func sliceToMapServices(services []document.Service) map[string]document.Service
 	return values
 }
 
-// deepCopy returns deep copy of JSON object
+// deepCopy returns deep copy of JSON object.
 func deepCopy(doc document.Document) (document.Document, error) {
 	bytes, err := json.Marshal(doc)
 	if err != nil {

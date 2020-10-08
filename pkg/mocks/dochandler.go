@@ -20,7 +20,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 )
 
-// NewMockDocumentHandler returns a new mock document handler
+// NewMockDocumentHandler returns a new mock document handler.
 func NewMockDocumentHandler() *MockDocumentHandler {
 	return &MockDocumentHandler{
 		client: NewMockProtocolClient(),
@@ -28,7 +28,7 @@ func NewMockDocumentHandler() *MockDocumentHandler {
 	}
 }
 
-// MockDocumentHandler mocks the document handler
+// MockDocumentHandler mocks the document handler.
 type MockDocumentHandler struct {
 	err       error
 	namespace string
@@ -36,35 +36,38 @@ type MockDocumentHandler struct {
 	store     map[string]document.Document
 }
 
-// WithNamespace sets the namespace
+// WithNamespace sets the namespace.
 func (m *MockDocumentHandler) WithNamespace(ns string) *MockDocumentHandler {
 	m.namespace = ns
+
 	return m
 }
 
-// WithError injects an error into the mock handler
+// WithError injects an error into the mock handler.
 func (m *MockDocumentHandler) WithError(err error) *MockDocumentHandler {
 	m.err = err
+
 	return m
 }
 
-// WithProtocolClient sets the protocol client
+// WithProtocolClient sets the protocol client.
 func (m *MockDocumentHandler) WithProtocolClient(client protocol.Client) *MockDocumentHandler {
 	m.client = client
+
 	return m
 }
 
-// Namespace returns the namespace
+// Namespace returns the namespace.
 func (m *MockDocumentHandler) Namespace() string {
 	return m.namespace
 }
 
-// Protocol returns the Protocol
+// Protocol returns the Protocol.
 func (m *MockDocumentHandler) Protocol() protocol.Client {
 	return m.client
 }
 
-// ProcessOperation mocks process operation
+// ProcessOperation mocks process operation.
 func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation, _ uint64) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
@@ -72,6 +75,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation, _ uin
 
 	if operation.Type == batch.OperationTypeDeactivate {
 		m.store[operation.ID] = nil
+
 		return nil, nil
 	}
 
@@ -94,7 +98,7 @@ func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation, _ uin
 	}, nil
 }
 
-//ResolveDocument mocks resolve document
+// ResolveDocument mocks resolve document.
 func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
@@ -127,10 +131,11 @@ func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.R
 	}, nil
 }
 
-// helper function to insert ID into document
+// helper function to insert ID into document.
 func applyID(doc document.Document, id string) document.Document {
 	// apply id to document
 	doc["id"] = id
+
 	return doc
 }
 
@@ -147,6 +152,7 @@ func (m *MockDocumentHandler) resolveWithInitialState(did string, initial []byte
 	}
 
 	doc = applyID(doc, did)
+
 	return &document.ResolutionResult{
 		Document: doc,
 	}, nil

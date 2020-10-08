@@ -55,7 +55,8 @@ func TestNewUpdateRequest(t *testing.T) {
 			DidSuffix: didSuffix,
 			Patches:   patches,
 			UpdateKey: updateJWK,
-			Signer:    signer}
+			Signer:    signer,
+		}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -70,7 +71,8 @@ func TestNewUpdateRequest(t *testing.T) {
 			DidSuffix:     didSuffix,
 			Patches:       patches,
 			MultihashCode: sha2_256,
-			Signer:        signer}
+			Signer:        signer,
+		}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -86,7 +88,8 @@ func TestNewUpdateRequest(t *testing.T) {
 			Patches:       patches,
 			MultihashCode: sha2_256,
 			UpdateKey:     updateJWK,
-			Signer:        signer}
+			Signer:        signer,
+		}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -99,7 +102,8 @@ func TestNewUpdateRequest(t *testing.T) {
 			Patches:       patches,
 			MultihashCode: sha2_256,
 			UpdateKey:     updateJWK,
-			Signer:        NewMockSigner(errors.New(signerErr))}
+			Signer:        NewMockSigner(errors.New(signerErr)),
+		}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -131,5 +135,6 @@ func getTestPatches() ([]patch.Patch, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return []patch.Patch{p}, nil
 }

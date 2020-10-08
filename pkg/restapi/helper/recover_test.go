@@ -147,5 +147,6 @@ func getRecoverRequestInfo() *RecoverRequestInfo {
 		OpaqueDocument: opaqueDoc,
 		RecoveryKey:    jwk,
 		MultihashCode:  sha2_256,
-		Signer:         ecsigner.New(privKey, "ES256", "")}
+		Signer:         ecsigner.New(privKey, "ES256", ""),
+	}
 }

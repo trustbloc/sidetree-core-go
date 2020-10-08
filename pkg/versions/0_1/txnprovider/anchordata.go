@@ -13,21 +13,23 @@ import (
 	"strings"
 )
 
-const delimiter = "."
-const allowedParts = 2
+const (
+	delimiter    = "."
+	allowedParts = 2
+)
 
 // nolint:gochecknoglobals
 var (
 	integerRegex = regexp.MustCompile(`^[1-9]\d*$`)
 )
 
-// AnchorData holds anchored data
+// AnchorData holds anchored data.
 type AnchorData struct {
 	NumberOfOperations int
 	AnchorAddress      string
 }
 
-// ParseAnchorData will parse anchor string into anchor data model
+// ParseAnchorData will parse anchor string into anchor data model.
 func ParseAnchorData(data string) (*AnchorData, error) {
 	parts := strings.Split(data, delimiter)
 
@@ -47,10 +49,11 @@ func ParseAnchorData(data string) (*AnchorData, error) {
 
 	return &AnchorData{
 		NumberOfOperations: opsNum,
-		AnchorAddress:      parts[1]}, nil
+		AnchorAddress:      parts[1],
+	}, nil
 }
 
-// GetAnchorString will create anchor string from anchor data
+// GetAnchorString will create anchor string from anchor data.
 func (ad *AnchorData) GetAnchorString() string {
 	return fmt.Sprintf("%d", ad.NumberOfOperations) + delimiter + ad.AnchorAddress
 }

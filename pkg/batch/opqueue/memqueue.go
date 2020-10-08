@@ -12,13 +12,13 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
-// MemQueue implements an in-memory operation queue
+// MemQueue implements an in-memory operation queue.
 type MemQueue struct {
 	items []*batch.OperationInfoAtTime
 	mutex sync.RWMutex
 }
 
-// Add adds the given data to the tail of the queue and returns the new length of the queue
+// Add adds the given data to the tail of the queue and returns the new length of the queue.
 func (q *MemQueue) Add(data *batch.OperationInfo, protocolGenesisTime uint64) (uint, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()

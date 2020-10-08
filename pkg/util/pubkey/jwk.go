@@ -26,10 +26,11 @@ const (
 	secp256k1Kty = "EC"
 )
 
-// GetPublicKeyJWK returns public key in JWK format
+// GetPublicKeyJWK returns public key in JWK format.
 func GetPublicKeyJWK(pubKey interface{}) (*jws.JWK, error) {
 	internalJWK := internal.JWK{
-		JSONWebKey: gojose.JSONWebKey{Key: pubKey}}
+		JSONWebKey: gojose.JSONWebKey{Key: pubKey},
+	}
 
 	switch key := pubKey.(type) {
 	case ed25519.PublicKey:

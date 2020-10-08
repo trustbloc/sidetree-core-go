@@ -21,12 +21,12 @@ type MockOperationStore struct {
 	Validate   bool
 }
 
-// NewMockOperationStore creates mock operations store
+// NewMockOperationStore creates mock operations store.
 func NewMockOperationStore(err error) *MockOperationStore {
 	return &MockOperationStore{operations: make(map[string][]*batch.AnchoredOperation), Err: err, Validate: true}
 }
 
-//Put mocks storing operation
+// Put mocks storing operation.
 func (m *MockOperationStore) Put(op *batch.AnchoredOperation) error {
 	if m.Err != nil {
 		return m.Err
@@ -50,7 +50,7 @@ func (m *MockOperationStore) Put(op *batch.AnchoredOperation) error {
 	return nil
 }
 
-//Get mocks retrieving operations from the store
+// Get mocks retrieving operations from the store.
 func (m *MockOperationStore) Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error) {
 	if m.Err != nil {
 		return nil, m.Err

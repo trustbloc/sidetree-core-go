@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-
 	"sync"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -25,7 +24,7 @@ type MockCasClient struct {
 	err error
 }
 
-// NewMockCasClient creates mock client
+// NewMockCasClient creates mock client.
 func NewMockCasClient(err error) *MockCasClient {
 	return &MockCasClient{m: make(map[string][]byte), err: err}
 }
@@ -86,7 +85,7 @@ func (m *MockCasClient) Read(address string) ([]byte, error) {
 	return value, nil
 }
 
-// SetError injects an error into the mock client
+// SetError injects an error into the mock client.
 func (m *MockCasClient) SetError(err error) {
 	m.Lock()
 	defer m.Unlock()
@@ -94,7 +93,7 @@ func (m *MockCasClient) SetError(err error) {
 	m.err = err
 }
 
-// GetError returns the injected error
+// GetError returns the injected error.
 func (m *MockCasClient) GetError() error {
 	m.RLock()
 	defer m.RUnlock()

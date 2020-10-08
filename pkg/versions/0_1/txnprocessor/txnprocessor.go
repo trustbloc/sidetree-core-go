@@ -19,30 +19,30 @@ import (
 
 var logger = log.New("sidetree-core-observer")
 
-// OperationStore interface to access operation store
+// OperationStore interface to access operation store.
 type OperationStore interface {
 	Put(ops []*batch.AnchoredOperation) error
 }
 
-// Providers contains the providers required by the TxnProcessor
+// Providers contains the providers required by the TxnProcessor.
 type Providers struct {
 	OpStore                   OperationStore
 	OperationProtocolProvider protocol.OperationProvider
 }
 
-// TxnProcessor processes Sidetree transactions by persisting them to an operation store
+// TxnProcessor processes Sidetree transactions by persisting them to an operation store.
 type TxnProcessor struct {
 	*Providers
 }
 
-// New returns a new document operation processor
+// New returns a new document operation processor.
 func New(providers *Providers) *TxnProcessor {
 	return &TxnProcessor{
 		Providers: providers,
 	}
 }
 
-// Process persists all of the operations for the given anchor
+// Process persists all of the operations for the given anchor.
 func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
 	logger.Debugf("processing sidetree txn:%+v", sidetreeTxn)
 
@@ -64,6 +64,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, s
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
 			logger.Warnf("[%s] duplicate suffix[%s] found in transaction operations: discarding operation %v", sidetreeTxn.Namespace, op.UniqueSuffix, op)
+
 			continue
 		}
 

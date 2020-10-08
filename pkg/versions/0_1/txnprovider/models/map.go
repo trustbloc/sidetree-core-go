@@ -12,19 +12,19 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
-// MapFile defines the schema for map file and its related operations
+// MapFile defines the schema for map file and its related operations.
 type MapFile struct {
 	Chunks     []Chunk    `json:"chunks"`
 	Operations Operations `json:"operations,omitempty"`
 }
 
-// Chunk holds chunk file URI
+// Chunk holds chunk file URI.
 type Chunk struct {
 	ChunkFileURI string `json:"chunk_file_uri"`
 }
 
-// CreateMapFile will create map file model from operations and chunk file URI
-// returns chunk file model
+// CreateMapFile will create map file model from operations and chunk file URI.
+// returns chunk file model.
 func CreateMapFile(uri []string, ops []*batch.Operation) *MapFile {
 	return &MapFile{
 		Chunks: getChunks(uri),
@@ -34,7 +34,7 @@ func CreateMapFile(uri []string, ops []*batch.Operation) *MapFile {
 	}
 }
 
-// ParseMapFile will parse map file model from content
+// ParseMapFile will parse map file model from content.
 func ParseMapFile(content []byte) (*MapFile, error) {
 	mf, err := getMapFile(content)
 	if err != nil {
@@ -71,12 +71,12 @@ func getSignedOperations(filter batch.OperationType, ops []*batch.Operation) []S
 	return result
 }
 
-//  get map file struct from bytes
+//  get map file struct from bytes.
 var getMapFile = func(bytes []byte) (*MapFile, error) {
 	return unmarshalMapFile(bytes)
 }
 
-// unmarshal map file bytes into map file model
+// unmarshal map file bytes into map file model.
 func unmarshalMapFile(bytes []byte) (*MapFile, error) {
 	file := &MapFile{}
 	err := json.Unmarshal(bytes, file)

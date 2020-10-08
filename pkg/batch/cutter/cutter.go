@@ -15,16 +15,16 @@ import (
 
 var logger = log.New("sidetree-core-cutter")
 
-// OperationQueue defines the functions for adding and removing operations from a queue
+// OperationQueue defines the functions for adding and removing operations from a queue.
 type OperationQueue interface {
-	// Add adds the given operation to the tail of the queue and returns the new length of the queue
+	// Add adds the given operation to the tail of the queue and returns the new length of the queue.
 	Add(data *batch.OperationInfo, protocolGenesisTime uint64) (uint, error)
 	// Remove removes (up to) the given number of items from the head of the queue.
 	// Returns the actual number of items that were removed and the new length of the queue.
 	Remove(num uint) (uint, uint, error)
 	// Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
 	Peek(num uint) ([]*batch.OperationInfoAtTime, error)
-	// Len returns the number of operation in the queue
+	// Len returns the number of operation in the queue.
 	Len() uint
 }
 
@@ -32,7 +32,7 @@ type OperationQueue interface {
 // in the queue is returned.
 type Committer = func() (pending uint, err error)
 
-// Result is the result of a batch 'Cut'
+// Result is the result of a batch 'Cut'.
 type Result struct {
 	// Operations holds the operations that were cut from the queue
 	Operations []*batch.OperationInfo
@@ -45,13 +45,13 @@ type Result struct {
 	Commit Committer
 }
 
-// BatchCutter implements batch cutting
+// BatchCutter implements batch cutting.
 type BatchCutter struct {
 	pendingBatch OperationQueue
 	client       protocol.Client
 }
 
-// New creates a Cutter implementation
+// New creates a Cutter implementation.
 func New(client protocol.Client, queue OperationQueue) *BatchCutter {
 	return &BatchCutter{
 		client:       client,
@@ -105,6 +105,7 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 		logger.Infof("Removing %d operations from the queue", batchSize)
 
 		_, p, err := r.pendingBatch.Remove(batchSize)
+
 		return p, err
 	}
 
@@ -116,7 +117,7 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 	}, nil
 }
 
-// getOperationsAtProtocolVersion iterates through the operations and returns the operations which are at the same protocol genesis time
+// getOperationsAtProtocolVersion iterates through the operations and returns the operations which are at the same protocol genesis time.
 func getOperationsAtProtocolVersion(opsAtTime []*batch.OperationInfoAtTime) ([]*batch.OperationInfo, uint64) {
 	var ops []*batch.OperationInfo
 	var protocolGenesisTime uint64
@@ -149,5 +150,6 @@ func min(i, j uint) uint {
 	if i < j {
 		return i
 	}
+
 	return j
 }

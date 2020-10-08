@@ -44,7 +44,7 @@ const (
 	badRequest = "bad request"
 )
 
-// DocumentHandler implements document handler
+// DocumentHandler implements document handler.
 type DocumentHandler struct {
 	protocol    protocol.Client
 	processor   OperationProcessor
@@ -54,22 +54,22 @@ type DocumentHandler struct {
 	aliases     []string // namespace aliases
 }
 
-// OperationProcessor is an interface which resolves the document based on the ID
+// OperationProcessor is an interface which resolves the document based on the ID.
 type OperationProcessor interface {
 	Resolve(uniqueSuffix string) (*document.ResolutionResult, error)
 }
 
-// BatchWriter is an interface to add an operation to the batch
+// BatchWriter is an interface to add an operation to the batch.
 type BatchWriter interface {
 	Add(operation *batch.OperationInfo, protocolGenesisTime uint64) error
 }
 
-// DocumentTransformer transforms a document from internal to external form
+// DocumentTransformer transforms a document from internal to external form.
 type DocumentTransformer interface {
 	TransformDocument(doc document.Document) (*document.ResolutionResult, error)
 }
 
-// New creates a new requestHandler with the context
+// New creates a new requestHandler with the context.
 func New(namespace string, aliases []string, pc protocol.Client, transformer DocumentTransformer, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
 	return &DocumentHandler{
 		protocol:    pc,
@@ -81,12 +81,12 @@ func New(namespace string, aliases []string, pc protocol.Client, transformer Doc
 	}
 }
 
-// Namespace returns the namespace of the document handler
+// Namespace returns the namespace of the document handler.
 func (r *DocumentHandler) Namespace() string {
 	return r.namespace
 }
 
-//ProcessOperation validates operation and adds it to the batch
+// ProcessOperation validates operation and adds it to the batch.
 func (r *DocumentHandler) ProcessOperation(operation *batch.Operation, protocolGenesisTime uint64) (*document.ResolutionResult, error) {
 	pv, err := r.protocol.Get(protocolGenesisTime)
 	if err != nil {
@@ -96,12 +96,14 @@ func (r *DocumentHandler) ProcessOperation(operation *batch.Operation, protocolG
 	// perform validation for operation request
 	if err := r.validateOperation(operation, pv); err != nil {
 		logger.Warnf("Failed to validate operation: %s", err.Error())
+
 		return nil, err
 	}
 
 	// validated operation will be added to the batch
 	if err := r.addToBatch(operation, pv.Protocol().GenesisTime); err != nil {
 		logger.Errorf("Failed to add operation to batch: %s", err.Error())
+
 		return nil, err
 	}
 
@@ -200,6 +202,7 @@ func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string) 
 	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
 		logger.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
+
 		return nil, err
 	}
 
@@ -250,7 +253,7 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 	return result, nil
 }
 
-// helper function to transform internal into external document and return resolution result
+// helper function to transform internal into external document and return resolution result.
 func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id string) (*document.ResolutionResult, error) {
 	if internal == nil {
 		return nil, errors.New("internal document is nil")
@@ -262,7 +265,7 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 	return r.transformer.TransformDocument(internal)
 }
 
-// helper namespace for adding operations to the batch
+// helper for adding operations to the batch.
 func (r *DocumentHandler) addToBatch(operation *batch.Operation, genesisTime uint64) error {
 	return r.writer.Add(
 		&batch.OperationInfo{
@@ -272,7 +275,6 @@ func (r *DocumentHandler) addToBatch(operation *batch.Operation, genesisTime uin
 		}, genesisTime)
 }
 
-// validateOperation validates the operation
 func (r *DocumentHandler) validateOperation(operation *batch.Operation, pv protocol.Version) error {
 	// check maximum operation size against protocol
 	if len(operation.OperationBuffer) > int(pv.Protocol().MaxOperationSize) {
@@ -300,7 +302,7 @@ func (r *DocumentHandler) validateInitialDocument(patches []patch.Patch, pv prot
 	return pv.DocumentValidator().IsValidOriginalDocument(docBytes)
 }
 
-// getSuffix fetches unique portion of ID which is string after namespace
+// getSuffix fetches unique portion of ID which is string after namespace.
 func getSuffix(namespace, idOrDocument string) (string, error) {
 	ns := namespace + docutil.NamespaceDelimiter
 	pos := strings.Index(idOrDocument, ns)

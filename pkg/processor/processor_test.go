@@ -776,7 +776,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		value, err := p.getNextOperationCommitment(createOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "operation type not supported for getting next operation commitment")
+		require.Contains(t, err.Error(), "operation type create not supported for getting next operation commitment")
 	})
 
 	t.Run("error - missing signed data", func(t *testing.T) {
@@ -1210,6 +1210,7 @@ func getAnchoredOperationWithBlockNum(op *batch.Operation, blockNum uint64) *bat
 	anchored := getAnchoredOperation(op)
 	anchored.TransactionTime = blockNum
 	anchored.ProtocolGenesisTime = getProtocol(blockNum).GenesisTime
+
 	return anchored
 }
 
@@ -1299,6 +1300,7 @@ func getEncodedMultihash(data []byte, p protocol.Protocol) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return docutil.EncodeToString(mh)
 }
 
@@ -1334,7 +1336,7 @@ type mockDocComposer struct {
 	Err error
 }
 
-// ApplyPatches mocks applying patches to the document
+// ApplyPatches mocks applying patches to the document.
 func (m *mockDocComposer) ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
 	if m.Err != nil {
 		return nil, m.Err
@@ -1343,7 +1345,7 @@ func (m *mockDocComposer) ApplyPatches(doc document.Document, patches []patch.Pa
 	return make(document.Document), nil
 }
 
-// mock protocol client with two protocol versions, first one effective at block 0, second at block 100
+// mock protocol client with two protocol versions, first one effective at block 0, second at block 100.
 func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()
 

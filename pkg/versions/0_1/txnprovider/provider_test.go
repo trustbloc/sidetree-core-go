@@ -23,8 +23,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
 
-const compressionAlgorithm = "GZIP"
-const maxFileSize = 2000 // in bytes
+const (
+	compressionAlgorithm = "GZIP"
+	maxFileSize          = 2000 // in bytes
+)
 
 func TestNewOperationProvider(t *testing.T) {
 	pc := mocks.NewMockProtocolClient()
@@ -416,7 +418,8 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			Operations: models.Operations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
-					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
+					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData},
+				},
 			},
 		}
 
@@ -455,7 +458,8 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
 					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData},
-					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
+					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData},
+				},
 			},
 		}
 
@@ -464,7 +468,8 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			Operations: models.Operations{
 				Update: []models.SignedOperation{
 					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData},
-					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData}},
+					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData},
+				},
 			},
 		}
 

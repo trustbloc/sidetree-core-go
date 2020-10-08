@@ -21,14 +21,14 @@ import (
 
 var logger = log.New("sidetree-core-applier")
 
-// Applier is an operation applier
+// Applier is an operation applier.
 type Applier struct {
 	protocol.Protocol
 	protocol.OperationParser
 	protocol.DocumentComposer
 }
 
-// New returns a new operation applier for the given protocol
+// New returns a new operation applier for the given protocol.
 func New(p protocol.Protocol, parser protocol.OperationParser, dc protocol.DocumentComposer) *Applier {
 	return &Applier{
 		Protocol:         p,
@@ -37,7 +37,7 @@ func New(p protocol.Protocol, parser protocol.OperationParser, dc protocol.Docum
 	}
 }
 
-// Apply applies the given anchored operation
+// Apply applies the given anchored operation.
 func (s *Applier) Apply(operation *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	switch operation.Type {
 	case batch.OperationTypeCreate:
@@ -71,18 +71,21 @@ func (s *Applier) applyCreateOperation(op *batch.AnchoredOperation, rm *protocol
 		LastOperationTransactionTime:     op.TransactionTime,
 		LastOperationTransactionNumber:   op.TransactionNumber,
 		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
-		RecoveryCommitment:               suffixData.RecoveryCommitment}
+		RecoveryCommitment:               suffixData.RecoveryCommitment,
+	}
 
 	// verify actual delta hash matches expected delta hash
 	err = docutil.IsValidHash(op.Delta, suffixData.DeltaHash)
 	if err != nil {
 		logger.Infof("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 		return result, nil
 	}
 
 	delta, err := s.ParseDelta(op.Delta)
 	if err != nil {
 		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 		return result, nil
 	}
 
@@ -91,6 +94,7 @@ func (s *Applier) applyCreateOperation(op *batch.AnchoredOperation, rm *protocol
 	doc, err := s.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
 		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 		return result, nil
 	}
 
@@ -139,7 +143,8 @@ func (s *Applier) applyUpdateOperation(op *batch.AnchoredOperation, rm *protocol
 		LastOperationTransactionNumber:   op.TransactionNumber,
 		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
 		UpdateCommitment:                 delta.UpdateCommitment,
-		RecoveryCommitment:               rm.RecoveryCommitment}, nil
+		RecoveryCommitment:               rm.RecoveryCommitment,
+	}, nil
 }
 
 func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
@@ -171,7 +176,8 @@ func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *prot
 		LastOperationTransactionNumber:   op.TransactionNumber,
 		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
 		UpdateCommitment:                 "",
-		RecoveryCommitment:               ""}, nil
+		RecoveryCommitment:               "",
+	}, nil
 }
 
 func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
@@ -198,18 +204,21 @@ func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protoco
 		LastOperationTransactionTime:     op.TransactionTime,
 		LastOperationTransactionNumber:   op.TransactionNumber,
 		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
-		RecoveryCommitment:               signedDataModel.RecoveryCommitment}
+		RecoveryCommitment:               signedDataModel.RecoveryCommitment,
+	}
 
 	// verify the delta against the signed delta hash
 	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
 		logger.Infof("Recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 		return result, nil
 	}
 
 	delta, err := s.ParseDelta(op.Delta)
 	if err != nil {
 		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 		return result, nil
 	}
 
@@ -218,6 +227,7 @@ func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protoco
 	doc, err := s.ApplyPatches(make(document.Document), delta.Patches)
 	if err != nil {
 		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 		return result, nil
 	}
 

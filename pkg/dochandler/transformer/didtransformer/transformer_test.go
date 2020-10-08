@@ -80,8 +80,7 @@ func TestTransformDocument(t *testing.T) {
 	require.NotEmpty(t, pk.PublicKeyJwk())
 	require.Empty(t, pk.PublicKeyBase58())
 
-	expectedPublicKeys := []string{"master", "general-only", "dual-auth-gen", "dual-assertion-gen",
-		"dual-agreement-gen", "dual-delegation-gen", "dual-invocation-gen"}
+	expectedPublicKeys := []string{"master", "general-only", "dual-auth-gen", "dual-assertion-gen", "dual-agreement-gen", "dual-delegation-gen", "dual-invocation-gen"}
 	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
 
 	expectedAuthenticationKeys := []string{"master", "dual-auth-gen", "auth-only"}
@@ -204,6 +203,7 @@ func newDocWithID(id string) document.Document {
 func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.Nil(t, err)
+
 	return f
 }
 

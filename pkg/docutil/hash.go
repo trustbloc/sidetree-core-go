@@ -17,7 +17,7 @@ import (
 
 const sha2_256 = 18
 
-// ComputeMultihash will compute the hash for the supplied bytes using multihash code
+// ComputeMultihash will compute the hash for the supplied bytes using multihash code.
 func ComputeMultihash(multihashCode uint, bytes []byte) ([]byte, error) {
 	h, err := GetHash(multihashCode)
 	if err != nil {
@@ -32,7 +32,7 @@ func ComputeMultihash(multihashCode uint, bytes []byte) ([]byte, error) {
 	return multihash.Encode(hash, uint64(multihashCode))
 }
 
-// GetHash will return hash based on specified multihash code
+// GetHash will return hash based on specified multihash code.
 func GetHash(multihashCode uint) (h hash.Hash, err error) {
 	switch multihashCode {
 	case sha2_256:
@@ -44,7 +44,7 @@ func GetHash(multihashCode uint) (h hash.Hash, err error) {
 	return h, err
 }
 
-//IsSupportedMultihash checks to see if the given encoded hash has been hashed using valid multihash code
+// IsSupportedMultihash checks to see if the given encoded hash has been hashed using valid multihash code.
 func IsSupportedMultihash(encodedMultihash string) bool {
 	code, err := GetMultihashCode(encodedMultihash)
 	if err != nil {
@@ -54,7 +54,7 @@ func IsSupportedMultihash(encodedMultihash string) bool {
 	return multihash.ValidCode(code)
 }
 
-//IsComputedUsingHashAlgorithm checks to see if the given encoded hash has been hashed using multihash code
+// IsComputedUsingHashAlgorithm checks to see if the given encoded hash has been hashed using multihash code.
 func IsComputedUsingHashAlgorithm(encodedMultihash string, code uint64) bool {
 	mhCode, err := GetMultihashCode(encodedMultihash)
 	if err != nil {
@@ -64,7 +64,7 @@ func IsComputedUsingHashAlgorithm(encodedMultihash string, code uint64) bool {
 	return mhCode == code
 }
 
-//GetMultihashCode returns multihash code from encoded multihash
+// GetMultihashCode returns multihash code from encoded multihash.
 func GetMultihashCode(encodedMultihash string) (uint64, error) {
 	multihashBytes, err := DecodeString(encodedMultihash)
 	if err != nil {
@@ -79,7 +79,7 @@ func GetMultihashCode(encodedMultihash string) (uint64, error) {
 	return mh.Code, nil
 }
 
-// IsValidHash compares encoded content with encoded multihash
+// IsValidHash compares encoded content with encoded multihash.
 func IsValidHash(encodedContent, encodedMultihash string) error {
 	content, err := DecodeString(encodedContent)
 	if err != nil {

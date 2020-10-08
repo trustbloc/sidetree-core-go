@@ -35,9 +35,11 @@ import (
 
 //go:generate counterfeiter -o ../mocks/operationqueue.gen.go --fake-name OperationQueue ./cutter OperationQueue
 
-const sha2_256 = 18
-const namespace = "did:sidetree"
-const compressionAlgorithm = "GZIP"
+const (
+	sha2_256             = 18
+	namespace            = "did:sidetree"
+	compressionAlgorithm = "GZIP"
+)
 
 func TestNew(t *testing.T) {
 	ctx := newMockContext()
@@ -427,7 +429,7 @@ func TestProcessError(t *testing.T) {
 	})
 }
 
-//withError allows for testing an error in options
+// withError allows for testing an error in options.
 func withError() Option {
 	return func(o *Options) error {
 		return fmt.Errorf("test error")
@@ -443,6 +445,7 @@ func generateOperations(numOfOperations int) (ops []*batch.OperationInfo) {
 
 		ops = append(ops, op)
 	}
+
 	return
 }
 
@@ -458,6 +461,7 @@ func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (
 			ProtocolGenesisTime: protocolGenesisTime,
 		})
 	}
+
 	return
 }
 
@@ -474,10 +478,12 @@ func generateOperation(num int) (*batch.OperationInfo, error) {
 	}
 
 	doc := fmt.Sprintf(`{"test":%d}`, num)
-	info := &helper.CreateRequestInfo{OpaqueDocument: doc,
+	info := &helper.CreateRequestInfo{
+		OpaqueDocument:     doc,
 		RecoveryCommitment: c,
 		UpdateCommitment:   c,
-		MultihashCode:      sha2_256}
+		MultihashCode:      sha2_256,
+	}
 
 	request, err := helper.NewCreateRequest(info)
 	if err != nil {
@@ -493,14 +499,14 @@ func generateOperation(num int) (*batch.OperationInfo, error) {
 	return op, nil
 }
 
-// mockContext implements mock batch writer context
+// mockContext implements mock batch writer context.
 type mockContext struct {
 	ProtocolClient   *mocks.MockProtocolClient
 	BlockchainClient *mocks.MockBlockchainClient
 	OpQueue          cutter.OperationQueue
 }
 
-// newMockContext returns a new mockContext object
+// newMockContext returns a new mockContext object.
 func newMockContext() *mockContext {
 	return &mockContext{
 		ProtocolClient:   newMockProtocolClient(),
@@ -509,17 +515,17 @@ func newMockContext() *mockContext {
 	}
 }
 
-// Protocol returns the Client
+// Protocol returns the Client.
 func (m *mockContext) Protocol() protocol.Client {
 	return m.ProtocolClient
 }
 
-// Blockchain returns the block chain client
+// Blockchain returns the block chain client.
 func (m *mockContext) Blockchain() BlockchainClient {
 	return m.BlockchainClient
 }
 
-// OperationQueue returns the queue containing the pending operations
+// OperationQueue returns the queue containing the pending operations.
 func (m *mockContext) OperationQueue() cutter.OperationQueue {
 	return m.OpQueue
 }

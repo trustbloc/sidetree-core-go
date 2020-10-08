@@ -1044,6 +1044,7 @@ func getAnchoredOperation(op *batch.Operation) *batch.AnchoredOperation {
 func getAnchoredOperationWithBlockNum(op *batch.Operation, blockNum uint64) *batch.AnchoredOperation {
 	anchored := getAnchoredOperation(op)
 	anchored.TransactionTime = blockNum
+
 	return anchored
 }
 
@@ -1123,6 +1124,7 @@ func getEncodedMultihash(data []byte) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return docutil.EncodeToString(mh)
 }
 
@@ -1158,7 +1160,7 @@ type mockDocComposer struct {
 	Err error
 }
 
-// ApplyPatches mocks applying patches to the document
+// ApplyPatches mocks applying patches to the document.
 func (m *mockDocComposer) ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error) {
 	if m.Err != nil {
 		return nil, m.Err

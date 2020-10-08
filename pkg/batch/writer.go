@@ -39,7 +39,7 @@ const (
 	defaultSendChannelSize = 100
 )
 
-// Option defines Writer options such as batch timeout
+// Option defines Writer options such as batch timeout.
 type Option func(opts *Options) error
 
 type batchCutter interface {
@@ -53,7 +53,7 @@ type process struct {
 	force bool
 }
 
-// Writer implements batch writer
+// Writer implements batch writer.
 type Writer struct {
 	namespace    string
 	context      Context
@@ -65,17 +65,17 @@ type Writer struct {
 	protocol     protocol.Client
 }
 
-// Context contains batch writer context
+// Context contains batch writer context.
 // 1) protocol information client
 // 2) content addressable storage client
-// 3) blockchain client
+// 3) blockchain client.
 type Context interface {
 	Protocol() protocol.Client
 	Blockchain() BlockchainClient
 	OperationQueue() cutter.OperationQueue
 }
 
-// BlockchainClient defines an interface to access the underlying blockchain
+// BlockchainClient defines an interface to access the underlying blockchain.
 type BlockchainClient interface {
 	// WriteAnchor writes the anchor file hash as a transaction to blockchain
 	WriteAnchor(anchor string, protocolGenesisTime uint64) error
@@ -83,10 +83,10 @@ type BlockchainClient interface {
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
 }
 
-// CompressionProvider defines an interface for handling different types of compression
+// CompressionProvider defines an interface for handling different types of compression.
 type CompressionProvider interface {
 
-	// Compress will compress data using specified algorithm
+	// Compress will compress data using specified algorithm.
 	Compress(alg string, data []byte) ([]byte, error)
 }
 
@@ -136,7 +136,7 @@ func (r *Writer) Stop() {
 	}
 }
 
-// Stopped returns true if the writer has been stopped
+// Stopped returns true if the writer has been stopped.
 func (r *Writer) Stopped() bool {
 	return atomic.LoadUint32(&r.stopped) == 1
 }
@@ -156,6 +156,7 @@ func (r *Writer) Add(operation *batch.OperationInfo, protocolGenesisTime uint64)
 	case r.sendChan <- process{force: false}:
 		// Send a notification that an operation was added to the queue
 		logger.Infof("[%s] operation added to the queue", operation.UniqueSuffix)
+
 		return nil
 	case <-r.exitChan:
 		return fmt.Errorf("message from exit channel")
@@ -183,6 +184,7 @@ func (r *Writer) main() {
 
 		case <-r.exitChan:
 			logger.Infof("[%s] exiting batch writer", r.namespace)
+
 			return
 		}
 	}
@@ -193,11 +195,13 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 	pending, err := r.drain()
 	if err != nil {
 		logger.Warnf("[%s] Error draining operations queue: %s. Pending operations: %d.", r.namespace, err, pending)
+
 		return pending
 	}
 
 	if pending == 0 || !forceCut {
 		logger.Debugf("[%s] No further processing necessary. Pending operations: %d", r.namespace, pending)
+
 		return pending
 	}
 
@@ -221,10 +225,12 @@ func (r *Writer) drain() (pending uint, err error) {
 		n, pending, err := r.cutAndProcess(false)
 		if err != nil {
 			logger.Errorf("[%s] Error draining operations: cutting and processing returned an error: %s", r.namespace, err)
+
 			return pending, err
 		}
 		if n == 0 {
 			logger.Infof("[%s] ... drain - no outstanding batches to be processed. Pending operations: %d", r.namespace, pending)
+
 			return pending, nil
 		}
 		logger.Infof("[%s] ... drain processed %d operations into batch. Pending operations: %d", r.namespace, n, pending)
@@ -235,11 +241,13 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	result, err := r.batchCutter.Cut(forceCut)
 	if err != nil {
 		logger.Errorf("[%s] Error cutting batch: %s", r.namespace, err)
+
 		return 0, 0, err
 	}
 
 	if len(result.Operations) == 0 {
 		logger.Debugf("[%s] No operations to be processed", r.namespace)
+
 		return 0, result.Pending, nil
 	}
 
@@ -248,6 +256,7 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	err = r.process(result.Operations, result.ProtocolGenesisTime)
 	if err != nil {
 		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(result.Operations), err)
+
 		return 0, result.Pending + uint(len(result.Operations)), err
 	}
 
@@ -257,6 +266,7 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	if err != nil {
 		logger.Errorf("[%s] Batch operations were committed but could not be removed from the queue due to error [%s]. Stopping the batch writer so that no further ops are added.", r.namespace, err)
 		r.Stop()
+
 		return 0, pending, errors.WithMessagef(err, "operations were committed but could not be removed from the queue")
 	}
 
@@ -311,6 +321,7 @@ func (r *Writer) parseOperations(ops []*batch.OperationInfo, protocolGenesisTime
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
 			logger.Warnf("[%s] duplicate suffix[%s] found in batch operations: discarding operation %v", r.namespace, op.UniqueSuffix, op)
+
 			continue
 		}
 
@@ -337,20 +348,21 @@ func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.T
 	}
 }
 
-//WithBatchTimeout allows for specifying batch timeout
+// WithBatchTimeout allows for specifying batch timeout.
 func WithBatchTimeout(batchTimeout time.Duration) Option {
 	return func(o *Options) error {
 		o.BatchTimeout = batchTimeout
+
 		return nil
 	}
 }
 
-// Options allows the user to specify more advanced options
+// Options allows the user to specify more advanced options.
 type Options struct {
 	BatchTimeout time.Duration
 }
 
-//prepareOptsFromOptions reads options
+// prepareOptsFromOptions reads options.
 func prepareOptsFromOptions(options ...Option) (Options, error) {
 	rOpts := Options{}
 	for _, option := range options {
@@ -359,5 +371,6 @@ func prepareOptsFromOptions(options ...Option) (Options, error) {
 			return rOpts, err
 		}
 	}
+
 	return rOpts, nil
 }

@@ -28,7 +28,7 @@ const (
 	secp256k1KeySize = 32
 )
 
-//VerifySignature verifies signature against public key in JWK format
+// VerifySignature verifies signature against public key in JWK format.
 func VerifySignature(jwk *jws.JWK, signature, msg []byte) error {
 	switch jwk.Kty {
 	case "EC":
@@ -54,7 +54,7 @@ func verifyEd25519Signature(jwk *jws.JWK, signature, msg []byte) error {
 	return nil
 }
 
-// GetED25519PublicKey retunns ed25519 public key
+// GetED25519PublicKey retunns ed25519 public key.
 func GetED25519PublicKey(jwk *jws.JWK) (ed25519.PublicKey, error) {
 	jsonBytes, err := json.Marshal(jwk)
 	if err != nil {

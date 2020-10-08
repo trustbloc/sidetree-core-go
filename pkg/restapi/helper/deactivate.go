@@ -15,7 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// Signer defines JWS Signer interface that will be used to sign required data in Sidetree request
+// Signer defines JWS Signer interface that will be used to sign required data in Sidetree request.
 type Signer interface {
 	// Sign signs data and returns signature value
 	Sign(data []byte) ([]byte, error)
@@ -24,13 +24,13 @@ type Signer interface {
 	Headers() jws.Headers
 }
 
-//DeactivateRequestInfo is the information required to create deactivate request
+// DeactivateRequestInfo is the information required to create deactivate request.
 type DeactivateRequestInfo struct {
 
-	// DID Suffix of the document to be deactivated
+	// DidSuffix is the suffix of the document to be deactivated
 	DidSuffix string
 
-	// Recovery key for current deactivate request
+	// RecoveryKey is recovery key for current deactivate request
 	RecoveryKey *jws.JWK
 
 	// Signer that will be used for signing specific subset of request data
@@ -38,7 +38,7 @@ type DeactivateRequestInfo struct {
 	Signer Signer
 }
 
-// NewDeactivateRequest is utility function to create payload for 'deactivate' request
+// NewDeactivateRequest is utility function to create payload for 'deactivate' request.
 func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	if err := validateDeactivateRequest(info); err != nil {
 		return nil, err

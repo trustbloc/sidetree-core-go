@@ -17,29 +17,29 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-//RecoverRequestInfo is the information required to create recover request
+// RecoverRequestInfo is the information required to create recover request.
 type RecoverRequestInfo struct {
 
-	// DID Suffix of the document to be recovered
+	// DidSuffix is the suffix of the document to be recovered
 	DidSuffix string
 
-	// the current recovery public key
+	// RecoveryKey is the current recovery public key
 	RecoveryKey *jws.JWK
 
-	// opaque content
+	// OpaqueDocument is opaque content
 	OpaqueDocument string
 
-	// patches that will be used to create document
+	// Patches that will be used to create document
 	// required if opaque document is not specified
 	Patches []patch.Patch
 
-	// recovery commitment to be used for the next recovery
+	// RecoveryCommitment is recovery commitment to be used for the next recovery
 	RecoveryCommitment string
 
-	// update commitment to be used for the next update
+	// UpdateCommitment is update commitment to be used for the next update
 	UpdateCommitment string
 
-	// latest hashing algorithm supported by protocol
+	// MultihashCode is the latest hashing algorithm supported by protocol
 	MultihashCode uint
 
 	// Signer will be used for signing specific subset of request data
@@ -47,7 +47,7 @@ type RecoverRequestInfo struct {
 	Signer Signer
 }
 
-// NewRecoverRequest is utility function to create payload for 'recovery' request
+// NewRecoverRequest is utility function to create payload for 'recovery' request.
 func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	err := validateRecoverRequest(info)
 	if err != nil {

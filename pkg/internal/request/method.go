@@ -21,7 +21,7 @@ const (
 	didSeparator      = ":"
 )
 
-// GetParts inspects params string and returns did and optional initial state value
+// GetParts inspects params string and returns did and optional initial state value.
 func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
 	var err error
 
@@ -53,7 +53,7 @@ func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
 	return did, createRequestBytes, nil
 }
 
-// get create request from encoded initial value JCS
+// get create request from encoded initial value JCS.
 func getCreateRequest(initialStateJCS string) (*model.CreateRequestJCS, error) {
 	decodedJCS, err := docutil.DecodeString(initialStateJCS)
 	if err != nil {

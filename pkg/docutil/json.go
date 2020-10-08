@@ -11,12 +11,13 @@ import (
 	"encoding/json"
 )
 
-// MarshalCanonical marshals the object into a canonical JSON format
+// MarshalCanonical marshals the object into a canonical JSON format.
 func MarshalCanonical(v interface{}) ([]byte, error) {
 	bytes, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
+
 	return getCanonicalContent(bytes)
 }
 
@@ -33,6 +34,7 @@ func MarshalIndentCanonical(v interface{}, prefix, indent string) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
+
 	return buf.Bytes(), nil
 }
 
@@ -50,6 +52,7 @@ func getCanonicalContent(content []byte) ([]byte, error) {
 		if e != nil {
 			return nil, e
 		}
+
 		return bytes, nil
 	}
 
@@ -58,6 +61,7 @@ func getCanonicalContent(content []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return bytes, nil
 }
 
@@ -73,6 +77,7 @@ var unmarshalJSONMap = func(bytes []byte) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return m, nil
 }
 
@@ -83,6 +88,7 @@ var unmarshalJSONArray = func(bytes []byte) ([]map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return a, nil
 }
 

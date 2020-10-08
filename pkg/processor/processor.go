@@ -32,7 +32,7 @@ type OperationProcessor struct {
 	pc    protocol.Client
 }
 
-// OperationStoreClient defines interface for retrieving all operations related to document
+// OperationStoreClient defines interface for retrieving all operations related to document.
 type OperationStoreClient interface {
 	// Get retrieves all operations related to document
 	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
@@ -43,9 +43,9 @@ func New(name string, store OperationStoreClient, pc protocol.Client) *Operation
 	return &OperationProcessor{name: name, store: store, pc: pc}
 }
 
-// Resolve document based on the given unique suffix
+// Resolve document based on the given unique suffix.
 // Parameters:
-// uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123"
+// uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
 func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionResult, error) {
 	ops, err := s.store.Get(uniqueSuffix)
 	if err != nil {
@@ -110,6 +110,7 @@ func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperati
 		r, p, err := s.getOperationRevealValue(op)
 		if err != nil {
 			logger.Infof("[%s] Skipped bad operation while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 			continue
 		}
 
@@ -157,7 +158,7 @@ func splitOperations(ops []*batch.AnchoredOperation) (createOps, updateOps, full
 	return createOps, updateOps, fullOps
 }
 
-// pre-condition: operations have to be sorted
+// pre-condition: operations have to be sorted.
 func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber uint64) []*batch.AnchoredOperation {
 	for index, op := range ops {
 		if op.TransactionTime < txnTime {
@@ -175,16 +176,12 @@ func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber
 
 	return nil
 }
-func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel { //nolint: funclen
-	if len(ops) == 0 {
-		// nothing to do; shouldn't be called without operations
-		return rm
-	}
 
+func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel {
 	// suffix for logging
 	uniqueSuffix := ops[0].UniqueSuffix
 
-	var state = rm
+	state := rm
 
 	p, err := s.pc.Get(rm.LastOperationProtocolGenesisTime)
 	if err != nil {
@@ -213,6 +210,7 @@ func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm 
 		// can't find a valid operation to apply
 		if newState == nil {
 			logger.Infof("[%s] Unable to apply valid operation for commitment '%s' {UniqueSuffix: %s}", s.name, c, uniqueSuffix)
+
 			break
 		}
 
@@ -259,17 +257,19 @@ func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*batch.A
 
 		if state, err = s.applyOperation(op, rm); err != nil {
 			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 			continue
 		}
 
 		logger.Debugf("[%s] After applying create op %+v, recover commitment[%s], update commitment[%s], New doc: %s", s.name, op, state.RecoveryCommitment, state.UpdateCommitment, state.Doc)
+
 		return state
 	}
 
 	return nil
 }
 
-// this function should be used for update, recover and deactivate operations (create is handled differently)
+// this function should be used for update, recover and deactivate operations (create is handled differently).
 func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, currCommitment string, processedCommitments map[string]bool) *protocol.ResolutionModel {
 	for _, op := range ops {
 		var state *protocol.ResolutionModel
@@ -278,11 +278,13 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOpera
 		nextCommitment, err := s.getNextOperationCommitment(op)
 		if err != nil {
 			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 			continue
 		}
 
 		if currCommitment == nextCommitment {
 			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation commitment equals next operation commitment", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
+
 			continue
 		}
 
@@ -291,16 +293,19 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOpera
 			_, processed := processedCommitments[nextCommitment]
 			if processed {
 				logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: next operation commitment has already been used", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
+
 				continue
 			}
 		}
 
 		if state, err = s.applyOperation(op, rm); err != nil {
 			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
 			continue
 		}
 
 		logger.Debugf("[%s] After applying op %+v, recover commitment[%s], update commitment[%s], New doc: %s", s.name, op, state.RecoveryCommitment, state.UpdateCommitment, state.Doc)
+
 		return state
 	}
 
@@ -326,7 +331,7 @@ func sortOperations(ops []*batch.AnchoredOperation) {
 	})
 }
 
-func (s *OperationProcessor) getOperationRevealValue(op *batch.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) { // nolint: gocyclo
+func (s *OperationProcessor) getOperationRevealValue(op *batch.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) { // nolint:gocyclo
 	if op.Type == batch.OperationTypeCreate {
 		return nil, protocol.Protocol{}, errors.New("create operation doesn't have reveal value")
 	}
@@ -363,6 +368,9 @@ func (s *OperationProcessor) getOperationRevealValue(op *batch.AnchoredOperation
 
 		commitmentKey = signedDataModel.RecoveryKey
 
+	case batch.OperationTypeCreate:
+		return nil, protocol.Protocol{}, errors.New("operation type create not supported for getting operation commitment")
+
 	default:
 		return nil, protocol.Protocol{}, errors.New("operation type not supported for getting operation commitment")
 	}
@@ -370,7 +378,7 @@ func (s *OperationProcessor) getOperationRevealValue(op *batch.AnchoredOperation
 	return commitmentKey, p.Protocol(), nil
 }
 
-func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperation) (string, error) { // nolint: gocyclo
+func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperation) (string, error) {
 	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
 		return "", fmt.Errorf("get next operation commitment: %s", err.Error())
@@ -397,6 +405,8 @@ func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperat
 		}
 
 		nextCommitment = signedDataModel.RecoveryCommitment
+	case batch.OperationTypeCreate:
+		return "", errors.New("operation type create not supported for getting next operation commitment")
 
 	default:
 		return "", errors.New("operation type not supported for getting next operation commitment")

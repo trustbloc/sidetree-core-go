@@ -15,16 +15,16 @@ import (
 
 const algName = "GZIP"
 
-// Algorithm implements gzip compression/decompression
+// Algorithm implements gzip compression/decompression.
 type Algorithm struct {
 }
 
-// New creates new gzip algorithm instance
+// New creates new gzip algorithm instance.
 func New() *Algorithm {
 	return &Algorithm{}
 }
 
-// Compress will compress data using gzip
+// Compress will compress data using gzip.
 func (a *Algorithm) Compress(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
@@ -41,7 +41,7 @@ func (a *Algorithm) Compress(data []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Decompress will decompress compressed data
+// Decompress will decompress compressed data.
 func (a *Algorithm) Decompress(data []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(data)
 
@@ -62,12 +62,12 @@ func (a *Algorithm) Decompress(data []byte) ([]byte, error) {
 	return bytes, nil
 }
 
-// Accept algorithm
+// Accept algorithm.
 func (a *Algorithm) Accept(alg string) bool {
 	return alg == algName
 }
 
-// Close closes open resources
+// Close closes open resources.
 func (a *Algorithm) Close() error {
 	// nothing to do for gzip
 	return nil

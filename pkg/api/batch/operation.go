@@ -10,25 +10,25 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// Operation is used for parsing operation request
+// Operation is used for parsing operation request.
 type Operation struct {
 
-	//Type defines operation type
+	// Type defines operation type
 	Type OperationType
 
-	//Namespace defines document namespace
+	// Namespace defines document namespace
 	Namespace string
 
 	// ID is full ID for this document -  namespace + unique suffix
 	ID string
 
-	//UniqueSuffix is unique suffix
+	// UniqueSuffix is unique suffix
 	UniqueSuffix string
 
 	// OperationBuffer is the original operation request
 	OperationBuffer []byte
 
-	//SignedData is signed data for the operation (compact JWS)
+	// SignedData is signed data for the operation (compact JWS)
 	SignedData string
 
 	// DeltaModel is operation delta model
@@ -44,60 +44,60 @@ type Operation struct {
 	SuffixData string
 }
 
-// AnchoredOperation defines an anchored operation (stored in document operation store)
+// AnchoredOperation defines an anchored operation (stored in document operation store).
 type AnchoredOperation struct {
 
-	//Type defines operation type
+	// Type defines operation type.
 	Type OperationType `json:"type"`
 
-	//UniqueSuffix defines document unique suffix
+	// UniqueSuffix defines document unique suffix.
 	UniqueSuffix string `json:"unique_suffix"`
 
-	//SignedData is signed data for the operation (compact JWS)
+	// SignedData is signed data for the operation (compact JWS).
 	SignedData string `json:"signed_data,omitempty"`
 
-	//Delta is encoded delta
+	// Delta is encoded delta.
 	Delta string `json:"delta,omitempty"`
 
-	//SuffixData is encoded suffix data
+	// SuffixData is encoded suffix data.
 	SuffixData string `json:"suffix_data,omitempty"`
 
-	//The logical blockchain time (block number) that this operation was anchored on the blockchain
+	// TransactionTime is the logical blockchain time (block number) that this operation was anchored on the blockchain.
 	TransactionTime uint64 `json:"transaction_time"`
 
-	//The transaction number of the transaction this operation was batched within
+	// TransactionNumber is the transaction number of the transaction this operation was batched within.
 	TransactionNumber uint64 `json:"transaction_number"`
 
-	//The genesis time of the protocol that was used for this operation
+	// ProtocolGenesisTime is the genesis time of the protocol that was used for this operation.
 	ProtocolGenesisTime uint64 `json:"protocol_genesis_time"`
 }
 
-// OperationType defines valid values for operation type
+// OperationType defines valid values for operation type.
 type OperationType string
 
 const (
 
-	// OperationTypeCreate captures "create" operation type
+	// OperationTypeCreate captures "create" operation type.
 	OperationTypeCreate OperationType = "create"
 
-	// OperationTypeUpdate captures "update" operation type
+	// OperationTypeUpdate captures "update" operation type.
 	OperationTypeUpdate OperationType = "update"
 
-	// OperationTypeDeactivate captures "deactivate" operation type
+	// OperationTypeDeactivate captures "deactivate" operation type.
 	OperationTypeDeactivate OperationType = "deactivate"
 
-	// OperationTypeRecover captures "recover" operation type
+	// OperationTypeRecover captures "recover" operation type.
 	OperationTypeRecover OperationType = "recover"
 )
 
-// OperationInfo contains the unique suffix and namespace as well as the operation buffer
+// OperationInfo contains the unique suffix and namespace as well as the operation buffer.
 type OperationInfo struct {
 	Data         []byte
 	UniqueSuffix string
 	Namespace    string
 }
 
-// OperationInfoAtTime contains OperationInfo at a given protocol genesis time
+// OperationInfoAtTime contains OperationInfo at a given protocol genesis time.
 type OperationInfoAtTime struct {
 	OperationInfo
 	ProtocolGenesisTime uint64
