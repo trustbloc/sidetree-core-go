@@ -16,35 +16,35 @@ import (
 
 var logger = log.New("sidetree-core-observer")
 
-// Ledger interface to access ledger txn
+// Ledger interface to access ledger txn.
 type Ledger interface {
 	RegisterForSidetreeTxn() <-chan []txn.SidetreeTxn
 }
 
-// OperationStore interface to access operation store
+// OperationStore interface to access operation store.
 type OperationStore interface {
 	Put(ops []*batch.AnchoredOperation) error
 }
 
-// OperationFilter filters out operations before they are persisted
+// OperationFilter filters out operations before they are persisted.
 type OperationFilter interface {
 	Filter(uniqueSuffix string, ops []*batch.AnchoredOperation) ([]*batch.AnchoredOperation, error)
 }
 
-// Providers contains all of the providers required by the TxnProcessor
+// Providers contains all of the providers required by the TxnProcessor.
 type Providers struct {
 	Ledger                 Ledger
 	ProtocolClientProvider protocol.ClientProvider
 }
 
-// Observer receives transactions over a channel and processes them by storing them to an operation store
+// Observer receives transactions over a channel and processes them by storing them to an operation store.
 type Observer struct {
 	*Providers
 
 	stopCh chan struct{}
 }
 
-// New returns a new observer
+// New returns a new observer.
 func New(providers *Providers) *Observer {
 	return &Observer{
 		Providers: providers,
@@ -52,12 +52,12 @@ func New(providers *Providers) *Observer {
 	}
 }
 
-// Start starts observer routines
+// Start starts observer routines.
 func (o *Observer) Start() {
 	go o.listen(o.Ledger.RegisterForSidetreeTxn())
 }
 
-// Stop stops the observer
+// Stop stops the observer.
 func (o *Observer) Stop() {
 	o.stopCh <- struct{}{}
 }
@@ -67,11 +67,13 @@ func (o *Observer) listen(txnsCh <-chan []txn.SidetreeTxn) {
 		select {
 		case <-o.stopCh:
 			logger.Infof("The observer has been stopped. Exiting.")
+
 			return
 
 		case txns, ok := <-txnsCh:
 			if !ok {
 				logger.Warnf("Notification channel was closed. Exiting.")
+
 				return
 			}
 
@@ -85,18 +87,21 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 		pc, err := o.ProtocolClientProvider.ForNamespace(txn.Namespace)
 		if err != nil {
 			logger.Warnf("Failed to get protocol client for namespace [%s]: %s", txn.Namespace, err.Error())
+
 			continue
 		}
 
 		v, err := pc.Get(txn.ProtocolGenesisTime)
 		if err != nil {
 			logger.Warnf("Failed to get processor for transaction time [%d]: %s", txn.ProtocolGenesisTime, err.Error())
+
 			continue
 		}
 
 		err = v.TransactionProcessor().Process(txn)
 		if err != nil {
 			logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorString, err.Error())
+
 			continue
 		}
 

@@ -14,12 +14,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/dochandler"
 )
 
-// UpdateHandler handles the creation and update of DID documents
+// UpdateHandler handles the creation and update of DID documents.
 type UpdateHandler struct {
 	*handler
 }
 
-// NewUpdateHandler returns a new DID document update handler
+// NewUpdateHandler returns a new DID document update handler.
 func NewUpdateHandler(basePath string, processor dochandler.Processor, pc protocol.Client) *UpdateHandler {
 	return &UpdateHandler{
 		handler: newHandler(

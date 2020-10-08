@@ -16,19 +16,19 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// Parser is an operation parser
+// Parser is an operation parser.
 type Parser struct {
 	protocol.Protocol
 }
 
-// New returns a new operation parser
+// New returns a new operation parser.
 func New(p protocol.Protocol) *Parser {
 	return &Parser{
 		Protocol: p,
 	}
 }
 
-// Parse parses and validates operation
+// Parse parses and validates operation.
 func (p *Parser) Parse(namespace string, operationBuffer []byte) (*batch.Operation, error) {
 	schema := &operationSchema{}
 	err := json.Unmarshal(operationBuffer, schema)
@@ -61,7 +61,7 @@ func (p *Parser) Parse(namespace string, operationBuffer []byte) (*batch.Operati
 	return op, nil
 }
 
-// operationSchema is used to get operation type
+// operationSchema is used to get operation type.
 type operationSchema struct {
 
 	// operation

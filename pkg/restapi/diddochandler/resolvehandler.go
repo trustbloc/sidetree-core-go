@@ -13,12 +13,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/dochandler"
 )
 
-// ResolveHandler resolves DID documents
+// ResolveHandler resolves DID documents.
 type ResolveHandler struct {
 	*handler
 }
 
-// NewResolveHandler returns a new DID document resolve handler
+// NewResolveHandler returns a new DID document resolve handler.
 func NewResolveHandler(basePath string, resolver dochandler.Resolver) *ResolveHandler {
 	return &ResolveHandler{
 		handler: newHandler(

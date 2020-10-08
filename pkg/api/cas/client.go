@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package cas
 
-// Client defines interface for accessing the underlying content addressable storage
+// Client defines interface for accessing the underlying content addressable storage.
 type Client interface {
 	// Write writes the given content to CASClient.
 	// returns the SHA256 hash in base64url encoding which represents the address of the content.

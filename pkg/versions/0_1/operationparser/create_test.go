@@ -325,11 +325,13 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
+
 func computeMultihash(data []byte) string {
 	mh, err := docutil.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}
+
 	return docutil.EncodeToString(mh)
 }
 
@@ -349,9 +351,11 @@ const validDoc = `{
 	]
 }`
 
-// samples are taken from reference implementation tests
-const interopEncodedDelta = `eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpQ0lQY1hCempqUWFKVUljUjUyZXVJMHJJWHpoTlpfTWxqc0tLOXp4WFR5cVEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoic2lnbmluZ0tleSIsInR5cGUiOiJFY2RzYVNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoieTlrenJWQnFYeDI0c1ZNRVFRazRDZS0wYnFaMWk1VHd4bGxXQ2t6QTd3VSIsInkiOiJjMkpIeFFxVVV0eVdJTEFJaWNtcEJHQzQ3UGdtSlQ0NjV0UG9jRzJxMThrIn0sInB1cnBvc2UiOlsiYXV0aCIsImdlbmVyYWwiXX1dLCJzZXJ2aWNlX2VuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsImVuZHBvaW50IjoiaHR0cHM6Ly93d3cudXJsLmNvbSJ9XX19XX0`
-const interopEncodedSuffixData = `eyJkZWx0YV9oYXNoIjoiRWlCWE00b3RMdVAyZkc0WkE3NS1hbnJrV1ZYMDYzN3hadE1KU29Lb3AtdHJkdyIsInJlY292ZXJ5X2NvbW1pdG1lbnQiOiJFaUM4RzRJZGJEN0Q0Q281N0dqTE5LaG1ERWFicnprTzF3c0tFOU1RZVV2T2d3In0`
-const interopExpectedSuffix = "EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag"
+// samples bellow are taken from reference implementation tests.
+const (
+	interopEncodedDelta      = `eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpQ0lQY1hCempqUWFKVUljUjUyZXVJMHJJWHpoTlpfTWxqc0tLOXp4WFR5cVEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoic2lnbmluZ0tleSIsInR5cGUiOiJFY2RzYVNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoieTlrenJWQnFYeDI0c1ZNRVFRazRDZS0wYnFaMWk1VHd4bGxXQ2t6QTd3VSIsInkiOiJjMkpIeFFxVVV0eVdJTEFJaWNtcEJHQzQ3UGdtSlQ0NjV0UG9jRzJxMThrIn0sInB1cnBvc2UiOlsiYXV0aCIsImdlbmVyYWwiXX1dLCJzZXJ2aWNlX2VuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsImVuZHBvaW50IjoiaHR0cHM6Ly93d3cudXJsLmNvbSJ9XX19XX0` //nolint:gofumpt
+	interopEncodedSuffixData = `eyJkZWx0YV9oYXNoIjoiRWlCWE00b3RMdVAyZkc0WkE3NS1hbnJrV1ZYMDYzN3hadE1KU29Lb3AtdHJkdyIsInJlY292ZXJ5X2NvbW1pdG1lbnQiOiJFaUM4RzRJZGJEN0Q0Q281N0dqTE5LaG1ERWFicnprTzF3c0tFOU1RZVV2T2d3In0`
+	interopExpectedSuffix    = "EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag"
 
-const jcsRequest = `{"delta":{"patches":[{"action":"replace","document":{"public_keys":[{"id":"anySigningKeyId","jwk":{"crv":"secp256k1","kty":"EC","x":"H61vqAm_-TC3OrFSqPrEfSfg422NR8QHPqr0mLx64DM","y":"s0WnWY87JriBjbyoY3FdUmifK7JJRLR65GtPthXeyuc"},"purpose":["auth"],"type":"EcdsaSecp256k1VerificationKey2019"}],"service_endpoints":[{"endpoint":"http://any.endpoint","id":"anyServiceEndpointId","type":"anyType"}]}}],"update_commitment":"EiBMWE2JFaFipPdthcFiQek-SXTMi5IWIFXAN8hKFCyLJw"},"suffix_data":{"delta_hash":"EiBP6gAOxx3YOL8PZPZG3medFgdqWSDayVX3u1W2f-IPEQ","recovery_commitment":"EiBg8oqvU0Zq_H5BoqmWf0IrhetQ91wXc5fDPpIjB9wW5w"},"type":"create"}`
+	jcsRequest = `{"delta":{"patches":[{"action":"replace","document":{"public_keys":[{"id":"anySigningKeyId","jwk":{"crv":"secp256k1","kty":"EC","x":"H61vqAm_-TC3OrFSqPrEfSfg422NR8QHPqr0mLx64DM","y":"s0WnWY87JriBjbyoY3FdUmifK7JJRLR65GtPthXeyuc"},"purpose":["auth"],"type":"EcdsaSecp256k1VerificationKey2019"}],"service_endpoints":[{"endpoint":"http://any.endpoint","id":"anyServiceEndpointId","type":"anyType"}]}}],"update_commitment":"EiBMWE2JFaFipPdthcFiQek-SXTMi5IWIFXAN8hKFCyLJw"},"suffix_data":{"delta_hash":"EiBP6gAOxx3YOL8PZPZG3medFgdqWSDayVX3u1W2f-IPEQ","recovery_commitment":"EiBg8oqvU0Zq_H5BoqmWf0IrhetQ91wXc5fDPpIjB9wW5w"},"type":"create"}`
+)

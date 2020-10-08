@@ -19,7 +19,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// ParseCreateOperation will parse create operation
+// ParseCreateOperation will parse create operation.
 func (p *Parser) ParseCreateOperation(request []byte) (*batch.Operation, error) {
 	schema, err := p.parseCreateRequest(request)
 	if err != nil {
@@ -58,14 +58,14 @@ func (p *Parser) ParseCreateOperation(request []byte) (*batch.Operation, error) 
 	}, nil
 }
 
-// this type is required until SIP-1 file structure is implemented
+// this type is required until SIP-1 file structure is implemented.
 type internalCreateRequest struct {
 	model.CreateRequestJCS
 	EncodedDelta      string
 	EncodedSuffixData string
 }
 
-// parseCreateRequest parses a 'create' request
+// parseCreateRequest parses a 'create' request.
 func (p *Parser) parseCreateRequest(payload []byte) (*internalCreateRequest, error) {
 	schema := &model.CreateRequest{}
 	err := json.Unmarshal(payload, schema)
@@ -94,10 +94,11 @@ func (p *Parser) parseCreateRequest(payload []byte) (*internalCreateRequest, err
 			Delta:      delta,
 		},
 		EncodedDelta:      schema.Delta,
-		EncodedSuffixData: schema.SuffixData}, nil
+		EncodedSuffixData: schema.SuffixData,
+	}, nil
 }
 
-// parseCreateRequest parses a 'create' request
+// parseCreateRequest parses a 'create' request.
 func (p *Parser) parseCreateRequestJCS(payload []byte) (*internalCreateRequest, error) {
 	schema := model.CreateRequestJCS{}
 	err := json.Unmarshal(payload, &schema)
@@ -118,10 +119,11 @@ func (p *Parser) parseCreateRequestJCS(payload []byte) (*internalCreateRequest, 
 	return &internalCreateRequest{
 		CreateRequestJCS:  schema,
 		EncodedDelta:      docutil.EncodeToString(deltaBytes),
-		EncodedSuffixData: docutil.EncodeToString(suffixBytes)}, nil
+		EncodedSuffixData: docutil.EncodeToString(suffixBytes),
+	}, nil
 }
 
-// ParseDelta parses encoded delta string into delta model
+// ParseDelta parses encoded delta string into delta model.
 func (p *Parser) ParseDelta(encoded string) (*model.DeltaModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {
@@ -141,7 +143,7 @@ func (p *Parser) ParseDelta(encoded string) (*model.DeltaModel, error) {
 	return schema, nil
 }
 
-// ParseSuffixData parses encoded suffix data into suffix data model
+// ParseSuffixData parses encoded suffix data into suffix data model.
 func (p *Parser) ParseSuffixData(encoded string) (*model.SuffixDataModel, error) {
 	bytes, err := docutil.DecodeString(encoded)
 	if err != nil {

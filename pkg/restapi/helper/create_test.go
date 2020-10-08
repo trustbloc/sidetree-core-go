@@ -57,7 +57,8 @@ func TestNewCreateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "recovery commitment is not computed with the specified hash algorithm")
 	})
 	t.Run("update commitment error", func(t *testing.T) {
-		info := &CreateRequestInfo{OpaqueDocument: "{}",
+		info := &CreateRequestInfo{
+			OpaqueDocument:     "{}",
 			RecoveryCommitment: recoveryCommitment,
 			MultihashCode:      sha2_256,
 		}
@@ -68,8 +69,9 @@ func TestNewCreateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "update commitment is not computed with the specified hash algorithm")
 	})
 	t.Run("multihash not supported", func(t *testing.T) {
-		info := &CreateRequestInfo{OpaqueDocument: "{}",
-			MultihashCode: 55,
+		info := &CreateRequestInfo{
+			OpaqueDocument: "{}",
+			MultihashCode:  55,
 		}
 
 		request, err := NewCreateRequest(info)
@@ -78,10 +80,12 @@ func TestNewCreateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "multihash[55] not supported")
 	})
 	t.Run("error - malformed opaque doc", func(t *testing.T) {
-		info := &CreateRequestInfo{OpaqueDocument: `{,}`,
+		info := &CreateRequestInfo{
+			OpaqueDocument:     `{,}`,
 			RecoveryCommitment: recoveryCommitment,
 			UpdateCommitment:   recoveryCommitment,
-			MultihashCode:      sha2_256}
+			MultihashCode:      sha2_256,
+		}
 
 		request, err := NewCreateRequest(info)
 		require.Error(t, err)
@@ -89,10 +93,12 @@ func TestNewCreateRequest(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid character ','")
 	})
 	t.Run("success - opaque document", func(t *testing.T) {
-		info := &CreateRequestInfo{OpaqueDocument: "{}",
+		info := &CreateRequestInfo{
+			OpaqueDocument:     "{}",
 			RecoveryCommitment: recoveryCommitment,
 			UpdateCommitment:   recoveryCommitment,
-			MultihashCode:      sha2_256}
+			MultihashCode:      sha2_256,
+		}
 
 		request, err := NewCreateRequest(info)
 		require.NoError(t, err)
@@ -103,10 +109,12 @@ func TestNewCreateRequest(t *testing.T) {
 		p, err := patch.NewAddPublicKeysPatch(addKeys)
 		require.NoError(t, err)
 
-		info := &CreateRequestInfo{Patches: []patch.Patch{p},
+		info := &CreateRequestInfo{
+			Patches:            []patch.Patch{p},
 			RecoveryCommitment: recoveryCommitment,
 			UpdateCommitment:   recoveryCommitment,
-			MultihashCode:      sha2_256}
+			MultihashCode:      sha2_256,
+		}
 
 		request, err := NewCreateRequest(info)
 		require.NoError(t, err)

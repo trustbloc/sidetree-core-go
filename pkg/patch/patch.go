@@ -20,59 +20,59 @@ import (
 
 const jsonPatchAddTemplate = `{ "op": "add", "path": "/%s", "value": %s }`
 
-// Action defines action of document patch
+// Action defines action of document patch.
 type Action string
 
 const (
 
-	// Replace captures enum value "replace"
+	// Replace captures enum value "replace".
 	Replace Action = "replace"
 
-	// AddPublicKeys captures enum value "add-public-keys"
+	// AddPublicKeys captures enum value "add-public-keys".
 	AddPublicKeys Action = "add-public-keys"
 
-	// RemovePublicKeys captures enum value "remove-public-keys"
+	// RemovePublicKeys captures enum value "remove-public-keys".
 	RemovePublicKeys Action = "remove-public-keys"
 
-	//AddServiceEndpoints captures "add-service-endpoints"
+	// AddServiceEndpoints captures "add-service-endpoints".
 	AddServiceEndpoints Action = "add-service-endpoints"
 
-	//RemoveServiceEndpoints captures "remove-service-endpoints"
+	// RemoveServiceEndpoints captures "remove-service-endpoints".
 	RemoveServiceEndpoints Action = "remove-service-endpoints"
 
-	// JSONPatch captures enum value "json-patch"
+	// JSONPatch captures enum value "json-patch".
 	JSONPatch Action = "ietf-json-patch"
 )
 
-// Key defines key that will be used to get document patch information
+// Key defines key that will be used to get document patch information.
 type Key string
 
 const (
 
-	// DocumentKey captures  "document" key
+	// DocumentKey captures  "document" key.
 	DocumentKey Key = "document"
 
-	// PatchesKey captures "patches" key
+	// PatchesKey captures "patches" key.
 	PatchesKey Key = "patches"
 
-	// PublicKeys captures "public_keys" key
+	// PublicKeys captures "public_keys" key.
 	PublicKeys Key = "public_keys"
 
-	//ServiceEndpointsKey captures "service_endpoints" key
+	// ServiceEndpointsKey captures "service_endpoints" key.
 	ServiceEndpointsKey Key = "service_endpoints"
 
-	//ServiceEndpointIdsKey captures "ids" key
+	// ServiceEndpointIdsKey captures "ids" key.
 	ServiceEndpointIdsKey Key = "ids"
 
-	// ActionKey captures "action" key
+	// ActionKey captures "action" key.
 	ActionKey Key = "action"
 )
 
-// Patch defines generic patch structure
+// Patch defines generic patch structure.
 type Patch map[Key]interface{}
 
-// PatchesFromDocument creates patches from opaque document
-func PatchesFromDocument(doc string) ([]Patch, error) { //nolint : gocyclo
+// PatchesFromDocument creates patches from opaque document.
+func PatchesFromDocument(doc string) ([]Patch, error) { //nolint:gocyclo
 	parsed, err := document.FromBytes([]byte(doc))
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func PatchesFromDocument(doc string) ([]Patch, error) { //nolint : gocyclo
 	return docPatches, nil
 }
 
-// NewReplacePatch creates new replace patch
+// NewReplacePatch creates new replace patch.
 func NewReplacePatch(doc string) (Patch, error) {
 	parsed, err := document.ReplaceDocumentFromBytes([]byte(doc))
 	if err != nil {
@@ -139,7 +139,7 @@ func NewReplacePatch(doc string) (Patch, error) {
 	return patch, nil
 }
 
-// NewJSONPatch creates new generic update patch (will be used for generic updates)
+// NewJSONPatch creates new generic update patch (will be used for generic updates).
 func NewJSONPatch(patches string) (Patch, error) {
 	if err := validateJSONPatches([]byte(patches)); err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func NewJSONPatch(patches string) (Patch, error) {
 	return patch, nil
 }
 
-// NewAddPublicKeysPatch creates new patch for adding public keys
+// NewAddPublicKeysPatch creates new patch for adding public keys.
 func NewAddPublicKeysPatch(publicKeys string) (Patch, error) {
 	pubKeys, err := getPublicKeys(publicKeys)
 	if err != nil {
@@ -172,7 +172,7 @@ func NewAddPublicKeysPatch(publicKeys string) (Patch, error) {
 	return patch, nil
 }
 
-// NewRemovePublicKeysPatch creates new patch for removing public keys
+// NewRemovePublicKeysPatch creates new patch for removing public keys.
 func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
 	ids, err := getStringArray(publicKeyIds)
 	if err != nil {
@@ -194,7 +194,7 @@ func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
 	return patch, nil
 }
 
-// NewAddServiceEndpointsPatch creates new patch for adding service endpoints
+// NewAddServiceEndpointsPatch creates new patch for adding service endpoints.
 func NewAddServiceEndpointsPatch(serviceEndpoints string) (Patch, error) {
 	services, err := getServices(serviceEndpoints)
 	if err != nil {
@@ -208,7 +208,7 @@ func NewAddServiceEndpointsPatch(serviceEndpoints string) (Patch, error) {
 	return patch, nil
 }
 
-// NewRemoveServiceEndpointsPatch creates new patch for removing service endpoints
+// NewRemoveServiceEndpointsPatch creates new patch for removing service endpoints.
 func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
 	ids, err := getStringArray(serviceEndpointIds)
 	if err != nil {
@@ -230,12 +230,12 @@ func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
 	return patch, nil
 }
 
-// GetValue returns value for specified key or nil if not found
+// GetValue returns value for specified key or nil if not found.
 func (p Patch) GetValue(key Key) interface{} {
 	return p[key]
 }
 
-// GetAction returns string value for specified key or "" if not found or wrong type
+// GetAction returns string value for specified key or "" if not found or wrong type.
 func (p Patch) GetAction() Action {
 	entry := p[ActionKey]
 	actionStr, ok := entry.(string)
@@ -246,12 +246,12 @@ func (p Patch) GetAction() Action {
 	return p[ActionKey].(Action)
 }
 
-// Bytes returns byte representation of patch
+// Bytes returns byte representation of patch.
 func (p Patch) Bytes() ([]byte, error) {
 	return docutil.MarshalCanonical(p)
 }
 
-// Validate validates patch
+// Validate validates patch.
 func (p Patch) Validate() error {
 	action, err := p.parseAction()
 	if err != nil {
@@ -276,12 +276,12 @@ func (p Patch) Validate() error {
 	return fmt.Errorf("action '%s' is not supported", action)
 }
 
-// JSONLdObject returns map that represents JSON LD Object
+// JSONLdObject returns map that represents JSON LD Object.
 func (p Patch) JSONLdObject() map[Key]interface{} {
 	return p
 }
 
-// FromBytes parses provided data into document patch
+// FromBytes parses provided data into document patch.
 func FromBytes(data []byte) (Patch, error) {
 	patch := make(Patch)
 	err := json.Unmarshal(data, &patch)
@@ -304,6 +304,7 @@ func stringEntry(entry interface{}) string {
 	if !ok {
 		return ""
 	}
+
 	return id
 }
 
@@ -471,6 +472,7 @@ func (p Patch) validateAddPublicKeys() error {
 	}
 
 	publicKeys := document.ParsePublicKeys(p.GetValue(PublicKeys))
+
 	return document.ValidatePublicKeys(publicKeys)
 }
 
@@ -490,6 +492,7 @@ func (p Patch) validateAddServiceEndpoints() error {
 	}
 
 	services := document.ParseServices(p.GetValue(ServiceEndpointsKey))
+
 	return document.ValidateServices(services)
 }
 
@@ -527,6 +530,7 @@ func getGenericArray(arr []string) []interface{} {
 	for _, v := range arr {
 		values = append(values, v)
 	}
+
 	return values
 }
 

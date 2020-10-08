@@ -11,7 +11,7 @@ import (
 	"fmt"
 )
 
-// GetHash calculates hash of data using hash function identified by hash
+// GetHash calculates hash of data using hash function identified by hash.
 func GetHash(hash crypto.Hash, data []byte) ([]byte, error) {
 	if !hash.Available() {
 		return nil, fmt.Errorf("hash function not available for: %d", hash)

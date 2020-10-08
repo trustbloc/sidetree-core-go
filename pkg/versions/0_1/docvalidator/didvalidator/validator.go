@@ -17,18 +17,18 @@ const (
 	didSuffix = "did_suffix"
 )
 
-// Validator is responsible for validating did operations and sidetree rules
+// Validator is responsible for validating did operations and sidetree rules.
 type Validator struct {
 	store OperationStoreClient
 }
 
-// OperationStoreClient defines interface for retrieving all operations related to document
+// OperationStoreClient defines interface for retrieving all operations related to document.
 type OperationStoreClient interface {
 	// Get retrieves all operations related to document
 	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
 }
 
-// New creates a new did validator
+// New creates a new did validator.
 func New(store OperationStoreClient) *Validator {
 	return &Validator{
 		store: store,
@@ -36,7 +36,7 @@ func New(store OperationStoreClient) *Validator {
 }
 
 // IsValidPayload verifies that the given payload is a valid Sidetree specific payload
-// that can be accepted by the Sidetree update operations
+// that can be accepted by the Sidetree update operations.
 func (v *Validator) IsValidPayload(payload []byte) error {
 	doc, err := document.FromBytes(payload)
 	if err != nil {

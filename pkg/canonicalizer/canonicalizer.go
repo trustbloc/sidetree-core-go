@@ -12,7 +12,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/jsoncanonicalizer"
 )
 
-// MarshalCanonical is using JCS RFC canonicalization
+// MarshalCanonical is using JCS RFC canonicalization.
 func MarshalCanonical(value interface{}) ([]byte, error) {
 	jsonLiteralValByte, err := json.Marshal(value)
 	if err != nil {

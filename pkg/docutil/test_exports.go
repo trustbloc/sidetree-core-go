@@ -13,6 +13,7 @@ package docutil
 func SetJSONMarshaler(marshaler func(m map[string]interface{}) ([]byte, error)) func() {
 	prevMarshaler := marshalJSONMap
 	marshalJSONMap = marshaler
+
 	return func() {
 		marshalJSONMap = prevMarshaler
 	}
@@ -23,6 +24,7 @@ func SetJSONMarshaler(marshaler func(m map[string]interface{}) ([]byte, error)) 
 func SetJSONUnmarshaler(unmarshaler func(bytes []byte) (map[string]interface{}, error)) func() {
 	prevUnmarshaler := unmarshalJSONMap
 	unmarshalJSONMap = unmarshaler
+
 	return func() {
 		unmarshalJSONMap = prevUnmarshaler
 	}
@@ -33,6 +35,7 @@ func SetJSONUnmarshaler(unmarshaler func(bytes []byte) (map[string]interface{}, 
 func SetJSONArrayMarshaler(marshaler func(m []map[string]interface{}) ([]byte, error)) func() {
 	prevMarshaler := marshalJSONArray
 	marshalJSONArray = marshaler
+
 	return func() {
 		marshalJSONArray = prevMarshaler
 	}
@@ -43,6 +46,7 @@ func SetJSONArrayMarshaler(marshaler func(m []map[string]interface{}) ([]byte, e
 func SetJSONArrayUnmarshaler(unmarshaler func(bytes []byte) ([]map[string]interface{}, error)) func() {
 	prevUnmarshaler := unmarshalJSONArray
 	unmarshalJSONArray = unmarshaler
+
 	return func() {
 		unmarshalJSONArray = prevUnmarshaler
 	}

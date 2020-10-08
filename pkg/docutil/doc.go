@@ -14,10 +14,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 )
 
-// NamespaceDelimiter is the delimiter that separates the namespace from the unique suffix
+// NamespaceDelimiter is the delimiter that separates the namespace from the unique suffix.
 const NamespaceDelimiter = ":"
 
-//CalculateID calculates the ID from an encoded value
+// CalculateID calculates the ID from an encoded value.
 func CalculateID(namespace, encoded string, hashAlgorithmAsMultihashCode uint) (string, error) {
 	uniqueSuffix, err := CalculateUniqueSuffix(encoded, hashAlgorithmAsMultihashCode)
 	if err != nil {
@@ -25,10 +25,11 @@ func CalculateID(namespace, encoded string, hashAlgorithmAsMultihashCode uint) (
 	}
 
 	didID := namespace + NamespaceDelimiter + uniqueSuffix
+
 	return didID, nil
 }
 
-//CalculateUniqueSuffix calculates the unique suffix from an encoded value
+// CalculateUniqueSuffix calculates the unique suffix from an encoded value.
 func CalculateUniqueSuffix(encoded string, hashAlgorithmAsMultihashCode uint) (string, error) {
 	decoded, err := DecodeString(encoded)
 	if err != nil {
@@ -43,7 +44,7 @@ func CalculateUniqueSuffix(encoded string, hashAlgorithmAsMultihashCode uint) (s
 	return EncodeToString(multiHashBytes), nil
 }
 
-//CalculateJCSID calculates the ID from an encoded value
+// CalculateJCSID calculates the ID from an encoded value.
 func CalculateJCSID(namespace string, value interface{}, hashAlgorithmAsMultihashCode uint) (string, error) {
 	uniqueSuffix, err := CalculateJCSUniqueSuffix(value, hashAlgorithmAsMultihashCode)
 	if err != nil {
@@ -51,10 +52,11 @@ func CalculateJCSID(namespace string, value interface{}, hashAlgorithmAsMultihas
 	}
 
 	didID := namespace + NamespaceDelimiter + uniqueSuffix
+
 	return didID, nil
 }
 
-//CalculateJCSUniqueSuffix calculates the unique suffix from an JCS object
+// CalculateJCSUniqueSuffix calculates the unique suffix from an JCS object.
 func CalculateJCSUniqueSuffix(value interface{}, multihashAlg uint) (string, error) {
 	bytes, err := canonicalizer.MarshalCanonical(value)
 	if err != nil {
@@ -69,7 +71,7 @@ func CalculateJCSUniqueSuffix(value interface{}, multihashAlg uint) (string, err
 	return EncodeToString(multiHashBytes), nil
 }
 
-// GetNamespaceFromID returns namespace from ID
+// GetNamespaceFromID returns namespace from ID.
 func GetNamespaceFromID(id string) (string, error) {
 	pos := strings.LastIndex(id, ":")
 	if pos == -1 {

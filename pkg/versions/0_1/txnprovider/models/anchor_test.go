@@ -68,6 +68,7 @@ func generateOperations(numOfOperations int, opType batch.OperationType) (ops []
 	for j := 1; j <= numOfOperations; j++ {
 		ops = append(ops, generateOperation(j, opType))
 	}
+
 	return
 }
 

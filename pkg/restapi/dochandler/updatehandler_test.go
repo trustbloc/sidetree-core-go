@@ -238,6 +238,7 @@ func computeMultihash(data string) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return docutil.EncodeToString(mh)
 }
 
@@ -254,7 +255,7 @@ func getUnsupportedRequest() []byte {
 	return payload
 }
 
-// operationSchema is used to get operation type
+// operationSchema is used to get operation type.
 type operationSchema struct {
 
 	// operation

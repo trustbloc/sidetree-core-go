@@ -414,6 +414,7 @@ func getDefaultRecoverRequest() (*model.RecoverRequest, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return getRecoverRequest(delta, getSignedDataForRecovery())
 }
 
@@ -438,14 +439,14 @@ func getRecoverRequestBytes() ([]byte, error) {
 	return json.Marshal(req)
 }
 
-// MockSigner implements signer interface
+// MockSigner implements signer interface.
 type MockSigner struct {
 	MockSignature []byte
 	MockHeaders   jws.Headers
 	Err           error
 }
 
-// New creates new mock signer (default to recovery signer)
+// New creates new mock signer (default to recovery signer).
 func NewMockSigner() *MockSigner {
 	headers := make(jws.Headers)
 	headers[jws.HeaderAlgorithm] = "alg"
@@ -459,7 +460,7 @@ func (ms *MockSigner) Headers() jws.Headers {
 	return ms.MockHeaders
 }
 
-// Sign signs msg and returns mock signature value
+// Sign signs msg and returns mock signature value.
 func (ms *MockSigner) Sign(msg []byte) ([]byte, error) {
 	if ms.Err != nil {
 		return nil, ms.Err

@@ -376,16 +376,12 @@ func TestProcessOperation_Update(t *testing.T) {
 	err := store.Put(getAnchoredCreateOperation())
 	require.Nil(t, err)
 
-	// modify default validator to did validator since update payload is did document update
-	//validator := didvalidator.New(store)
-	//dochandler.validator = validator
-
 	doc, err := dochandler.ProcessOperation(getUpdateOperation(), 0)
 	require.Nil(t, err)
 	require.Nil(t, doc)
 }
 
-// BatchContext implements batch writer context
+// BatchContext implements batch writer context.
 type BatchContext struct {
 	ProtocolClient   *mocks.MockProtocolClient
 	CasClient        *mocks.MockCasClient
@@ -393,22 +389,22 @@ type BatchContext struct {
 	OpQueue          cutter.OperationQueue
 }
 
-// Protocol returns the ProtocolClient
+// Protocol returns the ProtocolClient.
 func (m *BatchContext) Protocol() protocol.Client {
 	return m.ProtocolClient
 }
 
-// Blockchain returns the block chain client
+// Blockchain returns the block chain client.
 func (m *BatchContext) Blockchain() batch.BlockchainClient {
 	return m.BlockchainClient
 }
 
-// CAS returns the CAS client
+// CAS returns the CAS client.
 func (m *BatchContext) CAS() cas.Client {
 	return m.CasClient
 }
 
-// OperationQueue returns the queue of operations pending to be cut
+// OperationQueue returns the queue of operations pending to be cut.
 func (m *BatchContext) OperationQueue() cutter.OperationQueue {
 	return m.OpQueue
 }
@@ -590,7 +586,7 @@ func getDeltaWithDoc(doc string) (*model.DeltaModel, error) {
 	}, nil
 }
 
-// newAddPublicKeysPatch creates new add public keys patch without validation
+// newAddPublicKeysPatch creates new add public keys patch without validation.
 func newAddPublicKeysPatch(doc string) (patch.Patch, error) {
 	parsed, err := document.FromBytes([]byte(doc))
 	if err != nil {
@@ -627,6 +623,7 @@ func encodedMultihash(data []byte) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return docutil.EncodeToString(mh)
 }
 
@@ -668,7 +665,7 @@ func getUpdateOperation() *batchapi.Operation {
 	}
 }
 
-// test value taken from reference implementation
+// test value taken from reference implementation.
 const interopResolveDidWithInitialState = `did:sidetree:EiDahaOGH-liLLdDtTxEAdc8i-cfCz-WUcQdRJheMVNn3A:eyJkZWx0YSI6eyJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoiYW55U2lnbmluZ0tleUlkIiwiandrIjp7ImNydiI6InNlY3AyNTZrMSIsImt0eSI6IkVDIiwieCI6Ikg2MXZxQW1fLVRDM09yRlNxUHJFZlNmZzQyMk5SOFFIUHFyMG1MeDY0RE0iLCJ5IjoiczBXbldZODdKcmlCamJ5b1kzRmRVbWlmSzdKSlJMUjY1R3RQdGhYZXl1YyJ9LCJwdXJwb3NlIjpbImF1dGgiXSwidHlwZSI6IkVjZHNhU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOSJ9XSwic2VydmljZV9lbmRwb2ludHMiOlt7ImVuZHBvaW50IjoiaHR0cDovL2FueS5lbmRwb2ludCIsImlkIjoiYW55U2VydmljZUVuZHBvaW50SWQiLCJ0eXBlIjoiYW55VHlwZSJ9XX19XSwidXBkYXRlX2NvbW1pdG1lbnQiOiJFaUJNV0UySkZhRmlwUGR0aGNGaVFlay1TWFRNaTVJV0lGWEFOOGhLRkN5TEp3In0sInN1ZmZpeF9kYXRhIjp7ImRlbHRhX2hhc2giOiJFaUJQNmdBT3h4M1lPTDhQWlBaRzNtZWRGZ2RxV1NEYXlWWDN1MVcyZi1JUEVRIiwicmVjb3ZlcnlfY29tbWl0bWVudCI6IkVpQmc4b3F2VTBacV9INUJvcW1XZjBJcmhldFE5MXdYYzVmRFBwSWpCOXdXNXcifX0`
 
 func newMockProtocolClient() *mocks.MockProtocolClient {

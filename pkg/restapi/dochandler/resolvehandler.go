@@ -20,30 +20,31 @@ import (
 
 var logger = log.New("sidetree-core-restapi-dochandler")
 
-// Resolver resolves documents
+// Resolver resolves documents.
 type Resolver interface {
 	ResolveDocument(idOrDocument string) (*document.ResolutionResult, error)
 }
 
-// ResolveHandler resolves generic documents
+// ResolveHandler resolves generic documents.
 type ResolveHandler struct {
 	resolver Resolver
 }
 
-// NewResolveHandler returns a new document resolve handler
+// NewResolveHandler returns a new document resolve handler.
 func NewResolveHandler(resolver Resolver) *ResolveHandler {
 	return &ResolveHandler{
 		resolver: resolver,
 	}
 }
 
-// Resolve resolves a document
+// Resolve resolves a document.
 func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 	id := getID(req)
 	logger.Debugf("Resolving DID document for ID [%s]", id)
 	response, err := o.doResolve(id)
 	if err != nil {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)
+
 		return
 	}
 	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Document)
@@ -64,6 +65,7 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 		}
 
 		logger.Errorf("internal server error:  %s", err.Error())
+
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 

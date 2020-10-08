@@ -8,7 +8,7 @@ package jws
 
 import "errors"
 
-// JWK contains public key in JWK format
+// JWK contains public key in JWK format.
 type JWK struct {
 	Kty string `json:"kty"`
 	Crv string `json:"crv"`
@@ -16,7 +16,7 @@ type JWK struct {
 	Y   string `json:"y"`
 }
 
-// Validate validates JWK
+// Validate validates JWK.
 func (jwk *JWK) Validate() error {
 	if jwk.Crv == "" {
 		return errors.New("JWK crv is missing")

@@ -75,13 +75,13 @@ func TestSignPayload(t *testing.T) {
 	})
 }
 
-// MockSigner implements signer interface
+// MockSigner implements signer interface.
 type MockSigner struct {
 	Recovery bool
 	Err      error
 }
 
-// NewMockSigner creates new mock signer (default to recovery signer)
+// NewMockSigner creates new mock signer (default to recovery signer).
 func NewMockSigner(err error, recovery bool) *MockSigner {
 	return &MockSigner{Err: err, Recovery: recovery}
 }
@@ -97,7 +97,7 @@ func (ms *MockSigner) Headers() jws.Headers {
 	return headers
 }
 
-// Sign signs msg and returns mock signature value
+// Sign signs msg and returns mock signature value.
 func (ms *MockSigner) Sign(msg []byte) ([]byte, error) {
 	if ms.Err != nil {
 		return nil, ms.Err

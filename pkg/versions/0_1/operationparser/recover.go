@@ -19,7 +19,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// ParseRecoverOperation will parse recover operation
+// ParseRecoverOperation will parse recover operation.
 func (p *Parser) ParseRecoverOperation(request []byte) (*batch.Operation, error) {
 	schema, err := p.parseRecoverRequest(request)
 	if err != nil {
@@ -60,7 +60,7 @@ func (p *Parser) parseRecoverRequest(payload []byte) (*model.RecoverRequest, err
 	return schema, nil
 }
 
-// ParseSignedDataForRecover will parse and validate signed data for recover
+// ParseSignedDataForRecover will parse and validate signed data for recover.
 func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error) {
 	jws, err := p.parseSignedData(compactJWS)
 	if err != nil {
@@ -141,7 +141,7 @@ func (p *Parser) validateProtectedHeaders(headers jws.Headers, allowedAlgorithms
 		return errors.New("algorithm cannot be empty in the protected header")
 	}
 
-	var allowedHeaders = map[string]bool{
+	allowedHeaders := map[string]bool{
 		jws.HeaderAlgorithm: true,
 		jws.HeaderKeyID:     true,
 	}

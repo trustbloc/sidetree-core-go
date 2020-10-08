@@ -20,7 +20,7 @@ type MockBlockchainClient struct {
 	err       error
 }
 
-// NewMockBlockchainClient creates mock client
+// NewMockBlockchainClient creates mock client.
 func NewMockBlockchainClient(err error) *MockBlockchainClient {
 	return &MockBlockchainClient{err: err, namespace: DefaultNS}
 }
@@ -39,6 +39,7 @@ func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string, _ uint64) erro
 	return nil
 }
 
+// Read reads transactions since transaction number.
 func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn) {
 	m.RLock()
 	defer m.RUnlock()
@@ -63,7 +64,7 @@ func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.Side
 	return moreTransactions, nil
 }
 
-// GetAnchors returns anchors
+// GetAnchors returns anchors.
 func (m *MockBlockchainClient) GetAnchors() []string {
 	m.RLock()
 	defer m.RUnlock()

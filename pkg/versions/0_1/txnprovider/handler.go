@@ -20,20 +20,20 @@ type compressionProvider interface {
 	Compress(alg string, data []byte) ([]byte, error)
 }
 
-// OperationHandler creates batch files(chunk, map, anchor) from batch operations
+// OperationHandler creates batch files(chunk, map, anchor) from batch operations.
 type OperationHandler struct {
 	cas      cas.Client
 	protocol protocol.Protocol
 	cp       compressionProvider
 }
 
-// NewOperationHandler returns new operations handler
+// NewOperationHandler returns new operations handler.
 func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProvider) *OperationHandler {
 	return &OperationHandler{cas: cas, protocol: p, cp: cp}
 }
 
 // PrepareTxnFiles will create batch files(chunk, map, anchor) from batch operations,
-// store those files in CAS and return anchor string
+// store those files in CAS and return anchor string.
 func (h *OperationHandler) PrepareTxnFiles(ops []*batch.Operation) (string, error) {
 	deactivateOps := getOperations(batch.OperationTypeDeactivate, ops)
 
@@ -65,7 +65,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*batch.Operation) (string, erro
 }
 
 // createAnchorFile will create anchor file from operations and map file and write it to CAS
-// returns anchor file address
+// returns anchor file address.
 func (h *OperationHandler) createAnchorFile(mapAddress string, ops []*batch.Operation) (string, error) {
 	anchorFile := models.CreateAnchorFile(mapAddress, ops)
 
@@ -73,7 +73,7 @@ func (h *OperationHandler) createAnchorFile(mapAddress string, ops []*batch.Oper
 }
 
 // createChunkFile will create chunk file from operations and write it to CAS
-// returns chunk file address
+// returns chunk file address.
 func (h *OperationHandler) createChunkFile(ops []*batch.Operation) (string, error) {
 	chunkFile := models.CreateChunkFile(ops)
 
@@ -81,7 +81,7 @@ func (h *OperationHandler) createChunkFile(ops []*batch.Operation) (string, erro
 }
 
 // createMapFile will create map file from operations and chunk file URIs and write it to CAS
-// returns map file address
+// returns map file address.
 func (h *OperationHandler) createMapFile(uri []string, ops []*batch.Operation) (string, error) {
 	mapFile := models.CreateMapFile(uri, ops)
 

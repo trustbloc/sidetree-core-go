@@ -6,14 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 
 package document
 
-// ResolutionResult describes resolution result
+// ResolutionResult describes resolution result.
 type ResolutionResult struct {
 	Context        string         `json:"@context"`
 	Document       Document       `json:"didDocument"`
 	MethodMetadata MethodMetadata `json:"methodMetadata"`
 }
 
-// MethodMetadata contains document metadata
+// MethodMetadata contains document metadata.
 type MethodMetadata struct {
 	UpdateCommitment   string `json:"updateCommitment"`
 	RecoveryCommitment string `json:"recoveryCommitment"`

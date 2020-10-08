@@ -14,16 +14,16 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
-// Signer defines JWS Signer interface that will be used to sign required data in Sidetree request
+// Signer defines JWS Signer interface that will be used to sign required data in Sidetree request.
 type Signer interface {
-	// Sign signs data and returns signature value
+	// Sign signs data and returns signature value.
 	Sign(data []byte) ([]byte, error)
 
 	// Headers provides required JWS protected headers. It provides information about signing key and algorithm.
 	Headers() jws.Headers
 }
 
-//SignModel signs model
+// SignModel signs model.
 func SignModel(model interface{}, signer Signer) (string, error) {
 	// first you normalize model
 	signedDataBytes, err := canonicalizer.MarshalCanonical(model)
@@ -34,7 +34,7 @@ func SignModel(model interface{}, signer Signer) (string, error) {
 	return SignPayload(signedDataBytes, signer)
 }
 
-// SignPayload allows for singing payload
+// SignPayload allows for singing payload.
 func SignPayload(payload []byte, signer Signer) (string, error) {
 	alg, ok := signer.Headers().Algorithm()
 	if !ok || alg == "" {

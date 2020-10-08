@@ -14,10 +14,10 @@ import (
 
 var logger = log.New("sidetree-core-restapi-common")
 
-// HTTPRequestHandler is an HTTP handler
+// HTTPRequestHandler is an HTTP handler.
 type HTTPRequestHandler func(http.ResponseWriter, *http.Request)
 
-// HTTPHandler is a HTTP handler descriptor containing the context path, method, and request handler
+// HTTPHandler is a HTTP handler descriptor containing the context path, method, and request handler.
 type HTTPHandler interface {
 	Path() string
 	Method() string

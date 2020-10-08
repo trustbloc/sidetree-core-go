@@ -12,31 +12,31 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 )
 
-// AnchorFile defines the schema of an anchor file
+// AnchorFile defines the schema of an anchor file.
 type AnchorFile struct {
 	// MapFileHash is encoded hash of the map file
 	MapFileHash string `json:"mapFileHash,omitempty"`
 
-	// Operations contain proving data for create, recover and deactivate operations
+	// Operations contain proving data for create, recover and deactivate operations.
 	Operations Operations `json:"operations"`
 }
 
-//CreateOperation contains create operation data
+// CreateOperation contains create operation data.
 type CreateOperation struct {
 	// Encoded suffix data object
 	SuffixData string `json:"suffix_data"`
 }
 
-//SignedOperation contains operation proving data
+// SignedOperation contains operation proving data.
 type SignedOperation struct {
-	//The suffix of the DID
+	// DidSuffix is the suffix of the DID
 	DidSuffix string `json:"did_suffix"`
 
-	// Compact JWS
+	// SignedData is compact JWS
 	SignedData string `json:"signed_data"`
 }
 
-// Operations contains operation proving data
+// Operations contains operation proving data.
 type Operations struct {
 	Create     []CreateOperation `json:"create,omitempty"`
 	Update     []SignedOperation `json:"update,omitempty"`
@@ -44,8 +44,8 @@ type Operations struct {
 	Deactivate []SignedOperation `json:"deactivate,omitempty"`
 }
 
-// CreateAnchorFile will create anchor file from provided operations
-// returns anchor file model
+// CreateAnchorFile will create anchor file from provided operations.
+// returns anchor file model.
 func CreateAnchorFile(mapAddress string, ops []*batch.Operation) *AnchorFile {
 	return &AnchorFile{
 		MapFileHash: mapAddress,
@@ -70,7 +70,7 @@ func getCreateOperations(ops []*batch.Operation) []CreateOperation {
 	return result
 }
 
-// ParseAnchorFile will parse anchor model from content
+// ParseAnchorFile will parse anchor model from content.
 func ParseAnchorFile(content []byte) (*AnchorFile, error) {
 	af, err := getAnchorFile(content)
 	if err != nil {
@@ -80,12 +80,12 @@ func ParseAnchorFile(content []byte) (*AnchorFile, error) {
 	return af, nil
 }
 
-// getAnchorFile creates new anchor file struct from bytes
+// getAnchorFile creates new anchor file struct from bytes.
 var getAnchorFile = func(bytes []byte) (*AnchorFile, error) {
 	return unmarshalAnchorFile(bytes)
 }
 
-// unmarshalAnchorFile creates new anchor file struct from bytes
+// unmarshalAnchorFile creates new anchor file struct from bytes.
 func unmarshalAnchorFile(bytes []byte) (*AnchorFile, error) {
 	file := &AnchorFile{}
 	err := json.Unmarshal(bytes, file)

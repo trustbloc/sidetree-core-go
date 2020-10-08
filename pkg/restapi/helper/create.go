@@ -18,7 +18,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
-// CreateRequestInfo contains data for creating create payload
+// CreateRequestInfo contains data for creating create payload.
 type CreateRequestInfo struct {
 
 	// opaque document content
@@ -41,7 +41,7 @@ type CreateRequestInfo struct {
 	MultihashCode uint
 }
 
-// NewCreateRequest is utility function to create payload for 'create' request
+// NewCreateRequest is utility function to create payload for 'create' request.
 func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	if err := validateCreateRequest(info); err != nil {
 		return nil, err

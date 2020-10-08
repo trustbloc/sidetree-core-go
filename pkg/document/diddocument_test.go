@@ -55,7 +55,7 @@ func TestValid(t *testing.T) {
 }
 
 func TestEmptyDoc(t *testing.T) {
-	var bytes = []byte(`{ "@context": "https://w3id.org/did/v1" }`)
+	var bytes = []byte(`{"@context":"https://w3id.org/did/v1"}`) //nolint:gofumpt
 
 	doc, err := DidDocumentFromBytes(bytes)
 	require.Nil(t, err)

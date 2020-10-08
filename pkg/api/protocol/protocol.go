@@ -22,41 +22,41 @@ import (
 //go:generate counterfeiter -o ../../mocks/documentcomposer.gen.go --fake-name DocumentComposer . DocumentComposer
 //go:generate counterfeiter -o ../../mocks/documentvalidator.gen.go --fake-name DocumentValidator . DocumentValidator
 
-// Protocol defines protocol parameters
+// Protocol defines protocol parameters.
 type Protocol struct {
-	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to
+	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to.
 	// (e.g. block number in a blockchain)
 	GenesisTime uint64 `json:"genesis_time"`
-	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code
+	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code.
 	HashAlgorithmInMultiHashCode uint `json:"multi_hash_algorithm"`
 	// HashAlgorithm is hash algorithm
 	HashAlgorithm uint `json:"hash_algorithm"`
-	// MaxOperationCount defines maximum number of operations per batch
+	// MaxOperationCount defines maximum number of operations per batch.
 	MaxOperationCount uint `json:"max_operation_count"`
-	// MaxOperationSize is maximum uncompressed operation size
+	// MaxOperationSize is maximum uncompressed operation size.
 	MaxOperationSize uint `json:"max_operation_size"`
-	// CompressionAlgorithm is file compression algorithm
+	// CompressionAlgorithm is file compression algorithm.
 	CompressionAlgorithm string `json:"compression_algorithm"`
-	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS
+	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS.
 	MaxAnchorFileSize uint `json:"max_anchor_file_size"`
-	// MaxMapFileSize is maximum allowed size (in bytes) of map file stored in CAS
+	// MaxMapFileSize is maximum allowed size (in bytes) of map file stored in CAS.
 	MaxMapFileSize uint `json:"max_map_file_size"`
-	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS
+	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS.
 	MaxChunkFileSize uint `json:"max_chunk_file_size"`
-	// Patches contains the list of allowed patches
+	// Patches contains the list of allowed patches.
 	Patches []string `json:"patches"`
-	//SignatureAlgorithms contain supported signature algorithms for signed operations (e.g. EdDSA, ES256, ES384, ES512, ES256K)
+	// SignatureAlgorithms contain supported signature algorithms for signed operations (e.g. EdDSA, ES256, ES384, ES512, ES256K).
 	SignatureAlgorithms []string `json:"signature_algorithms"`
-	//KeyAlgorithms contain supported key algorithms for signed operations (e.g. secp256k1, P-256, P-384, P-512, Ed25519)
+	// KeyAlgorithms contain supported key algorithms for signed operations (e.g. secp256k1, P-256, P-384, P-512, Ed25519).
 	KeyAlgorithms []string `json:"key_algorithms"`
 }
 
-// TxnProcessor defines the functions for processing a Sidetree transaction
+// TxnProcessor defines the functions for processing a Sidetree transaction.
 type TxnProcessor interface {
 	Process(sidetreeTxn txn.SidetreeTxn) error
 }
 
-// OperationParser defines the functions for parsing operations
+// OperationParser defines the functions for parsing operations.
 type OperationParser interface {
 	Parse(namespace string, operationBuffer []byte) (*batchapi.Operation, error)
 	ParseCreateOperation(request []byte) (*batchapi.Operation, error)
@@ -67,7 +67,7 @@ type OperationParser interface {
 	ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error)
 }
 
-// ResolutionModel contains temporary data during document resolution
+// ResolutionModel contains temporary data during document resolution.
 type ResolutionModel struct {
 	Doc                              document.Document
 	LastOperationTransactionTime     uint64
@@ -77,28 +77,28 @@ type ResolutionModel struct {
 	RecoveryCommitment               string
 }
 
-// OperationApplier applies the given operation to the document
+// OperationApplier applies the given operation to the document.
 type OperationApplier interface {
 	Apply(op *batchapi.AnchoredOperation, rm *ResolutionModel) (*ResolutionModel, error)
 }
 
-// DocumentComposer applies patches to the given document
+// DocumentComposer applies patches to the given document.
 type DocumentComposer interface {
 	ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error)
 }
 
-// OperationHandler defines an interface for creating chunks, map and anchor files
+// OperationHandler defines an interface for creating chunks, map and anchor files.
 type OperationHandler interface {
-	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string
+	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string.
 	PrepareTxnFiles(ops []*batchapi.Operation) (string, error)
 }
 
-// OperationProvider retrieves the anchored operations for  the given sidetree transaction
+// OperationProvider retrieves the anchored operations for  the given sidetree transaction.
 type OperationProvider interface {
 	GetTxnOperations(sidetreeTxn *txn.SidetreeTxn) ([]*batchapi.AnchoredOperation, error)
 }
 
-// DocumentValidator is an interface for validating document operations
+// DocumentValidator is an interface for validating document operations.
 type DocumentValidator interface {
 	IsValidOriginalDocument(payload []byte) error
 	IsValidPayload(payload []byte) error
@@ -117,16 +117,16 @@ type Version interface {
 	DocumentValidator() DocumentValidator
 }
 
-// Client defines interface for accessing protocol version/information
+// Client defines interface for accessing protocol version/information.
 type Client interface {
-	// Current returns latest version of protocol
+	// Current returns latest version of protocol.
 	Current() (Version, error)
 
-	// Get returns the version at the given transaction time
+	// Get returns the version at the given transaction time.
 	Get(transactionTime uint64) (Version, error)
 }
 
-// ClientProvider returns a protocol client for the given namespace
+// ClientProvider returns a protocol client for the given namespace.
 type ClientProvider interface {
 	ForNamespace(namespace string) (Client, error)
 }

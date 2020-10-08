@@ -10,24 +10,23 @@ import (
 	"errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
 const didSuffix = "did_suffix"
 
-// Validator is responsible for validating document operations and sidetree rules
+// Validator is responsible for validating document operations and Sidetree rules.
 type Validator struct {
 	store OperationStoreClient
 }
 
-// OperationStoreClient defines interface for retrieving all operations related to document
+// OperationStoreClient defines interface for retrieving all operations related to document.
 type OperationStoreClient interface {
 	// Get retrieves all operations related to document
 	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
 }
 
-// New creates a new document validator
+// New creates a new document validator.
 func New(store OperationStoreClient) *Validator {
 	return &Validator{
 		store: store,
@@ -35,7 +34,7 @@ func New(store OperationStoreClient) *Validator {
 }
 
 // IsValidPayload verifies that the given payload is a valid Sidetree specific payload
-// that can be accepted by the Sidetree update operations
+// that can be accepted by the Sidetree update operations.
 func (v *Validator) IsValidPayload(payload []byte) error {
 	doc, err := document.FromBytes(payload)
 	if err != nil {

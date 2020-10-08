@@ -31,8 +31,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
 
-const sha2_256 = 18
-const defaultNS = "did:sidetree"
+const (
+	sha2_256  = 18
+	defaultNS = "did:sidetree"
+)
 
 func TestNewOperationHandler(t *testing.T) {
 	handler := NewOperationHandler(
@@ -207,6 +209,7 @@ func generateOperations(numOfOperations int, opType batch.OperationType) (ops []
 
 		ops = append(ops, op)
 	}
+
 	return
 }
 
@@ -238,10 +241,12 @@ func generateCreateOperation(num int) (*batch.Operation, error) {
 	}
 
 	doc := fmt.Sprintf(`{"test":%d}`, num)
-	info := &helper.CreateRequestInfo{OpaqueDocument: doc,
+	info := &helper.CreateRequestInfo{
+		OpaqueDocument:     doc,
 		RecoveryCommitment: c,
 		UpdateCommitment:   c,
-		MultihashCode:      sha2_256}
+		MultihashCode:      sha2_256,
+	}
 
 	request, err := helper.NewCreateRequest(info)
 	if err != nil {
@@ -254,6 +259,7 @@ func generateCreateOperation(num int) (*batch.Operation, error) {
 	}
 
 	parser := operationparser.New(cp.Protocol())
+
 	return parser.Parse(defaultNS, request)
 }
 
@@ -280,7 +286,8 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 		UpdateCommitment:   c,
 		RecoveryKey:        jwk,
 		MultihashCode:      sha2_256,
-		Signer:             ecsigner.New(privKey, "ES256", "")}
+		Signer:             ecsigner.New(privKey, "ES256", ""),
+	}
 
 	request, err := helper.NewRecoverRequest(info)
 	if err != nil {
@@ -293,6 +300,7 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 	}
 
 	parser := operationparser.New(cp.Protocol())
+
 	return parser.Parse(defaultNS, request)
 }
 
@@ -305,7 +313,8 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 	info := &helper.DeactivateRequestInfo{
 		DidSuffix:   fmt.Sprintf("deactivate-%d", num),
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
-		RecoveryKey: testJWK}
+		RecoveryKey: testJWK,
+	}
 
 	request, err := helper.NewDeactivateRequest(info)
 	if err != nil {
@@ -318,6 +327,7 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 	}
 
 	parser := operationparser.New(cp.Protocol())
+
 	return parser.Parse(defaultNS, request)
 }
 
@@ -357,6 +367,7 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 	}
 
 	parser := operationparser.New(cp.Protocol())
+
 	return parser.Parse(defaultNS, request)
 }
 

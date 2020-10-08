@@ -165,6 +165,7 @@ func computeMultihash(data []byte) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return docutil.EncodeToString(mh)
 }
 

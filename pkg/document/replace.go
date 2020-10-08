@@ -12,17 +12,17 @@ import (
 
 const (
 
-	// ReplaceServiceProperty defines key for service property
+	// ReplaceServiceProperty defines key for service property.
 	ReplaceServiceProperty = "service_endpoints"
 
-	// ReplacePublicKeyProperty defines key for public key property
+	// ReplacePublicKeyProperty defines key for public key property.
 	ReplacePublicKeyProperty = "public_keys"
 )
 
-// ReplaceDocument defines replace document data structure
+// ReplaceDocument defines replace document data structure.
 type ReplaceDocument map[string]interface{}
 
-// ReplaceDocumentFromBytes creates an instance of replace document (for 'replace' patch, may be used for replace action)
+// ReplaceDocumentFromBytes creates an instance of replace document (for 'replace' patch, may be used for replace action).
 func ReplaceDocumentFromBytes(data []byte) (ReplaceDocument, error) {
 	doc := make(ReplaceDocument)
 	err := json.Unmarshal(data, &doc)
@@ -33,22 +33,22 @@ func ReplaceDocumentFromBytes(data []byte) (ReplaceDocument, error) {
 	return doc, nil
 }
 
-// ReplaceDocumentFromJSONLDObject creates an instance of ReplaceDocument from json ld object
+// ReplaceDocumentFromJSONLDObject creates an instance of ReplaceDocument from json ld object.
 func ReplaceDocumentFromJSONLDObject(jsonldObject map[string]interface{}) ReplaceDocument {
 	return jsonldObject
 }
 
-// PublicKeys returns public keys for replace document
+// PublicKeys returns public keys for replace document.
 func (doc ReplaceDocument) PublicKeys() []PublicKey {
 	return ParsePublicKeys(doc[ReplacePublicKeyProperty])
 }
 
-// Services returns services for replace document
+// Services returns services for replace document.
 func (doc ReplaceDocument) Services() []Service {
 	return ParseServices(doc[ReplaceServiceProperty])
 }
 
-// JSONLdObject returns map that represents JSON LD Object
+// JSONLdObject returns map that represents JSON LD Object.
 func (doc ReplaceDocument) JSONLdObject() map[string]interface{} {
 	return doc
 }

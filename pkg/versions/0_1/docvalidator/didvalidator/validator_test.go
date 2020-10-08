@@ -135,10 +135,12 @@ func getDefaultValidator() *Validator {
 func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.Nil(t, err)
+
 	return f
 }
 
-var docWithContext = []byte(`{ 
+var (
+	docWithContext = []byte(`{ 
 	"@context": ["https://w3id.org/did/v1"], 
 	"publicKey": [{
       	"id": "key-1",
@@ -153,14 +155,14 @@ var docWithContext = []byte(`{
     }] 
 }`)
 
-var pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JsonWebKey2020"}]}`)
-var serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "endpoint": "https://example.com/hub"}]}`)
-var docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
+	pubKeyNoID  = []byte(`{ "publicKey": [{"id": "", "type": "JsonWebKey2020"}]}`)
+	serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "endpoint": "https://example.com/hub"}]}`)
+	docWithID   = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
-var validUpdate = []byte(`{ "did_suffix": "abc" }`)
-var invalidUpdate = []byte(`{ "patch": "" }`)
+	validUpdate   = []byte(`{ "did_suffix": "abc" }`)
+	invalidUpdate = []byte(`{ "patch": "" }`)
 
-var pubKeyWithController = []byte(`{
+	pubKeyWithController = []byte(`{
   "publicKey": [{
       "id": "key-1",
       "type": "JsonWebKey2020",
@@ -174,3 +176,4 @@ var pubKeyWithController = []byte(`{
       }
 	}]
 }`)
+)

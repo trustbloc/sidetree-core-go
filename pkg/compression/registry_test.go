@@ -31,6 +31,7 @@ func TestNew(t *testing.T) {
 		require.NotNil(t, registry)
 	})
 }
+
 func TestRegistry_Compress(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		registry := New(WithAlgorithm(gzip.New()))
@@ -121,7 +122,7 @@ type mockAlgorithm struct {
 	CloseErr      error
 }
 
-// Compress will mock compressing data
+// Compress will mock compressing data.
 func (m *mockAlgorithm) Compress(data []byte) ([]byte, error) {
 	if m.CompressErr != nil {
 		return nil, m.CompressErr
@@ -130,7 +131,7 @@ func (m *mockAlgorithm) Compress(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-// Decompress will mock decompressing compressed data
+// Decompress will mock decompressing compressed data.
 func (m *mockAlgorithm) Decompress(data []byte) ([]byte, error) {
 	if m.DecompressErr != nil {
 		return nil, m.DecompressErr
@@ -139,12 +140,12 @@ func (m *mockAlgorithm) Decompress(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-// Accept algorithm
+// Accept algorithm.
 func (m *mockAlgorithm) Accept(alg string) bool {
 	return true
 }
 
-// Close will close resources
+// Close will close resources.
 func (m *mockAlgorithm) Close() error {
 	return m.CloseErr
 }

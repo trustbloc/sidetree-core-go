@@ -13,14 +13,14 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
-// Signer implements signer interface
+// Signer implements signer interface.
 type Signer struct {
 	alg        string
 	kid        string
 	privateKey ed25519.PrivateKey
 }
 
-// New returns ED25519 signer
+// New returns ED25519 signer.
 func New(privKey ed25519.PrivateKey, alg, kid string) *Signer {
 	return &Signer{privateKey: privKey, kid: kid, alg: alg}
 }
@@ -34,7 +34,7 @@ func (signer *Signer) Headers() jws.Headers {
 	return headers
 }
 
-// Sign signs msg and returns signature value
+// Sign signs msg and returns signature value.
 func (signer *Signer) Sign(msg []byte) ([]byte, error) {
 	if l := len(signer.privateKey); l != ed25519.PrivateKeySize {
 		return nil, errors.New("invalid private key size")

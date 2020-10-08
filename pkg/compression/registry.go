@@ -12,15 +12,15 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/compression/gzip"
 )
 
-// Option is a registry instance option
+// Option is a registry instance option.
 type Option func(opts *Registry)
 
-// Registry contains compression algorithms
+// Registry contains compression algorithms.
 type Registry struct {
 	algorithms []Algorithm
 }
 
-// Algorithm defines compression/decompression algorithm functionality
+// Algorithm defines compression/decompression algorithm functionality.
 type Algorithm interface {
 	Compress(value []byte) ([]byte, error)
 	Decompress(value []byte) ([]byte, error)
@@ -28,7 +28,7 @@ type Algorithm interface {
 	Close() error
 }
 
-// New return new instance of compression algorithm registry
+// New return new instance of compression algorithm registry.
 func New(opts ...Option) *Registry {
 	registry := &Registry{}
 
@@ -40,7 +40,7 @@ func New(opts ...Option) *Registry {
 	return registry
 }
 
-// Compress data using specified algorithm
+// Compress data using specified algorithm.
 func (r *Registry) Compress(alg string, data []byte) ([]byte, error) {
 	// resolve compression algorithm
 	algorithm, err := r.resolveAlgorithm(alg)
@@ -57,7 +57,7 @@ func (r *Registry) Compress(alg string, data []byte) ([]byte, error) {
 	return result, nil
 }
 
-// Decompress will decompress compressed data using specified algorithm
+// Decompress will decompress compressed data using specified algorithm.
 func (r *Registry) Decompress(alg string, data []byte) ([]byte, error) {
 	// resolve compression algorithm
 	algorithm, err := r.resolveAlgorithm(alg)
@@ -95,14 +95,14 @@ func (r *Registry) resolveAlgorithm(alg string) (Algorithm, error) {
 	return nil, fmt.Errorf("compression algorithm '%s' not supported", alg)
 }
 
-// WithAlgorithm adds compression algorithm to the list of available algorithms
+// WithAlgorithm adds compression algorithm to the list of available algorithms.
 func WithAlgorithm(alg Algorithm) Option {
 	return func(opts *Registry) {
 		opts.algorithms = append(opts.algorithms, alg)
 	}
 }
 
-// WithDefaultAlgorithms adds default compression algorithms to the list of available algorithms
+// WithDefaultAlgorithms adds default compression algorithms to the list of available algorithms.
 func WithDefaultAlgorithms() Option {
 	return func(opts *Registry) {
 		opts.algorithms = append(opts.algorithms, gzip.New())

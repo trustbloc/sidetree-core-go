@@ -250,10 +250,11 @@ func getECSignature(privKey *ecdsa.PrivateKey, payload []byte, hash crypto.Hash)
 	return append(copyPadded(r.Bytes(), keyBytes), copyPadded(s.Bytes(), keyBytes)...)
 }
 
-// getPublicKeyJWK returns public key in JWK format
+// getPublicKeyJWK returns public key in JWK format.
 func getPublicKeyJWK(pubKey interface{}) (*jws.JWK, error) {
 	internalJWK := JWK{
-		JSONWebKey: gojose.JSONWebKey{Key: pubKey}}
+		JSONWebKey: gojose.JSONWebKey{Key: pubKey},
+	}
 
 	switch key := pubKey.(type) {
 	case ed25519.PublicKey:

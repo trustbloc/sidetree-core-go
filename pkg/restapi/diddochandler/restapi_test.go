@@ -79,7 +79,7 @@ func TestRESTAPI(t *testing.T) {
 }
 
 // httpPut sends a regular POST request to the sidetree-node
-// - If post request has operation "create" then return sidetree document else no response
+// - If post request has operation "create" then return sidetree document else no response.
 func httpPut(t *testing.T, url string, request []byte) ([]byte, error) {
 	client := &http.Client{}
 
@@ -94,10 +94,11 @@ func httpPut(t *testing.T, url string, request []byte) ([]byte, error) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "application/did+ld+json", resp.Header.Get("content-type"))
+
 	return handleHTTPResp(t, resp)
 }
 
-// httpGet send a regular GET request to the sidetree-node and expects 'side tree document' argument as a response
+// httpGet send a regular GET request to the sidetree-node and expects 'side tree document' argument as a response.
 func httpGet(t *testing.T, url string) ([]byte, error) {
 	client := &http.Client{}
 	resp, err := invokeWithRetry(
@@ -106,6 +107,7 @@ func httpGet(t *testing.T, url string) ([]byte, error) {
 		},
 	)
 	require.NoError(t, err)
+
 	return handleHTTPResp(t, resp)
 }
 
@@ -113,12 +115,14 @@ func handleHTTPResp(t *testing.T, resp *http.Response) ([]byte, error) {
 	if status := resp.StatusCode; status != http.StatusOK {
 		return nil, fmt.Errorf(string(read(t, resp)))
 	}
+
 	return read(t, resp), nil
 }
 
 func read(t *testing.T, response *http.Response) []byte {
 	respBytes, err := ioutil.ReadAll(response.Body)
 	require.NoError(t, err)
+
 	return respBytes
 }
 
@@ -146,6 +150,7 @@ func newRESTService(url string, handlers ...common.HTTPHandler) *restService {
 	for _, handler := range handlers {
 		router.HandleFunc(handler.Path(), handler.Handler()).Methods(handler.Method())
 	}
+
 	return &restService{
 		httpServer: &http.Server{
 			Addr:    url,
