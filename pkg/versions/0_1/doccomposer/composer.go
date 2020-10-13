@@ -47,24 +47,29 @@ func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.P
 
 // applyPatch applies a patch to the document.
 func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) {
-	if err := p.Validate(); err != nil {
+	action, err := p.GetAction()
+	if err != nil {
 		return nil, err
 	}
 
-	action := p.GetAction()
+	value, err := p.GetValue()
+	if err != nil {
+		return nil, err
+	}
+
 	switch action {
 	case patch.Replace:
-		return applyRecover(p.GetValue(patch.DocumentKey))
+		return applyRecover(value)
 	case patch.JSONPatch:
-		return applyJSON(doc, p.GetValue(patch.PatchesKey))
+		return applyJSON(doc, value)
 	case patch.AddPublicKeys:
-		return applyAddPublicKeys(doc, p.GetValue(patch.PublicKeys))
+		return applyAddPublicKeys(doc, value)
 	case patch.RemovePublicKeys:
-		return applyRemovePublicKeys(doc, p.GetValue(patch.PublicKeys))
+		return applyRemovePublicKeys(doc, value)
 	case patch.AddServiceEndpoints:
-		return applyAddServiceEndpoints(doc, p.GetValue(patch.ServiceEndpointsKey))
+		return applyAddServiceEndpoints(doc, value)
 	case patch.RemoveServiceEndpoints:
-		return applyRemoveServiceEndpoints(doc, p.GetValue(patch.ServiceEndpointIdsKey))
+		return applyRemoveServiceEndpoints(doc, value)
 	}
 
 	return nil, fmt.Errorf("action '%s' is not supported", action)

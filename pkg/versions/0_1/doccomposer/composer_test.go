@@ -112,20 +112,6 @@ func TestApplyPatches_JSON(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, doc)
 	})
-	t.Run("invalid json", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		ietf, err := patch.NewJSONPatch(patches)
-		require.NoError(t, err)
-
-		ietf["patches"] = invalid
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{ietf})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "expected array")
-	})
 	t.Run("invalid operation", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
 		require.NoError(t, err)
@@ -191,19 +177,6 @@ func TestApplyPatches_AddPublicKeys(t *testing.T) {
 		diddoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 3, len(diddoc.PublicKeys()))
 	})
-	t.Run("invalid json", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		addPublicKeys, err := patch.NewAddPublicKeysPatch(addKeys)
-		require.NoError(t, err)
-		addPublicKeys["public_keys"] = invalid
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addPublicKeys})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "expected array of interfaces")
-	})
 }
 
 func TestApplyPatches_RemovePublicKeys(t *testing.T) {
@@ -237,32 +210,6 @@ func TestApplyPatches_RemovePublicKeys(t *testing.T) {
 
 		diddoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 1, len(diddoc.PublicKeys()))
-	})
-	t.Run("invalid json", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		removePublicKeys, err := patch.NewRemovePublicKeysPatch(removeKeys)
-		require.NoError(t, err)
-		removePublicKeys["public_keys"] = invalid
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "expected array")
-	})
-	t.Run("invalid public key ids", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		removePublicKeys, err := patch.NewRemovePublicKeysPatch(removeKeys)
-		require.NoError(t, err)
-		removePublicKeys["public_keys"] = []interface{}{"a&b"}
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removePublicKeys})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("success - add and remove same key; doc stays at two keys", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
@@ -338,19 +285,6 @@ func TestApplyPatches_AddServiceEndpoints(t *testing.T) {
 		diddoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 3, len(diddoc.Services()))
 	})
-	t.Run("invalid json", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		addServices, err := patch.NewAddServiceEndpointsPatch(addServices)
-		require.NoError(t, err)
-		addServices["service_endpoints"] = invalid
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addServices})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "expected array")
-	})
 }
 
 func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
@@ -384,32 +318,6 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 
 		diddoc := document.DidDocumentFromJSONLDObject(doc)
 		require.Equal(t, 1, len(diddoc.Services()))
-	})
-	t.Run("invalid json", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		removeServices, err := patch.NewRemoveServiceEndpointsPatch(removeServices)
-		require.NoError(t, err)
-		removeServices["ids"] = invalid
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "expected array")
-	})
-	t.Run("invalid service ids", func(t *testing.T) {
-		doc, err := setupDefaultDoc()
-		require.NoError(t, err)
-
-		removeServices, err := patch.NewRemoveServiceEndpointsPatch(removeServices)
-		require.NoError(t, err)
-		removeServices["ids"] = []interface{}{"svc", "a&b"}
-
-		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeServices})
-		require.Error(t, err)
-		require.Nil(t, doc)
-		require.Contains(t, err.Error(), "id contains invalid characters")
 	})
 	t.Run("success - add and remove same service; doc stays at two services", func(t *testing.T) {
 		doc, err := setupDefaultDoc()
@@ -524,8 +432,6 @@ const updateExistingKey = `[{
 		}
 	}]`
 
-const removeKeys = `["key1", "key2"]`
-
 const addServices = `[
     {
       "id": "svc3",
@@ -541,8 +447,6 @@ const updateExistingService = `[
       "endpoint": "http://hub.my-personal-server.com"
     }
   ]`
-
-const removeServices = `["svc1", "svc2"]`
 
 const replaceDoc = `{
 	"public_keys": [

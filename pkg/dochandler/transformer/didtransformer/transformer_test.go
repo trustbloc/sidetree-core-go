@@ -240,3 +240,63 @@ const ed25519Invalid = `{
 	}
   ]
 }`
+
+func TestIsAuthenticationKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	ok := isAuthenticationKey(pk.Purpose())
+	require.False(t, ok)
+
+	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeAuth}
+	ok = isAuthenticationKey(pk.Purpose())
+	require.True(t, ok)
+}
+
+func TestIsAssertionKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	ok := isAssertionKey(pk.Purpose())
+	require.False(t, ok)
+
+	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeAssertion}
+	ok = isAssertionKey(pk.Purpose())
+	require.True(t, ok)
+}
+
+func TestIsAgreementKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	ok := isAgreementKey(pk.Purpose())
+	require.False(t, ok)
+
+	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeAgreement}
+	ok = isAgreementKey(pk.Purpose())
+	require.True(t, ok)
+}
+
+func TestIsDelegationKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	ok := isDelegationKey(pk.Purpose())
+	require.False(t, ok)
+
+	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeDelegation}
+	ok = isDelegationKey(pk.Purpose())
+	require.True(t, ok)
+}
+
+func TestIsInvocationKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	ok := isInvocationKey(pk.Purpose())
+	require.False(t, ok)
+
+	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeInvocation}
+	ok = isInvocationKey(pk.Purpose())
+	require.True(t, ok)
+}
+
+func TestIsGeneralKey(t *testing.T) {
+	pk := document.NewPublicKey(map[string]interface{}{})
+	ok := isGeneralKey(pk.Purpose())
+	require.False(t, ok)
+
+	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeGeneral}
+	ok = isGeneralKey(pk.Purpose())
+	require.True(t, ok)
+}

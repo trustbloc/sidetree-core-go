@@ -36,14 +36,6 @@ func TestValidatoIsValidOriginalDocumentError(t *testing.T) {
 	require.Contains(t, err.Error(), "document must NOT have the id property")
 }
 
-func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
-	v := getDefaultValidator()
-
-	err := v.IsValidOriginalDocument(pubKeyNoID)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "public key id is missing")
-}
-
 func TestValidatorIsValidPayload(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
@@ -109,6 +101,4 @@ var (
 
 	validUpdate   = []byte(`{ "did_suffix": "abc" }`)
 	invalidUpdate = []byte(`{ "patch": "" }`)
-
-	pubKeyNoID = []byte(`{ "publicKey": [{"id": "", "type": "JsonWebKey2020"}]}`)
 )

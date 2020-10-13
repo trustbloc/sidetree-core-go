@@ -71,10 +71,5 @@ func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 		return errors.New("document must NOT have the id property")
 	}
 
-	// Sidetree rule: validate public keys
-	if err := document.ValidatePublicKeys(doc.PublicKeys()); err != nil {
-		return err
-	}
-
 	return nil
 }

@@ -68,27 +68,6 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	require.NotNil(t, doc)
 }
 
-func TestDocumentHandler_ProcessOperation_InitialDocumentError(t *testing.T) {
-	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
-	require.NotNil(t, dochandler)
-	defer cleanup()
-
-	replacePatch, err := patch.NewAddPublicKeysPatch("{}")
-	require.NoError(t, err)
-	replacePatch["publicKeys"] = "invalid"
-
-	createOp := getCreateOperation()
-
-	createOp.DeltaModel = &model.DeltaModel{
-		Patches: []patch.Patch{replacePatch},
-	}
-
-	doc, err := dochandler.ProcessOperation(createOp, 0)
-	require.NotNil(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "expected array of interfaces")
-}
-
 func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
 	require.NotNil(t, dochandler)
