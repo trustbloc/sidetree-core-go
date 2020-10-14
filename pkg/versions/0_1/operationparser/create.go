@@ -17,6 +17,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser/patchvalidator"
 )
 
 // ParseCreateOperation will parse create operation.
@@ -169,11 +170,16 @@ func (p *Parser) validateDelta(delta *model.DeltaModel) error {
 	}
 
 	for _, ptch := range delta.Patches {
-		if !p.isPatchEnabled(ptch.GetAction()) {
-			return fmt.Errorf("%s patch action is not enabled", ptch.GetAction())
+		action, err := ptch.GetAction()
+		if err != nil {
+			return err
 		}
 
-		if err := ptch.Validate(); err != nil {
+		if !p.isPatchEnabled(action) {
+			return fmt.Errorf("%s patch action is not enabled", action)
+		}
+
+		if err := patchvalidator.Validate(ptch); err != nil {
 			return err
 		}
 	}

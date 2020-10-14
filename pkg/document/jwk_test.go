@@ -41,7 +41,7 @@ func TestValidate(t *testing.T) {
 			"y":   "y",
 		}
 
-		err := ValidateJWK(jwk)
+		err := jwk.Validate()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "JWK kty is missing")
 	})
@@ -54,7 +54,7 @@ func TestValidate(t *testing.T) {
 			"y":   "y",
 		}
 
-		err := ValidateJWK(jwk)
+		err := jwk.Validate()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "JWK crv is missing")
 	})
@@ -67,7 +67,7 @@ func TestValidate(t *testing.T) {
 			"y":   "y",
 		}
 
-		err := ValidateJWK(jwk)
+		err := jwk.Validate()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "JWK x is missing")
 	})

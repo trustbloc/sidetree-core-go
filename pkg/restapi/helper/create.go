@@ -86,12 +86,6 @@ func getPatches(opaque string, patches []patch.Patch) ([]patch.Patch, error) {
 		return patch.PatchesFromDocument(opaque)
 	}
 
-	for _, p := range patches {
-		if err := p.Validate(); err != nil {
-			return nil, err
-		}
-	}
-
 	return patches, nil
 }
 

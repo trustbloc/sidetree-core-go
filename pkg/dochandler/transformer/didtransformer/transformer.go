@@ -18,6 +18,9 @@ const (
 	didContext = "https://www.w3.org/ns/did/v1"
 
 	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
+
+	// ed25519VerificationKey2018 requires special handling (convert to base58).
+	ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
 )
 
 // Option is a registry instance option.
@@ -145,7 +148,7 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		externalPK[document.TypeProperty] = pk.Type()
 		externalPK[document.ControllerProperty] = internal[document.IDProperty]
 
-		if pk.Type() == document.Ed25519VerificationKey2018 {
+		if pk.Type() == ed25519VerificationKey2018 {
 			ed25519PubKey, err := getED2519PublicKey(pk.JWK())
 			if err != nil {
 				return err
@@ -156,38 +159,38 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		}
 
 		purposes := pk.Purpose()
-		if document.IsGeneralKey(purposes) { //nolint:nestif
+		if isGeneralKey(purposes) { //nolint:nestif
 			publicKeys = append(publicKeys, externalPK)
 
 			// add into authentication by reference if the key has both auth and general purpose
-			if document.IsAuthenticationKey(purposes) {
+			if isAuthenticationKey(purposes) {
 				authentication = append(authentication, relativeID)
 			}
 			// add into assertionMethod by reference if the key has both assertion and general purpose
-			if document.IsAssertionKey(purposes) {
+			if isAssertionKey(purposes) {
 				assertionMethod = append(assertionMethod, relativeID)
 			}
 			// add into keyAgreement by reference if the key has both agreement and general purpose
-			if document.IsAgreementKey(purposes) {
+			if isAgreementKey(purposes) {
 				agreementKey = append(agreementKey, relativeID)
 			}
 			// add into capabilityDelegation by reference if the key has both delegation and general purpose
-			if document.IsDelegationKey(purposes) {
+			if isDelegationKey(purposes) {
 				delegationKey = append(delegationKey, relativeID)
 			}
 			// add into capabilityInvocation by reference if the key has both invocation and general purpose
-			if document.IsInvocationKey(purposes) {
+			if isInvocationKey(purposes) {
 				invocationKey = append(invocationKey, relativeID)
 			}
-		} else if document.IsAuthenticationKey(purposes) {
+		} else if isAuthenticationKey(purposes) {
 			authentication = append(authentication, externalPK)
-		} else if document.IsAssertionKey(purposes) {
+		} else if isAssertionKey(purposes) {
 			assertionMethod = append(assertionMethod, externalPK)
-		} else if document.IsAgreementKey(purposes) {
+		} else if isAgreementKey(purposes) {
 			agreementKey = append(agreementKey, externalPK)
-		} else if document.IsDelegationKey(purposes) {
+		} else if isDelegationKey(purposes) {
 			delegationKey = append(delegationKey, externalPK)
-		} else if document.IsInvocationKey(purposes) {
+		} else if isInvocationKey(purposes) {
 			invocationKey = append(invocationKey, externalPK)
 		}
 	}
@@ -228,4 +231,44 @@ func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
 	}
 
 	return internaljws.GetED25519PublicKey(jwk)
+}
+
+// isGeneralKey returns true if key is a general key.
+func isGeneralKey(purposes []string) bool {
+	return isPurposeKey(purposes, document.KeyPurposeGeneral)
+}
+
+// isAuthenticationKey returns true if key is an authentication key.
+func isAuthenticationKey(purposes []string) bool {
+	return isPurposeKey(purposes, document.KeyPurposeAuth)
+}
+
+// isAssertionKey returns true if key is an assertion key.
+func isAssertionKey(purposes []string) bool {
+	return isPurposeKey(purposes, document.KeyPurposeAssertion)
+}
+
+// isAgreementKey returns true if key is an agreement key.
+func isAgreementKey(purposes []string) bool {
+	return isPurposeKey(purposes, document.KeyPurposeAgreement)
+}
+
+// isDelegationKey returns true if key is an delegation key.
+func isDelegationKey(purposes []string) bool {
+	return isPurposeKey(purposes, document.KeyPurposeDelegation)
+}
+
+// isInvocationKey returns true if key is an invocation key.
+func isInvocationKey(purposes []string) bool {
+	return isPurposeKey(purposes, document.KeyPurposeInvocation)
+}
+
+func isPurposeKey(purposes []string, mode string) bool {
+	for _, purpose := range purposes {
+		if purpose == mode {
+			return true
+		}
+	}
+
+	return false
 }

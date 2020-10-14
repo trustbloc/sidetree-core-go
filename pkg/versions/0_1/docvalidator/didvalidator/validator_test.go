@@ -37,26 +37,6 @@ func TestIsValidOriginalDocument(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func TestIsValidOriginalDocument_ServiceErrors(t *testing.T) {
-	v := getDefaultValidator()
-
-	err := v.IsValidOriginalDocument(serviceNoID)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "service id is missing")
-}
-
-func TestIsValidOriginalDocument_PublicKeyErrors(t *testing.T) {
-	v := getDefaultValidator()
-
-	err := v.IsValidOriginalDocument(pubKeyNoID)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "public key id is missing")
-
-	err = v.IsValidOriginalDocument(pubKeyWithController)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "invalid number of public key properties")
-}
-
 func TestIsValidOriginalDocument_ContextProvidedError(t *testing.T) {
 	v := getDefaultValidator()
 
@@ -155,25 +135,8 @@ var (
     }] 
 }`)
 
-	pubKeyNoID  = []byte(`{ "publicKey": [{"id": "", "type": "JsonWebKey2020"}]}`)
-	serviceNoID = []byte(`{ "service": [{"id": "", "type": "IdentityHub", "endpoint": "https://example.com/hub"}]}`)
-	docWithID   = []byte(`{ "id" : "001", "name": "John Smith" }`)
+	docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
 	validUpdate   = []byte(`{ "did_suffix": "abc" }`)
 	invalidUpdate = []byte(`{ "patch": "" }`)
-
-	pubKeyWithController = []byte(`{
-  "publicKey": [{
-      "id": "key-1",
-      "type": "JsonWebKey2020",
-      "controller": "did:example:123456789abcdefghi",
-      "purpose": ["general"],
-      "jwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-	}]
-}`)
 )

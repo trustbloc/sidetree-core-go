@@ -27,6 +27,24 @@ const (
 	PublicKeyBase58Property = "publicKeyBase58"
 )
 
+// KeyPurpose defines key purpose.
+type KeyPurpose string
+
+const (
+	// KeyPurposeAuth defines key purpose as authentication key.
+	KeyPurposeAuth = "auth"
+	// KeyPurposeAssertion defines key purpose as assertion key.
+	KeyPurposeAssertion = "assertion"
+	// KeyPurposeAgreement defines key purpose as agreement key.
+	KeyPurposeAgreement = "agreement"
+	// KeyPurposeDelegation defines key purpose as delegation key.
+	KeyPurposeDelegation = "delegation"
+	// KeyPurposeInvocation defines key purpose as invocation key.
+	KeyPurposeInvocation = "invocation"
+	// KeyPurposeGeneral defines key purpose as general key.
+	KeyPurposeGeneral = "general"
+)
+
 // PublicKey must include id and type properties, and exactly one value property.
 type PublicKey map[string]interface{}
 

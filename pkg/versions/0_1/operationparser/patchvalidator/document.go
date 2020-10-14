@@ -4,13 +4,15 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package document
+package patchvalidator
 
 import (
 	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
 // nolint:gochecknoglobals
@@ -19,26 +21,11 @@ var (
 )
 
 const (
-	// auth defines key purpose as authentication key.
-	auth = "auth"
-	// assertion defines key purpose as assertion key.
-	assertion = "assertion"
-	// agreement defines key purpose as agreement key.
-	agreement = "agreement"
-	// delegation defines key purpose as delegation key.
-	delegation = "delegation"
-	// invocation defines key purpose as invocation key.
-	invocation = "invocation"
-	// general defines key purpose as general key.
-	general = "general"
-
 	jwsVerificationKey2020            = "JwsVerificationKey2020"
 	jsonWebKey2020                    = "JsonWebKey2020"
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
 	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
-
-	// Ed25519VerificationKey2018 requires special handling (convert to base58).
-	Ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
+	ed25519VerificationKey2018        = "Ed25519VerificationKey2018"
 
 	maxPublicKeyProperties = 4
 
@@ -49,13 +36,13 @@ const (
 	maxServiceEndpointLength = 100
 )
 
-var allowedOps = map[string]string{
-	auth:       auth,
-	general:    general,
-	assertion:  assertion,
-	agreement:  agreement,
-	delegation: delegation,
-	invocation: invocation,
+var allowedOps = map[document.KeyPurpose]bool{
+	document.KeyPurposeAuth:       true,
+	document.KeyPurposeGeneral:    true,
+	document.KeyPurposeAssertion:  true,
+	document.KeyPurposeAgreement:  true,
+	document.KeyPurposeDelegation: true,
+	document.KeyPurposeInvocation: true,
 }
 
 type existenceMap map[string]string
@@ -64,7 +51,7 @@ var allowedKeyTypesGeneral = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
 	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
-	Ed25519VerificationKey2018:        Ed25519VerificationKey2018,
+	ed25519VerificationKey2018:        ed25519VerificationKey2018,
 	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019,
 }
 
@@ -72,7 +59,7 @@ var allowedKeyTypesVerification = existenceMap{
 	jwsVerificationKey2020:            jwsVerificationKey2020,
 	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
-	Ed25519VerificationKey2018:        Ed25519VerificationKey2018,
+	ed25519VerificationKey2018:        ed25519VerificationKey2018,
 }
 
 var allowedKeyTypesAgreement = existenceMap{
@@ -84,16 +71,16 @@ var allowedKeyTypesAgreement = existenceMap{
 }
 
 var allowedKeyTypes = map[string]existenceMap{
-	general:    allowedKeyTypesGeneral,
-	auth:       allowedKeyTypesVerification,
-	assertion:  allowedKeyTypesVerification,
-	agreement:  allowedKeyTypesAgreement,
-	delegation: allowedKeyTypesVerification,
-	invocation: allowedKeyTypesVerification,
+	document.KeyPurposeGeneral:    allowedKeyTypesGeneral,
+	document.KeyPurposeAuth:       allowedKeyTypesVerification,
+	document.KeyPurposeAssertion:  allowedKeyTypesVerification,
+	document.KeyPurposeAgreement:  allowedKeyTypesAgreement,
+	document.KeyPurposeDelegation: allowedKeyTypesVerification,
+	document.KeyPurposeInvocation: allowedKeyTypesVerification,
 }
 
-// ValidatePublicKeys validates public keys.
-func ValidatePublicKeys(pubKeys []PublicKey) error {
+// validatePublicKeys validates public keys.
+func validatePublicKeys(pubKeys []document.PublicKey) error {
 	ids := make(map[string]string)
 
 	// the expected fields are id, purpose, type and jwk
@@ -120,7 +107,7 @@ func ValidatePublicKeys(pubKeys []PublicKey) error {
 			return fmt.Errorf("invalid key type: %s", pubKey.Type())
 		}
 
-		if err := ValidateJWK(pubKey.JWK()); err != nil {
+		if err := validateJWK(pubKey.JWK()); err != nil {
 			return err
 		}
 	}
@@ -133,15 +120,15 @@ func validateKID(kid string) error {
 		return errors.New("public key id is missing")
 	}
 
-	if err := ValidateID(kid); err != nil {
+	if err := validateID(kid); err != nil {
 		return fmt.Errorf("public key: %s", err.Error())
 	}
 
 	return nil
 }
 
-// ValidateID validates id.
-func ValidateID(id string) error {
+// validateID validates id.
+func validateID(id string) error {
 	if len(id) > maxIDLength {
 		return fmt.Errorf("id exceeds maximum length: %d", maxIDLength)
 	}
@@ -153,8 +140,8 @@ func ValidateID(id string) error {
 	return nil
 }
 
-// ValidateServices validates services.
-func ValidateServices(services []Service) error {
+// validateServices validates services.
+func validateServices(services []document.Service) error {
 	for _, service := range services {
 		if err := validateService(service); err != nil {
 			return err
@@ -164,7 +151,7 @@ func ValidateServices(services []Service) error {
 	return nil
 }
 
-func validateService(service Service) error {
+func validateService(service document.Service) error {
 	// expected fields are type, id, and serviceEndpoint and some optional fields
 
 	if err := validateServiceID(service.ID()); err != nil {
@@ -179,8 +166,6 @@ func validateService(service Service) error {
 		return err
 	}
 
-	// TODO: validate against configured allowed properties (issue #373)
-
 	return nil
 }
 
@@ -189,7 +174,7 @@ func validateServiceID(id string) error {
 		return errors.New("service id is missing")
 	}
 
-	if err := ValidateID(id); err != nil {
+	if err := validateID(id); err != nil {
 		return fmt.Errorf("service: %s", err.Error())
 	}
 
@@ -225,7 +210,7 @@ func validateServiceEndpoint(serviceEndpoint string) error {
 }
 
 // validateKeyTypePurpose validates if the public key type is valid for a certain purpose.
-func validateKeyTypePurpose(pubKey PublicKey) bool {
+func validateKeyTypePurpose(pubKey document.PublicKey) bool {
 	for _, purpose := range pubKey.Purpose() {
 		allowed, ok := allowedKeyTypes[purpose]
 		if !ok {
@@ -241,8 +226,8 @@ func validateKeyTypePurpose(pubKey PublicKey) bool {
 	return true
 }
 
-// ValidateJWK validates JWK.
-func ValidateJWK(jwk JWK) error {
+// validateJWK validates JWK.
+func validateJWK(jwk document.JWK) error {
 	if jwk == nil {
 		return errors.New("key has to be in JWK format")
 	}
@@ -250,51 +235,11 @@ func ValidateJWK(jwk JWK) error {
 	return jwk.Validate()
 }
 
-// IsGeneralKey returns true if key is a general key.
-func IsGeneralKey(purposes []string) bool {
-	return isPurposeKey(purposes, general)
-}
-
-// IsAuthenticationKey returns true if key is an authentication key.
-func IsAuthenticationKey(purposes []string) bool {
-	return isPurposeKey(purposes, auth)
-}
-
-// IsAssertionKey returns true if key is an assertion key.
-func IsAssertionKey(purposes []string) bool {
-	return isPurposeKey(purposes, assertion)
-}
-
-// IsAgreementKey returns true if key is an agreement key.
-func IsAgreementKey(purposes []string) bool {
-	return isPurposeKey(purposes, agreement)
-}
-
-// IsDelegationKey returns true if key is an delegation key.
-func IsDelegationKey(purposes []string) bool {
-	return isPurposeKey(purposes, delegation)
-}
-
-// IsInvocationKey returns true if key is an invocation key.
-func IsInvocationKey(purposes []string) bool {
-	return isPurposeKey(purposes, invocation)
-}
-
-func isPurposeKey(purposes []string, mode string) bool {
-	for _, purpose := range purposes {
-		if purpose == mode {
-			return true
-		}
-	}
-
-	return false
-}
-
 // The object MUST include a purpose property, and its value MUST be an array that includes one or more of the following:
 // - ops: the key is allowed to generate DID operations for the DID.
 // - general: the key is to be included in the publicKeys section of the resolved DID Document.
 // - auth: the key is to be included in the authentication section of the resolved DID Document.
-func validateKeyPurpose(pubKey PublicKey) error {
+func validateKeyPurpose(pubKey document.PublicKey) error {
 	if len(pubKey.Purpose()) == 0 {
 		return fmt.Errorf("key '%s' is missing purpose", pubKey.ID())
 	}
@@ -304,10 +249,43 @@ func validateKeyPurpose(pubKey PublicKey) error {
 	}
 
 	for _, purpose := range pubKey.Purpose() {
-		if _, ok := allowedOps[purpose]; !ok {
+		if _, ok := allowedOps[document.KeyPurpose(purpose)]; !ok {
 			return fmt.Errorf("invalid purpose: %s", purpose)
 		}
 	}
 
 	return nil
+}
+
+func contains(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
+}
+
+func validateIds(ids []string) error {
+	for _, id := range ids {
+		if err := validateID(id); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getRequiredArray(entry interface{}) ([]interface{}, error) {
+	arr, ok := entry.([]interface{})
+	if !ok {
+		return nil, errors.New("expected array of interfaces")
+	}
+
+	if len(arr) == 0 {
+		return nil, errors.New("required array is empty")
+	}
+
+	return arr, nil
 }
