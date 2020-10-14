@@ -132,7 +132,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, true, result.MethodMetadata.Published)
-	require.Equal(t, result.Document[canonicalID], docID)
+	require.Equal(t, result.MethodMetadata.CanonicalID, docID)
 	require.Equal(t, result.Document[keyID], aliasID)
 
 	// scenario: invalid namespace

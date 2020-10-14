@@ -18,4 +18,5 @@ type MethodMetadata struct {
 	UpdateCommitment   string `json:"updateCommitment"`
 	RecoveryCommitment string `json:"recoveryCommitment"`
 	Published          bool   `json:"published"`
+	CanonicalID        string `json:"canonicalID"`
 }
