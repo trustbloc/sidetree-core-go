@@ -38,8 +38,6 @@ var logger = log.New("sidetree-core-dochandler")
 
 const (
 	keyID = "id"
-	// name may change based on https://github.com/w3c/did-core/issues/421
-	canonicalID = "canonicalId"
 
 	badRequest = "bad request"
 )
@@ -213,7 +211,7 @@ func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string) 
 
 	if r.namespace != namespace {
 		// we got here using alias; suggest using namespace
-		externalResult.Document[canonicalID] = r.namespace + docutil.NamespaceDelimiter + uniquePortion
+		externalResult.MethodMetadata.CanonicalID = r.namespace + docutil.NamespaceDelimiter + uniquePortion
 	}
 
 	externalResult.MethodMetadata.Published = true
