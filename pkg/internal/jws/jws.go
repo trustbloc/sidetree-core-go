@@ -24,7 +24,7 @@ const (
 	jwsSignaturePart = 2
 )
 
-// JSONWebSignature defines JSON Web Signature (https://tools.ietf.org/html/rfc7515)
+// JSONWebSignature defines JSON Web Signature (https://tools.ietf.org/html/rfc7515)ww
 type JSONWebSignature struct {
 	ProtectedHeaders   jws.Headers
 	UnprotectedHeaders jws.Headers
