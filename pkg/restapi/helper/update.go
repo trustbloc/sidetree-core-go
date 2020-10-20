@@ -9,12 +9,13 @@ package helper
 import (
 	"errors"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // UpdateRequestInfo is the information required to create update request.
@@ -45,18 +46,18 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, info.Patches)
+	delta := &model.DeltaModel{
+		UpdateCommitment: info.UpdateCommitment,
+		Patches:          info.Patches,
+	}
+
+	deltaHash, err := docutil.CalculateModelMultihash(delta, info.MultihashCode)
 	if err != nil {
 		return nil, err
 	}
 
-	mhDelta, err := getEncodedMultihash(info.MultihashCode, deltaBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	signedDataModel := model.UpdateSignedDataModel{
-		DeltaHash: mhDelta,
+	signedDataModel := &model.UpdateSignedDataModel{
+		DeltaHash: deltaHash,
 		UpdateKey: info.UpdateKey,
 	}
 
@@ -66,9 +67,9 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.UpdateRequest{
-		Operation:  model.OperationTypeUpdate,
+		Operation:  batch.OperationTypeUpdate,
 		DidSuffix:  info.DidSuffix,
-		Delta:      docutil.EncodeToString(deltaBytes),
+		Delta:      delta,
 		SignedData: jws,
 	}
 

@@ -6,42 +6,21 @@ SPDX-License-Identifier: Apache-2.0
 
 package batch
 
-import (
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
-)
-
-// Operation is used for parsing operation request.
+// Operation defines minimum information.
 type Operation struct {
 
-	// Type defines operation type
-	Type OperationType
+	// Type defines operation type.
+	Type OperationType `json:"type"`
 
-	// Namespace defines document namespace
-	Namespace string
+	// UniqueSuffix defines document unique suffix.
+	UniqueSuffix string `json:"unique_suffix"`
 
-	// ID is full ID for this document -  namespace + unique suffix
-	ID string
-
-	// UniqueSuffix is unique suffix
-	UniqueSuffix string
+	// ID ...
+	// TODO: See if you can get rid of this
+	ID string `json:"id"`
 
 	// OperationBuffer is the original operation request
-	OperationBuffer []byte
-
-	// SignedData is signed data for the operation (compact JWS)
-	SignedData string
-
-	// DeltaModel is operation delta model
-	DeltaModel *model.DeltaModel
-
-	// Delta is encoded delta
-	Delta string
-
-	// SuffixDataModel is suffix data model
-	SuffixDataModel *model.SuffixDataModel
-
-	// SuffixData is encoded suffix data
-	SuffixData string
+	OperationBuffer []byte `json:"operation_buffer"`
 }
 
 // AnchoredOperation defines an anchored operation (stored in document operation store).
@@ -53,14 +32,8 @@ type AnchoredOperation struct {
 	// UniqueSuffix defines document unique suffix.
 	UniqueSuffix string `json:"unique_suffix"`
 
-	// SignedData is signed data for the operation (compact JWS).
-	SignedData string `json:"signed_data,omitempty"`
-
-	// Delta is encoded delta.
-	Delta string `json:"delta,omitempty"`
-
-	// SuffixData is encoded suffix data.
-	SuffixData string `json:"suffix_data,omitempty"`
+	// OperationBuffer is the original operation request
+	OperationBuffer []byte `json:"operation_buffer"`
 
 	// TransactionTime is the logical blockchain time (block number) that this operation was anchored on the blockchain.
 	TransactionTime uint64 `json:"transaction_time"`

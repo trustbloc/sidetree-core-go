@@ -21,7 +21,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 func TestResolveHandler_Resolve(t *testing.T) {
@@ -32,18 +32,10 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
+		bytes, err := canonicalizer.MarshalCanonical(create)
 		require.NoError(t, err)
 
-		delta, err := getDelta()
-		require.NoError(t, err)
-
-		result, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:       batch.OperationTypeCreate,
-			ID:         id,
-			DeltaModel: delta,
-			Delta:      create.Delta,
-		}, 0)
+		result, err := docHandler.ProcessOperation(bytes, 0)
 		require.NoError(t, err)
 
 		getID = func(req *http.Request) string { return result.Document.ID() }
@@ -59,10 +51,10 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().
 			WithNamespace(namespace)
 
-		create, err := getCreateRequestJCS()
+		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		id, err := docutil.CalculateJCSID(namespace, create.SuffixData, sha2_256)
+		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
 		initialStateJCS, err := canonicalizeThenEncode(create)
@@ -122,24 +114,24 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		id, err := docutil.CalculateID(namespace, create.SuffixData, sha2_256)
+		suffix, err := docutil.CalculateModelMultihash(create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
-		delta, err := getDelta()
+		createBytes, err := canonicalizer.MarshalCanonical(create)
 		require.NoError(t, err)
 
-		result, err := docHandler.ProcessOperation(&batch.Operation{
-			Type:       batch.OperationTypeCreate,
-			ID:         id,
-			DeltaModel: delta,
-			Delta:      create.Delta,
-		}, 0)
+		result, err := docHandler.ProcessOperation(createBytes, 0)
 		require.NoError(t, err)
 
-		_, err = docHandler.ProcessOperation(&batch.Operation{
-			Type: batch.OperationTypeDeactivate,
-			ID:   result.Document.ID(),
-		}, 0)
+		deactivate := &model.DeactivateRequest{
+			Operation: batch.OperationTypeDeactivate,
+			DidSuffix: suffix,
+		}
+
+		deactivateBytes, err := canonicalizer.MarshalCanonical(deactivate)
+		require.NoError(t, err)
+
+		_, err = docHandler.ProcessOperation(deactivateBytes, 0)
 		require.NoError(t, err)
 
 		getID = func(req *http.Request) string { return result.Document.ID() }
@@ -158,33 +150,12 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(getSuffixData())
-	if err != nil {
-		return nil, err
-	}
+	suffixData := getSuffixData()
 
 	return &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
-	}, nil
-}
-
-func getCreateRequestJCS() (*model.CreateRequestJCS, error) {
-	delta, err := getDelta()
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.CreateRequestJCS{
-		Operation:  model.OperationTypeCreate,
+		Operation:  batch.OperationTypeCreate,
 		Delta:      delta,
-		SuffixData: getSuffixData(),
+		SuffixData: suffixData,
 	}, nil
 }
 

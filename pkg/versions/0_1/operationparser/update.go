@@ -13,11 +13,11 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // ParseUpdateOperation will parse update operation.
-func (p *Parser) ParseUpdateOperation(request []byte) (*batch.Operation, error) {
+func (p *Parser) ParseUpdateOperation(request []byte, anchor bool) (*model.Operation, error) {
 	schema, err := p.parseUpdateRequest(request)
 	if err != nil {
 		return nil, err
@@ -28,16 +28,17 @@ func (p *Parser) ParseUpdateOperation(request []byte) (*batch.Operation, error) 
 		return nil, err
 	}
 
-	delta, err := p.ParseDelta(schema.Delta)
-	if err != nil {
-		return nil, err
+	if !anchor {
+		err = p.ValidateDelta(schema.Delta)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &batch.Operation{
+	return &model.Operation{
 		Type:            batch.OperationTypeUpdate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
-		DeltaModel:      delta,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
 	}, nil
@@ -80,10 +81,6 @@ func (p *Parser) ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSigne
 func (p *Parser) validateUpdateRequest(update *model.UpdateRequest) error {
 	if update.DidSuffix == "" {
 		return errors.New("missing did suffix")
-	}
-
-	if update.Delta == "" {
-		return errors.New("missing delta")
 	}
 
 	if update.SignedData == "" {

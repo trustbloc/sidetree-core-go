@@ -9,10 +9,11 @@ package helper
 import (
 	"errors"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // Signer defines JWS Signer interface that will be used to sign required data in Sidetree request.
@@ -55,7 +56,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.DeactivateRequest{
-		Operation:  model.OperationTypeDeactivate,
+		Operation:  batch.OperationTypeDeactivate,
 		DidSuffix:  info.DidSuffix,
 		SignedData: jws,
 	}

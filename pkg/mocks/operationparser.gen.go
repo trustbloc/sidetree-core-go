@@ -4,129 +4,214 @@ package mocks
 import (
 	"sync"
 
-	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
 type OperationParser struct {
-	ParseStub        func(namespace string, operationBuffer []byte) (*batchapi.Operation, error)
+	GetCommitmentStub        func([]byte) (string, error)
+	getCommitmentMutex       sync.RWMutex
+	getCommitmentArgsForCall []struct {
+		arg1 []byte
+	}
+	getCommitmentReturns struct {
+		result1 string
+		result2 error
+	}
+	getCommitmentReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
+	GetRevealValueStub        func([]byte) (*jws.JWK, error)
+	getRevealValueMutex       sync.RWMutex
+	getRevealValueArgsForCall []struct {
+		arg1 []byte
+	}
+	getRevealValueReturns struct {
+		result1 *jws.JWK
+		result2 error
+	}
+	getRevealValueReturnsOnCall map[int]struct {
+		result1 *jws.JWK
+		result2 error
+	}
+	ParseStub        func(string, []byte) (*batch.Operation, error)
 	parseMutex       sync.RWMutex
 	parseArgsForCall []struct {
-		namespace       string
-		operationBuffer []byte
+		arg1 string
+		arg2 []byte
 	}
 	parseReturns struct {
-		result1 *batchapi.Operation
+		result1 *batch.Operation
 		result2 error
 	}
 	parseReturnsOnCall map[int]struct {
-		result1 *batchapi.Operation
-		result2 error
-	}
-	ParseCreateOperationStub        func(request []byte) (*batchapi.Operation, error)
-	parseCreateOperationMutex       sync.RWMutex
-	parseCreateOperationArgsForCall []struct {
-		request []byte
-	}
-	parseCreateOperationReturns struct {
-		result1 *batchapi.Operation
-		result2 error
-	}
-	parseCreateOperationReturnsOnCall map[int]struct {
-		result1 *batchapi.Operation
-		result2 error
-	}
-	ParseSuffixDataStub        func(encoded string) (*model.SuffixDataModel, error)
-	parseSuffixDataMutex       sync.RWMutex
-	parseSuffixDataArgsForCall []struct {
-		encoded string
-	}
-	parseSuffixDataReturns struct {
-		result1 *model.SuffixDataModel
-		result2 error
-	}
-	parseSuffixDataReturnsOnCall map[int]struct {
-		result1 *model.SuffixDataModel
-		result2 error
-	}
-	ParseDeltaStub        func(encoded string) (*model.DeltaModel, error)
-	parseDeltaMutex       sync.RWMutex
-	parseDeltaArgsForCall []struct {
-		encoded string
-	}
-	parseDeltaReturns struct {
-		result1 *model.DeltaModel
-		result2 error
-	}
-	parseDeltaReturnsOnCall map[int]struct {
-		result1 *model.DeltaModel
-		result2 error
-	}
-	ParseSignedDataForUpdateStub        func(compactJWS string) (*model.UpdateSignedDataModel, error)
-	parseSignedDataForUpdateMutex       sync.RWMutex
-	parseSignedDataForUpdateArgsForCall []struct {
-		compactJWS string
-	}
-	parseSignedDataForUpdateReturns struct {
-		result1 *model.UpdateSignedDataModel
-		result2 error
-	}
-	parseSignedDataForUpdateReturnsOnCall map[int]struct {
-		result1 *model.UpdateSignedDataModel
-		result2 error
-	}
-	ParseSignedDataForDeactivateStub        func(compactJWS string) (*model.DeactivateSignedDataModel, error)
-	parseSignedDataForDeactivateMutex       sync.RWMutex
-	parseSignedDataForDeactivateArgsForCall []struct {
-		compactJWS string
-	}
-	parseSignedDataForDeactivateReturns struct {
-		result1 *model.DeactivateSignedDataModel
-		result2 error
-	}
-	parseSignedDataForDeactivateReturnsOnCall map[int]struct {
-		result1 *model.DeactivateSignedDataModel
-		result2 error
-	}
-	ParseSignedDataForRecoverStub        func(compactJWS string) (*model.RecoverSignedDataModel, error)
-	parseSignedDataForRecoverMutex       sync.RWMutex
-	parseSignedDataForRecoverArgsForCall []struct {
-		compactJWS string
-	}
-	parseSignedDataForRecoverReturns struct {
-		result1 *model.RecoverSignedDataModel
-		result2 error
-	}
-	parseSignedDataForRecoverReturnsOnCall map[int]struct {
-		result1 *model.RecoverSignedDataModel
+		result1 *batch.Operation
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OperationParser) Parse(namespace string, operationBuffer []byte) (*batchapi.Operation, error) {
-	var operationBufferCopy []byte
-	if operationBuffer != nil {
-		operationBufferCopy = make([]byte, len(operationBuffer))
-		copy(operationBufferCopy, operationBuffer)
+func (fake *OperationParser) GetCommitment(arg1 []byte) (string, error) {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
 	}
-	fake.parseMutex.Lock()
-	ret, specificReturn := fake.parseReturnsOnCall[len(fake.parseArgsForCall)]
-	fake.parseArgsForCall = append(fake.parseArgsForCall, struct {
-		namespace       string
-		operationBuffer []byte
-	}{namespace, operationBufferCopy})
-	fake.recordInvocation("Parse", []interface{}{namespace, operationBufferCopy})
-	fake.parseMutex.Unlock()
-	if fake.ParseStub != nil {
-		return fake.ParseStub(namespace, operationBuffer)
+	fake.getCommitmentMutex.Lock()
+	ret, specificReturn := fake.getCommitmentReturnsOnCall[len(fake.getCommitmentArgsForCall)]
+	fake.getCommitmentArgsForCall = append(fake.getCommitmentArgsForCall, struct {
+		arg1 []byte
+	}{arg1Copy})
+	fake.recordInvocation("GetCommitment", []interface{}{arg1Copy})
+	fake.getCommitmentMutex.Unlock()
+	if fake.GetCommitmentStub != nil {
+		return fake.GetCommitmentStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.parseReturns.result1, fake.parseReturns.result2
+	fakeReturns := fake.getCommitmentReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *OperationParser) GetCommitmentCallCount() int {
+	fake.getCommitmentMutex.RLock()
+	defer fake.getCommitmentMutex.RUnlock()
+	return len(fake.getCommitmentArgsForCall)
+}
+
+func (fake *OperationParser) GetCommitmentCalls(stub func([]byte) (string, error)) {
+	fake.getCommitmentMutex.Lock()
+	defer fake.getCommitmentMutex.Unlock()
+	fake.GetCommitmentStub = stub
+}
+
+func (fake *OperationParser) GetCommitmentArgsForCall(i int) []byte {
+	fake.getCommitmentMutex.RLock()
+	defer fake.getCommitmentMutex.RUnlock()
+	argsForCall := fake.getCommitmentArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *OperationParser) GetCommitmentReturns(result1 string, result2 error) {
+	fake.getCommitmentMutex.Lock()
+	defer fake.getCommitmentMutex.Unlock()
+	fake.GetCommitmentStub = nil
+	fake.getCommitmentReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *OperationParser) GetCommitmentReturnsOnCall(i int, result1 string, result2 error) {
+	fake.getCommitmentMutex.Lock()
+	defer fake.getCommitmentMutex.Unlock()
+	fake.GetCommitmentStub = nil
+	if fake.getCommitmentReturnsOnCall == nil {
+		fake.getCommitmentReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.getCommitmentReturnsOnCall[i] = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *OperationParser) GetRevealValue(arg1 []byte) (*jws.JWK, error) {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
+	}
+	fake.getRevealValueMutex.Lock()
+	ret, specificReturn := fake.getRevealValueReturnsOnCall[len(fake.getRevealValueArgsForCall)]
+	fake.getRevealValueArgsForCall = append(fake.getRevealValueArgsForCall, struct {
+		arg1 []byte
+	}{arg1Copy})
+	fake.recordInvocation("GetRevealValue", []interface{}{arg1Copy})
+	fake.getRevealValueMutex.Unlock()
+	if fake.GetRevealValueStub != nil {
+		return fake.GetRevealValueStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getRevealValueReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *OperationParser) GetRevealValueCallCount() int {
+	fake.getRevealValueMutex.RLock()
+	defer fake.getRevealValueMutex.RUnlock()
+	return len(fake.getRevealValueArgsForCall)
+}
+
+func (fake *OperationParser) GetRevealValueCalls(stub func([]byte) (*jws.JWK, error)) {
+	fake.getRevealValueMutex.Lock()
+	defer fake.getRevealValueMutex.Unlock()
+	fake.GetRevealValueStub = stub
+}
+
+func (fake *OperationParser) GetRevealValueArgsForCall(i int) []byte {
+	fake.getRevealValueMutex.RLock()
+	defer fake.getRevealValueMutex.RUnlock()
+	argsForCall := fake.getRevealValueArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *OperationParser) GetRevealValueReturns(result1 *jws.JWK, result2 error) {
+	fake.getRevealValueMutex.Lock()
+	defer fake.getRevealValueMutex.Unlock()
+	fake.GetRevealValueStub = nil
+	fake.getRevealValueReturns = struct {
+		result1 *jws.JWK
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *OperationParser) GetRevealValueReturnsOnCall(i int, result1 *jws.JWK, result2 error) {
+	fake.getRevealValueMutex.Lock()
+	defer fake.getRevealValueMutex.Unlock()
+	fake.GetRevealValueStub = nil
+	if fake.getRevealValueReturnsOnCall == nil {
+		fake.getRevealValueReturnsOnCall = make(map[int]struct {
+			result1 *jws.JWK
+			result2 error
+		})
+	}
+	fake.getRevealValueReturnsOnCall[i] = struct {
+		result1 *jws.JWK
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *OperationParser) Parse(arg1 string, arg2 []byte) (*batch.Operation, error) {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.parseMutex.Lock()
+	ret, specificReturn := fake.parseReturnsOnCall[len(fake.parseArgsForCall)]
+	fake.parseArgsForCall = append(fake.parseArgsForCall, struct {
+		arg1 string
+		arg2 []byte
+	}{arg1, arg2Copy})
+	fake.recordInvocation("Parse", []interface{}{arg1, arg2Copy})
+	fake.parseMutex.Unlock()
+	if fake.ParseStub != nil {
+		return fake.ParseStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.parseReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *OperationParser) ParseCallCount() int {
@@ -135,341 +220,41 @@ func (fake *OperationParser) ParseCallCount() int {
 	return len(fake.parseArgsForCall)
 }
 
+func (fake *OperationParser) ParseCalls(stub func(string, []byte) (*batch.Operation, error)) {
+	fake.parseMutex.Lock()
+	defer fake.parseMutex.Unlock()
+	fake.ParseStub = stub
+}
+
 func (fake *OperationParser) ParseArgsForCall(i int) (string, []byte) {
 	fake.parseMutex.RLock()
 	defer fake.parseMutex.RUnlock()
-	return fake.parseArgsForCall[i].namespace, fake.parseArgsForCall[i].operationBuffer
+	argsForCall := fake.parseArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *OperationParser) ParseReturns(result1 *batchapi.Operation, result2 error) {
+func (fake *OperationParser) ParseReturns(result1 *batch.Operation, result2 error) {
+	fake.parseMutex.Lock()
+	defer fake.parseMutex.Unlock()
 	fake.ParseStub = nil
 	fake.parseReturns = struct {
-		result1 *batchapi.Operation
+		result1 *batch.Operation
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *OperationParser) ParseReturnsOnCall(i int, result1 *batchapi.Operation, result2 error) {
+func (fake *OperationParser) ParseReturnsOnCall(i int, result1 *batch.Operation, result2 error) {
+	fake.parseMutex.Lock()
+	defer fake.parseMutex.Unlock()
 	fake.ParseStub = nil
 	if fake.parseReturnsOnCall == nil {
 		fake.parseReturnsOnCall = make(map[int]struct {
-			result1 *batchapi.Operation
+			result1 *batch.Operation
 			result2 error
 		})
 	}
 	fake.parseReturnsOnCall[i] = struct {
-		result1 *batchapi.Operation
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseCreateOperation(request []byte) (*batchapi.Operation, error) {
-	var requestCopy []byte
-	if request != nil {
-		requestCopy = make([]byte, len(request))
-		copy(requestCopy, request)
-	}
-	fake.parseCreateOperationMutex.Lock()
-	ret, specificReturn := fake.parseCreateOperationReturnsOnCall[len(fake.parseCreateOperationArgsForCall)]
-	fake.parseCreateOperationArgsForCall = append(fake.parseCreateOperationArgsForCall, struct {
-		request []byte
-	}{requestCopy})
-	fake.recordInvocation("ParseCreateOperation", []interface{}{requestCopy})
-	fake.parseCreateOperationMutex.Unlock()
-	if fake.ParseCreateOperationStub != nil {
-		return fake.ParseCreateOperationStub(request)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.parseCreateOperationReturns.result1, fake.parseCreateOperationReturns.result2
-}
-
-func (fake *OperationParser) ParseCreateOperationCallCount() int {
-	fake.parseCreateOperationMutex.RLock()
-	defer fake.parseCreateOperationMutex.RUnlock()
-	return len(fake.parseCreateOperationArgsForCall)
-}
-
-func (fake *OperationParser) ParseCreateOperationArgsForCall(i int) []byte {
-	fake.parseCreateOperationMutex.RLock()
-	defer fake.parseCreateOperationMutex.RUnlock()
-	return fake.parseCreateOperationArgsForCall[i].request
-}
-
-func (fake *OperationParser) ParseCreateOperationReturns(result1 *batchapi.Operation, result2 error) {
-	fake.ParseCreateOperationStub = nil
-	fake.parseCreateOperationReturns = struct {
-		result1 *batchapi.Operation
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseCreateOperationReturnsOnCall(i int, result1 *batchapi.Operation, result2 error) {
-	fake.ParseCreateOperationStub = nil
-	if fake.parseCreateOperationReturnsOnCall == nil {
-		fake.parseCreateOperationReturnsOnCall = make(map[int]struct {
-			result1 *batchapi.Operation
-			result2 error
-		})
-	}
-	fake.parseCreateOperationReturnsOnCall[i] = struct {
-		result1 *batchapi.Operation
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSuffixData(encoded string) (*model.SuffixDataModel, error) {
-	fake.parseSuffixDataMutex.Lock()
-	ret, specificReturn := fake.parseSuffixDataReturnsOnCall[len(fake.parseSuffixDataArgsForCall)]
-	fake.parseSuffixDataArgsForCall = append(fake.parseSuffixDataArgsForCall, struct {
-		encoded string
-	}{encoded})
-	fake.recordInvocation("ParseSuffixData", []interface{}{encoded})
-	fake.parseSuffixDataMutex.Unlock()
-	if fake.ParseSuffixDataStub != nil {
-		return fake.ParseSuffixDataStub(encoded)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.parseSuffixDataReturns.result1, fake.parseSuffixDataReturns.result2
-}
-
-func (fake *OperationParser) ParseSuffixDataCallCount() int {
-	fake.parseSuffixDataMutex.RLock()
-	defer fake.parseSuffixDataMutex.RUnlock()
-	return len(fake.parseSuffixDataArgsForCall)
-}
-
-func (fake *OperationParser) ParseSuffixDataArgsForCall(i int) string {
-	fake.parseSuffixDataMutex.RLock()
-	defer fake.parseSuffixDataMutex.RUnlock()
-	return fake.parseSuffixDataArgsForCall[i].encoded
-}
-
-func (fake *OperationParser) ParseSuffixDataReturns(result1 *model.SuffixDataModel, result2 error) {
-	fake.ParseSuffixDataStub = nil
-	fake.parseSuffixDataReturns = struct {
-		result1 *model.SuffixDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSuffixDataReturnsOnCall(i int, result1 *model.SuffixDataModel, result2 error) {
-	fake.ParseSuffixDataStub = nil
-	if fake.parseSuffixDataReturnsOnCall == nil {
-		fake.parseSuffixDataReturnsOnCall = make(map[int]struct {
-			result1 *model.SuffixDataModel
-			result2 error
-		})
-	}
-	fake.parseSuffixDataReturnsOnCall[i] = struct {
-		result1 *model.SuffixDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseDelta(encoded string) (*model.DeltaModel, error) {
-	fake.parseDeltaMutex.Lock()
-	ret, specificReturn := fake.parseDeltaReturnsOnCall[len(fake.parseDeltaArgsForCall)]
-	fake.parseDeltaArgsForCall = append(fake.parseDeltaArgsForCall, struct {
-		encoded string
-	}{encoded})
-	fake.recordInvocation("ParseDelta", []interface{}{encoded})
-	fake.parseDeltaMutex.Unlock()
-	if fake.ParseDeltaStub != nil {
-		return fake.ParseDeltaStub(encoded)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.parseDeltaReturns.result1, fake.parseDeltaReturns.result2
-}
-
-func (fake *OperationParser) ParseDeltaCallCount() int {
-	fake.parseDeltaMutex.RLock()
-	defer fake.parseDeltaMutex.RUnlock()
-	return len(fake.parseDeltaArgsForCall)
-}
-
-func (fake *OperationParser) ParseDeltaArgsForCall(i int) string {
-	fake.parseDeltaMutex.RLock()
-	defer fake.parseDeltaMutex.RUnlock()
-	return fake.parseDeltaArgsForCall[i].encoded
-}
-
-func (fake *OperationParser) ParseDeltaReturns(result1 *model.DeltaModel, result2 error) {
-	fake.ParseDeltaStub = nil
-	fake.parseDeltaReturns = struct {
-		result1 *model.DeltaModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseDeltaReturnsOnCall(i int, result1 *model.DeltaModel, result2 error) {
-	fake.ParseDeltaStub = nil
-	if fake.parseDeltaReturnsOnCall == nil {
-		fake.parseDeltaReturnsOnCall = make(map[int]struct {
-			result1 *model.DeltaModel
-			result2 error
-		})
-	}
-	fake.parseDeltaReturnsOnCall[i] = struct {
-		result1 *model.DeltaModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error) {
-	fake.parseSignedDataForUpdateMutex.Lock()
-	ret, specificReturn := fake.parseSignedDataForUpdateReturnsOnCall[len(fake.parseSignedDataForUpdateArgsForCall)]
-	fake.parseSignedDataForUpdateArgsForCall = append(fake.parseSignedDataForUpdateArgsForCall, struct {
-		compactJWS string
-	}{compactJWS})
-	fake.recordInvocation("ParseSignedDataForUpdate", []interface{}{compactJWS})
-	fake.parseSignedDataForUpdateMutex.Unlock()
-	if fake.ParseSignedDataForUpdateStub != nil {
-		return fake.ParseSignedDataForUpdateStub(compactJWS)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.parseSignedDataForUpdateReturns.result1, fake.parseSignedDataForUpdateReturns.result2
-}
-
-func (fake *OperationParser) ParseSignedDataForUpdateCallCount() int {
-	fake.parseSignedDataForUpdateMutex.RLock()
-	defer fake.parseSignedDataForUpdateMutex.RUnlock()
-	return len(fake.parseSignedDataForUpdateArgsForCall)
-}
-
-func (fake *OperationParser) ParseSignedDataForUpdateArgsForCall(i int) string {
-	fake.parseSignedDataForUpdateMutex.RLock()
-	defer fake.parseSignedDataForUpdateMutex.RUnlock()
-	return fake.parseSignedDataForUpdateArgsForCall[i].compactJWS
-}
-
-func (fake *OperationParser) ParseSignedDataForUpdateReturns(result1 *model.UpdateSignedDataModel, result2 error) {
-	fake.ParseSignedDataForUpdateStub = nil
-	fake.parseSignedDataForUpdateReturns = struct {
-		result1 *model.UpdateSignedDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSignedDataForUpdateReturnsOnCall(i int, result1 *model.UpdateSignedDataModel, result2 error) {
-	fake.ParseSignedDataForUpdateStub = nil
-	if fake.parseSignedDataForUpdateReturnsOnCall == nil {
-		fake.parseSignedDataForUpdateReturnsOnCall = make(map[int]struct {
-			result1 *model.UpdateSignedDataModel
-			result2 error
-		})
-	}
-	fake.parseSignedDataForUpdateReturnsOnCall[i] = struct {
-		result1 *model.UpdateSignedDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error) {
-	fake.parseSignedDataForDeactivateMutex.Lock()
-	ret, specificReturn := fake.parseSignedDataForDeactivateReturnsOnCall[len(fake.parseSignedDataForDeactivateArgsForCall)]
-	fake.parseSignedDataForDeactivateArgsForCall = append(fake.parseSignedDataForDeactivateArgsForCall, struct {
-		compactJWS string
-	}{compactJWS})
-	fake.recordInvocation("ParseSignedDataForDeactivate", []interface{}{compactJWS})
-	fake.parseSignedDataForDeactivateMutex.Unlock()
-	if fake.ParseSignedDataForDeactivateStub != nil {
-		return fake.ParseSignedDataForDeactivateStub(compactJWS)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.parseSignedDataForDeactivateReturns.result1, fake.parseSignedDataForDeactivateReturns.result2
-}
-
-func (fake *OperationParser) ParseSignedDataForDeactivateCallCount() int {
-	fake.parseSignedDataForDeactivateMutex.RLock()
-	defer fake.parseSignedDataForDeactivateMutex.RUnlock()
-	return len(fake.parseSignedDataForDeactivateArgsForCall)
-}
-
-func (fake *OperationParser) ParseSignedDataForDeactivateArgsForCall(i int) string {
-	fake.parseSignedDataForDeactivateMutex.RLock()
-	defer fake.parseSignedDataForDeactivateMutex.RUnlock()
-	return fake.parseSignedDataForDeactivateArgsForCall[i].compactJWS
-}
-
-func (fake *OperationParser) ParseSignedDataForDeactivateReturns(result1 *model.DeactivateSignedDataModel, result2 error) {
-	fake.ParseSignedDataForDeactivateStub = nil
-	fake.parseSignedDataForDeactivateReturns = struct {
-		result1 *model.DeactivateSignedDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSignedDataForDeactivateReturnsOnCall(i int, result1 *model.DeactivateSignedDataModel, result2 error) {
-	fake.ParseSignedDataForDeactivateStub = nil
-	if fake.parseSignedDataForDeactivateReturnsOnCall == nil {
-		fake.parseSignedDataForDeactivateReturnsOnCall = make(map[int]struct {
-			result1 *model.DeactivateSignedDataModel
-			result2 error
-		})
-	}
-	fake.parseSignedDataForDeactivateReturnsOnCall[i] = struct {
-		result1 *model.DeactivateSignedDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error) {
-	fake.parseSignedDataForRecoverMutex.Lock()
-	ret, specificReturn := fake.parseSignedDataForRecoverReturnsOnCall[len(fake.parseSignedDataForRecoverArgsForCall)]
-	fake.parseSignedDataForRecoverArgsForCall = append(fake.parseSignedDataForRecoverArgsForCall, struct {
-		compactJWS string
-	}{compactJWS})
-	fake.recordInvocation("ParseSignedDataForRecover", []interface{}{compactJWS})
-	fake.parseSignedDataForRecoverMutex.Unlock()
-	if fake.ParseSignedDataForRecoverStub != nil {
-		return fake.ParseSignedDataForRecoverStub(compactJWS)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.parseSignedDataForRecoverReturns.result1, fake.parseSignedDataForRecoverReturns.result2
-}
-
-func (fake *OperationParser) ParseSignedDataForRecoverCallCount() int {
-	fake.parseSignedDataForRecoverMutex.RLock()
-	defer fake.parseSignedDataForRecoverMutex.RUnlock()
-	return len(fake.parseSignedDataForRecoverArgsForCall)
-}
-
-func (fake *OperationParser) ParseSignedDataForRecoverArgsForCall(i int) string {
-	fake.parseSignedDataForRecoverMutex.RLock()
-	defer fake.parseSignedDataForRecoverMutex.RUnlock()
-	return fake.parseSignedDataForRecoverArgsForCall[i].compactJWS
-}
-
-func (fake *OperationParser) ParseSignedDataForRecoverReturns(result1 *model.RecoverSignedDataModel, result2 error) {
-	fake.ParseSignedDataForRecoverStub = nil
-	fake.parseSignedDataForRecoverReturns = struct {
-		result1 *model.RecoverSignedDataModel
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *OperationParser) ParseSignedDataForRecoverReturnsOnCall(i int, result1 *model.RecoverSignedDataModel, result2 error) {
-	fake.ParseSignedDataForRecoverStub = nil
-	if fake.parseSignedDataForRecoverReturnsOnCall == nil {
-		fake.parseSignedDataForRecoverReturnsOnCall = make(map[int]struct {
-			result1 *model.RecoverSignedDataModel
-			result2 error
-		})
-	}
-	fake.parseSignedDataForRecoverReturnsOnCall[i] = struct {
-		result1 *model.RecoverSignedDataModel
+		result1 *batch.Operation
 		result2 error
 	}{result1, result2}
 }
@@ -477,20 +262,12 @@ func (fake *OperationParser) ParseSignedDataForRecoverReturnsOnCall(i int, resul
 func (fake *OperationParser) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.getCommitmentMutex.RLock()
+	defer fake.getCommitmentMutex.RUnlock()
+	fake.getRevealValueMutex.RLock()
+	defer fake.getRevealValueMutex.RUnlock()
 	fake.parseMutex.RLock()
 	defer fake.parseMutex.RUnlock()
-	fake.parseCreateOperationMutex.RLock()
-	defer fake.parseCreateOperationMutex.RUnlock()
-	fake.parseSuffixDataMutex.RLock()
-	defer fake.parseSuffixDataMutex.RUnlock()
-	fake.parseDeltaMutex.RLock()
-	defer fake.parseDeltaMutex.RUnlock()
-	fake.parseSignedDataForUpdateMutex.RLock()
-	defer fake.parseSignedDataForUpdateMutex.RUnlock()
-	fake.parseSignedDataForDeactivateMutex.RLock()
-	defer fake.parseSignedDataForDeactivateMutex.RUnlock()
-	fake.parseSignedDataForRecoverMutex.RLock()
-	defer fake.parseSignedDataForRecoverMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

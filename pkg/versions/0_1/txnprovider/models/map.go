@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // MapFile defines the schema for map file and its related operations.
@@ -25,7 +26,7 @@ type Chunk struct {
 
 // CreateMapFile will create map file model from operations and chunk file URI.
 // returns chunk file model.
-func CreateMapFile(uri []string, ops []*batch.Operation) *MapFile {
+func CreateMapFile(uri []string, ops []*model.Operation) *MapFile {
 	return &MapFile{
 		Chunks: getChunks(uri),
 		Operations: Operations{
@@ -55,7 +56,7 @@ func getChunks(uris []string) []Chunk {
 	return chunks
 }
 
-func getSignedOperations(filter batch.OperationType, ops []*batch.Operation) []SignedOperation {
+func getSignedOperations(filter batch.OperationType, ops []*model.Operation) []SignedOperation {
 	var result []SignedOperation
 	for _, op := range ops {
 		if op.Type == filter {

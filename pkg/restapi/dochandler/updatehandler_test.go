@@ -21,16 +21,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
@@ -57,7 +58,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	err = json.Unmarshal(create, &createReq)
 	require.NoError(t, err)
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(createReq.SuffixData, sha2_256)
+	uniqueSuffix, err := docutil.CalculateModelMultihash(createReq.SuffixData, sha2_256)
 	require.NoError(t, err)
 
 	id, err := docutil.CalculateID(namespace, createReq.SuffixData, sha2_256)
@@ -259,7 +260,7 @@ func getUnsupportedRequest() []byte {
 type operationSchema struct {
 
 	// operation
-	Operation model.OperationType `json:"type"`
+	Operation batch.OperationType `json:"type"`
 }
 
 const validDoc = `{

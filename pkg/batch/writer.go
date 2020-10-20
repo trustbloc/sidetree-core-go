@@ -276,9 +276,8 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 }
 
 func (r *Writer) process(ops []*batch.OperationInfo, protocolGenesisTime uint64) error {
-	operations, err := r.parseOperations(ops, protocolGenesisTime)
-	if err != nil {
-		return err
+	if len(ops) == 0 {
+		return errors.New("create batch called with no pending operations, should not happen")
 	}
 
 	p, err := r.protocol.Get(protocolGenesisTime)
@@ -286,7 +285,7 @@ func (r *Writer) process(ops []*batch.OperationInfo, protocolGenesisTime uint64)
 		return err
 	}
 
-	anchorString, err := p.OperationHandler().PrepareTxnFiles(operations)
+	anchorString, err := p.OperationHandler().PrepareTxnFiles(ops)
 	if err != nil {
 		return err
 	}
@@ -295,41 +294,6 @@ func (r *Writer) process(ops []*batch.OperationInfo, protocolGenesisTime uint64)
 
 	// Create Sidetree transaction in blockchain (write anchor string)
 	return r.context.Blockchain().WriteAnchor(anchorString, protocolGenesisTime)
-}
-
-func (r *Writer) parseOperations(ops []*batch.OperationInfo, protocolGenesisTime uint64) ([]*batch.Operation, error) {
-	if len(ops) == 0 {
-		return nil, errors.New("create batch called with no pending operations, should not happen")
-	}
-
-	batchSuffixes := make(map[string]bool)
-
-	pv, err := r.protocol.Get(protocolGenesisTime)
-	if err != nil {
-		return nil, err
-	}
-
-	parser := pv.OperationParser()
-
-	var operations []*batch.Operation
-	for _, d := range ops {
-		op, e := parser.Parse(d.Namespace, d.Data)
-		if e != nil {
-			return nil, e
-		}
-
-		_, ok := batchSuffixes[op.UniqueSuffix]
-		if ok {
-			logger.Warnf("[%s] duplicate suffix[%s] found in batch operations: discarding operation %v", r.namespace, op.UniqueSuffix, op)
-
-			continue
-		}
-
-		operations = append(operations, op)
-		batchSuffixes[op.UniqueSuffix] = true
-	}
-
-	return operations, nil
 }
 
 func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.Time {

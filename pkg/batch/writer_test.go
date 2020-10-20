@@ -537,13 +537,14 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 	oa := operationapplier.New(pc.Protocol, parser, dc)
 
 	pc.CasClient = mocks.NewMockCasClient(nil)
-	th := txnprovider.NewOperationHandler(pc.Protocol, pc.CasClient, compression.New(compression.WithDefaultAlgorithms()))
+	th := txnprovider.NewOperationHandler(pc.Protocol, pc.CasClient, compression.New(compression.WithDefaultAlgorithms()), parser)
 
 	pv := pc.CurrentVersion
 	pv.OperationParserReturns(parser)
 	pv.OperationApplierReturns(oa)
 	pv.DocumentComposerReturns(dc)
 	pv.OperationHandlerReturns(th)
+	pv.OperationParserReturns(parser)
 
 	return pc
 }

@@ -13,51 +13,34 @@ import (
 )
 
 const (
-	multihashCode  uint = 18
-	namespace           = "did:sidetree"
-	expectedSuffix      = "EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag"
+	multihashCode uint = 18
+	namespace          = "did:sidetree"
 )
 
-func TestCalculateDID(t *testing.T) {
-	payload := []byte(suffixDataString)
-
-	did, err := CalculateID(namespace, EncodeToString(payload), multihashCode)
-	require.Nil(t, err)
-	require.Equal(t, did, namespace+NamespaceDelimiter+expectedSuffix)
-}
-
-func TestCalculateUniqueSuffix(t *testing.T) {
-	payload := []byte(suffixDataString)
-
-	suffix, err := CalculateUniqueSuffix(EncodeToString(payload), multihashCode)
-	require.Nil(t, err)
-	require.Equal(t, expectedSuffix, suffix)
-}
-
-func TestCalculateJCSID(t *testing.T) {
+func TestCalculateID(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		id, err := CalculateJCSID(namespace, suffixDataObject, multihashCode)
+		id, err := CalculateID(namespace, suffixDataObject, multihashCode)
 		require.Nil(t, err)
 		require.Equal(t, namespace+NamespaceDelimiter+expectedSuffixForSuffixObject, id)
 	})
 
 	t.Run("error - multihash algorithm not supported", func(t *testing.T) {
-		id, err := CalculateJCSID(namespace, suffixDataObject, 55)
+		id, err := CalculateID(namespace, suffixDataObject, 55)
 		require.NotNil(t, err)
 		require.Empty(t, id)
 		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
 	})
 }
 
-func TestCalculateJCSUniqueSuffix(t *testing.T) {
+func TestCalculateModelMultihash(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		suffix, err := CalculateJCSUniqueSuffix(suffixDataObject, multihashCode)
+		suffix, err := CalculateModelMultihash(suffixDataObject, multihashCode)
 		require.Nil(t, err)
 		require.Equal(t, expectedSuffixForSuffixObject, suffix)
 	})
 
 	t.Run("error - multihash algorithm not supported", func(t *testing.T) {
-		id, err := CalculateJCSUniqueSuffix(suffixDataObject, 55)
+		id, err := CalculateModelMultihash(suffixDataObject, 55)
 		require.NotNil(t, err)
 		require.Empty(t, id)
 		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
@@ -65,7 +48,7 @@ func TestCalculateJCSUniqueSuffix(t *testing.T) {
 
 	t.Run("error - marshal canonical", func(t *testing.T) {
 		var c chan int
-		result, err := CalculateJCSUniqueSuffix(c, sha2_256)
+		result, err := CalculateModelMultihash(c, sha2_256)
 		require.Error(t, err)
 		require.Empty(t, result)
 		require.Contains(t, err.Error(), "json: unsupported type: chan int")
@@ -73,19 +56,17 @@ func TestCalculateJCSUniqueSuffix(t *testing.T) {
 }
 
 func TestDidCalculationError(t *testing.T) {
-	payload := []byte("{}")
-
 	// non-supported mulithash code will cause an error
-	id, err := CalculateID(namespace, EncodeToString(payload), 55)
+	id, err := CalculateID(namespace, suffixDataObject, 55)
 	require.NotNil(t, err)
 	require.Empty(t, id)
 	require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
 
-	// payload has to be encoded - decode error
+	// payload has to be JSON object in order to canonicalize
 	id, err = CalculateID(namespace, "!!!", sha2_256)
 	require.NotNil(t, err)
 	require.Empty(t, id)
-	require.Contains(t, err.Error(), "illegal base64 data")
+	require.Contains(t, err.Error(), "Expected '{'")
 }
 
 func TestNamespaceFromID(t *testing.T) {
@@ -105,8 +86,6 @@ func TestNamespaceFromID(t *testing.T) {
 		require.Empty(t, ns)
 	})
 }
-
-const suffixDataString = `{"delta_hash":"EiBXM4otLuP2fG4ZA75-anrkWVX0637xZtMJSoKop-trdw","recovery_commitment":"EiC8G4IdbD7D4Co57GjLNKhmDEabrzkO1wsKE9MQeUvOgw"}`
 
 var suffixDataObject = &struct {
 	DeltaHash          string `json:"delta_hash,omitempty"`

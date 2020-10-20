@@ -62,8 +62,7 @@ func TestGetOperation(t *testing.T) {
 	t.Run("operation parsing error", func(t *testing.T) {
 		// set-up invalid hash algorithm in protocol configuration
 		invalid := protocol.Protocol{
-			HashAlgorithmInMultiHashCode: 55,
-			Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
+			SignatureAlgorithms: []string{"not-used"},
 		}
 
 		operation, err := getRecoverRequestBytes()
@@ -71,14 +70,14 @@ func TestGetOperation(t *testing.T) {
 
 		op, err := New(invalid).Parse(namespace, operation)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next update commitment hash is not computed with the required supported hash algorithm")
+		require.Contains(t, err.Error(), "recover: failed to parse signed data: algorithm 'alg' is not in the allowed list [not-used]")
 		require.Nil(t, op)
 	})
 	t.Run("unsupported operation type error", func(t *testing.T) {
 		operation := getUnsupportedRequest()
 		op, err := parser.Parse(namespace, operation)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "not implemented")
+		require.Contains(t, err.Error(), "parse operation: operation type [unsupported] not supported")
 		require.Nil(t, op)
 	})
 	t.Run("unmarshal request error - not JSON", func(t *testing.T) {

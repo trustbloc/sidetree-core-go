@@ -4,16 +4,16 @@ package mocks
 import (
 	"sync"
 
-	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
 type OperationApplier struct {
-	ApplyStub        func(op *batchapi.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error)
+	ApplyStub        func(*batch.AnchoredOperation, *protocol.ResolutionModel) (*protocol.ResolutionModel, error)
 	applyMutex       sync.RWMutex
 	applyArgsForCall []struct {
-		op *batchapi.AnchoredOperation
-		rm *protocol.ResolutionModel
+		arg1 *batch.AnchoredOperation
+		arg2 *protocol.ResolutionModel
 	}
 	applyReturns struct {
 		result1 *protocol.ResolutionModel
@@ -27,22 +27,23 @@ type OperationApplier struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OperationApplier) Apply(op *batchapi.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (fake *OperationApplier) Apply(arg1 *batch.AnchoredOperation, arg2 *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	fake.applyMutex.Lock()
 	ret, specificReturn := fake.applyReturnsOnCall[len(fake.applyArgsForCall)]
 	fake.applyArgsForCall = append(fake.applyArgsForCall, struct {
-		op *batchapi.AnchoredOperation
-		rm *protocol.ResolutionModel
-	}{op, rm})
-	fake.recordInvocation("Apply", []interface{}{op, rm})
+		arg1 *batch.AnchoredOperation
+		arg2 *protocol.ResolutionModel
+	}{arg1, arg2})
+	fake.recordInvocation("Apply", []interface{}{arg1, arg2})
 	fake.applyMutex.Unlock()
 	if fake.ApplyStub != nil {
-		return fake.ApplyStub(op, rm)
+		return fake.ApplyStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.applyReturns.result1, fake.applyReturns.result2
+	fakeReturns := fake.applyReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *OperationApplier) ApplyCallCount() int {
@@ -51,13 +52,22 @@ func (fake *OperationApplier) ApplyCallCount() int {
 	return len(fake.applyArgsForCall)
 }
 
-func (fake *OperationApplier) ApplyArgsForCall(i int) (*batchapi.AnchoredOperation, *protocol.ResolutionModel) {
+func (fake *OperationApplier) ApplyCalls(stub func(*batch.AnchoredOperation, *protocol.ResolutionModel) (*protocol.ResolutionModel, error)) {
+	fake.applyMutex.Lock()
+	defer fake.applyMutex.Unlock()
+	fake.ApplyStub = stub
+}
+
+func (fake *OperationApplier) ApplyArgsForCall(i int) (*batch.AnchoredOperation, *protocol.ResolutionModel) {
 	fake.applyMutex.RLock()
 	defer fake.applyMutex.RUnlock()
-	return fake.applyArgsForCall[i].op, fake.applyArgsForCall[i].rm
+	argsForCall := fake.applyArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *OperationApplier) ApplyReturns(result1 *protocol.ResolutionModel, result2 error) {
+	fake.applyMutex.Lock()
+	defer fake.applyMutex.Unlock()
 	fake.ApplyStub = nil
 	fake.applyReturns = struct {
 		result1 *protocol.ResolutionModel
@@ -66,6 +76,8 @@ func (fake *OperationApplier) ApplyReturns(result1 *protocol.ResolutionModel, re
 }
 
 func (fake *OperationApplier) ApplyReturnsOnCall(i int, result1 *protocol.ResolutionModel, result2 error) {
+	fake.applyMutex.Lock()
+	defer fake.applyMutex.Unlock()
 	fake.ApplyStub = nil
 	if fake.applyReturnsOnCall == nil {
 		fake.applyReturnsOnCall = make(map[int]struct {

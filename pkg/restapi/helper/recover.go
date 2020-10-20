@@ -9,12 +9,13 @@ package helper
 import (
 	"errors"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // RecoverRequestInfo is the information required to create recover request.
@@ -59,18 +60,18 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, patches)
-	if err != nil {
-		return nil, err
+	delta := &model.DeltaModel{
+		UpdateCommitment: info.UpdateCommitment,
+		Patches:          patches,
 	}
 
-	mhDelta, err := docutil.ComputeMultihash(info.MultihashCode, deltaBytes)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, info.MultihashCode)
 	if err != nil {
 		return nil, err
 	}
 
 	signedDataModel := model.RecoverSignedDataModel{
-		DeltaHash:          docutil.EncodeToString(mhDelta),
+		DeltaHash:          deltaHash,
 		RecoveryKey:        info.RecoveryKey,
 		RecoveryCommitment: info.RecoveryCommitment,
 	}
@@ -81,9 +82,9 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.RecoverRequest{
-		Operation:  model.OperationTypeRecover,
+		Operation:  batch.OperationTypeRecover,
 		DidSuffix:  info.DidSuffix,
-		Delta:      docutil.EncodeToString(deltaBytes),
+		Delta:      delta,
 		SignedData: jws,
 	}
 

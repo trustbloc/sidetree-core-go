@@ -12,10 +12,11 @@ import (
 
 	"github.com/multiformats/go-multihash"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // CreateRequestInfo contains data for creating create payload.
@@ -52,30 +53,25 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := getDeltaBytes(info.UpdateCommitment, patches)
+	delta := &model.DeltaModel{
+		UpdateCommitment: info.UpdateCommitment,
+		Patches:          patches,
+	}
+
+	deltaHash, err := docutil.CalculateModelMultihash(delta, info.MultihashCode)
 	if err != nil {
 		return nil, err
 	}
 
-	mhDelta, err := getEncodedMultihash(info.MultihashCode, deltaBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixData := model.SuffixDataModel{
-		DeltaHash:          mhDelta,
+	suffixData := &model.SuffixDataModel{
+		DeltaHash:          deltaHash,
 		RecoveryCommitment: info.RecoveryCommitment,
 	}
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
-	if err != nil {
-		return nil, err
-	}
-
 	schema := &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
+		Operation:  batch.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: suffixData,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)
@@ -113,22 +109,4 @@ func validateCreateRequest(info *CreateRequestInfo) error {
 	}
 
 	return nil
-}
-
-func getEncodedMultihash(mhCode uint, bytes []byte) (string, error) {
-	hash, err := docutil.ComputeMultihash(mhCode, bytes)
-	if err != nil {
-		return "", err
-	}
-
-	return docutil.EncodeToString(hash), nil
-}
-
-func getDeltaBytes(commitment string, patches []patch.Patch) ([]byte, error) {
-	delta := model.DeltaModel{
-		UpdateCommitment: commitment,
-		Patches:          patches,
-	}
-
-	return canonicalizer.MarshalCanonical(delta)
 }

@@ -27,9 +27,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
+
+//go:generate counterfeiter -o operationparser.gen.go --fake-name MockOperationParser . OperationParser
 
 const (
 	sha2_256  = 18
@@ -37,10 +40,13 @@ const (
 )
 
 func TestNewOperationHandler(t *testing.T) {
+	protocol := mocks.NewMockProtocolClient().Protocol
+
 	handler := NewOperationHandler(
-		mocks.NewMockProtocolClient().Protocol,
+		protocol,
 		mocks.NewMockCasClient(nil),
-		compression.New(compression.WithDefaultAlgorithms()))
+		compression.New(compression.WithDefaultAlgorithms()),
+		operationparser.New(protocol))
 	require.NotNil(t, handler)
 }
 
@@ -52,13 +58,16 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 
 	compression := compression.New(compression.WithDefaultAlgorithms())
 
+	protocol := mocks.NewMockProtocolClient().Protocol
+
 	t.Run("success", func(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
 		handler := NewOperationHandler(
-			mocks.NewMockProtocolClient().Protocol,
+			protocol,
 			mocks.NewMockCasClient(nil),
-			compression)
+			compression,
+			operationparser.New(protocol))
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -113,13 +122,46 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.Equal(t, createOpsNum+recoverOpsNum+updateOpsNum, len(cf.Deltas))
 	})
 
+	t.Run("error - no operations provided", func(t *testing.T) {
+		handler := NewOperationHandler(
+			protocol,
+			mocks.NewMockCasClient(nil),
+			compression,
+			operationparser.New(protocol))
+
+		anchorString, err := handler.PrepareTxnFiles(nil)
+		require.Error(t, err)
+		require.Empty(t, anchorString)
+		require.Contains(t, err.Error(), "prepare txn operations called without operations, should not happen")
+	})
+
+	t.Run("error - parse operation fails", func(t *testing.T) {
+		handler := NewOperationHandler(
+			protocol,
+			mocks.NewMockCasClient(nil),
+			compression,
+			operationparser.New(protocol))
+
+		op := &batch.OperationInfo{
+			Data:         []byte(`{"key":"value"}`),
+			UniqueSuffix: "suffix",
+			Namespace:    defaultNS,
+		}
+
+		anchorString, err := handler.PrepareTxnFiles([]*batch.OperationInfo{op})
+		require.Error(t, err)
+		require.Empty(t, anchorString)
+		require.Contains(t, err.Error(), "parse operation: operation type [] not supported")
+	})
+
 	t.Run("error - write to CAS error for chunk file", func(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
 		handler := NewOperationHandler(
-			mocks.NewMockProtocolClient().Protocol,
+			protocol,
 			mocks.NewMockCasClient(errors.New("CAS error")),
-			compression)
+			compression,
+			operationparser.New(protocol))
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -131,9 +173,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		ops := getTestOperations(0, 0, deactivateOpsNum, 0)
 
 		handler := NewOperationHandler(
-			mocks.NewMockProtocolClient().Protocol,
+			protocol,
 			mocks.NewMockCasClient(errors.New("CAS error")),
-			compression)
+			compression,
+			operationparser.New(protocol))
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -143,10 +186,13 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 }
 
 func TestWriteModelToCAS(t *testing.T) {
+	protocol := mocks.NewMockProtocolClient().Protocol
+
 	handler := NewOperationHandler(
-		mocks.NewMockProtocolClient().Protocol,
+		protocol,
 		mocks.NewMockCasClient(nil),
-		compression.New(compression.WithDefaultAlgorithms()))
+		compression.New(compression.WithDefaultAlgorithms()),
+		operationparser.New(protocol))
 
 	t.Run("success", func(t *testing.T) {
 		address, err := handler.writeModelToCAS(&models.AnchorFile{}, "alias")
@@ -163,9 +209,10 @@ func TestWriteModelToCAS(t *testing.T) {
 
 	t.Run("error - CAS error", func(t *testing.T) {
 		handlerWithCASError := NewOperationHandler(
-			mocks.NewMockProtocolClient().Protocol,
+			protocol,
 			mocks.NewMockCasClient(errors.New("CAS error")),
-			compression.New(compression.WithDefaultAlgorithms()))
+			compression.New(compression.WithDefaultAlgorithms()),
+			operationparser.New(protocol))
 
 		address, err := handlerWithCASError.writeModelToCAS(&models.AnchorFile{}, "alias")
 		require.Error(t, err)
@@ -181,6 +228,7 @@ func TestWriteModelToCAS(t *testing.T) {
 			pc.Protocol,
 			mocks.NewMockCasClient(nil),
 			compression.New(compression.WithDefaultAlgorithms()),
+			operationparser.New(pc.Protocol),
 		)
 
 		address, err := handlerWithProtocolError.writeModelToCAS(&models.AnchorFile{}, "alias")
@@ -190,8 +238,8 @@ func TestWriteModelToCAS(t *testing.T) {
 	})
 }
 
-func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) []*batch.Operation {
-	var ops []*batch.Operation
+func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) []*batch.OperationInfo {
+	var ops []*batch.OperationInfo
 	ops = append(ops, generateOperations(createOpsNum, batch.OperationTypeCreate)...)
 	ops = append(ops, generateOperations(recoverOpsNum, batch.OperationTypeRecover)...)
 	ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
@@ -200,9 +248,9 @@ func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsN
 	return ops
 }
 
-func generateOperations(numOfOperations int, opType batch.OperationType) (ops []*batch.Operation) {
+func generateOperations(numOfOperations int, opType batch.OperationType) (ops []*batch.OperationInfo) {
 	for j := 1; j <= numOfOperations; j++ {
-		op, err := generateOperation(j, opType)
+		op, err := generateOperationInfo(j, opType)
 		if err != nil {
 			panic(err)
 		}
@@ -213,7 +261,36 @@ func generateOperations(numOfOperations int, opType batch.OperationType) (ops []
 	return
 }
 
-func generateOperation(num int, opType batch.OperationType) (*batch.Operation, error) {
+func generateOperationInfo(num int, opType batch.OperationType) (*batch.OperationInfo, error) {
+	op, err := generateOperationBuffer(num, opType)
+	if err != nil {
+		return nil, err
+	}
+
+	return &batch.OperationInfo{
+		Data:         op,
+		UniqueSuffix: fmt.Sprintf("%s-%d", opType, num),
+		Namespace:    defaultNS,
+	}, nil
+}
+
+func generateOperation(num int, opType batch.OperationType) (*model.Operation, error) {
+	op, err := generateOperationBuffer(num, opType)
+	if err != nil {
+		return nil, err
+	}
+
+	cp, err := mocks.NewMockProtocolClient().Current()
+	if err != nil {
+		panic(err)
+	}
+
+	parser := operationparser.New(cp.Protocol())
+
+	return parser.ParseOperation(defaultNS, op)
+}
+
+func generateOperationBuffer(num int, opType batch.OperationType) ([]byte, error) {
 	switch opType {
 	case batch.OperationTypeCreate:
 		return generateCreateOperation(num)
@@ -223,12 +300,12 @@ func generateOperation(num int, opType batch.OperationType) (*batch.Operation, e
 		return generateDeactivateOperation(num)
 	case batch.OperationTypeUpdate:
 		return generateUpdateOperation(num)
+	default:
+		return nil, errors.New("operation type not supported")
 	}
-
-	return nil, errors.New("operation type not supported")
 }
 
-func generateCreateOperation(num int) (*batch.Operation, error) {
+func generateCreateOperation(num int) ([]byte, error) {
 	jwk := &jws.JWK{
 		Crv: "crv",
 		Kty: "kty",
@@ -248,22 +325,10 @@ func generateCreateOperation(num int) (*batch.Operation, error) {
 		MultihashCode:      sha2_256,
 	}
 
-	request, err := helper.NewCreateRequest(info)
-	if err != nil {
-		return nil, err
-	}
-
-	cp, err := mocks.NewMockProtocolClient().Current()
-	if err != nil {
-		panic(err)
-	}
-
-	parser := operationparser.New(cp.Protocol())
-
-	return parser.Parse(defaultNS, request)
+	return helper.NewCreateRequest(info)
 }
 
-func generateRecoverOperation(num int) (*batch.Operation, error) {
+func generateRecoverOperation(num int) ([]byte, error) {
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -289,22 +354,10 @@ func generateRecoverOperation(num int) (*batch.Operation, error) {
 		Signer:             ecsigner.New(privKey, "ES256", ""),
 	}
 
-	request, err := helper.NewRecoverRequest(info)
-	if err != nil {
-		return nil, err
-	}
-
-	cp, err := mocks.NewMockProtocolClient().Current()
-	if err != nil {
-		panic(err)
-	}
-
-	parser := operationparser.New(cp.Protocol())
-
-	return parser.Parse(defaultNS, request)
+	return helper.NewRecoverRequest(info)
 }
 
-func generateDeactivateOperation(num int) (*batch.Operation, error) {
+func generateDeactivateOperation(num int) ([]byte, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -316,22 +369,10 @@ func generateDeactivateOperation(num int) (*batch.Operation, error) {
 		RecoveryKey: testJWK,
 	}
 
-	request, err := helper.NewDeactivateRequest(info)
-	if err != nil {
-		return nil, err
-	}
-
-	cp, err := mocks.NewMockProtocolClient().Current()
-	if err != nil {
-		panic(err)
-	}
-
-	parser := operationparser.New(cp.Protocol())
-
-	return parser.Parse(defaultNS, request)
+	return helper.NewDeactivateRequest(info)
 }
 
-func generateUpdateOperation(num int) (*batch.Operation, error) {
+func generateUpdateOperation(num int) ([]byte, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -356,19 +397,7 @@ func generateUpdateOperation(num int) (*batch.Operation, error) {
 		MultihashCode:    sha2_256,
 	}
 
-	request, err := helper.NewUpdateRequest(info)
-	if err != nil {
-		return nil, err
-	}
-
-	cp, err := mocks.NewMockProtocolClient().Current()
-	if err != nil {
-		panic(err)
-	}
-
-	parser := operationparser.New(cp.Protocol())
-
-	return parser.Parse(defaultNS, request)
+	return helper.NewUpdateRequest(info)
 }
 
 func getTestPatch() (patch.Patch, error) {

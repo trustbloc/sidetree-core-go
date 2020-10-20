@@ -107,7 +107,7 @@ func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperati
 	}
 
 	for _, op := range ops {
-		r, p, err := s.getOperationRevealValue(op)
+		r, p, err := s.getRevealValue(op)
 		if err != nil {
 			logger.Infof("[%s] Skipped bad operation while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 
@@ -275,7 +275,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOpera
 		var state *protocol.ResolutionModel
 		var err error
 
-		nextCommitment, err := s.getNextOperationCommitment(op)
+		nextCommitment, err := s.getCommitment(op)
 		if err != nil {
 			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 
@@ -331,85 +331,33 @@ func sortOperations(ops []*batch.AnchoredOperation) {
 	})
 }
 
-func (s *OperationProcessor) getOperationRevealValue(op *batch.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) { // nolint:gocyclo
+func (s *OperationProcessor) getRevealValue(op *batch.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) {
 	if op.Type == batch.OperationTypeCreate {
 		return nil, protocol.Protocol{}, errors.New("create operation doesn't have reveal value")
 	}
 
 	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
-		return nil, protocol.Protocol{}, fmt.Errorf("get operation commitment: %s", err.Error())
+		return nil, protocol.Protocol{}, fmt.Errorf("get operation reveal value - retrieve protocol: %s", err.Error())
 	}
 
-	var commitmentKey *jws.JWK
-
-	switch op.Type {
-	case batch.OperationTypeUpdate:
-		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForUpdate(op.SignedData)
-		if innerErr != nil {
-			return nil, protocol.Protocol{}, fmt.Errorf("failed to parse signed data model for update: %s", innerErr.Error())
-		}
-
-		commitmentKey = signedDataModel.UpdateKey
-
-	case batch.OperationTypeDeactivate:
-		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForDeactivate(op.SignedData)
-		if innerErr != nil {
-			return nil, protocol.Protocol{}, fmt.Errorf("failed to parse signed data model for deactivate: %s", innerErr.Error())
-		}
-
-		commitmentKey = signedDataModel.RecoveryKey
-
-	case batch.OperationTypeRecover:
-		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForRecover(op.SignedData)
-		if innerErr != nil {
-			return nil, protocol.Protocol{}, fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
-		}
-
-		commitmentKey = signedDataModel.RecoveryKey
-
-	case batch.OperationTypeCreate:
-		return nil, protocol.Protocol{}, errors.New("operation type create not supported for getting operation commitment")
-
-	default:
-		return nil, protocol.Protocol{}, errors.New("operation type not supported for getting operation commitment")
+	commitmentKey, err := p.OperationParser().GetRevealValue(op.OperationBuffer)
+	if err != nil {
+		return nil, protocol.Protocol{}, fmt.Errorf("get operation reveal value from operation parser: %s", err.Error())
 	}
 
 	return commitmentKey, p.Protocol(), nil
 }
 
-func (s *OperationProcessor) getNextOperationCommitment(op *batch.AnchoredOperation) (string, error) {
+func (s *OperationProcessor) getCommitment(op *batch.AnchoredOperation) (string, error) {
 	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
 		return "", fmt.Errorf("get next operation commitment: %s", err.Error())
 	}
 
-	var nextCommitment string
-
-	switch op.Type {
-	case batch.OperationTypeUpdate:
-		delta, innerErr := p.OperationParser().ParseDelta(op.Delta)
-		if innerErr != nil {
-			return "", fmt.Errorf("failed to parse delta for %s: %s", op.Type, innerErr.Error())
-		}
-
-		nextCommitment = delta.UpdateCommitment
-
-	case batch.OperationTypeDeactivate:
-		nextCommitment = ""
-
-	case batch.OperationTypeRecover:
-		signedDataModel, innerErr := p.OperationParser().ParseSignedDataForRecover(op.SignedData)
-		if innerErr != nil {
-			return "", fmt.Errorf("failed to parse signed data model for recover: %s", innerErr.Error())
-		}
-
-		nextCommitment = signedDataModel.RecoveryCommitment
-	case batch.OperationTypeCreate:
-		return "", errors.New("operation type create not supported for getting next operation commitment")
-
-	default:
-		return "", errors.New("operation type not supported for getting next operation commitment")
+	nextCommitment, err := p.OperationParser().GetCommitment(op.OperationBuffer)
+	if err != nil {
+		return "", fmt.Errorf("get commitment from operation parser: %s", err.Error())
 	}
 
 	return nextCommitment, nil

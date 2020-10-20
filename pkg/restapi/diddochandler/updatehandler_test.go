@@ -17,15 +17,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
@@ -77,7 +77,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 		require.NoError(t, err)
 
 		// wrong operation type
-		createRequest.Operation = ""
+		createRequest.Operation = "other"
 
 		request, err := json.Marshal(createRequest)
 		require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 
 		body, err := ioutil.ReadAll(rw.Body)
 		require.NoError(t, err)
-		require.Contains(t, string(body), "not implemented")
+		require.Contains(t, string(body), "bad request: operation type [other] not supported")
 	})
 }
 
@@ -99,25 +99,15 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-	if err != nil {
-		return nil, err
-	}
-
 	suffixData, err := getSuffixData()
 	if err != nil {
 		return nil, err
 	}
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
-	if err != nil {
-		return nil, err
-	}
-
 	return &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
+		Operation:  batch.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: suffixData,
 	}, nil
 }
 
@@ -149,27 +139,18 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.SuffixDataModel{
-		DeltaHash:          computeMultihash(deltaBytes),
+		DeltaHash:          deltaHash,
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
 
-func computeMultihash(data []byte) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, data)
-	if err != nil {
-		panic(err)
-	}
-
-	return docutil.EncodeToString(mh)
-}
-
-func getID(suffixData string) (string, error) {
+func getID(suffixData *model.SuffixDataModel) (string, error) {
 	return docutil.CalculateID(namespace, suffixData, sha2_256)
 }
 

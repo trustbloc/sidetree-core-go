@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 func TestCreateAnchorFile(t *testing.T) {
@@ -54,8 +55,8 @@ func TestParseAnchorFile(t *testing.T) {
 	require.Equal(t, recoverOpsNum, len(parsed.Operations.Recover))
 }
 
-func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) []*batch.Operation {
-	var ops []*batch.Operation
+func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) []*model.Operation {
+	var ops []*model.Operation
 	ops = append(ops, generateOperations(createOpsNum, batch.OperationTypeCreate)...)
 	ops = append(ops, generateOperations(recoverOpsNum, batch.OperationTypeRecover)...)
 	ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
@@ -64,7 +65,7 @@ func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsN
 	return ops
 }
 
-func generateOperations(numOfOperations int, opType batch.OperationType) (ops []*batch.Operation) {
+func generateOperations(numOfOperations int, opType batch.OperationType) (ops []*model.Operation) {
 	for j := 1; j <= numOfOperations; j++ {
 		ops = append(ops, generateOperation(j, opType))
 	}
@@ -72,13 +73,13 @@ func generateOperations(numOfOperations int, opType batch.OperationType) (ops []
 	return
 }
 
-func generateOperation(num int, opType batch.OperationType) *batch.Operation {
-	return &batch.Operation{
+func generateOperation(num int, opType batch.OperationType) *model.Operation {
+	return &model.Operation{
 		Type:         opType,
 		UniqueSuffix: fmt.Sprintf("%s-%d", opType, num),
 		Namespace:    "did:sidetree",
-		SuffixData:   "suffix-data",
-		Delta:        "delta",
+		SuffixData:   &model.SuffixDataModel{},
+		Delta:        &model.DeltaModel{},
 		SignedData:   "signed-data",
 	}
 }

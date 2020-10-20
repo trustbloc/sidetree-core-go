@@ -14,17 +14,17 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 const (
 	namespace = "doc:method"
 )
 
-func TestGetParts_InitialStateJCS(t *testing.T) {
+func TestGetParts_InitialState(t *testing.T) {
 	const testDID = "doc:method:abc"
 
-	req := model.CreateRequestJCS{
+	req := model.CreateRequest{
 		Delta:      &model.DeltaModel{},
 		SuffixData: &model.SuffixDataModel{},
 	}

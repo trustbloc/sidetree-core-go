@@ -16,17 +16,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // ParseRecoverOperation will parse recover operation.
-func (p *Parser) ParseRecoverOperation(request []byte) (*batch.Operation, error) {
+func (p *Parser) ParseRecoverOperation(request []byte, anchor bool) (*model.Operation, error) {
 	schema, err := p.parseRecoverRequest(request)
-	if err != nil {
-		return nil, err
-	}
-
-	delta, err := p.ParseDelta(schema.Delta)
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +31,17 @@ func (p *Parser) ParseRecoverOperation(request []byte) (*batch.Operation, error)
 		return nil, err
 	}
 
-	return &batch.Operation{
+	if !anchor {
+		err = p.ValidateDelta(schema.Delta)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &model.Operation{
 		OperationBuffer: request,
 		Type:            batch.OperationTypeRecover,
 		UniqueSuffix:    schema.DidSuffix,
-		DeltaModel:      delta,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
 	}, nil
@@ -162,10 +163,6 @@ func (p *Parser) validateProtectedHeaders(headers jws.Headers, allowedAlgorithms
 func (p *Parser) validateRecoverRequest(recover *model.RecoverRequest) error {
 	if recover.DidSuffix == "" {
 		return errors.New("missing did suffix")
-	}
-
-	if recover.Delta == "" {
-		return errors.New("missing delta")
 	}
 
 	if recover.SignedData == "" {
