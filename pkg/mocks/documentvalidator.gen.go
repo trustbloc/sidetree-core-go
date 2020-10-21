@@ -8,10 +8,10 @@ import (
 )
 
 type DocumentValidator struct {
-	IsValidOriginalDocumentStub        func(payload []byte) error
+	IsValidOriginalDocumentStub        func([]byte) error
 	isValidOriginalDocumentMutex       sync.RWMutex
 	isValidOriginalDocumentArgsForCall []struct {
-		payload []byte
+		arg1 []byte
 	}
 	isValidOriginalDocumentReturns struct {
 		result1 error
@@ -19,10 +19,10 @@ type DocumentValidator struct {
 	isValidOriginalDocumentReturnsOnCall map[int]struct {
 		result1 error
 	}
-	IsValidPayloadStub        func(payload []byte) error
+	IsValidPayloadStub        func([]byte) error
 	isValidPayloadMutex       sync.RWMutex
 	isValidPayloadArgsForCall []struct {
-		payload []byte
+		arg1 []byte
 	}
 	isValidPayloadReturns struct {
 		result1 error
@@ -34,26 +34,27 @@ type DocumentValidator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *DocumentValidator) IsValidOriginalDocument(payload []byte) error {
-	var payloadCopy []byte
-	if payload != nil {
-		payloadCopy = make([]byte, len(payload))
-		copy(payloadCopy, payload)
+func (fake *DocumentValidator) IsValidOriginalDocument(arg1 []byte) error {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.isValidOriginalDocumentMutex.Lock()
 	ret, specificReturn := fake.isValidOriginalDocumentReturnsOnCall[len(fake.isValidOriginalDocumentArgsForCall)]
 	fake.isValidOriginalDocumentArgsForCall = append(fake.isValidOriginalDocumentArgsForCall, struct {
-		payload []byte
-	}{payloadCopy})
-	fake.recordInvocation("IsValidOriginalDocument", []interface{}{payloadCopy})
+		arg1 []byte
+	}{arg1Copy})
+	fake.recordInvocation("IsValidOriginalDocument", []interface{}{arg1Copy})
 	fake.isValidOriginalDocumentMutex.Unlock()
 	if fake.IsValidOriginalDocumentStub != nil {
-		return fake.IsValidOriginalDocumentStub(payload)
+		return fake.IsValidOriginalDocumentStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.isValidOriginalDocumentReturns.result1
+	fakeReturns := fake.isValidOriginalDocumentReturns
+	return fakeReturns.result1
 }
 
 func (fake *DocumentValidator) IsValidOriginalDocumentCallCount() int {
@@ -62,13 +63,22 @@ func (fake *DocumentValidator) IsValidOriginalDocumentCallCount() int {
 	return len(fake.isValidOriginalDocumentArgsForCall)
 }
 
+func (fake *DocumentValidator) IsValidOriginalDocumentCalls(stub func([]byte) error) {
+	fake.isValidOriginalDocumentMutex.Lock()
+	defer fake.isValidOriginalDocumentMutex.Unlock()
+	fake.IsValidOriginalDocumentStub = stub
+}
+
 func (fake *DocumentValidator) IsValidOriginalDocumentArgsForCall(i int) []byte {
 	fake.isValidOriginalDocumentMutex.RLock()
 	defer fake.isValidOriginalDocumentMutex.RUnlock()
-	return fake.isValidOriginalDocumentArgsForCall[i].payload
+	argsForCall := fake.isValidOriginalDocumentArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *DocumentValidator) IsValidOriginalDocumentReturns(result1 error) {
+	fake.isValidOriginalDocumentMutex.Lock()
+	defer fake.isValidOriginalDocumentMutex.Unlock()
 	fake.IsValidOriginalDocumentStub = nil
 	fake.isValidOriginalDocumentReturns = struct {
 		result1 error
@@ -76,6 +86,8 @@ func (fake *DocumentValidator) IsValidOriginalDocumentReturns(result1 error) {
 }
 
 func (fake *DocumentValidator) IsValidOriginalDocumentReturnsOnCall(i int, result1 error) {
+	fake.isValidOriginalDocumentMutex.Lock()
+	defer fake.isValidOriginalDocumentMutex.Unlock()
 	fake.IsValidOriginalDocumentStub = nil
 	if fake.isValidOriginalDocumentReturnsOnCall == nil {
 		fake.isValidOriginalDocumentReturnsOnCall = make(map[int]struct {
@@ -87,26 +99,27 @@ func (fake *DocumentValidator) IsValidOriginalDocumentReturnsOnCall(i int, resul
 	}{result1}
 }
 
-func (fake *DocumentValidator) IsValidPayload(payload []byte) error {
-	var payloadCopy []byte
-	if payload != nil {
-		payloadCopy = make([]byte, len(payload))
-		copy(payloadCopy, payload)
+func (fake *DocumentValidator) IsValidPayload(arg1 []byte) error {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.isValidPayloadMutex.Lock()
 	ret, specificReturn := fake.isValidPayloadReturnsOnCall[len(fake.isValidPayloadArgsForCall)]
 	fake.isValidPayloadArgsForCall = append(fake.isValidPayloadArgsForCall, struct {
-		payload []byte
-	}{payloadCopy})
-	fake.recordInvocation("IsValidPayload", []interface{}{payloadCopy})
+		arg1 []byte
+	}{arg1Copy})
+	fake.recordInvocation("IsValidPayload", []interface{}{arg1Copy})
 	fake.isValidPayloadMutex.Unlock()
 	if fake.IsValidPayloadStub != nil {
-		return fake.IsValidPayloadStub(payload)
+		return fake.IsValidPayloadStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.isValidPayloadReturns.result1
+	fakeReturns := fake.isValidPayloadReturns
+	return fakeReturns.result1
 }
 
 func (fake *DocumentValidator) IsValidPayloadCallCount() int {
@@ -115,13 +128,22 @@ func (fake *DocumentValidator) IsValidPayloadCallCount() int {
 	return len(fake.isValidPayloadArgsForCall)
 }
 
+func (fake *DocumentValidator) IsValidPayloadCalls(stub func([]byte) error) {
+	fake.isValidPayloadMutex.Lock()
+	defer fake.isValidPayloadMutex.Unlock()
+	fake.IsValidPayloadStub = stub
+}
+
 func (fake *DocumentValidator) IsValidPayloadArgsForCall(i int) []byte {
 	fake.isValidPayloadMutex.RLock()
 	defer fake.isValidPayloadMutex.RUnlock()
-	return fake.isValidPayloadArgsForCall[i].payload
+	argsForCall := fake.isValidPayloadArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *DocumentValidator) IsValidPayloadReturns(result1 error) {
+	fake.isValidPayloadMutex.Lock()
+	defer fake.isValidPayloadMutex.Unlock()
 	fake.IsValidPayloadStub = nil
 	fake.isValidPayloadReturns = struct {
 		result1 error
@@ -129,6 +151,8 @@ func (fake *DocumentValidator) IsValidPayloadReturns(result1 error) {
 }
 
 func (fake *DocumentValidator) IsValidPayloadReturnsOnCall(i int, result1 error) {
+	fake.isValidPayloadMutex.Lock()
+	defer fake.isValidPayloadMutex.Unlock()
 	fake.IsValidPayloadStub = nil
 	if fake.isValidPayloadReturnsOnCall == nil {
 		fake.isValidPayloadReturnsOnCall = make(map[int]struct {

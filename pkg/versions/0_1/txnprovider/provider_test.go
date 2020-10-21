@@ -17,8 +17,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
+	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
@@ -52,7 +53,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -75,7 +76,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("error - number of operations doesn't match", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -122,7 +123,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("error - parse anchor operations error", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -165,11 +166,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 	t.Run("success - deactivate only", func(t *testing.T) {
 		const deactivateOpsNum = 2
 
-		var ops []*batch.Operation
+		var ops []*batch.OperationInfo
 		ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
 
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -394,7 +395,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			},
 		}
 
-		cf := &models.ChunkFile{Deltas: []string{createOp.Delta, updateOp.Delta}}
+		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta, updateOp.Delta}}
 
 		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.NoError(t, err)
@@ -431,7 +432,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		}
 
 		// don't add update operation delta to chunk file in order to cause error
-		cf := &models.ChunkFile{Deltas: []string{createOp.Delta}}
+		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta}}
 
 		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
@@ -473,7 +474,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			},
 		}
 
-		cf := &models.ChunkFile{Deltas: []string{createOp.Delta}}
+		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta}}
 
 		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
@@ -499,12 +500,12 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			Chunks: []models.Chunk{},
 		}
 
-		cf := &models.ChunkFile{Deltas: []string{"invalid-delta"}}
+		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{{Patches: []patch.Patch{}}}}
 
 		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "parse delta: illegal base64 data")
+		require.Contains(t, err.Error(), "validate delta: missing patches")
 	})
 }
 
@@ -512,11 +513,9 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()
 	parser := operationparser.New(pc.Protocol)
 	dc := doccomposer.New()
-	oa := operationapplier.New(pc.Protocol, parser, dc)
 
 	pv := pc.CurrentVersion
 	pv.OperationParserReturns(parser)
-	pv.OperationApplierReturns(oa)
 	pv.DocumentComposerReturns(dc)
 
 	return pc

@@ -9,10 +9,10 @@ import (
 )
 
 type TxnProcessor struct {
-	ProcessStub        func(sidetreeTxn txn.SidetreeTxn) error
+	ProcessStub        func(txn.SidetreeTxn) error
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
-		sidetreeTxn txn.SidetreeTxn
+		arg1 txn.SidetreeTxn
 	}
 	processReturns struct {
 		result1 error
@@ -24,21 +24,22 @@ type TxnProcessor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
+func (fake *TxnProcessor) Process(arg1 txn.SidetreeTxn) error {
 	fake.processMutex.Lock()
 	ret, specificReturn := fake.processReturnsOnCall[len(fake.processArgsForCall)]
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
-		sidetreeTxn txn.SidetreeTxn
-	}{sidetreeTxn})
-	fake.recordInvocation("Process", []interface{}{sidetreeTxn})
+		arg1 txn.SidetreeTxn
+	}{arg1})
+	fake.recordInvocation("Process", []interface{}{arg1})
 	fake.processMutex.Unlock()
 	if fake.ProcessStub != nil {
-		return fake.ProcessStub(sidetreeTxn)
+		return fake.ProcessStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.processReturns.result1
+	fakeReturns := fake.processReturns
+	return fakeReturns.result1
 }
 
 func (fake *TxnProcessor) ProcessCallCount() int {
@@ -47,13 +48,22 @@ func (fake *TxnProcessor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
+func (fake *TxnProcessor) ProcessCalls(stub func(txn.SidetreeTxn) error) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
+	fake.ProcessStub = stub
+}
+
 func (fake *TxnProcessor) ProcessArgsForCall(i int) txn.SidetreeTxn {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
-	return fake.processArgsForCall[i].sidetreeTxn
+	argsForCall := fake.processArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *TxnProcessor) ProcessReturns(result1 error) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
 	fake.ProcessStub = nil
 	fake.processReturns = struct {
 		result1 error
@@ -61,6 +71,8 @@ func (fake *TxnProcessor) ProcessReturns(result1 error) {
 }
 
 func (fake *TxnProcessor) ProcessReturnsOnCall(i int, result1 error) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
 	fake.ProcessStub = nil
 	if fake.processReturnsOnCall == nil {
 		fake.processReturnsOnCall = make(map[int]struct {

@@ -11,9 +11,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 const (
@@ -54,13 +55,13 @@ func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
 }
 
 // get create request from encoded initial value JCS.
-func getCreateRequest(initialStateJCS string) (*model.CreateRequestJCS, error) {
+func getCreateRequest(initialStateJCS string) (*model.CreateRequest, error) {
 	decodedJCS, err := docutil.DecodeString(initialStateJCS)
 	if err != nil {
 		return nil, err
 	}
 
-	var createRequestJCS model.CreateRequestJCS
+	var createRequestJCS model.CreateRequest
 	err = json.Unmarshal(decodedJCS, &createRequestJCS)
 	if err != nil {
 		return nil, err
@@ -75,7 +76,7 @@ func getCreateRequest(initialStateJCS string) (*model.CreateRequestJCS, error) {
 		return nil, errors.New("initial state JCS is not valid")
 	}
 
-	createRequestJCS.Operation = model.OperationTypeCreate
+	createRequestJCS.Operation = batch.OperationTypeCreate
 
 	return &createRequestJCS, nil
 }

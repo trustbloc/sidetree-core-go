@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // AnchorFile defines the schema of an anchor file.
@@ -23,8 +24,8 @@ type AnchorFile struct {
 
 // CreateOperation contains create operation data.
 type CreateOperation struct {
-	// Encoded suffix data object
-	SuffixData string `json:"suffix_data"`
+	// SuffixData object
+	SuffixData *model.SuffixDataModel `json:"suffix_data"`
 }
 
 // SignedOperation contains operation proving data.
@@ -46,7 +47,7 @@ type Operations struct {
 
 // CreateAnchorFile will create anchor file from provided operations.
 // returns anchor file model.
-func CreateAnchorFile(mapAddress string, ops []*batch.Operation) *AnchorFile {
+func CreateAnchorFile(mapAddress string, ops []*model.Operation) *AnchorFile {
 	return &AnchorFile{
 		MapFileHash: mapAddress,
 		Operations: Operations{
@@ -57,7 +58,7 @@ func CreateAnchorFile(mapAddress string, ops []*batch.Operation) *AnchorFile {
 	}
 }
 
-func getCreateOperations(ops []*batch.Operation) []CreateOperation {
+func getCreateOperations(ops []*model.Operation) []CreateOperation {
 	var result []CreateOperation
 	for _, op := range ops {
 		if op.Type == batch.OperationTypeCreate {

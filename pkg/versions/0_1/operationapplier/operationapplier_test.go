@@ -28,10 +28,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
 
@@ -115,17 +115,7 @@ func TestApplier_Apply(t *testing.T) {
 	t.Run("invalid operation type error", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
-		require.NoError(t, err)
-
-		deactivateOp, err := getDeactivateOperation(recoveryKey, createOp.UniqueSuffix)
-		require.NoError(t, err)
-
-		deactivateOp.Type = "invalid"
-
-		anchoredOp := getAnchoredOperation(deactivateOp)
-
-		doc, err := applier.Apply(anchoredOp, &protocol.ResolutionModel{Doc: make(document.Document)})
+		doc, err := applier.Apply(&batch.AnchoredOperation{Type: "invalid"}, &protocol.ResolutionModel{Doc: make(document.Document)})
 		require.Error(t, err)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
 		require.Nil(t, doc)
@@ -140,10 +130,7 @@ func TestApplier_Apply(t *testing.T) {
 		delta, err := getDeltaModel(validDoc, "different")
 		require.NoError(t, err)
 
-		deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-		require.NoError(t, err)
-
-		createOp.Delta = docutil.EncodeToString(deltaBytes)
+		createOp.Delta = delta
 
 		anchoredOp := getAnchoredOperation(createOp)
 		err = store.Put(anchoredOp)
@@ -219,13 +206,12 @@ func TestUpdateDocument(t *testing.T) {
 
 		// scenario: update 1 followed by update 2 followed by update 3 with reused commitment from 1
 
-		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		delta1, err := parser.ParseDelta(updateOp.Delta)
-		require.NoError(t, err)
+		delta1 := updateOp.Delta
 
-		rm, err = applier.Apply(updateOp, rm)
+		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.Nil(t, err)
 
 		// check if service type value is updated (done via json patch)
@@ -233,10 +219,10 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
+		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
 		require.Nil(t, err)
 
-		rm, err = applier.Apply(updateOp, rm)
+		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.Nil(t, err)
 
 		// service type value is updated since operation is valid
@@ -244,19 +230,14 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special2", didDoc["test"])
 
 		// two successful update operations - next update with reused commitment from op 1
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		delta3, err := parser.ParseDelta(updateOp.Delta)
-		require.NoError(t, err)
+		delta3 := updateOp.Delta
 		delta3.UpdateCommitment = delta1.UpdateCommitment
+		updateOp.Delta = delta3
 
-		delta3Bytes, err := canonicalizer.MarshalCanonical(delta3)
-		require.NoError(t, err)
-
-		updateOp.Delta = docutil.EncodeToString(delta3Bytes)
-
-		rm, err = applier.Apply(updateOp, rm)
+		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.EqualError(t, err, "update delta doesn't match delta hash: supplied hash doesn't match original content")
 	})
 
@@ -269,12 +250,12 @@ func TestUpdateDocument(t *testing.T) {
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		updateOp.SignedData = ""
 
-		rm, err = applier.Apply(updateOp, rm)
+		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "missing signed data")
@@ -289,7 +270,7 @@ func TestUpdateDocument(t *testing.T) {
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
 		signer := ecsigner.New(updateKey, "ES256", "update-kid")
@@ -299,10 +280,10 @@ func TestUpdateDocument(t *testing.T) {
 
 		updateOp.SignedData = compactJWS
 
-		rm, err = applier.Apply(updateOp, rm)
+		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to unmarshal signed data model while applying update")
+		require.Contains(t, err.Error(), "failed to parse update operation in anchor mode: failed to unmarshal signed data model for update")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -339,12 +320,12 @@ func TestUpdateDocument(t *testing.T) {
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
-		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		updateOp.Delta = docutil.EncodeToString([]byte("other value"))
+		updateOp.Delta = &model.DeltaModel{UpdateCommitment: "different"}
 
-		rm, err = applier.Apply(updateOp, rm)
+		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "update delta doesn't match delta hash")
@@ -466,7 +447,7 @@ func TestDeactivate(t *testing.T) {
 		rm, err = applier.Apply(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to parse signed data model while applying deactivate")
+		require.Contains(t, err.Error(), "failed to parse deactive operation in anchor mode: failed to unmarshal signed data model for deactivate")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -515,7 +496,7 @@ func TestDeactivate(t *testing.T) {
 		rm, err = applier.Apply(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "did suffix doesn't match signed value")
+		require.Contains(t, err.Error(), "failed to parse deactive operation in anchor mode: signed did suffix mismatch for deactivate")
 	})
 }
 
@@ -596,7 +577,7 @@ func TestRecover(t *testing.T) {
 		invalidRecoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		invalidRecoverOp.Delta = ""
+		invalidRecoverOp.Delta = nil
 
 		invalidAnchoredOp := getAnchoredOperation(invalidRecoverOp)
 
@@ -646,7 +627,7 @@ func TestRecover(t *testing.T) {
 		rm, err = applier.Apply(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to parse signed data model while applying recover")
+		require.Contains(t, err.Error(), "failed to parse recover operation in anchor mode: failed to unmarshal signed data model for recover")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -680,7 +661,7 @@ func TestRecover(t *testing.T) {
 		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		recoverOp.Delta = docutil.EncodeToString([]byte("other value"))
+		recoverOp.Delta = &model.DeltaModel{}
 
 		anchoredOp := getAnchoredOperation(recoverOp)
 
@@ -710,7 +691,7 @@ func TestRecover(t *testing.T) {
 	})
 }
 
-func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*model.Operation, *ecdsa.PrivateKey, error) {
 	s := ecsigner.New(privateKey, "ES256", updateKeyID)
 
 	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, operationNumber)
@@ -725,7 +706,7 @@ func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix strin
 	return getAnchoredOperationWithBlockNum(op, uint64(operationNumber)), nextUpdateKey, nil
 }
 
-func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*model.Operation, *ecdsa.PrivateKey, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/test",
@@ -752,7 +733,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -763,7 +744,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 	}
 
 	signedData := &model.UpdateSignedDataModel{
-		DeltaHash: getEncodedMultihash(deltaBytes),
+		DeltaHash: deltaHash,
 		UpdateKey: updatePubKey,
 	}
 
@@ -772,12 +753,11 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
-	operation := &batch.Operation{
+	operation := &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
-		Delta:        docutil.EncodeToString(deltaBytes),
-		DeltaModel:   delta,
+		Delta:        delta,
 		Type:         batch.OperationTypeUpdate,
 		SignedData:   jws,
 	}
@@ -804,7 +784,7 @@ func generateKeyAndCommitment() (*ecdsa.PrivateKey, string, error) {
 	return key, c, nil
 }
 
-func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, error) {
+func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, error) {
 	signer := ecsigner.New(privateKey, "ES256", "")
 
 	return getDeactivateOperationWithSigner(signer, privateKey, uniqueSuffix)
@@ -819,7 +799,7 @@ func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix s
 	return getAnchoredOperation(op), nil
 }
 
-func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, error) {
+func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, error) {
 	recoverPubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
@@ -835,7 +815,7 @@ func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.Pr
 		return nil, err
 	}
 
-	return &batch.Operation{
+	return &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
@@ -844,7 +824,7 @@ func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.Pr
 	}, nil
 }
 
-func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, *ecdsa.PrivateKey, error) {
 	signer := ecsigner.New(recoveryKey, "ES256", "")
 
 	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix)
@@ -859,7 +839,7 @@ func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqu
 	return getAnchoredOperationWithBlockNum(op, uint64(operationNumber)), nextRecoveryKey, nil
 }
 
-func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, *ecdsa.PrivateKey, error) {
 	recoverRequest, nextRecoveryKey, err := getDefaultRecoverRequest(signer, recoveryKey, updateKey)
 	if err != nil {
 		return nil, nil, err
@@ -870,34 +850,23 @@ func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey 
 		return nil, nil, err
 	}
 
-	_, updateCommitment, err := generateKeyAndCommitment()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	delta, err := getDeltaModel(recoveredDoc, updateCommitment)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &batch.Operation{
+	return &model.Operation{
 		Namespace:       mocks.DefaultNS,
 		UniqueSuffix:    uniqueSuffix,
 		Type:            batch.OperationTypeRecover,
 		OperationBuffer: operationBuffer,
-		DeltaModel:      delta,
 		Delta:           recoverRequest.Delta,
 		SignedData:      recoverRequest.SignedData,
 	}, nextRecoveryKey, nil
 }
 
-func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
-	deltaBytes, err := canonicalizer.MarshalCanonical(deltaModel)
+func getRecoverRequest(signer helper.Signer, delta *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	signedDataModel.DeltaHash = getEncodedMultihash(deltaBytes)
+	signedDataModel.DeltaHash = deltaHash
 
 	jws, err := signutil.SignModel(signedDataModel, signer)
 	if err != nil {
@@ -905,9 +874,9 @@ func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signe
 	}
 
 	return &model.RecoverRequest{
-		Operation:  model.OperationTypeRecover,
+		Operation:  batch.OperationTypeRecover,
 		DidSuffix:  "suffix",
-		Delta:      docutil.EncodeToString(deltaBytes),
+		Delta:      delta,
 		SignedData: jws,
 	}, nil
 }
@@ -923,7 +892,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -941,7 +910,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 	recoverSignedData := &model.RecoverSignedDataModel{
 		RecoveryKey:        recoveryPubKey,
 		RecoveryCommitment: recoveryCommitment,
-		DeltaHash:          getEncodedMultihash(deltaBytes),
+		DeltaHash:          deltaHash,
 	}
 
 	req, err := getRecoverRequest(signer, delta, recoverSignedData)
@@ -969,7 +938,7 @@ func getDefaultStore(recoveryKey, updateKey *ecdsa.PrivateKey) (*mocks.MockOpera
 	return store, createOp.UniqueSuffix
 }
 
-func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string) (*batch.Operation, error) {
+func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string) (*model.Operation, error) {
 	createRequest, err := getCreateRequest(recoveryKey, updateKey)
 	if err != nil {
 		return nil, err
@@ -980,7 +949,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(createRequest.SuffixData, sha2_256)
+	uniqueSuffix, err := docutil.CalculateModelMultihash(createRequest.SuffixData, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -995,30 +964,23 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	suffixData, err := getSuffixData(recoveryKey, delta)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixData, err := getSuffixData(recoveryKey, deltaBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &batch.Operation{
+	return &model.Operation{
 		Namespace:       mocks.DefaultNS,
 		ID:              "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:    uniqueSuffix,
 		Type:            batch.OperationTypeCreate,
 		OperationBuffer: operationBuffer,
-		DeltaModel:      delta,
-		Delta:           createRequest.Delta,
-		SuffixDataModel: suffixData,
-		SuffixData:      createRequest.SuffixData,
+		Delta:           delta,
+		SuffixData:      suffixData,
 	}, nil
 }
 
-func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.Operation, error) {
+func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.Operation, error) {
 	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc)
 }
 
@@ -1031,17 +993,16 @@ func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batc
 	return getAnchoredOperation(op), nil
 }
 
-func getAnchoredOperation(op *batch.Operation) *batch.AnchoredOperation {
-	return &batch.AnchoredOperation{
-		Type:         op.Type,
-		UniqueSuffix: op.UniqueSuffix,
-		Delta:        op.Delta,
-		SuffixData:   op.SuffixData,
-		SignedData:   op.SignedData,
+func getAnchoredOperation(op *model.Operation) *batch.AnchoredOperation {
+	anchoredOp, err := model.GetAnchoredOperation(op)
+	if err != nil {
+		panic(err)
 	}
+
+	return anchoredOp
 }
 
-func getAnchoredOperationWithBlockNum(op *batch.Operation, blockNum uint64) *batch.AnchoredOperation {
+func getAnchoredOperationWithBlockNum(op *model.Operation, blockNum uint64) *batch.AnchoredOperation {
 	anchored := getAnchoredOperation(op)
 	anchored.TransactionTime = blockNum
 
@@ -1059,25 +1020,15 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixData, err := getSuffixData(recoveryKey, deltaBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
+	suffixData, err := getSuffixData(recoveryKey, delta)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
+		Operation:  batch.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: suffixData,
 	}, nil
 }
 
@@ -1107,25 +1058,21 @@ func getCommitment(key *ecdsa.PrivateKey) (string, error) {
 	return c, nil
 }
 
-func getSuffixData(privateKey *ecdsa.PrivateKey, delta []byte) (*model.SuffixDataModel, error) {
+func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel) (*model.SuffixDataModel, error) {
 	recoveryCommitment, err := getCommitment(privateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.SuffixDataModel{
-		DeltaHash:          getEncodedMultihash(delta),
-		RecoveryCommitment: recoveryCommitment,
-	}, nil
-}
-
-func getEncodedMultihash(data []byte) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, data)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return docutil.EncodeToString(mh)
+	return &model.SuffixDataModel{
+		DeltaHash:          deltaHash,
+		RecoveryCommitment: recoveryCommitment,
+	}, nil
 }
 
 const validDoc = `{

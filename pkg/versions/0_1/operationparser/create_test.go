@@ -15,12 +15,11 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 const invalid = "invalid"
@@ -37,19 +36,19 @@ func TestParseCreateOperation(t *testing.T) {
 		request, err := getCreateRequestBytes()
 		require.NoError(t, err)
 
-		op, err := parser.ParseCreateOperation(request)
+		op, err := parser.ParseCreateOperation(request, false)
 		require.NoError(t, err)
 		require.Equal(t, batch.OperationTypeCreate, op.Type)
 	})
 
 	t.Run("success - JCS", func(t *testing.T) {
-		op, err := parser.ParseCreateOperation([]byte(jcsRequest))
+		op, err := parser.ParseCreateOperation([]byte(jcsRequest), true)
 		require.NoError(t, err)
 		require.Equal(t, batch.OperationTypeCreate, op.Type)
 	})
 
 	t.Run("parse create request error", func(t *testing.T) {
-		schema, err := parser.ParseCreateOperation([]byte(""))
+		schema, err := parser.ParseCreateOperation([]byte(""), true)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
@@ -57,12 +56,12 @@ func TestParseCreateOperation(t *testing.T) {
 	t.Run("missing suffix data", func(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
-		create.SuffixData = ""
+		create.SuffixData = nil
 
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
-		op, err := parser.ParseCreateOperation(request)
+		op, err := parser.ParseCreateOperation(request, true)
 		require.Error(t, err)
 		require.Nil(t, op)
 		require.Contains(t, err.Error(), "missing suffix data")
@@ -72,26 +71,54 @@ func TestParseCreateOperation(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		create.SuffixData = invalid
+		create.SuffixData = &model.SuffixDataModel{}
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
-		op, err := parser.ParseCreateOperation(request)
+		op, err := parser.ParseCreateOperation(request, true)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required supported hash algorithm: 18")
 		require.Nil(t, op)
 	})
+	t.Run("missing delta", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+		create.Delta = nil
+
+		request, err := json.Marshal(create)
+		require.NoError(t, err)
+
+		op, err := parser.ParseCreateOperation(request, false)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "missing delta")
+	})
+
+	t.Run("missing delta is ok in anchor mode", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+		create.Delta = nil
+
+		request, err := json.Marshal(create)
+		require.NoError(t, err)
+
+		op, err := parser.ParseCreateOperation(request, true)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.Nil(t, op.Delta)
+	})
+
 	t.Run("parse patch data error", func(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		create.Delta = invalid
+		create.Delta = &model.DeltaModel{}
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
-		op, err := parser.ParseCreateOperation(request)
+		op, err := parser.ParseCreateOperation(request, false)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "missing patches")
 		require.Nil(t, op)
 	})
 
@@ -102,34 +129,15 @@ func TestParseCreateOperation(t *testing.T) {
 		delta, err := getDelta()
 		delta.UpdateCommitment = computeMultihash([]byte("different"))
 
-		deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-		require.NoError(t, err)
-
-		create.Delta = docutil.EncodeToString(deltaBytes)
+		create.Delta = delta
 		request, err := json.Marshal(create)
 		require.NoError(t, err)
 
-		op, err := parser.ParseCreateOperation(request)
+		op, err := parser.ParseCreateOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "delta doesn't match suffix data delta hash")
 		require.Nil(t, op)
 	})
-}
-
-func TestParseSuffixData(t *testing.T) {
-	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-	}
-
-	parser := New(p)
-
-	suffixData, err := parser.ParseSuffixData(interopEncodedSuffixData)
-	require.NoError(t, err)
-	require.NotNil(t, suffixData)
-
-	suffix, err := docutil.CalculateUniqueSuffix(interopEncodedSuffixData, p.HashAlgorithmInMultiHashCode)
-	require.NoError(t, err)
-	require.Equal(t, interopExpectedSuffix, suffix)
 }
 
 func TestValidateSuffixData(t *testing.T) {
@@ -144,7 +152,7 @@ func TestValidateSuffixData(t *testing.T) {
 		require.NoError(t, err)
 
 		suffixData.DeltaHash = ""
-		err = parser.validateSuffixData(suffixData)
+		err = parser.ValidateSuffixData(suffixData)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "patch data hash is not computed with the required supported hash algorithm")
 	})
@@ -153,36 +161,9 @@ func TestValidateSuffixData(t *testing.T) {
 		require.NoError(t, err)
 
 		suffixData.RecoveryCommitment = ""
-		err = parser.validateSuffixData(suffixData)
+		err = parser.ValidateSuffixData(suffixData)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required supported hash algorithm")
-	})
-}
-
-func TestParseDelta(t *testing.T) {
-	t.Run("success - replace patch enabled", func(t *testing.T) {
-		p := protocol.Protocol{
-			HashAlgorithmInMultiHashCode: sha2_256,
-			Patches:                      []string{"replace", "add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
-		}
-
-		parser := New(p)
-
-		delta, err := parser.ParseDelta(interopEncodedDelta)
-		require.NoError(t, err)
-		require.NotNil(t, delta)
-	})
-	t.Run("error - replace patch disabled (default)", func(t *testing.T) {
-		p := protocol.Protocol{
-			HashAlgorithmInMultiHashCode: sha2_256,
-		}
-
-		parser := New(p)
-
-		delta, err := parser.ParseDelta(interopEncodedDelta)
-		require.Error(t, err)
-		require.Nil(t, delta)
-		require.Contains(t, err.Error(), "replace patch action is not enabled")
 	})
 }
 
@@ -199,7 +180,7 @@ func TestValidateDelta(t *testing.T) {
 		require.NoError(t, err)
 
 		delta.UpdateCommitment = ""
-		err = parser.validateDelta(delta)
+		err = parser.ValidateDelta(delta)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the required supported hash algorithm")
@@ -209,7 +190,7 @@ func TestValidateDelta(t *testing.T) {
 		require.NoError(t, err)
 
 		delta.Patches = []patch.Patch{}
-		err = parser.validateDelta(delta)
+		err = parser.ValidateDelta(delta)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing patches")
@@ -232,20 +213,11 @@ func TestValidateCreateRequest(t *testing.T) {
 	t.Run("missing suffix data", func(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
-		create.SuffixData = ""
+		create.SuffixData = nil
 
 		err = parser.validateCreateRequest(create)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing suffix data")
-	})
-	t.Run("missing delta", func(t *testing.T) {
-		create, err := getCreateRequest()
-		require.NoError(t, err)
-		create.Delta = ""
-
-		err = parser.validateCreateRequest(create)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing delta")
 	})
 }
 
@@ -255,25 +227,15 @@ func getCreateRequest() (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-	if err != nil {
-		return nil, err
-	}
-
 	suffixData, err := getSuffixData()
 	if err != nil {
 		return nil, err
 	}
 
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
-	if err != nil {
-		return nil, err
-	}
-
 	return &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
+		Operation:  batch.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: suffixData,
 	}, nil
 }
 
@@ -315,13 +277,13 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.SuffixDataModel{
-		DeltaHash:          computeMultihash(deltaBytes),
+		DeltaHash:          deltaHash,
 		RecoveryCommitment: recoveryCommitment,
 	}, nil
 }
@@ -353,9 +315,5 @@ const validDoc = `{
 
 // samples bellow are taken from reference implementation tests.
 const (
-	interopEncodedDelta      = `eyJ1cGRhdGVfY29tbWl0bWVudCI6IkVpQ0lQY1hCempqUWFKVUljUjUyZXVJMHJJWHpoTlpfTWxqc0tLOXp4WFR5cVEiLCJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoic2lnbmluZ0tleSIsInR5cGUiOiJFY2RzYVNlY3AyNTZrMVZlcmlmaWNhdGlvbktleTIwMTkiLCJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJzZWNwMjU2azEiLCJ4IjoieTlrenJWQnFYeDI0c1ZNRVFRazRDZS0wYnFaMWk1VHd4bGxXQ2t6QTd3VSIsInkiOiJjMkpIeFFxVVV0eVdJTEFJaWNtcEJHQzQ3UGdtSlQ0NjV0UG9jRzJxMThrIn0sInB1cnBvc2UiOlsiYXV0aCIsImdlbmVyYWwiXX1dLCJzZXJ2aWNlX2VuZHBvaW50cyI6W3siaWQiOiJzZXJ2aWNlRW5kcG9pbnRJZDEyMyIsInR5cGUiOiJzb21lVHlwZSIsImVuZHBvaW50IjoiaHR0cHM6Ly93d3cudXJsLmNvbSJ9XX19XX0` //nolint:gofumpt
-	interopEncodedSuffixData = `eyJkZWx0YV9oYXNoIjoiRWlCWE00b3RMdVAyZkc0WkE3NS1hbnJrV1ZYMDYzN3hadE1KU29Lb3AtdHJkdyIsInJlY292ZXJ5X2NvbW1pdG1lbnQiOiJFaUM4RzRJZGJEN0Q0Q281N0dqTE5LaG1ERWFicnprTzF3c0tFOU1RZVV2T2d3In0`
-	interopExpectedSuffix    = "EiBFsUlzmZ3zJtSFeQKwJNtngjmB51ehMWWDuptf9b4Bag"
-
 	jcsRequest = `{"delta":{"patches":[{"action":"replace","document":{"public_keys":[{"id":"anySigningKeyId","jwk":{"crv":"secp256k1","kty":"EC","x":"H61vqAm_-TC3OrFSqPrEfSfg422NR8QHPqr0mLx64DM","y":"s0WnWY87JriBjbyoY3FdUmifK7JJRLR65GtPthXeyuc"},"purpose":["auth"],"type":"EcdsaSecp256k1VerificationKey2019"}],"service_endpoints":[{"endpoint":"http://any.endpoint","id":"anyServiceEndpointId","type":"anyType"}]}}],"update_commitment":"EiBMWE2JFaFipPdthcFiQek-SXTMi5IWIFXAN8hKFCyLJw"},"suffix_data":{"delta_hash":"EiBP6gAOxx3YOL8PZPZG3medFgdqWSDayVX3u1W2f-IPEQ","recovery_commitment":"EiBg8oqvU0Zq_H5BoqmWf0IrhetQ91wXc5fDPpIjB9wW5w"},"type":"create"}`
 )

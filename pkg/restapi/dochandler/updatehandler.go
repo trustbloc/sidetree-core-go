@@ -9,8 +9,8 @@ package dochandler
 import (
 	"io/ioutil"
 	"net/http"
+	"strings"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
@@ -19,7 +19,7 @@ import (
 // Processor processes document operations.
 type Processor interface {
 	Namespace() string
-	ProcessOperation(operation *batch.Operation, protocolGenesisTime uint64) (*document.ResolutionResult, error)
+	ProcessOperation(operation []byte, protocolGenesisTime uint64) (*document.ResolutionResult, error)
 }
 
 // UpdateHandler handles the creation and update of documents.
@@ -54,30 +54,25 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func (h *UpdateHandler) doUpdate(request []byte) (*document.ResolutionResult, error) {
+func (h *UpdateHandler) doUpdate(operation []byte) (*document.ResolutionResult, error) {
 	currentProtocol, err := h.protocol.Current()
 	if err != nil {
 		return nil, err
 	}
 
-	operation, err := h.getOperation(request, currentProtocol)
-	if err != nil {
-		logger.Warnf("operation validation error: %s", err.Error())
-
-		return nil, common.NewHTTPError(http.StatusBadRequest, err)
-	}
-
 	// operation has been validated, now process it
 	result, err := h.processor.ProcessOperation(operation, currentProtocol.Protocol().GenesisTime)
 	if err != nil {
+		if strings.Contains(err.Error(), "bad request") {
+			logger.Warnf("operation validation error: %s", err.Error())
+
+			return nil, common.NewHTTPError(http.StatusBadRequest, err)
+		}
+
 		logger.Errorf("internal server error:  %s", err.Error())
 
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	return result, nil
-}
-
-func (h *UpdateHandler) getOperation(operationBuffer []byte, pv protocol.Version) (*batch.Operation, error) {
-	return pv.OperationParser().Parse(h.processor.Namespace(), operationBuffer)
 }

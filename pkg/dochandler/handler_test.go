@@ -30,8 +30,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
@@ -63,7 +63,7 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp, 0)
+	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 }
@@ -81,7 +81,7 @@ func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp, 0)
+	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
 	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
@@ -96,7 +96,7 @@ func TestDocumentHandler_ProcessOperation_ProtocolError(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp, 0)
+	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
 	require.EqualError(t, err, pc.Err.Error())
 	require.Nil(t, doc)
 }
@@ -157,9 +157,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	createOp := getCreateOperation()
 	docID := createOp.ID
 
-	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
-		Delta:      createOp.DeltaModel,
-		SuffixData: createOp.SuffixDataModel,
+	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequest{
+		Delta:      createOp.Delta,
+		SuffixData: createOp.SuffixData,
 	})
 	require.NoError(t, err)
 
@@ -268,9 +268,9 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 	createOp := getCreateOperation()
 	docID := createOp.ID
 
-	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
-		Delta:      createOp.DeltaModel,
-		SuffixData: createOp.SuffixDataModel,
+	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequest{
+		Delta:      createOp.Delta,
+		SuffixData: createOp.SuffixData,
 	})
 	require.NoError(t, err)
 
@@ -295,9 +295,9 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 
 	docID := createOp.ID
 
-	initialReq, err := canonicalizer.MarshalCanonical(model.CreateRequestJCS{
-		Delta:      createOp.DeltaModel,
-		SuffixData: createOp.SuffixDataModel,
+	initialReq, err := canonicalizer.MarshalCanonical(model.CreateRequest{
+		Delta:      createOp.Delta,
+		SuffixData: createOp.SuffixData,
 	})
 	require.NoError(t, err)
 
@@ -345,7 +345,7 @@ func TestGetUniquePortion(t *testing.T) {
 	require.Equal(t, unique, uniquePortion)
 }
 
-func TestProcessOperation_Update(t *testing.T) {
+func TestProcessOperation_ParseOperationError(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	dochandler, cleanup := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
@@ -355,9 +355,10 @@ func TestProcessOperation_Update(t *testing.T) {
 	err := store.Put(getAnchoredCreateOperation())
 	require.Nil(t, err)
 
-	doc, err := dochandler.ProcessOperation(getUpdateOperation(), 0)
-	require.Nil(t, err)
+	doc, err := dochandler.ProcessOperation(getUpdateOperation().OperationBuffer, 0)
+	require.NotNil(t, err)
 	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "bad request: missing signed data")
 }
 
 // BatchContext implements batch writer context.
@@ -415,7 +416,7 @@ func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, 
 	return New(namespace, []string{alias}, protocol, transformer, writer, processor), func() { writer.Stop() }
 }
 
-func getCreateOperation() *batchapi.Operation {
+func getCreateOperation() *model.Operation {
 	request, err := getCreateRequest()
 	if err != nil {
 		panic(err)
@@ -429,66 +430,46 @@ func getCreateOperation() *batchapi.Operation {
 	return op
 }
 
-func getCreateOperationWithInitialState(suffixData, delta string) (*batchapi.Operation, error) {
+func getCreateOperationWithInitialState(suffixData *model.SuffixDataModel, delta *model.DeltaModel) (*model.Operation, error) {
 	request := &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
+		Operation:  batchapi.OperationTypeCreate,
 		SuffixData: suffixData,
 		Delta:      delta,
 	}
 
-	payload, err := json.Marshal(request)
+	payload, err := canonicalizer.MarshalCanonical(request)
 	if err != nil {
 		return nil, err
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(suffixData, sha2_256)
+	uniqueSuffix, err := docutil.CalculateModelMultihash(suffixData, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	deltaBytes, err := docutil.DecodeString(delta)
-	if err != nil {
-		panic(err)
-	}
-
-	deltaModel := &model.DeltaModel{}
-	err = json.Unmarshal(deltaBytes, deltaModel)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixDataBytes, err := docutil.DecodeString(suffixData)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixDataModel := &model.SuffixDataModel{}
-	err = json.Unmarshal(suffixDataBytes, suffixDataModel)
-	if err != nil {
-		return nil, err
-	}
-
-	return &batchapi.Operation{
+	return &model.Operation{
 		Type:            batchapi.OperationTypeCreate,
 		UniqueSuffix:    uniqueSuffix,
 		ID:              namespace + docutil.NamespaceDelimiter + uniqueSuffix,
 		OperationBuffer: payload,
-		DeltaModel:      deltaModel,
 		Delta:           delta,
 		SuffixData:      suffixData,
-		SuffixDataModel: suffixDataModel,
 	}, nil
 }
 
 func getAnchoredCreateOperation() *batchapi.AnchoredOperation {
 	op := getCreateOperation()
 
-	return &batchapi.AnchoredOperation{
-		Type:         op.Type,
-		UniqueSuffix: op.UniqueSuffix,
-		Delta:        op.Delta,
-		SuffixData:   op.SuffixData,
+	return getAnchoredOperation(op)
+}
+
+func getAnchoredOperation(op *model.Operation) *batchapi.AnchoredOperation {
+	anchoredOp, err := model.GetAnchoredOperation(op)
+	if err != nil {
+		panic(err)
 	}
+
+	return anchoredOp
 }
 
 const validDoc = `{
@@ -529,27 +510,15 @@ func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	suffixData, err := getSuffixData(delta)
 	if err != nil {
 		return nil, err
 	}
-
-	suffixData, err := getSuffixData(deltaBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
-	if err != nil {
-		return nil, err
-	}
-
-	encodedSuffixData := docutil.EncodeToString(suffixDataBytes)
 
 	return &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: encodedSuffixData,
+		Operation:  batchapi.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: suffixData,
 	}, nil
 }
 
@@ -579,7 +548,7 @@ func newAddPublicKeysPatch(doc string) (patch.Patch, error) {
 	return p, nil
 }
 
-func getSuffixData(delta []byte) (*model.SuffixDataModel, error) {
+func getSuffixData(delta *model.DeltaModel) (*model.SuffixDataModel, error) {
 	jwk := &jws.JWK{
 		Kty: "kty",
 		Crv: "crv",
@@ -591,8 +560,13 @@ func getSuffixData(delta []byte) (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.SuffixDataModel{
-		DeltaHash:          encodedMultihash(delta),
+		DeltaHash:          deltaHash,
 		RecoveryCommitment: c,
 	}, nil
 }
@@ -606,19 +580,6 @@ func encodedMultihash(data []byte) string {
 	return docutil.EncodeToString(mh)
 }
 
-func getUpdateRequest() (*model.UpdateRequest, error) {
-	deltaBytes, err := json.Marshal(getUpdateDelta())
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.UpdateRequest{
-		Operation: model.OperationTypeUpdate,
-		DidSuffix: getCreateOperation().UniqueSuffix,
-		Delta:     docutil.EncodeToString(deltaBytes),
-	}, nil
-}
-
 func getUpdateDelta() *model.DeltaModel {
 	return &model.DeltaModel{
 		UpdateCommitment: encodedMultihash([]byte("updateReveal")),
@@ -626,9 +587,10 @@ func getUpdateDelta() *model.DeltaModel {
 }
 
 func getUpdateOperation() *batchapi.Operation {
-	request, err := getUpdateRequest()
-	if err != nil {
-		panic(err)
+	request := &model.UpdateRequest{
+		Operation: batchapi.OperationTypeUpdate,
+		DidSuffix: getCreateOperation().UniqueSuffix,
+		Delta:     getUpdateDelta(),
 	}
 
 	payload, err := json.Marshal(request)

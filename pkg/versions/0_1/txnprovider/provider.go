@@ -16,6 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
 
@@ -33,13 +34,20 @@ type decompressionProvider interface {
 // OperationProvider is an operation provider.
 type OperationProvider struct {
 	protocol.Protocol
-	parser protocol.OperationParser
+	parser OperationParser
 	cas    DCAS
 	dp     decompressionProvider
 }
 
+// OperationParser defines the functions for parsing operations.
+type OperationParser interface {
+	ParseOperation(namespace string, operationBuffer []byte) (*model.Operation, error)
+	ValidateSuffixData(suffixData *model.SuffixDataModel) error
+	ValidateDelta(delta *model.DeltaModel) error
+}
+
 // NewOperationProvider returns a new operation provider.
-func NewOperationProvider(p protocol.Protocol, parser protocol.OperationParser, cas DCAS, dp decompressionProvider) *OperationProvider {
+func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS, dp decompressionProvider) *OperationProvider {
 	return &OperationProvider{
 		Protocol: p,
 		parser:   parser,
@@ -68,7 +76,7 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 			return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
 		}
 
-		return anchorOps.Deactivate, nil
+		return createAnchoredOperations(anchorOps.Deactivate)
 	}
 
 	mf, err := h.getMapFile(af.MapFileHash)
@@ -94,6 +102,19 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 	return txnOps, nil
 }
 
+func createAnchoredOperations(ops []*model.Operation) ([]*batch.AnchoredOperation, error) {
+	var anchoredOps []*batch.AnchoredOperation
+	for _, op := range ops {
+		anchoredOp, err := model.GetAnchoredOperation(op)
+		if err != nil {
+			return nil, err
+		}
+		anchoredOps = append(anchoredOps, anchoredOp)
+	}
+
+	return anchoredOps, nil
+}
+
 func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
 	anchorOps, err := h.parseAnchorOperations(af, txn)
 	if err != nil {
@@ -114,7 +135,7 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 		return nil, fmt.Errorf("check for duplicate suffixes in anchor/map files: %s", err.Error())
 	}
 
-	var operations []*batch.AnchoredOperation
+	var operations []*model.Operation
 	operations = append(operations, anchorOps.Create...)
 	operations = append(operations, anchorOps.Recover...)
 	operations = append(operations, mapOps.Update...)
@@ -128,9 +149,10 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 	operations = append(operations, anchorOps.Deactivate...)
 
 	for i, delta := range cf.Deltas {
-		_, err = h.parser.ParseDelta(delta)
+		// TODO: Evaluate whether delta should be validated here
+		err = h.parser.ValidateDelta(delta)
 		if err != nil {
-			return nil, fmt.Errorf("parse delta: %s", err.Error())
+			return nil, fmt.Errorf("validate delta: %s", err.Error())
 		}
 
 		op := operations[i]
@@ -138,7 +160,7 @@ func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *m
 		op.Delta = delta
 	}
 
-	return operations, nil
+	return createAnchoredOperations(operations)
 }
 
 func checkForDuplicates(values []string) error {
@@ -226,9 +248,9 @@ func (h *OperationProvider) readFromCAS(address, alg string, maxSize uint) ([]by
 
 // anchorOperations contains parsed operations from anchor file.
 type anchorOperations struct {
-	Create     []*batch.AnchoredOperation
-	Recover    []*batch.AnchoredOperation
-	Deactivate []*batch.AnchoredOperation
+	Create     []*model.Operation
+	Recover    []*model.Operation
+	Deactivate []*model.Operation
 	Suffixes   []string
 }
 
@@ -237,21 +259,19 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 
 	var suffixes []string
 
-	var createOps []*batch.AnchoredOperation
+	var createOps []*model.Operation
 	for _, op := range af.Operations.Create {
-		suffix, err := docutil.CalculateUniqueSuffix(op.SuffixData, h.HashAlgorithmInMultiHashCode)
+		suffix, err := docutil.CalculateModelMultihash(op.SuffixData, h.HashAlgorithmInMultiHashCode)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = h.parser.ParseSuffixData(op.SuffixData)
+		err = h.parser.ValidateSuffixData(op.SuffixData)
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO: they are assembling operation buffer in reference implementation - issue-380
-		// (might be easier for version manager)
-		create := &batch.AnchoredOperation{
+		create := &model.Operation{
 			Type:         batch.OperationTypeCreate,
 			UniqueSuffix: suffix,
 			SuffixData:   op.SuffixData,
@@ -261,9 +281,9 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 		createOps = append(createOps, create)
 	}
 
-	var recoverOps []*batch.AnchoredOperation
+	var recoverOps []*model.Operation
 	for _, op := range af.Operations.Recover {
-		recover := &batch.AnchoredOperation{
+		recover := &model.Operation{
 			Type:         batch.OperationTypeRecover,
 			UniqueSuffix: op.DidSuffix,
 			SignedData:   op.SignedData,
@@ -273,9 +293,9 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 		recoverOps = append(recoverOps, recover)
 	}
 
-	var deactivateOps []*batch.AnchoredOperation
+	var deactivateOps []*model.Operation
 	for _, op := range af.Operations.Deactivate {
-		deactivate := &batch.AnchoredOperation{
+		deactivate := &model.Operation{
 			Type:         batch.OperationTypeDeactivate,
 			UniqueSuffix: op.DidSuffix,
 			SignedData:   op.SignedData,
@@ -295,16 +315,16 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 
 // MapOperations contains parsed operations from map file.
 type MapOperations struct {
-	Update   []*batch.AnchoredOperation
+	Update   []*model.Operation
 	Suffixes []string
 }
 
 func parseMapOperations(mf *models.MapFile) *MapOperations {
 	var suffixes []string
 
-	var updateOps []*batch.AnchoredOperation
+	var updateOps []*model.Operation
 	for _, op := range mf.Operations.Update {
-		update := &batch.AnchoredOperation{
+		update := &model.Operation{
 			Type:         batch.OperationTypeUpdate,
 			UniqueSuffix: op.DidSuffix,
 			SignedData:   op.SignedData,
@@ -317,8 +337,8 @@ func parseMapOperations(mf *models.MapFile) *MapOperations {
 	return &MapOperations{Update: updateOps, Suffixes: suffixes}
 }
 
-func getOperations(filter batch.OperationType, ops []*batch.Operation) []*batch.Operation {
-	var result []*batch.Operation
+func getOperations(filter batch.OperationType, ops []*model.Operation) []*model.Operation {
+	var result []*model.Operation
 	for _, op := range ops {
 		if op.Type == filter {
 			result = append(result, op)

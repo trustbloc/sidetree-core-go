@@ -17,19 +17,35 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
+
+//go:generate counterfeiter -o operationparser.gen.go --fake-name MockOperationParser . OperationParser
 
 var logger = log.New("sidetree-core-applier")
 
 // Applier is an operation applier.
 type Applier struct {
 	protocol.Protocol
-	protocol.OperationParser
+	OperationParser
 	protocol.DocumentComposer
 }
 
+// OperationParser defines the functions for parsing operations.
+type OperationParser interface {
+	ValidateSuffixData(suffixData *model.SuffixDataModel) error
+	ValidateDelta(delta *model.DeltaModel) error
+	ParseCreateOperation(request []byte, anchor bool) (*model.Operation, error)
+	ParseUpdateOperation(request []byte, anchor bool) (*model.Operation, error)
+	ParseRecoverOperation(request []byte, anchor bool) (*model.Operation, error)
+	ParseDeactivateOperation(request []byte, anchor bool) (*model.Operation, error)
+	ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error)
+	ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error)
+	ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error)
+}
+
 // New returns a new operation applier for the given protocol.
-func New(p protocol.Protocol, parser protocol.OperationParser, dc protocol.DocumentComposer) *Applier {
+func New(p protocol.Protocol, parser OperationParser, dc protocol.DocumentComposer) *Applier {
 	return &Applier{
 		Protocol:         p,
 		OperationParser:  parser,
@@ -53,47 +69,47 @@ func (s *Applier) Apply(operation *batch.AnchoredOperation, rm *protocol.Resolut
 	}
 }
 
-func (s *Applier) applyCreateOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	logger.Debugf("Applying create operation: %+v", op)
+func (s *Applier) applyCreateOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+	logger.Debugf("Applying create operation: %+v", anchoredOp)
 
 	if rm.Doc != nil {
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	suffixData, err := s.ParseSuffixData(op.SuffixData)
+	op, err := s.OperationParser.ParseCreateOperation(anchoredOp.OperationBuffer, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse suffix data: %s", err.Error())
+		return nil, fmt.Errorf("failed to parse create operation in anchor mode: %s", err.Error())
 	}
 
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
 		Doc:                              make(document.Document),
-		LastOperationTransactionTime:     op.TransactionTime,
-		LastOperationTransactionNumber:   op.TransactionNumber,
-		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
-		RecoveryCommitment:               suffixData.RecoveryCommitment,
+		LastOperationTransactionTime:     anchoredOp.TransactionTime,
+		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
+		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
+		RecoveryCommitment:               op.SuffixData.RecoveryCommitment,
 	}
 
 	// verify actual delta hash matches expected delta hash
-	err = docutil.IsValidHash(op.Delta, suffixData.DeltaHash)
+	err = docutil.IsValidModelMultihash(op.Delta, op.SuffixData.DeltaHash)
 	if err != nil {
-		logger.Infof("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", anchoredOp.UniqueSuffix, anchoredOp.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
 		return result, nil
 	}
 
-	delta, err := s.ParseDelta(op.Delta)
+	err = s.OperationParser.ValidateDelta(op.Delta)
 	if err != nil {
-		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
 		return result, nil
 	}
 
-	result.UpdateCommitment = delta.UpdateCommitment
+	result.UpdateCommitment = op.Delta.UpdateCommitment
 
-	doc, err := s.ApplyPatches(make(document.Document), delta.Patches)
+	doc, err := s.ApplyPatches(make(document.Document), op.Delta.Patches)
 	if err != nil {
-		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", anchoredOp.UniqueSuffix, anchoredOp.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
 		return result, nil
 	}
@@ -103,11 +119,16 @@ func (s *Applier) applyCreateOperation(op *batch.AnchoredOperation, rm *protocol
 	return result, nil
 }
 
-func (s *Applier) applyUpdateOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
-	logger.Debugf("Applying update operation: %+v", op)
+func (s *Applier) applyUpdateOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
+	logger.Debugf("Applying update operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
 		return nil, errors.New("update cannot be first operation")
+	}
+
+	op, err := s.OperationParser.ParseUpdateOperation(anchoredOp.OperationBuffer, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse update operation in anchor mode: %s", err.Error())
 	}
 
 	signedDataModel, err := s.ParseSignedDataForUpdate(op.SignedData)
@@ -116,7 +137,7 @@ func (s *Applier) applyUpdateOperation(op *batch.AnchoredOperation, rm *protocol
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
+	err = docutil.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
@@ -127,31 +148,36 @@ func (s *Applier) applyUpdateOperation(op *batch.AnchoredOperation, rm *protocol
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
-	delta, err := s.ParseDelta(op.Delta)
+	err = s.OperationParser.ValidateDelta(op.Delta)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse delta: %s", err.Error())
+		return nil, fmt.Errorf("failed to validate delta: %s", err.Error())
 	}
 
-	doc, err := s.ApplyPatches(rm.Doc, delta.Patches)
+	doc, err := s.ApplyPatches(rm.Doc, op.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
 
 	return &protocol.ResolutionModel{
 		Doc:                              doc,
-		LastOperationTransactionTime:     op.TransactionTime,
-		LastOperationTransactionNumber:   op.TransactionNumber,
-		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
-		UpdateCommitment:                 delta.UpdateCommitment,
+		LastOperationTransactionTime:     anchoredOp.TransactionTime,
+		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
+		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
+		UpdateCommitment:                 op.Delta.UpdateCommitment,
 		RecoveryCommitment:               rm.RecoveryCommitment,
 	}, nil
 }
 
-func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	logger.Debugf("[%s] Applying deactivate operation: %+v", op)
+func (s *Applier) applyDeactivateOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+	logger.Debugf("[%s] Applying deactivate operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
 		return nil, errors.New("deactivate can only be applied to an existing document")
+	}
+
+	op, err := s.OperationParser.ParseDeactivateOperation(anchoredOp.OperationBuffer, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse deactive operation in anchor mode: %s", err.Error())
 	}
 
 	signedDataModel, err := s.ParseSignedDataForDeactivate(op.SignedData)
@@ -172,19 +198,24 @@ func (s *Applier) applyDeactivateOperation(op *batch.AnchoredOperation, rm *prot
 
 	return &protocol.ResolutionModel{
 		Doc:                              nil,
-		LastOperationTransactionTime:     op.TransactionTime,
-		LastOperationTransactionNumber:   op.TransactionNumber,
-		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
+		LastOperationTransactionTime:     anchoredOp.TransactionTime,
+		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
+		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
 		UpdateCommitment:                 "",
 		RecoveryCommitment:               "",
 	}, nil
 }
 
-func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
-	logger.Debugf("Applying recover operation: %+v", op)
+func (s *Applier) applyRecoverOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
+	logger.Debugf("Applying recover operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
 		return nil, errors.New("recover can only be applied to an existing document")
+	}
+
+	op, err := s.OperationParser.ParseRecoverOperation(anchoredOp.OperationBuffer, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse recover operation in anchor mode: %s", err.Error())
 	}
 
 	signedDataModel, err := s.ParseSignedDataForRecover(op.SignedData)
@@ -201,32 +232,32 @@ func (s *Applier) applyRecoverOperation(op *batch.AnchoredOperation, rm *protoco
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
 		Doc:                              make(document.Document),
-		LastOperationTransactionTime:     op.TransactionTime,
-		LastOperationTransactionNumber:   op.TransactionNumber,
-		LastOperationProtocolGenesisTime: op.ProtocolGenesisTime,
+		LastOperationTransactionTime:     anchoredOp.TransactionTime,
+		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
+		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
 		RecoveryCommitment:               signedDataModel.RecoveryCommitment,
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidHash(op.Delta, signedDataModel.DeltaHash)
+	err = docutil.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
-		logger.Infof("Recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
 		return result, nil
 	}
 
-	delta, err := s.ParseDelta(op.Delta)
+	err = s.OperationParser.ValidateDelta(op.Delta)
 	if err != nil {
-		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
 		return result, nil
 	}
 
-	result.UpdateCommitment = delta.UpdateCommitment
+	result.UpdateCommitment = op.Delta.UpdateCommitment
 
-	doc, err := s.ApplyPatches(make(document.Document), delta.Patches)
+	doc, err := s.ApplyPatches(make(document.Document), op.Delta.Patches)
 	if err != nil {
-		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
 		return result, nil
 	}

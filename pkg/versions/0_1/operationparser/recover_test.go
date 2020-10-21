@@ -14,13 +14,11 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 const (
@@ -42,12 +40,12 @@ func TestParseRecoverOperation(t *testing.T) {
 		request, err := getRecoverRequestBytes()
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.NoError(t, err)
 		require.Equal(t, batch.OperationTypeRecover, op.Type)
 	})
 	t.Run("parse recover request error", func(t *testing.T) {
-		schema, err := parser.ParseRecoverOperation([]byte(""))
+		schema, err := parser.ParseRecoverOperation([]byte(""), false)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
@@ -60,7 +58,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
 		require.Nil(t, op)
 		require.Contains(t, err.Error(), "missing did suffix")
@@ -69,13 +67,13 @@ func TestParseRecoverOperation(t *testing.T) {
 		recoverRequest, err := getDefaultRecoverRequest()
 		require.NoError(t, err)
 
-		recoverRequest.Delta = invalid
+		recoverRequest.Delta = &model.DeltaModel{}
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid character")
+		require.Contains(t, err.Error(), "missing patches")
 		require.Nil(t, op)
 	})
 	t.Run("validate patch data error", func(t *testing.T) {
@@ -89,7 +87,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing patches")
 		require.Nil(t, op)
@@ -102,7 +100,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid JWS compact format")
 		require.Nil(t, op)
@@ -118,7 +116,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
 		require.Nil(t, op)
@@ -136,7 +134,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		request, err := json.Marshal(recoverRequest)
 		require.NoError(t, err)
 
-		op, err := parser.ParseRecoverOperation(request)
+		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "signed data for recovery: missing signing key")
 		require.Nil(t, op)
@@ -302,15 +300,6 @@ func TestValidateRecoverRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing did suffix")
 	})
-	t.Run("missing delta", func(t *testing.T) {
-		recover, err := getDefaultRecoverRequest()
-		require.NoError(t, err)
-		recover.Delta = ""
-
-		err = parser.validateRecoverRequest(recover)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing delta")
-	})
 }
 
 func TestValidateProtectedHeader(t *testing.T) {
@@ -391,20 +380,15 @@ func getHeaders(alg, kid string) jws.Headers {
 }
 
 func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-	if err != nil {
-		return nil, err
-	}
-
 	compactJWS, err := signutil.SignModel(signedData, NewMockSigner())
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.RecoverRequest{
-		Operation:  model.OperationTypeRecover,
+		Operation:  batch.OperationTypeRecover,
 		DidSuffix:  "suffix",
-		Delta:      docutil.EncodeToString(deltaBytes),
+		Delta:      delta,
 		SignedData: compactJWS,
 	}, nil
 }

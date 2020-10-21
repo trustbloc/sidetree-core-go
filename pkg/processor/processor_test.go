@@ -29,10 +29,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 )
@@ -42,6 +42,8 @@ const (
 	dummyUniqueSuffix = "dummy"
 
 	updateKeyID = "update-key"
+
+	defaultBlockNumber = 0
 )
 
 func TestResolve(t *testing.T) {
@@ -102,12 +104,12 @@ func TestResolve(t *testing.T) {
 	t.Run("resolution error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		createOp, err := getCreateOperation(recoveryKey, updateKey, defaultBlockNumber)
 		require.NoError(t, err)
 
-		createOp.SuffixData = "invalid"
+		createOp.SuffixData = &model.SuffixDataModel{}
 
-		err = store.Put(createOp)
+		err = store.Put(getAnchoredOperation(createOp, defaultBlockNumber))
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
@@ -127,8 +129,6 @@ func TestUpdateDocument(t *testing.T) {
 
 	// protocol version switches at block 100
 	pc := newMockProtocolClient()
-
-	parser := operationparser.New(pc.Protocol)
 
 	t.Run("success", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
@@ -228,13 +228,12 @@ func TestUpdateDocument(t *testing.T) {
 
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		delta1, err := parser.ParseDelta(updateOp.Delta)
-		require.NoError(t, err)
+		delta1 := updateOp.Delta
 
-		err = store.Put(updateOp)
+		err = store.Put(getAnchoredOperation(updateOp, 1))
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
@@ -246,10 +245,10 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
+		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
 		require.Nil(t, err)
 
-		err = store.Put(updateOp)
+		err = store.Put(getAnchoredOperation(updateOp, 2))
 		require.Nil(t, err)
 
 		result, err = p.Resolve(uniqueSuffix)
@@ -260,19 +259,13 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special2", didDoc["test"])
 
 		// two successful update operations - next update with reused commitment from op 1
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		delta3, err := parser.ParseDelta(updateOp.Delta)
-		require.NoError(t, err)
+		delta3 := updateOp.Delta
 		delta3.UpdateCommitment = delta1.UpdateCommitment
 
-		delta3Bytes, err := canonicalizer.MarshalCanonical(delta3)
-		require.NoError(t, err)
-
-		updateOp.Delta = docutil.EncodeToString(delta3Bytes)
-
-		err = store.Put(updateOp)
+		err = store.Put(getAnchoredOperation(updateOp, 1))
 		require.Nil(t, err)
 
 		result, err = p.Resolve(uniqueSuffix)
@@ -288,13 +281,13 @@ func TestUpdateDocument(t *testing.T) {
 
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		delta1, err := parser.ParseDelta(updateOp.Delta)
+		delta1 := updateOp.Delta
 		require.NoError(t, err)
 
-		err = store.Put(updateOp)
+		err = store.Put(getAnchoredOperation(updateOp, 1))
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
@@ -306,19 +299,13 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// update operation commitment is the same as next operation commitment
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		delta2, err := parser.ParseDelta(updateOp.Delta)
-		require.NoError(t, err)
+		delta2 := updateOp.Delta
 		delta2.UpdateCommitment = delta1.UpdateCommitment
 
-		delta2Bytes, err := canonicalizer.MarshalCanonical(delta2)
-		require.NoError(t, err)
-
-		updateOp.Delta = docutil.EncodeToString(delta2Bytes)
-
-		err = store.Put(updateOp)
+		err = store.Put(getAnchoredOperation(updateOp, 1))
 		require.Nil(t, err)
 
 		result, err = p.Resolve(uniqueSuffix)
@@ -387,17 +374,10 @@ func TestProcessOperation(t *testing.T) {
 	})
 
 	t.Run("invalid operation type error", func(t *testing.T) {
-		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
-
-		deactivateOp, err := getDeactivateOperation(recoveryKey, uniqueSuffix)
-		require.NoError(t, err)
-
-		deactivateOp.Type = "invalid"
-
-		anchoredOp := getAnchoredOperation(deactivateOp)
+		store, _ := getDefaultStore(recoveryKey, updateKey)
 
 		p := New("test", store, pc)
-		doc, err := p.applyOperation(anchoredOp, &protocol.ResolutionModel{Doc: make(document.Document)})
+		doc, err := p.applyOperation(&batch.AnchoredOperation{Type: "invalid"}, &protocol.ResolutionModel{Doc: make(document.Document)})
 		require.Error(t, err)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
 		require.Nil(t, doc)
@@ -555,7 +535,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		reveal, p, err := p.getOperationRevealValue(recoverOp)
+		reveal, p, err := p.getRevealValue(recoverOp)
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 		require.NotEmpty(t, p)
@@ -572,7 +552,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		reveal, p, err := p.getOperationRevealValue(updateOp)
+		reveal, p, err := p.getRevealValue(updateOp)
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 
@@ -588,7 +568,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		reveal, p, err := p.getOperationRevealValue(deactivateOp)
+		reveal, p, err := p.getRevealValue(deactivateOp)
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 
@@ -608,7 +588,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, _, err := New("test", store, pcWithoutProtocols).getOperationRevealValue(updateOp)
+		value, _, err := New("test", store, pcWithoutProtocols).getRevealValue(updateOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
@@ -618,7 +598,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		value, p, err := p.getOperationRevealValue(createOp)
+		value, p, err := p.getRevealValue(createOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Equal(t, p, protocol.Protocol{})
@@ -631,28 +611,13 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		recoverOp.SignedData = ""
 
-		anchoredOp := getAnchoredOperation(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp, 1)
 
-		value, p, err := p.getOperationRevealValue(anchoredOp)
+		value, p, err := p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Equal(t, p, protocol.Protocol{})
 		require.Contains(t, err.Error(), "missing signed data")
-	})
-
-	t.Run("error - operation type not supported", func(t *testing.T) {
-		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
-		require.NoError(t, err)
-
-		recoverOp.Type = "other"
-
-		anchoredOp := getAnchoredOperation(recoverOp)
-
-		value, p, err := p.getOperationRevealValue(anchoredOp)
-		require.Error(t, err)
-		require.Empty(t, value)
-		require.Equal(t, p, protocol.Protocol{})
-		require.Contains(t, err.Error(), "operation type not supported for getting operation commitment")
 	})
 
 	t.Run("error - unmarshall signed models", func(t *testing.T) {
@@ -666,9 +631,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		recoverOp.SignedData = recoverCompactJWS
 
-		anchoredOp := getAnchoredOperation(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp, 1)
 
-		value, pv, err := p.getOperationRevealValue(anchoredOp)
+		value, pv, err := p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Equal(t, pv, protocol.Protocol{})
@@ -680,9 +645,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		deactivateOp.SignedData = recoverCompactJWS
 
-		anchoredOp = getAnchoredOperation(deactivateOp)
+		anchoredOp = getAnchoredOperation(deactivateOp, 1)
 
-		value, pv, err = p.getOperationRevealValue(anchoredOp)
+		value, pv, err = p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Equal(t, pv, protocol.Protocol{})
@@ -698,9 +663,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		updateOp.SignedData = updateCompactJWS
 
-		anchoredOp = getAnchoredOperation(updateOp)
+		anchoredOp = getAnchoredOperation(updateOp, 1)
 
-		value, pv, err = p.getOperationRevealValue(anchoredOp)
+		value, pv, err = p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Equal(t, pv, protocol.Protocol{})
@@ -724,7 +689,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, err := p.getNextOperationCommitment(recoverOp)
+		value, err := p.getCommitment(recoverOp)
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
 
@@ -737,7 +702,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, err := p.getNextOperationCommitment(updateOp)
+		value, err := p.getCommitment(updateOp)
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
 
@@ -750,7 +715,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		value, err := p.getNextOperationCommitment(deactivateOp)
+		value, err := p.getCommitment(deactivateOp)
 		require.NoError(t, err)
 		require.Empty(t, value)
 	})
@@ -763,7 +728,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, err := New("test", store, pcWithoutProtocols).getNextOperationCommitment(updateOp)
+		value, err := New("test", store, pcWithoutProtocols).getCommitment(updateOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
@@ -773,10 +738,10 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		value, err := p.getNextOperationCommitment(createOp)
+		value, err := p.getCommitment(createOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "operation type create not supported for getting next operation commitment")
+		require.Contains(t, err.Error(), "operation type 'create' not supported for getting next operation commitment")
 	})
 
 	t.Run("error - missing signed data", func(t *testing.T) {
@@ -785,38 +750,38 @@ func TestGetNextOperationCommitment(t *testing.T) {
 
 		recoverOp.SignedData = ""
 
-		anchoredOp := getAnchoredOperation(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp, 1)
 
-		value, err := p.getNextOperationCommitment(anchoredOp)
+		value, err := p.getCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 
 	t.Run("error - invalid delta", func(t *testing.T) {
-		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		updateOp.Delta = "whatever"
+		updateOp.Delta = &model.DeltaModel{}
 
-		value, err := p.getNextOperationCommitment(updateOp)
+		value, err := p.getCommitment(getAnchoredOperation(updateOp, 1))
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "failed to parse delta for update")
+		require.Contains(t, err.Error(), "get commitment - parse operation error: missing patches")
 	})
 
 	t.Run("error - operation type not supported", func(t *testing.T) {
-		recoverOp, _, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
+		request := model.RecoverRequest{
+			Operation: "other",
+		}
+
+		bytes, err := canonicalizer.MarshalCanonical(request)
 		require.NoError(t, err)
 
-		recoverOp.Type = "other"
-
-		anchoredOp := getAnchoredOperation(recoverOp)
-
-		value, err := p.getNextOperationCommitment(anchoredOp)
+		value, err := p.getCommitment(&batch.AnchoredOperation{OperationBuffer: bytes})
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "operation type not supported for getting next operation commitment")
+		require.Contains(t, err.Error(), "operation type [other] not supported")
 	})
 
 	t.Run("error - unmarshall signed model for recovery", func(t *testing.T) {
@@ -830,9 +795,9 @@ func TestGetNextOperationCommitment(t *testing.T) {
 
 		recoverOp.SignedData = recoverCompactJWS
 
-		anchoredOp := getAnchoredOperation(recoverOp)
+		anchoredOp := getAnchoredOperation(recoverOp, 1)
 
-		value, err := p.getNextOperationCommitment(anchoredOp)
+		value, err := p.getCommitment(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
@@ -862,7 +827,7 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 	require.Equal(t, 1, len(txns))
 }
 
-func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*model.Operation, *ecdsa.PrivateKey, error) {
 	s := ecsigner.New(privateKey, "ES256", updateKeyID)
 
 	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, blockNum)
@@ -874,10 +839,10 @@ func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix strin
 		return nil, nil, err
 	}
 
-	return getAnchoredOperationWithBlockNum(op, blockNumber), nextUpdateKey, nil
+	return getAnchoredOperation(op, blockNumber), nextUpdateKey, nil
 }
 
-func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*model.Operation, *ecdsa.PrivateKey, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/test",
@@ -904,7 +869,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, getProtocol(blockNumber).HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -915,7 +880,7 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 	}
 
 	signedData := &model.UpdateSignedDataModel{
-		DeltaHash: getEncodedMultihash(deltaBytes, getProtocol(blockNumber)),
+		DeltaHash: deltaHash,
 		UpdateKey: updatePubKey,
 	}
 
@@ -924,12 +889,11 @@ func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
-	operation := &batch.Operation{
+	operation := &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
-		Delta:        docutil.EncodeToString(deltaBytes),
-		DeltaModel:   delta,
+		Delta:        delta,
 		Type:         batch.OperationTypeUpdate,
 		SignedData:   jws,
 	}
@@ -956,7 +920,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 	return key, c, nil
 }
 
-func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, error) {
+func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, error) {
 	signer := ecsigner.New(privateKey, "ES256", "")
 
 	return getDeactivateOperationWithSigner(signer, privateKey, uniqueSuffix)
@@ -968,10 +932,10 @@ func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix s
 		return nil, err
 	}
 
-	return getAnchoredOperation(op), nil
+	return getAnchoredOperation(op, defaultBlockNumber), nil
 }
 
-func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, error) {
+func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, error) {
 	recoverPubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
@@ -987,7 +951,7 @@ func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.Pr
 		return nil, err
 	}
 
-	return &batch.Operation{
+	return &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
@@ -996,11 +960,11 @@ func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.Pr
 	}, nil
 }
 
-func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, *ecdsa.PrivateKey, error) {
 	return getRecoverOperationWithBlockNum(recoveryKey, updateKey, uniqueSuffix, 1)
 }
 
-func getRecoverOperationWithBlockNum(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getRecoverOperationWithBlockNum(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*model.Operation, *ecdsa.PrivateKey, error) {
 	signer := ecsigner.New(recoveryKey, "ES256", "")
 
 	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix, blockNum)
@@ -1012,51 +976,32 @@ func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqu
 		return nil, nil, err
 	}
 
-	return getAnchoredOperationWithBlockNum(op, blockNumber), nextRecoveryKey, nil
+	return getAnchoredOperation(op, blockNumber), nextRecoveryKey, nil
 }
 
-func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*batch.Operation, *ecdsa.PrivateKey, error) {
+func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*model.Operation, *ecdsa.PrivateKey, error) {
 	recoverRequest, nextRecoveryKey, err := getDefaultRecoverRequest(signer, recoveryKey, updateKey, blockNum)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	operationBuffer, err := json.Marshal(recoverRequest)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	_, updateCommitment, err := generateKeyAndCommitment(getProtocol(blockNum))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	recoveredDoc := fmt.Sprintf(recoveredDocTemplate, strconv.Itoa(int(blockNum)))
-
-	delta, err := getDeltaModel(recoveredDoc, updateCommitment)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &batch.Operation{
+	return &model.Operation{
 		Namespace:       mocks.DefaultNS,
 		UniqueSuffix:    uniqueSuffix,
 		Type:            batch.OperationTypeRecover,
-		OperationBuffer: operationBuffer,
-		DeltaModel:      delta,
+		OperationBuffer: []byte(recoverRequest.Operation),
 		Delta:           recoverRequest.Delta,
 		SignedData:      recoverRequest.SignedData,
 	}, nextRecoveryKey, nil
 }
 
 func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel, blockNum uint64) (*model.RecoverRequest, error) {
-	deltaBytes, err := canonicalizer.MarshalCanonical(deltaModel)
+	deltaHash, err := docutil.CalculateModelMultihash(deltaModel, getProtocol(blockNum).HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: review block number
-	signedDataModel.DeltaHash = getEncodedMultihash(deltaBytes, getProtocol(blockNum))
+	signedDataModel.DeltaHash = deltaHash
 
 	jws, err := signutil.SignModel(signedDataModel, signer)
 	if err != nil {
@@ -1064,9 +1009,9 @@ func getRecoverRequest(signer helper.Signer, deltaModel *model.DeltaModel, signe
 	}
 
 	return &model.RecoverRequest{
-		Operation:  model.OperationTypeRecover,
+		Operation:  batch.OperationTypeRecover,
 		DidSuffix:  "suffix",
-		Delta:      docutil.EncodeToString(deltaBytes),
+		Delta:      deltaModel,
 		SignedData: jws,
 	}, nil
 }
@@ -1086,7 +1031,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1104,7 +1049,7 @@ func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecds
 	recoverSignedData := &model.RecoverSignedDataModel{
 		RecoveryKey:        recoveryPubKey,
 		RecoveryCommitment: recoveryCommitment,
-		DeltaHash:          getEncodedMultihash(deltaBytes, p),
+		DeltaHash:          deltaHash,
 	}
 
 	req, err := getRecoverRequest(signer, delta, recoverSignedData, blockNum)
@@ -1132,7 +1077,7 @@ func getDefaultStore(recoveryKey, updateKey *ecdsa.PrivateKey) (*mocks.MockOpera
 	return store, createOp.UniqueSuffix
 }
 
-func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string, blockNum uint64) (*batch.Operation, error) {
+func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc string, blockNum uint64) (*model.Operation, error) {
 	p := getProtocol(blockNum)
 
 	createRequest, err := getCreateRequest(recoveryKey, updateKey, p)
@@ -1145,7 +1090,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	uniqueSuffix, err := docutil.CalculateUniqueSuffix(createRequest.SuffixData, sha2_256)
+	uniqueSuffix, err := docutil.CalculateModelMultihash(createRequest.SuffixData, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -1160,58 +1105,45 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	suffixData, err := getSuffixData(recoveryKey, delta, p)
 	if err != nil {
 		return nil, err
 	}
 
-	suffixData, err := getSuffixData(recoveryKey, deltaBytes, p)
-	if err != nil {
-		return nil, err
-	}
-
-	return &batch.Operation{
+	return &model.Operation{
 		Namespace:       mocks.DefaultNS,
 		ID:              "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:    uniqueSuffix,
 		Type:            batch.OperationTypeCreate,
 		OperationBuffer: operationBuffer,
-		DeltaModel:      delta,
-		Delta:           createRequest.Delta,
-		SuffixDataModel: suffixData,
-		SuffixData:      createRequest.SuffixData,
+		Delta:           delta,
+		SuffixData:      suffixData,
 	}, nil
 }
 
-func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey, blockNum uint64) (*batch.Operation, error) {
+func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey, blockNum uint64) (*model.Operation, error) {
 	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc, blockNum)
 }
 
 func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.AnchoredOperation, error) {
-	op, err := getCreateOperation(recoveryKey, updateKey, 0)
+	op, err := getCreateOperation(recoveryKey, updateKey, defaultBlockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	return getAnchoredOperation(op), nil
+	return getAnchoredOperation(op, defaultBlockNumber), nil
 }
 
-func getAnchoredOperation(op *batch.Operation) *batch.AnchoredOperation {
-	return &batch.AnchoredOperation{
-		Type:         op.Type,
-		UniqueSuffix: op.UniqueSuffix,
-		Delta:        op.Delta,
-		SuffixData:   op.SuffixData,
-		SignedData:   op.SignedData,
+func getAnchoredOperation(op *model.Operation, blockNum uint64) *batch.AnchoredOperation {
+	anchoredOp, err := model.GetAnchoredOperation(op)
+	if err != nil {
+		panic(err)
 	}
-}
 
-func getAnchoredOperationWithBlockNum(op *batch.Operation, blockNum uint64) *batch.AnchoredOperation {
-	anchored := getAnchoredOperation(op)
-	anchored.TransactionTime = blockNum
-	anchored.ProtocolGenesisTime = getProtocol(blockNum).GenesisTime
+	anchoredOp.TransactionTime = blockNum
+	anchoredOp.ProtocolGenesisTime = getProtocol(blockNum).GenesisTime
 
-	return anchored
+	return anchoredOp
 }
 
 func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey, p protocol.Protocol) (*model.CreateRequest, error) {
@@ -1225,25 +1157,15 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey, p protocol.Proto
 		return nil, err
 	}
 
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixData, err := getSuffixData(recoveryKey, deltaBytes, p)
-	if err != nil {
-		return nil, err
-	}
-
-	suffixDataBytes, err := canonicalizer.MarshalCanonical(suffixData)
+	suffixData, err := getSuffixData(recoveryKey, delta, p)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.CreateRequest{
-		Operation:  model.OperationTypeCreate,
-		Delta:      docutil.EncodeToString(deltaBytes),
-		SuffixData: docutil.EncodeToString(suffixDataBytes),
+		Operation:  batch.OperationTypeCreate,
+		Delta:      delta,
+		SuffixData: suffixData,
 	}, nil
 }
 
@@ -1275,33 +1197,24 @@ func getCommitment(key *ecdsa.PrivateKey, p protocol.Protocol) (string, error) {
 		return "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
-	if err != nil {
-		return "", err
-	}
-
-	return c, nil
+	return commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
 }
 
-func getSuffixData(privateKey *ecdsa.PrivateKey, delta []byte, p protocol.Protocol) (*model.SuffixDataModel, error) {
+func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p protocol.Protocol) (*model.SuffixDataModel, error) {
 	recoveryCommitment, err := getCommitment(privateKey, p)
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.SuffixDataModel{
-		DeltaHash:          getEncodedMultihash(delta, p),
-		RecoveryCommitment: recoveryCommitment,
-	}, nil
-}
-
-func getEncodedMultihash(data []byte, p protocol.Protocol) string {
-	mh, err := docutil.ComputeMultihash(p.HashAlgorithmInMultiHashCode, data)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, p.HashAlgorithmInMultiHashCode)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return docutil.EncodeToString(mh)
+	return &model.SuffixDataModel{
+		DeltaHash:          deltaHash,
+		RecoveryCommitment: recoveryCommitment,
+	}, nil
 }
 
 const validDoc = `{

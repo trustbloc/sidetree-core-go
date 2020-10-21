@@ -13,6 +13,8 @@ import (
 	"hash"
 
 	"github.com/multiformats/go-multihash"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 )
 
 const sha2_256 = 18
@@ -79,28 +81,36 @@ func GetMultihashCode(encodedMultihash string) (uint64, error) {
 	return mh.Code, nil
 }
 
-// IsValidHash compares encoded content with encoded multihash.
-func IsValidHash(encodedContent, encodedMultihash string) error {
-	content, err := DecodeString(encodedContent)
+// IsValidModelMultihash compares model with provided model multihash.
+func IsValidModelMultihash(model interface{}, modelMultihash string) error {
+	code, err := GetMultihashCode(modelMultihash)
 	if err != nil {
 		return err
 	}
 
-	code, err := GetMultihashCode(encodedMultihash)
+	encodedComputedMultihash, err := CalculateModelMultihash(model, uint(code))
 	if err != nil {
 		return err
 	}
 
-	computedMultihash, err := ComputeMultihash(uint(code), content)
-	if err != nil {
-		return err
-	}
-
-	encodedComputedMultihash := EncodeToString(computedMultihash)
-
-	if encodedComputedMultihash != encodedMultihash {
+	if encodedComputedMultihash != modelMultihash {
 		return errors.New("supplied hash doesn't match original content")
 	}
 
 	return nil
+}
+
+// CalculateModelMultihash calculates model multihash.
+func CalculateModelMultihash(value interface{}, alg uint) (string, error) {
+	bytes, err := canonicalizer.MarshalCanonical(value)
+	if err != nil {
+		return "", err
+	}
+
+	multiHashBytes, err := ComputeMultihash(alg, bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return EncodeToString(multiHashBytes), nil
 }

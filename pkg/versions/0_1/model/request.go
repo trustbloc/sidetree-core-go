@@ -7,36 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 import (
+	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 
-// CreateRequest is the struct for create payload.
+// CreateRequest is the struct for create payload JCS.
 type CreateRequest struct {
 	// operation
 	// Required: true
-	Operation OperationType `json:"type,omitempty"`
+	Operation batch.OperationType `json:"type,omitempty"`
 
-	// Encoded suffix data object
-	// Required: true
-	SuffixData string `json:"suffix_data"`
-
-	// Encoded delta object
-	// Required: true
-	Delta string `json:"delta"`
-}
-
-// CreateRequestJCS is the struct for create payload JCS.
-type CreateRequestJCS struct {
-	// operation
-	// Required: true
-	Operation OperationType `json:"type,omitempty"`
-
-	// Encoded suffix data object
+	// Suffix data object
 	// Required: true
 	SuffixData *SuffixDataModel `json:"suffix_data,omitempty"`
 
-	// Encoded delta object
+	// Delta object
 	// Required: true
 	Delta *DeltaModel `json:"delta,omitempty"`
 }
@@ -64,7 +50,7 @@ type DeltaModel struct {
 // UpdateRequest is the struct for update request.
 type UpdateRequest struct {
 	// Operation defines operation type
-	Operation OperationType `json:"type"`
+	Operation batch.OperationType `json:"type"`
 
 	// DidSuffix is the suffix of the DID
 	DidSuffix string `json:"did_suffix"`
@@ -73,14 +59,14 @@ type UpdateRequest struct {
 	SignedData string `json:"signed_data"`
 
 	// Delta is encoded delta object
-	Delta string `json:"delta"`
+	Delta *DeltaModel `json:"delta"`
 }
 
 // DeactivateRequest is the struct for deactivating document.
 type DeactivateRequest struct {
 	// Operation
 	// Required: true
-	Operation OperationType `json:"type"`
+	Operation batch.OperationType `json:"type"`
 
 	// DidSuffix of the DID
 	// Required: true
@@ -127,7 +113,7 @@ type DeactivateSignedDataModel struct {
 type RecoverRequest struct {
 	// operation
 	// Required: true
-	Operation OperationType `json:"type"`
+	Operation batch.OperationType `json:"type"`
 
 	// DidSuffix is the suffix of the DID
 	// Required: true
@@ -136,7 +122,7 @@ type RecoverRequest struct {
 	// Compact JWS - signature information
 	SignedData string `json:"signed_data"`
 
-	// Encoded delta object
+	// Delta object
 	// Required: true
-	Delta string `json:"delta"`
+	Delta *DeltaModel `json:"delta"`
 }

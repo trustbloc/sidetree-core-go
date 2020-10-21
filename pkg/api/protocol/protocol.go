@@ -10,8 +10,8 @@ import (
 	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 )
 
 //go:generate counterfeiter -o ../../mocks/txnprocessor.gen.go --fake-name TxnProcessor . TxnProcessor
@@ -58,13 +58,9 @@ type TxnProcessor interface {
 
 // OperationParser defines the functions for parsing operations.
 type OperationParser interface {
-	Parse(namespace string, operationBuffer []byte) (*batchapi.Operation, error)
-	ParseCreateOperation(request []byte) (*batchapi.Operation, error)
-	ParseSuffixData(encoded string) (*model.SuffixDataModel, error)
-	ParseDelta(encoded string) (*model.DeltaModel, error)
-	ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error)
-	ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error)
-	ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error)
+	Parse(namespace string, operation []byte) (*batchapi.Operation, error)
+	GetRevealValue(operation []byte) (*jws.JWK, error)
+	GetCommitment(operation []byte) (string, error)
 }
 
 // ResolutionModel contains temporary data during document resolution.
@@ -90,7 +86,7 @@ type DocumentComposer interface {
 // OperationHandler defines an interface for creating chunks, map and anchor files.
 type OperationHandler interface {
 	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string.
-	PrepareTxnFiles(ops []*batchapi.Operation) (string, error)
+	PrepareTxnFiles(ops []*batchapi.OperationInfo) (string, error)
 }
 
 // OperationProvider retrieves the anchored operations for  the given sidetree transaction.

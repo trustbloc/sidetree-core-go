@@ -14,12 +14,11 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 func TestParseUpdateOperation(t *testing.T) {
@@ -36,12 +35,12 @@ func TestParseUpdateOperation(t *testing.T) {
 		payload, err := getUpdateRequestBytes()
 		require.NoError(t, err)
 
-		op, err := parser.ParseUpdateOperation(payload)
+		op, err := parser.ParseUpdateOperation(payload, false)
 		require.NoError(t, err)
 		require.Equal(t, batch.OperationTypeUpdate, op.Type)
 	})
 	t.Run("invalid json", func(t *testing.T) {
-		schema, err := parser.ParseUpdateOperation([]byte(""))
+		schema, err := parser.ParseUpdateOperation([]byte(""), false)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "unexpected end of JSON input")
@@ -54,7 +53,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		payload, err := json.Marshal(req)
 		require.NoError(t, err)
 
-		schema, err := parser.ParseUpdateOperation(payload)
+		schema, err := parser.ParseUpdateOperation(payload, false)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "missing did suffix")
@@ -69,7 +68,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		payload, err := json.Marshal(req)
 		require.NoError(t, err)
 
-		schema, err := parser.ParseUpdateOperation(payload)
+		schema, err := parser.ParseUpdateOperation(payload, false)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(),
@@ -86,7 +85,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		payload, err := json.Marshal(req)
 		require.NoError(t, err)
 
-		schema, err := parser.ParseUpdateOperation(payload)
+		schema, err := parser.ParseUpdateOperation(payload, false)
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(), "invalid JWS compact format")
@@ -102,7 +101,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		request, err := json.Marshal(req)
 		require.NoError(t, err)
 
-		op, err := parser.ParseUpdateOperation(request)
+		op, err := parser.ParseUpdateOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
 		require.Nil(t, op)
@@ -172,7 +171,7 @@ func TestValidateUpdateDelta(t *testing.T) {
 		require.NoError(t, err)
 
 		delta.UpdateCommitment = ""
-		err = parser.validateDelta(delta)
+		err = parser.ValidateDelta(delta)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"next update commitment hash is not computed with the required supported hash algorithm")
@@ -207,19 +206,10 @@ func TestValidateUpdateRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing did suffix")
 	})
-	t.Run("missing delta", func(t *testing.T) {
-		update, err := getDefaultUpdateRequest()
-		require.NoError(t, err)
-		update.Delta = ""
-
-		err = parser.validateUpdateRequest(update)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing delta")
-	})
 }
 
 func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
-	deltaBytes, err := canonicalizer.MarshalCanonical(delta)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +221,7 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 	}
 
 	signedModel := model.UpdateSignedDataModel{
-		DeltaHash: computeMultihash(deltaBytes),
+		DeltaHash: deltaHash,
 		UpdateKey: updateKey,
 	}
 
@@ -243,8 +233,8 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 	return &model.UpdateRequest{
 		DidSuffix:  "suffix",
 		SignedData: compactJWS,
-		Operation:  model.OperationTypeUpdate,
-		Delta:      docutil.EncodeToString(deltaBytes),
+		Operation:  batch.OperationTypeUpdate,
+		Delta:      delta,
 	}, nil
 }
 

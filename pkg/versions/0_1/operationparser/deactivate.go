@@ -12,11 +12,11 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // ParseDeactivateOperation will parse deactivate operation.
-func (p *Parser) ParseDeactivateOperation(request []byte) (*batch.Operation, error) {
+func (p *Parser) ParseDeactivateOperation(request []byte, anchor bool) (*model.Operation, error) {
 	schema, err := p.parseDeactivateRequest(request)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (p *Parser) ParseDeactivateOperation(request []byte) (*batch.Operation, err
 		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 
-	return &batch.Operation{
+	return &model.Operation{
 		Type:            batch.OperationTypeDeactivate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,

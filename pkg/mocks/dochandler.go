@@ -15,9 +15,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 // NewMockDocumentHandler returns a new mock document handler.
@@ -67,31 +68,67 @@ func (m *MockDocumentHandler) Protocol() protocol.Client {
 	return m.client
 }
 
+// Operation is used for parsing operation request.
+type Operation struct {
+	// Operation defines operation type
+	Operation batch.OperationType `json:"type,omitempty"`
+
+	// SuffixData object
+	SuffixData *model.SuffixDataModel `json:"suffix_data,omitempty"`
+
+	// Delta object
+	Delta *model.DeltaModel `json:"delta,omitempty"`
+
+	// DidSuffix is the suffix of the DID
+	DidSuffix string `json:"did_suffix"`
+}
+
 // ProcessOperation mocks process operation.
-func (m *MockDocumentHandler) ProcessOperation(operation *batch.Operation, _ uint64) (*document.ResolutionResult, error) {
+func (m *MockDocumentHandler) ProcessOperation(operationBuffer []byte, _ uint64) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 
-	if operation.Type == batch.OperationTypeDeactivate {
-		m.store[operation.ID] = nil
+	var operation Operation
+	err := json.Unmarshal(operationBuffer, &operation)
+	if err != nil {
+		return nil, fmt.Errorf("bad request: %s", err.Error())
+	}
+
+	var suffix string
+	switch operation.Operation {
+	case batch.OperationTypeCreate:
+		suffix, err = docutil.CalculateModelMultihash(operation.SuffixData, sha2_256)
+		if err != nil {
+			return nil, err
+		}
+	case batch.OperationTypeUpdate, batch.OperationTypeDeactivate, batch.OperationTypeRecover:
+		suffix = operation.DidSuffix
+	default:
+		return nil, fmt.Errorf("bad request: operation type [%s] not supported", operation.Operation)
+	}
+
+	id := m.namespace + docutil.NamespaceDelimiter + suffix
+
+	if operation.Operation == batch.OperationTypeDeactivate {
+		m.store[id] = nil
 
 		return nil, nil
 	}
 
-	doc, ok := m.store[operation.ID]
+	doc, ok := m.store[id]
 	if !ok { // create operation
 		doc = make(document.Document)
 	}
 
-	doc, err := doccomposer.New().ApplyPatches(doc, operation.DeltaModel.Patches)
+	doc, err = doccomposer.New().ApplyPatches(doc, operation.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}
 
-	doc = applyID(doc, operation.ID)
+	doc = applyID(doc, id)
 
-	m.store[operation.ID] = doc
+	m.store[id] = doc
 
 	return &document.ResolutionResult{
 		Document: doc,
@@ -140,7 +177,7 @@ func applyID(doc document.Document, id string) document.Document {
 }
 
 func (m *MockDocumentHandler) resolveWithInitialState(did string, initial []byte) (*document.ResolutionResult, error) {
-	var createReq model.CreateRequestJCS
+	var createReq model.CreateRequest
 	err := json.Unmarshal(initial, &createReq)
 	if err != nil {
 		return nil, err
