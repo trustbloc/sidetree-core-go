@@ -50,6 +50,22 @@ type OperationParser struct {
 		result1 *batch.Operation
 		result2 error
 	}
+	ParseDIDStub        func(string, string) (string, []byte, error)
+	parseDIDMutex       sync.RWMutex
+	parseDIDArgsForCall []struct {
+		arg1 string
+		arg2 string
+	}
+	parseDIDReturns struct {
+		result1 string
+		result2 []byte
+		result3 error
+	}
+	parseDIDReturnsOnCall map[int]struct {
+		result1 string
+		result2 []byte
+		result3 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -259,6 +275,73 @@ func (fake *OperationParser) ParseReturnsOnCall(i int, result1 *batch.Operation,
 	}{result1, result2}
 }
 
+func (fake *OperationParser) ParseDID(arg1 string, arg2 string) (string, []byte, error) {
+	fake.parseDIDMutex.Lock()
+	ret, specificReturn := fake.parseDIDReturnsOnCall[len(fake.parseDIDArgsForCall)]
+	fake.parseDIDArgsForCall = append(fake.parseDIDArgsForCall, struct {
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("ParseDID", []interface{}{arg1, arg2})
+	fake.parseDIDMutex.Unlock()
+	if fake.ParseDIDStub != nil {
+		return fake.ParseDIDStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	fakeReturns := fake.parseDIDReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+}
+
+func (fake *OperationParser) ParseDIDCallCount() int {
+	fake.parseDIDMutex.RLock()
+	defer fake.parseDIDMutex.RUnlock()
+	return len(fake.parseDIDArgsForCall)
+}
+
+func (fake *OperationParser) ParseDIDCalls(stub func(string, string) (string, []byte, error)) {
+	fake.parseDIDMutex.Lock()
+	defer fake.parseDIDMutex.Unlock()
+	fake.ParseDIDStub = stub
+}
+
+func (fake *OperationParser) ParseDIDArgsForCall(i int) (string, string) {
+	fake.parseDIDMutex.RLock()
+	defer fake.parseDIDMutex.RUnlock()
+	argsForCall := fake.parseDIDArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *OperationParser) ParseDIDReturns(result1 string, result2 []byte, result3 error) {
+	fake.parseDIDMutex.Lock()
+	defer fake.parseDIDMutex.Unlock()
+	fake.ParseDIDStub = nil
+	fake.parseDIDReturns = struct {
+		result1 string
+		result2 []byte
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *OperationParser) ParseDIDReturnsOnCall(i int, result1 string, result2 []byte, result3 error) {
+	fake.parseDIDMutex.Lock()
+	defer fake.parseDIDMutex.Unlock()
+	fake.ParseDIDStub = nil
+	if fake.parseDIDReturnsOnCall == nil {
+		fake.parseDIDReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 []byte
+			result3 error
+		})
+	}
+	fake.parseDIDReturnsOnCall[i] = struct {
+		result1 string
+		result2 []byte
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *OperationParser) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -268,6 +351,8 @@ func (fake *OperationParser) Invocations() map[string][][]interface{} {
 	defer fake.getRevealValueMutex.RUnlock()
 	fake.parseMutex.RLock()
 	defer fake.parseMutex.RUnlock()
+	fake.parseDIDMutex.RLock()
+	defer fake.parseDIDMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

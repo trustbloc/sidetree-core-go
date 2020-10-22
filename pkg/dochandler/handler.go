@@ -30,7 +30,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 )
 
 var logger = log.New("sidetree-core-dochandler")
@@ -171,8 +170,13 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
+	pv, err := r.protocol.Current()
+	if err != nil {
+		return nil, err
+	}
+
 	// extract did and optional initial document value
-	shortFormDID, createReq, err := request.GetParts(ns, shortOrLongFormDID)
+	shortFormDID, createReq, err := pv.OperationParser().ParseDID(ns, shortOrLongFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
@@ -190,11 +194,6 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 
 	// if document was not found on the blockchain and initial value has been provided resolve using initial value
 	if createReq != nil && strings.Contains(err.Error(), "not found") {
-		pv, e := r.protocol.Current()
-		if e != nil {
-			return nil, e
-		}
-
 		return r.resolveRequestWithInitialState(uniquePortion, shortOrLongFormDID, createReq, pv)
 	}
 

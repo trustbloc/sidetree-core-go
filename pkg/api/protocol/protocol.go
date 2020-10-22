@@ -59,6 +59,7 @@ type TxnProcessor interface {
 // OperationParser defines the functions for parsing operations.
 type OperationParser interface {
 	Parse(namespace string, operation []byte) (*batchapi.Operation, error)
+	ParseDID(namespace, shortOrLongFormDID string) (string, []byte, error)
 	GetRevealValue(operation []byte) (*jws.JWK, error)
 	GetCommitment(operation []byte) (string, error)
 }
