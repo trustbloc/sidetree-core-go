@@ -19,9 +19,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/client"
 )
 
 func TestParser_GetCommitment(t *testing.T) {
@@ -182,7 +182,7 @@ func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, commitment string, p 
 		return nil, err
 	}
 
-	info := &helper.RecoverRequestInfo{
+	info := &client.RecoverRequestInfo{
 		DidSuffix:          "recover-suffix",
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: commitment,
@@ -192,18 +192,18 @@ func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, commitment string, p 
 		Signer:             ecsigner.New(recoveryKey, "ES256", ""),
 	}
 
-	return helper.NewRecoverRequest(info)
+	return client.NewRecoverRequest(info)
 }
 
 func generateCreateRequest(recoveryCommitment, updateCommitment string, p protocol.Protocol) ([]byte, error) {
-	info := &helper.CreateRequestInfo{
+	info := &client.CreateRequestInfo{
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment,
 		MultihashCode:      p.HashAlgorithmInMultiHashCode,
 	}
 
-	return helper.NewCreateRequest(info)
+	return client.NewCreateRequest(info)
 }
 
 func generateDeactivateRequest(recoveryKey *ecdsa.PrivateKey) ([]byte, error) {
@@ -211,13 +211,13 @@ func generateDeactivateRequest(recoveryKey *ecdsa.PrivateKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	info := &helper.DeactivateRequestInfo{
+	info := &client.DeactivateRequestInfo{
 		DidSuffix:   "deactivate-suffix",
 		Signer:      ecsigner.New(recoveryKey, "ES256", ""),
 		RecoveryKey: jwk,
 	}
 
-	return helper.NewDeactivateRequest(info)
+	return client.NewDeactivateRequest(info)
 }
 
 func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p protocol.Protocol) ([]byte, error) {
@@ -231,7 +231,7 @@ func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p pro
 		return nil, err
 	}
 
-	info := &helper.UpdateRequestInfo{
+	info := &client.UpdateRequestInfo{
 		DidSuffix:        "update-suffix",
 		Signer:           ecsigner.New(updateKey, "ES256", "key-1"),
 		UpdateCommitment: commitment,
@@ -240,7 +240,7 @@ func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p pro
 		MultihashCode:    p.HashAlgorithmInMultiHashCode,
 	}
 
-	return helper.NewUpdateRequest(info)
+	return client.NewUpdateRequest(info)
 }
 
 func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, error) {
