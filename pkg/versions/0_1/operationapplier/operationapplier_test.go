@@ -27,9 +27,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/client"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
@@ -706,7 +706,7 @@ func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix strin
 	return getAnchoredOperationWithBlockNum(op, uint64(operationNumber)), nextUpdateKey, nil
 }
 
-func getUpdateOperationWithSigner(s helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*model.Operation, *ecdsa.PrivateKey, error) {
+func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*model.Operation, *ecdsa.PrivateKey, error) {
 	p := map[string]interface{}{
 		"op":    "replace",
 		"path":  "/test",
@@ -799,7 +799,7 @@ func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix s
 	return getAnchoredOperation(op), nil
 }
 
-func getDeactivateOperationWithSigner(singer helper.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, error) {
+func getDeactivateOperationWithSigner(singer client.Signer, privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, error) {
 	recoverPubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
@@ -839,7 +839,7 @@ func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqu
 	return getAnchoredOperationWithBlockNum(op, uint64(operationNumber)), nextRecoveryKey, nil
 }
 
-func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, *ecdsa.PrivateKey, error) {
+func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string) (*model.Operation, *ecdsa.PrivateKey, error) {
 	recoverRequest, nextRecoveryKey, err := getDefaultRecoverRequest(signer, recoveryKey, updateKey)
 	if err != nil {
 		return nil, nil, err
@@ -860,7 +860,7 @@ func getRecoverOperationWithSigner(signer helper.Signer, recoveryKey, updateKey 
 	}, nextRecoveryKey, nil
 }
 
-func getRecoverRequest(signer helper.Signer, delta *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
+func getRecoverRequest(signer client.Signer, delta *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel) (*model.RecoverRequest, error) {
 	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
@@ -881,7 +881,7 @@ func getRecoverRequest(signer helper.Signer, delta *model.DeltaModel, signedData
 	}, nil
 }
 
-func getDefaultRecoverRequest(signer helper.Signer, recoveryKey, updateKey *ecdsa.PrivateKey) (*model.RecoverRequest, *ecdsa.PrivateKey, error) {
+func getDefaultRecoverRequest(signer client.Signer, recoveryKey, updateKey *ecdsa.PrivateKey) (*model.RecoverRequest, *ecdsa.PrivateKey, error) {
 	updateCommitment, err := getCommitment(updateKey)
 	if err != nil {
 		return nil, nil, err

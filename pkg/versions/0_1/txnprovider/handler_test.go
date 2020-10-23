@@ -24,9 +24,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/client"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
@@ -318,14 +318,14 @@ func generateCreateOperation(num int) ([]byte, error) {
 	}
 
 	doc := fmt.Sprintf(`{"test":%d}`, num)
-	info := &helper.CreateRequestInfo{
+	info := &client.CreateRequestInfo{
 		OpaqueDocument:     doc,
 		RecoveryCommitment: c,
 		UpdateCommitment:   c,
 		MultihashCode:      sha2_256,
 	}
 
-	return helper.NewCreateRequest(info)
+	return client.NewCreateRequest(info)
 }
 
 func generateRecoverOperation(num int) ([]byte, error) {
@@ -344,7 +344,7 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &helper.RecoverRequestInfo{
+	info := &client.RecoverRequestInfo{
 		DidSuffix:          fmt.Sprintf("recover-%d", num),
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: c,
@@ -354,7 +354,7 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		Signer:             ecsigner.New(privKey, "ES256", ""),
 	}
 
-	return helper.NewRecoverRequest(info)
+	return client.NewRecoverRequest(info)
 }
 
 func generateDeactivateOperation(num int) ([]byte, error) {
@@ -363,13 +363,13 @@ func generateDeactivateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &helper.DeactivateRequestInfo{
+	info := &client.DeactivateRequestInfo{
 		DidSuffix:   fmt.Sprintf("deactivate-%d", num),
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
 		RecoveryKey: testJWK,
 	}
 
-	return helper.NewDeactivateRequest(info)
+	return client.NewDeactivateRequest(info)
 }
 
 func generateUpdateOperation(num int) ([]byte, error) {
@@ -388,7 +388,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &helper.UpdateRequestInfo{
+	info := &client.UpdateRequestInfo{
 		DidSuffix:        fmt.Sprintf("update-%d", num),
 		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
 		UpdateCommitment: c,
@@ -397,7 +397,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		MultihashCode:    sha2_256,
 	}
 
-	return helper.NewUpdateRequest(info)
+	return client.NewUpdateRequest(info)
 }
 
 func getTestPatch() (patch.Patch, error) {

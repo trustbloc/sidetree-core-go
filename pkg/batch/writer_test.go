@@ -25,7 +25,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/client"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
@@ -478,14 +478,14 @@ func generateOperation(num int) (*batch.OperationInfo, error) {
 	}
 
 	doc := fmt.Sprintf(`{"test":%d}`, num)
-	info := &helper.CreateRequestInfo{
+	info := &client.CreateRequestInfo{
 		OpaqueDocument:     doc,
 		RecoveryCommitment: c,
 		UpdateCommitment:   c,
 		MultihashCode:      sha2_256,
 	}
 
-	request, err := helper.NewCreateRequest(info)
+	request, err := client.NewCreateRequest(info)
 	if err != nil {
 		return nil, err
 	}

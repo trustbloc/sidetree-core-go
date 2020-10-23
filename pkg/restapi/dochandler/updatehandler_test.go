@@ -27,9 +27,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/restapi/helper"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/client"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
@@ -51,7 +51,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	req, err := getCreateRequestInfo()
 	require.NoError(t, err)
 
-	create, err := helper.NewCreateRequest(req)
+	create, err := client.NewCreateRequest(req)
 	require.NoError(t, err)
 
 	var createReq model.CreateRequest
@@ -83,7 +83,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, len(doc.PublicKeys()), 1)
 	})
 	t.Run("Update", func(t *testing.T) {
-		update, err := helper.NewUpdateRequest(getUpdateRequestInfo(uniqueSuffix))
+		update, err := client.NewUpdateRequest(getUpdateRequestInfo(uniqueSuffix))
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Deactivate", func(t *testing.T) {
-		deactivate, err := helper.NewDeactivateRequest(getDeactivateRequestInfo(id))
+		deactivate, err := client.NewDeactivateRequest(getDeactivateRequestInfo(id))
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
@@ -103,7 +103,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
 	t.Run("Recover", func(t *testing.T) {
-		recover, err := helper.NewRecoverRequest(getRecoverRequestInfo(uniqueSuffix))
+		recover, err := client.NewRecoverRequest(getRecoverRequestInfo(uniqueSuffix))
 		require.NoError(t, err)
 
 		rw := httptest.NewRecorder()
@@ -137,7 +137,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	})
 }
 
-func getCreateRequestInfo() (*helper.CreateRequestInfo, error) {
+func getCreateRequestInfo() (*client.CreateRequestInfo, error) {
 	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func getCreateRequestInfo() (*helper.CreateRequestInfo, error) {
 		return nil, err
 	}
 
-	return &helper.CreateRequestInfo{
+	return &client.CreateRequestInfo{
 		OpaqueDocument:     validDoc,
 		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment,
@@ -156,7 +156,7 @@ func getCreateRequestInfo() (*helper.CreateRequestInfo, error) {
 	}, nil
 }
 
-func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
+func getUpdateRequestInfo(uniqueSuffix string) *client.UpdateRequestInfo {
 	patchJSON, err := patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "value"}]`)
 	if err != nil {
 		panic(err)
@@ -178,7 +178,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 		panic(err)
 	}
 
-	return &helper.UpdateRequestInfo{
+	return &client.UpdateRequestInfo{
 		DidSuffix:        uniqueSuffix,
 		Patches:          []patch.Patch{patchJSON},
 		UpdateKey:        pubKey,
@@ -188,21 +188,21 @@ func getUpdateRequestInfo(uniqueSuffix string) *helper.UpdateRequestInfo {
 	}
 }
 
-func getDeactivateRequestInfo(uniqueSuffix string) *helper.DeactivateRequestInfo {
+func getDeactivateRequestInfo(uniqueSuffix string) *client.DeactivateRequestInfo {
 	curve := elliptic.P256()
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		panic(err)
 	}
 
-	return &helper.DeactivateRequestInfo{
+	return &client.DeactivateRequestInfo{
 		DidSuffix:   uniqueSuffix,
 		RecoveryKey: testJWK,
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
 	}
 }
 
-func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
+func getRecoverRequestInfo(uniqueSuffix string) *client.RecoverRequestInfo {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
@@ -223,7 +223,7 @@ func getRecoverRequestInfo(uniqueSuffix string) *helper.RecoverRequestInfo {
 		panic(err)
 	}
 
-	return &helper.RecoverRequestInfo{
+	return &client.RecoverRequestInfo{
 		DidSuffix:          uniqueSuffix,
 		OpaqueDocument:     recoverDoc,
 		RecoveryKey:        recoveryKey,
