@@ -4,7 +4,7 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package request
+package operationparser
 
 import (
 	"fmt"
@@ -14,14 +14,19 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 const (
-	namespace = "doc:method"
+	docNS = "doc:method"
 )
 
-func TestGetParts_InitialState(t *testing.T) {
+func TestParser_ParseDID(t *testing.T) {
+	p := mocks.NewMockProtocolClient()
+
+	parser := New(p.Protocol)
+
 	const testDID = "doc:method:abc"
 
 	req := model.CreateRequest{
@@ -36,7 +41,7 @@ func TestGetParts_InitialState(t *testing.T) {
 	initialState := docutil.EncodeToString(reqBytes)
 
 	t.Run("success - just did, no initial state value", func(t *testing.T) {
-		did, initial, err := GetParts(namespace, testDID)
+		did, initial, err := parser.ParseDID(docNS, testDID)
 		require.NoError(t, err)
 		require.Equal(t, testDID, did)
 		require.Empty(t, initial)
@@ -46,14 +51,14 @@ func TestGetParts_InitialState(t *testing.T) {
 		namespaceWithDot := "did:bloc:trustbloc.dev"
 		didWithDot := namespaceWithDot + docutil.NamespaceDelimiter + "EiB2gB7F-aDjg8qPsTuZfVqWkJtIWXn4nObHSgtZ1IzMaQ"
 
-		did, initial, err := GetParts(namespaceWithDot, didWithDot)
+		did, initial, err := parser.ParseDID(namespaceWithDot, didWithDot)
 		require.NoError(t, err)
 		require.Equal(t, didWithDot, did)
 		require.Nil(t, initial)
 	})
 
 	t.Run("success - did with initial state JCS", func(t *testing.T) {
-		did, initial, err := GetParts(namespace, testDID+longFormSeparator+initialState)
+		did, initial, err := parser.ParseDID(docNS, testDID+longFormSeparator+initialState)
 
 		require.NoError(t, err)
 		require.Equal(t, testDID, did)
@@ -65,7 +70,7 @@ func TestGetParts_InitialState(t *testing.T) {
 		didWithDot := namespaceWithDot + docutil.NamespaceDelimiter + "EiB2gB7F-aDjg8qPsTuZfVqWkJtIWXn4nObHSgtZ1IzMaQ"
 
 		didWithDotWithInitialState := didWithDot + longFormSeparator + initialState
-		did, initial, err := GetParts(namespaceWithDot, didWithDotWithInitialState)
+		did, initial, err := parser.ParseDID(namespaceWithDot, didWithDotWithInitialState)
 		require.NoError(t, err)
 		require.Equal(t, didWithDot, did)
 		require.Equal(t, `{"delta":{},"suffix_data":{},"type":"create"}`, string(initial))
@@ -74,7 +79,7 @@ func TestGetParts_InitialState(t *testing.T) {
 	t.Run("error - initial state not encoded", func(t *testing.T) {
 		notEncoded := "not encoded"
 
-		did, initial, err := GetParts(namespace, testDID+longFormSeparator+notEncoded)
+		did, initial, err := parser.ParseDID(namespace, testDID+longFormSeparator+notEncoded)
 		require.Error(t, err)
 		require.Empty(t, did)
 		require.Nil(t, initial)
@@ -84,7 +89,7 @@ func TestGetParts_InitialState(t *testing.T) {
 	t.Run("error - initial state not JSON", func(t *testing.T) {
 		invalidJCS := docutil.EncodeToString([]byte(`not JSON`))
 
-		did, initial, err := GetParts(namespace, testDID+longFormSeparator+invalidJCS)
+		did, initial, err := parser.ParseDID(docNS, testDID+longFormSeparator+invalidJCS)
 		require.Error(t, err)
 		require.Empty(t, did)
 		require.Nil(t, initial)
@@ -94,10 +99,10 @@ func TestGetParts_InitialState(t *testing.T) {
 	t.Run("error - initial state not expected JCS", func(t *testing.T) {
 		unexpectedJCS := docutil.EncodeToString([]byte(`{"key":"value"}`))
 
-		did, initial, err := GetParts(namespace, testDID+longFormSeparator+unexpectedJCS)
+		did, initial, err := parser.ParseDID(docNS, testDID+longFormSeparator+unexpectedJCS)
 		require.Error(t, err)
 		require.Empty(t, did)
 		require.Nil(t, initial)
-		require.Contains(t, err.Error(), "initial state JCS is not valid")
+		require.Contains(t, err.Error(), "initial state is not valid")
 	})
 }

@@ -49,7 +49,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 	})
 	t.Run("Success with initial value", func(t *testing.T) {
 		docHandler := mocks.NewMockDocumentHandler().
-			WithNamespace(namespace)
+			WithNamespace(namespace).WithProtocolClient(newMockProtocolClient())
 
 		create, err := getCreateRequest()
 		require.NoError(t, err)

@@ -16,7 +16,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/request"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
@@ -146,7 +145,12 @@ func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.R
 		return nil, fmt.Errorf("%s: must start with supported namespace", badRequest)
 	}
 
-	did, initial, err := request.GetParts(m.namespace, didOrDocument)
+	pv, err := m.Protocol().Current()
+	if err != nil {
+		return nil, err
+	}
+
+	did, initial, err := pv.OperationParser().ParseDID(m.namespace, didOrDocument)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}

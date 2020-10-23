@@ -4,7 +4,7 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package request
+package operationparser
 
 import (
 	"encoding/json"
@@ -22,8 +22,10 @@ const (
 	didSeparator      = ":"
 )
 
-// GetParts inspects params string and returns did and optional initial state value.
-func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
+// ParseDID inspects resolution request and returns:
+// - did and create request in case of long form resolution
+// - just did in case of short form resolution (common scenario).
+func (p *Parser) ParseDID(namespace, shortOrLongFormDID string) (string, []byte, error) {
 	var err error
 
 	withoutNamespace := strings.ReplaceAll(shortOrLongFormDID, namespace+didSeparator, "")
@@ -40,7 +42,7 @@ func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
 	did := shortOrLongFormDID[0:endOfDIDPos]
 	longFormDID := shortOrLongFormDID[endOfDIDPos+1:]
 
-	createRequest, err := getCreateRequest(longFormDID)
+	createRequest, err := parseInitialState(longFormDID)
 	if err != nil {
 		return "", nil, err
 	}
@@ -54,29 +56,29 @@ func GetParts(namespace, shortOrLongFormDID string) (string, []byte, error) {
 	return did, createRequestBytes, nil
 }
 
-// get create request from encoded initial value JCS.
-func getCreateRequest(initialStateJCS string) (*model.CreateRequest, error) {
-	decodedJCS, err := docutil.DecodeString(initialStateJCS)
+// parse initial state will get create request from encoded initial value.
+func parseInitialState(initialState string) (*model.CreateRequest, error) {
+	decodedJCS, err := docutil.DecodeString(initialState)
 	if err != nil {
 		return nil, err
 	}
 
-	var createRequestJCS model.CreateRequest
-	err = json.Unmarshal(decodedJCS, &createRequestJCS)
+	var createRequest model.CreateRequest
+	err = json.Unmarshal(decodedJCS, &createRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	expectedJCS, err := canonicalizer.MarshalCanonical(createRequestJCS)
+	expected, err := canonicalizer.MarshalCanonical(createRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	if docutil.EncodeToString(expectedJCS) != initialStateJCS {
-		return nil, errors.New("initial state JCS is not valid")
+	if docutil.EncodeToString(expected) != initialState {
+		return nil, errors.New("initial state is not valid")
 	}
 
-	createRequestJCS.Operation = batch.OperationTypeCreate
+	createRequest.Operation = batch.OperationTypeCreate
 
-	return &createRequestJCS, nil
+	return &createRequest, nil
 }
