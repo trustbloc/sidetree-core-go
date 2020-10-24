@@ -3,8 +3,8 @@
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": ["auth", "general"],
-      "jwk": {
+      "purposes": ["authentication", "verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -16,7 +16,7 @@
     {
       "id": "hub",
       "type": "IdentityHub",
-      "endpoint": "https://example.com/hub/",
+      "serviceEndpoint": "https://example.com/hub/",
       "routingKeys": "routingKeysValue",
       "recipientKeys": "recipientKeysValue",
       "priority": 0

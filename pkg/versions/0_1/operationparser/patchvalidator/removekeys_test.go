@@ -22,7 +22,7 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 
 		err := NewRemovePublicKeysValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "remove-public-keys patch is missing key: public_keys")
+		require.Contains(t, err.Error(), "remove-public-keys patch is missing key: publicKeys")
 	})
 	t.Run("error - invalid add public keys value", func(t *testing.T) {
 		p := make(patch.Patch)
@@ -46,5 +46,5 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 
 const removePublicKeysPatch = `{
   "action": "remove-public-keys",
-  "public_keys": ["key1", "key2"]
+  "publicKeys": ["key1", "key2"]
 }`

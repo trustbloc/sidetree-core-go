@@ -22,7 +22,7 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 
 		err := NewRemoveServicesValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "remove-service-endpoints patch is missing key: ids")
+		require.Contains(t, err.Error(), "remove-services patch is missing key: ids")
 	})
 	t.Run("error - invalid service ids", func(t *testing.T) {
 		p := make(patch.Patch)
@@ -45,6 +45,6 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 }
 
 const removeServiceEndpoints = `{
-  "action": "remove-service-endpoints",
+  "action": "remove-services",
   "ids": ["sds1", "sds2"]
 }`

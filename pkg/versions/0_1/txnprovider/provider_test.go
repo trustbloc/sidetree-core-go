@@ -381,7 +381,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
-			MapFileHash: "hash",
+			MapFileURI: "hash",
 			Operations: models.Operations{
 				Create:     []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
@@ -415,7 +415,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
-			MapFileHash: "hash",
+			MapFileURI: "hash",
 			Operations: models.Operations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
@@ -454,7 +454,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
-			MapFileHash: "hash",
+			MapFileURI: "hash",
 			Operations: models.Operations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
@@ -490,7 +490,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
-			MapFileHash: "hash",
+			MapFileURI: "hash",
 			Operations: models.Operations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 			},

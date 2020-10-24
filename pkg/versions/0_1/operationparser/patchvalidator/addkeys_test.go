@@ -23,7 +23,7 @@ func TestAddPublicKeysPatch(t *testing.T) {
 		delete(p, patch.PublicKeys)
 		err = NewAddPublicKeysValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "add-public-keys patch is missing key: public_keys")
+		require.Contains(t, err.Error(), "add-public-keys patch is missing key: publicKeys")
 	})
 	t.Run("error - invalid value for public keys", func(t *testing.T) {
 		p, err := patch.FromBytes([]byte(addPublicKeysPatch))
@@ -38,11 +38,11 @@ func TestAddPublicKeysPatch(t *testing.T) {
 
 const addPublicKeysPatch = `{
    "action": "add-public-keys",
-   "public_keys": [{
+   "publicKeys": [{
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
          "kty": "EC",
          "crv": "P-256K",
          "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",

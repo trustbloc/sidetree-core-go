@@ -267,8 +267,8 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -281,8 +281,8 @@ const recoverDoc = `{
 	"publicKey": [{
 		"id": "recoverKey",
 		"type": "JsonWebKey2020",
-		"purpose": ["general"],
-		"jwk": {
+		"purposes": ["verificationMethod"],
+		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",

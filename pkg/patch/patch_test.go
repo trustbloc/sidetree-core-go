@@ -198,7 +198,7 @@ func TestAddPublicKeysPatch(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "add-public-keys"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "add-public-keys patch is missing key: public_keys")
+		require.Contains(t, err.Error(), "add-public-keys patch is missing key: publicKeys")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		p, err := NewAddPublicKeysPatch(testAddPublicKeys)
@@ -241,7 +241,7 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "remove-public-keys"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "remove-public-keys patch is missing key: public_keys")
+		require.Contains(t, err.Error(), "remove-public-keys patch is missing key: publicKeys")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		const ids = `["key1", "key2"]`
@@ -290,10 +290,10 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		require.Equal(t, value, patch[ServiceEndpointsKey])
 	})
 	t.Run("missing service endpoints", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": "add-service-endpoints"}`))
+		patch, err := FromBytes([]byte(`{"action": "add-services"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "add-service-endpoints patch is missing key: service_endpoints")
+		require.Contains(t, err.Error(), "add-services patch is missing key: services")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		p, err := NewAddServiceEndpointsPatch(testAddServiceEndpoints)
@@ -333,10 +333,10 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 		require.Equal(t, value, p[ServiceEndpointIdsKey])
 	})
 	t.Run("missing public key ids", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": "remove-service-endpoints"}`))
+		patch, err := FromBytes([]byte(`{"action": "remove-services"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "remove-service-endpoints patch is missing key: ids")
+		require.Contains(t, err.Error(), "remove-services patch is missing key: ids")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		const ids = `["svc1", "svc2"]`
@@ -423,11 +423,11 @@ const patches = `[
 
 const addPublicKeysPatch = `{
 	"action": "add-public-keys",
-	"public_keys": [{
+	"publicKeys": [{
 		"id": "key1",
 		"type": "JsonWebKey2020",
-		"purpose": ["general"],
-		"jwk": {
+		"purposes": ["verificationMethod"],
+		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -439,8 +439,8 @@ const addPublicKeysPatch = `{
 const testAddPublicKeys = `[{
 	"id": "key1",
 	"type": "JsonWebKey2020",
-	"purpose": ["general"],
-	"jwk": {
+	"purposes": ["verificationMethod"],
+	"publicKeyJwk": {
 		"kty": "EC",
 		"crv": "P-256K",
 		"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -450,21 +450,21 @@ const testAddPublicKeys = `[{
 
 const removePublicKeysPatch = `{
   "action": "remove-public-keys",
-  "public_keys": ["key1", "key2"]
+  "publicKeys": ["key1", "key2"]
 }`
 
 const addServiceEndpoints = `{
-  "action": "add-service-endpoints",
-  "service_endpoints": [
+  "action": "add-services",
+  "services": [
     {
       "id": "sds1",
       "type": "SecureDataStore",
-      "endpoint": "http://hub.my-personal-server.com"
+      "serviceEndpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "sds2",
       "type": "SecureDataStore",
-      "endpoint": "http://some-cloud.com/hub"
+      "serviceEndpoint": "http://some-cloud.com/hub"
     }
   ]
 }`
@@ -473,17 +473,17 @@ const testAddServiceEndpoints = `[
     {
       "id": "sds1",
       "type": "SecureDataStore",
-      "endpoint": "http://hub.my-personal-server.com"
+      "serviceEndpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "sds2",
       "type": "SecureDataStore",
-      "endpoint": "http://some-cloud.com/hub"
+      "serviceEndpoint": "http://some-cloud.com/hub"
     }
   ]`
 
 const removeServiceEndpoints = `{
-  "action": "remove-service-endpoints",
+  "action": "remove-services",
   "ids": ["sds1", "sds2"]
 }`
 
@@ -491,8 +491,8 @@ const testDoc = `{
 	"publicKey": [{
 		"id": "key1",
 		"type": "JsonWebKey2020",
-		"purpose": ["general"],
-		"jwk": {
+		"purposes": ["verificationMethod"],
+		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -502,7 +502,7 @@ const testDoc = `{
   	"service": [{
     	"id":"vcs",
     	"type": "VerifiableCredentialService",
-    	"endpoint": "https://example.com/vc/"
+    	"serviceEndpoint": "https://example.com/vc/"
   	}],
 	"test": "test",
 	"other": "value"
@@ -511,44 +511,44 @@ const testDoc = `{
 const replacePatch = `{
 	"action": "replace",
 	"document": {
-		"public_keys": [
+		"publicKeys": [
 		{
 			"id": "key-1",
-			"purpose": ["auth"],
+			"purposes": ["authentication"],
 			"type": "EcdsaSecp256k1VerificationKey2019",
-			"jwk": {
+			"publicKeyJwk": {
 				"kty": "EC",
 				"crv": "P-256K",
 				"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
 				"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
 			}
 		}],
-		"service_endpoints": [
+		"services": [
 		{
 			"id": "sds3",
 			"type": "SecureDataStore",
-			"endpoint": "http://hub.my-personal-server.com"
+			"serviceEndpoint": "http://hub.my-personal-server.com"
 		}]
 	}
 }`
 
 const replaceDoc = `{
-	"public_keys": [
+	"publicKeys": [
 	{
 		"id": "key-1",
-		"purpose": ["auth"],
+		"purposes": ["authentication"],
 		"type": "EcdsaSecp256k1VerificationKey2019",
-		"jwk": {
+		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
 			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
 		}
 	}],
-	"service_endpoints": [
+	"services": [
 	{
 		"id": "sds3",
 		"type": "SecureDataStore",
-		"endpoint": "http://hub.my-personal-server.com"
+		"serviceEndpoint": "http://hub.my-personal-server.com"
 	}]
 }`

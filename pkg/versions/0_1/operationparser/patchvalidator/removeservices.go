@@ -18,7 +18,7 @@ func NewRemoveServicesValidator() *RemoveServicesValidator {
 	return &RemoveServicesValidator{}
 }
 
-// RemoveServicesValidator implements validator for "remove-service-endpoints" patch.
+// RemoveServicesValidator implements validator for "remove-services" patch.
 type RemoveServicesValidator struct {
 }
 

@@ -13,10 +13,10 @@ import (
 const (
 
 	// ReplaceServiceProperty defines key for service property.
-	ReplaceServiceProperty = "service_endpoints"
+	ReplaceServiceProperty = "services"
 
 	// ReplacePublicKeyProperty defines key for public key property.
-	ReplacePublicKeyProperty = "public_keys"
+	ReplacePublicKeyProperty = "publicKeys"
 )
 
 // ReplaceDocument defines replace document data structure.

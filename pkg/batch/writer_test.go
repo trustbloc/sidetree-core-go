@@ -117,7 +117,7 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.AnchorFile, *models.Ma
 		return nil, nil, nil, err
 	}
 
-	bytes, err = cc.Read(af.MapFileHash)
+	bytes, err = cc.Read(af.MapFileURI)
 	if err != nil {
 		return nil, nil, nil, err
 	}

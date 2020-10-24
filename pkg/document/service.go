@@ -6,9 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 
 package document
 
-// EndpointProperty defines internal service endpoint property.
-const EndpointProperty = "endpoint"
-
 // ServiceEndpointProperty describes external service endpoint property.
 const ServiceEndpointProperty = "serviceEndpoint"
 
@@ -28,11 +25,6 @@ func (s Service) ID() string {
 // Type is service type.
 func (s Service) Type() string {
 	return stringEntry(s[TypeProperty])
-}
-
-// Endpoint is service endpoint (internal usage).
-func (s Service) Endpoint() string {
-	return stringEntry(s[EndpointProperty])
 }
 
 // ServiceEndpoint is service endpoint.

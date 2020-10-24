@@ -37,12 +37,12 @@ const (
 )
 
 var allowedOps = map[document.KeyPurpose]bool{
-	document.KeyPurposeAuth:       true,
-	document.KeyPurposeGeneral:    true,
-	document.KeyPurposeAssertion:  true,
-	document.KeyPurposeAgreement:  true,
-	document.KeyPurposeDelegation: true,
-	document.KeyPurposeInvocation: true,
+	document.KeyPurposeAuthentication:       true,
+	document.KeyPurposeVerificationMethod:   true,
+	document.KeyPurposeAssertionMethod:      true,
+	document.KeyPurposeKeyAgreement:         true,
+	document.KeyPurposeCapabilityDelegation: true,
+	document.KeyPurposeCapabilityInvocation: true,
 }
 
 type existenceMap map[string]string
@@ -71,12 +71,12 @@ var allowedKeyTypesAgreement = existenceMap{
 }
 
 var allowedKeyTypes = map[string]existenceMap{
-	document.KeyPurposeGeneral:    allowedKeyTypesGeneral,
-	document.KeyPurposeAuth:       allowedKeyTypesVerification,
-	document.KeyPurposeAssertion:  allowedKeyTypesVerification,
-	document.KeyPurposeAgreement:  allowedKeyTypesAgreement,
-	document.KeyPurposeDelegation: allowedKeyTypesVerification,
-	document.KeyPurposeInvocation: allowedKeyTypesVerification,
+	document.KeyPurposeVerificationMethod:   allowedKeyTypesGeneral,
+	document.KeyPurposeAuthentication:       allowedKeyTypesVerification,
+	document.KeyPurposeAssertionMethod:      allowedKeyTypesVerification,
+	document.KeyPurposeKeyAgreement:         allowedKeyTypesAgreement,
+	document.KeyPurposeCapabilityDelegation: allowedKeyTypesVerification,
+	document.KeyPurposeCapabilityInvocation: allowedKeyTypesVerification,
 }
 
 // validatePublicKeys validates public keys.
@@ -99,7 +99,7 @@ func validatePublicKeys(pubKeys []document.PublicKey) error {
 		}
 		ids[kid] = kid
 
-		if err := validateKeyPurpose(pubKey); err != nil {
+		if err := validateKeyPurposes(pubKey); err != nil {
 			return err
 		}
 
@@ -107,7 +107,7 @@ func validatePublicKeys(pubKeys []document.PublicKey) error {
 			return fmt.Errorf("invalid key type: %s", pubKey.Type())
 		}
 
-		if err := validateJWK(pubKey.JWK()); err != nil {
+		if err := validateJWK(pubKey.PublicKeyJwk()); err != nil {
 			return err
 		}
 	}
@@ -162,7 +162,7 @@ func validateService(service document.Service) error {
 		return err
 	}
 
-	if err := validateServiceEndpoint(service.Endpoint()); err != nil {
+	if err := validateServiceEndpoint(service.ServiceEndpoint()); err != nil {
 		return err
 	}
 
@@ -239,9 +239,9 @@ func validateJWK(jwk document.JWK) error {
 // - ops: the key is allowed to generate DID operations for the DID.
 // - general: the key is to be included in the publicKeys section of the resolved DID Document.
 // - auth: the key is to be included in the authentication section of the resolved DID Document.
-func validateKeyPurpose(pubKey document.PublicKey) error {
+func validateKeyPurposes(pubKey document.PublicKey) error {
 	if len(pubKey.Purpose()) == 0 {
-		return fmt.Errorf("key '%s' is missing purpose", pubKey.ID())
+		return fmt.Errorf("key '%s' is missing purposes", pubKey.ID())
 	}
 
 	if len(pubKey.Purpose()) > len(allowedOps) {

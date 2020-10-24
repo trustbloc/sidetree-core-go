@@ -88,11 +88,11 @@ func TestNamespaceFromID(t *testing.T) {
 }
 
 var suffixDataObject = &struct {
-	DeltaHash          string `json:"delta_hash,omitempty"`
-	RecoveryCommitment string `json:"recovery_commitment,omitempty"`
+	DeltaHash          string `json:"deltaHash,omitempty"`
+	RecoveryCommitment string `json:"recoveryCommitment,omitempty"`
 }{
-	DeltaHash:          "EiDv_M8oOqyYyWtvqAGG8CpXJlKXP4Q5D4H0zE55-PQqGw",
-	RecoveryCommitment: "EiAL35tvU7ge-hZm2cBRG5IrY2St2NSXUar-H8RYBMKSCg",
+	DeltaHash:          "EiBOmkP6kn7yjt0VocmcPu9OQOsZi199Evh-xB48ebubQA",
+	RecoveryCommitment: "EiAAZJYry29vICkwmso8FL92WAISMAhsL8xkCm8dYVnq_w",
 }
 
-const expectedSuffixForSuffixObject = "EiDMM0OSF_J1SyCRFj-NtsyuXLP1HoFl-77QejaEwMW-kA"
+const expectedSuffixForSuffixObject = "EiA5vyaRzJIxbkuZbvwEXiC__u8ieFx50TAAo98tBzCuyA"

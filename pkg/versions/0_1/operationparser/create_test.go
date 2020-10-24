@@ -27,7 +27,7 @@ const invalid = "invalid"
 func TestParseCreateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
-		Patches:                      []string{"replace", "add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
+		Patches:                      []string{"replace", "add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -170,7 +170,7 @@ func TestValidateSuffixData(t *testing.T) {
 func TestValidateDelta(t *testing.T) {
 	p := protocol.Protocol{
 		HashAlgorithmInMultiHashCode: sha2_256,
-		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -302,8 +302,8 @@ const validDoc = `{
 		{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -315,5 +315,5 @@ const validDoc = `{
 
 // samples bellow are taken from reference implementation tests.
 const (
-	jcsRequest = `{"delta":{"patches":[{"action":"replace","document":{"public_keys":[{"id":"anySigningKeyId","jwk":{"crv":"secp256k1","kty":"EC","x":"H61vqAm_-TC3OrFSqPrEfSfg422NR8QHPqr0mLx64DM","y":"s0WnWY87JriBjbyoY3FdUmifK7JJRLR65GtPthXeyuc"},"purpose":["auth"],"type":"EcdsaSecp256k1VerificationKey2019"}],"service_endpoints":[{"endpoint":"http://any.endpoint","id":"anyServiceEndpointId","type":"anyType"}]}}],"update_commitment":"EiBMWE2JFaFipPdthcFiQek-SXTMi5IWIFXAN8hKFCyLJw"},"suffix_data":{"delta_hash":"EiBP6gAOxx3YOL8PZPZG3medFgdqWSDayVX3u1W2f-IPEQ","recovery_commitment":"EiBg8oqvU0Zq_H5BoqmWf0IrhetQ91wXc5fDPpIjB9wW5w"},"type":"create"}`
+	jcsRequest = `{"delta":{"patches":[{"action":"replace","document":{"publicKeys":[{"id":"anySigningKeyId","publicKeyJwk":{"crv":"secp256k1","kty":"EC","x":"H61vqAm_-TC3OrFSqPrEfSfg422NR8QHPqr0mLx64DM","y":"s0WnWY87JriBjbyoY3FdUmifK7JJRLR65GtPthXeyuc"},"purposes":["authentication"],"type":"EcdsaSecp256k1VerificationKey2019"}],"services":[{"serviceEndpoint":"http://any.endpoint","id":"anyServiceEndpointId","type":"anyType"}]}}],"updateCommitment":"EiBMWE2JFaFipPdthcFiQek-SXTMi5IWIFXAN8hKFCyLJw"},"suffixData":{"deltaHash":"EiBP6gAOxx3YOL8PZPZG3medFgdqWSDayVX3u1W2f-IPEQ","recoveryCommitment":"EiBg8oqvU0Zq_H5BoqmWf0IrhetQ91wXc5fDPpIjB9wW5w"},"type":"create"}`
 )

@@ -13,7 +13,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
-const didSuffix = "did_suffix"
+const didSuffix = "didSuffix"
 
 // Validator is responsible for validating document operations and Sidetree rules.
 type Validator struct {

@@ -125,8 +125,8 @@ var (
 	"publicKey": [{
       	"id": "key-1",
       	"type": "JsonWebKey2020",
-      	"purpose": ["general"],
-		"jwk": {
+      	"purposes": ["verificationMethod"],
+		"publicKeyJwk": {
 			"kty": "EC",
         	"crv": "P-256K",
         	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -137,6 +137,6 @@ var (
 
 	docWithID = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
-	validUpdate   = []byte(`{ "did_suffix": "abc" }`)
+	validUpdate   = []byte(`{ "didSuffix": "abc" }`)
 	invalidUpdate = []byte(`{ "patch": "" }`)
 )
