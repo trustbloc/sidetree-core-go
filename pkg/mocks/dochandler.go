@@ -73,13 +73,13 @@ type Operation struct {
 	Operation batch.OperationType `json:"type,omitempty"`
 
 	// SuffixData object
-	SuffixData *model.SuffixDataModel `json:"suffix_data,omitempty"`
+	SuffixData *model.SuffixDataModel `json:"suffixData,omitempty"`
 
 	// Delta object
 	Delta *model.DeltaModel `json:"delta,omitempty"`
 
 	// DidSuffix is the suffix of the DID
-	DidSuffix string `json:"did_suffix"`
+	DidSuffix string `json:"didSuffix"`
 }
 
 // ProcessOperation mocks process operation.

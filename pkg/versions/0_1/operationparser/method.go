@@ -9,6 +9,7 @@ package operationparser
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
@@ -63,6 +64,8 @@ func parseInitialState(initialState string) (*model.CreateRequest, error) {
 		return nil, err
 	}
 
+	fmt.Println(string(decodedJCS))
+
 	var createRequest model.CreateRequest
 	err = json.Unmarshal(decodedJCS, &createRequest)
 	if err != nil {
@@ -73,6 +76,8 @@ func parseInitialState(initialState string) (*model.CreateRequest, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(string(expected))
 
 	if docutil.EncodeToString(expected) != initialState {
 		return nil, errors.New("initial state is not valid")

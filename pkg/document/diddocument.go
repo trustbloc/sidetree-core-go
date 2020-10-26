@@ -29,8 +29,8 @@ const (
 	// AssertionMethodProperty defines key for assertion method property.
 	AssertionMethodProperty = "assertionMethod"
 
-	// AgreementKeyProperty defines key for agreement key property.
-	AgreementKeyProperty = "agreementKey"
+	// KeyAgreementProperty defines key for key agreement property.
+	KeyAgreementProperty = "keyAgreement"
 
 	// DelegationKeyProperty defines key for delegation key property.
 	DelegationKeyProperty = "capabilityDelegation"
@@ -125,7 +125,7 @@ func (doc DIDDocument) AssertionMethod() []interface{} {
 
 // AgreementKey returns agreement method array (mixture of strings and objects).
 func (doc DIDDocument) AgreementKey() []interface{} {
-	return interfaceArray(doc[AgreementKeyProperty])
+	return interfaceArray(doc[KeyAgreementProperty])
 }
 
 // DelegationKey returns delegation method array (mixture of strings and objects).

@@ -23,10 +23,10 @@ func TestValid(t *testing.T) {
 	publicKeys := doc.PublicKeys()
 	require.Equal(t, []PublicKey{
 		{
-			"id":      "key1",
-			"type":    "JsonWebKey2020",
-			"purpose": []interface{}{"auth", "general"},
-			"jwk": map[string]interface{}{
+			"id":       "key1",
+			"type":     "JsonWebKey2020",
+			"purposes": []interface{}{"authentication", "verificationMethod"},
+			"publicKeyJwk": map[string]interface{}{
 				"kty": "EC",
 				"crv": "P-256K",
 				"x":   "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -38,12 +38,12 @@ func TestValid(t *testing.T) {
 	services := doc.Services()
 	require.Equal(t, []Service{
 		{
-			"id":            "hub",
-			"type":          "IdentityHub",
-			"endpoint":      "https://example.com/hub/",
-			"routingKeys":   "routingKeysValue",
-			"recipientKeys": "recipientKeysValue",
-			"priority":      float64(0),
+			"id":              "hub",
+			"type":            "IdentityHub",
+			"serviceEndpoint": "https://example.com/hub/",
+			"routingKeys":     "routingKeysValue",
+			"recipientKeys":   "recipientKeysValue",
+			"priority":        float64(0),
 		},
 	}, services)
 

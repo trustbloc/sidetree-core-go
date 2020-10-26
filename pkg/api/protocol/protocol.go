@@ -26,29 +26,29 @@ import (
 type Protocol struct {
 	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to.
 	// (e.g. block number in a blockchain)
-	GenesisTime uint64 `json:"genesis_time"`
+	GenesisTime uint64 `json:"genesisTime"`
 	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code.
-	HashAlgorithmInMultiHashCode uint `json:"multi_hash_algorithm"`
+	HashAlgorithmInMultiHashCode uint `json:"multiHashAlgorithm"`
 	// HashAlgorithm is hash algorithm
-	HashAlgorithm uint `json:"hash_algorithm"`
+	HashAlgorithm uint `json:"hashAlgorithm"`
 	// MaxOperationCount defines maximum number of operations per batch.
-	MaxOperationCount uint `json:"max_operation_count"`
+	MaxOperationCount uint `json:"maxOperationCount"`
 	// MaxOperationSize is maximum uncompressed operation size.
-	MaxOperationSize uint `json:"max_operation_size"`
+	MaxOperationSize uint `json:"maxOperationSize"`
 	// CompressionAlgorithm is file compression algorithm.
-	CompressionAlgorithm string `json:"compression_algorithm"`
+	CompressionAlgorithm string `json:"compressionAlgorithm"`
 	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS.
-	MaxAnchorFileSize uint `json:"max_anchor_file_size"`
+	MaxAnchorFileSize uint `json:"maxAnchorFileSize"`
 	// MaxMapFileSize is maximum allowed size (in bytes) of map file stored in CAS.
-	MaxMapFileSize uint `json:"max_map_file_size"`
+	MaxMapFileSize uint `json:"maxMapFileSize"`
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS.
-	MaxChunkFileSize uint `json:"max_chunk_file_size"`
+	MaxChunkFileSize uint `json:"maxChunkFileSize"`
 	// Patches contains the list of allowed patches.
 	Patches []string `json:"patches"`
 	// SignatureAlgorithms contain supported signature algorithms for signed operations (e.g. EdDSA, ES256, ES384, ES512, ES256K).
-	SignatureAlgorithms []string `json:"signature_algorithms"`
+	SignatureAlgorithms []string `json:"signatureAlgorithms"`
 	// KeyAlgorithms contain supported key algorithms for signed operations (e.g. secp256k1, P-256, P-384, P-512, Ed25519).
-	KeyAlgorithms []string `json:"key_algorithms"`
+	KeyAlgorithms []string `json:"keyAlgorithms"`
 }
 
 // TxnProcessor defines the functions for processing a Sidetree transaction.

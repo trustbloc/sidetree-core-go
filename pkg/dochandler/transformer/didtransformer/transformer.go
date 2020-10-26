@@ -95,7 +95,7 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 		externalService := make(document.Service)
 		externalService[document.IDProperty] = internal.ID() + "#" + sv.ID()
 		externalService[document.TypeProperty] = sv.Type()
-		externalService[document.ServiceEndpointProperty] = sv.Endpoint()
+		externalService[document.ServiceEndpointProperty] = sv.ServiceEndpoint()
 
 		for key, value := range sv {
 			_, ok := externalService[key]
@@ -149,13 +149,13 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		externalPK[document.ControllerProperty] = internal[document.IDProperty]
 
 		if pk.Type() == ed25519VerificationKey2018 {
-			ed25519PubKey, err := getED2519PublicKey(pk.JWK())
+			ed25519PubKey, err := getED2519PublicKey(pk.PublicKeyJwk())
 			if err != nil {
 				return err
 			}
 			externalPK[document.PublicKeyBase58Property] = base58.Encode(ed25519PubKey)
 		} else {
-			externalPK[document.PublicKeyJwkProperty] = pk.JWK()
+			externalPK[document.PublicKeyJwkProperty] = pk.PublicKeyJwk()
 		}
 
 		purposes := pk.Purpose()
@@ -208,7 +208,7 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 	}
 
 	if len(agreementKey) > 0 {
-		resolutionResult.Document[document.AgreementKeyProperty] = agreementKey
+		resolutionResult.Document[document.KeyAgreementProperty] = agreementKey
 	}
 
 	if len(delegationKey) > 0 {
@@ -235,32 +235,32 @@ func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
 
 // isGeneralKey returns true if key is a general key.
 func isGeneralKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeGeneral)
+	return isPurposeKey(purposes, document.KeyPurposeVerificationMethod)
 }
 
 // isAuthenticationKey returns true if key is an authentication key.
 func isAuthenticationKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeAuth)
+	return isPurposeKey(purposes, document.KeyPurposeAuthentication)
 }
 
 // isAssertionKey returns true if key is an assertion key.
 func isAssertionKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeAssertion)
+	return isPurposeKey(purposes, document.KeyPurposeAssertionMethod)
 }
 
 // isAgreementKey returns true if key is an agreement key.
 func isAgreementKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeAgreement)
+	return isPurposeKey(purposes, document.KeyPurposeKeyAgreement)
 }
 
 // isDelegationKey returns true if key is an delegation key.
 func isDelegationKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeDelegation)
+	return isPurposeKey(purposes, document.KeyPurposeCapabilityDelegation)
 }
 
 // isInvocationKey returns true if key is an invocation key.
 func isInvocationKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeInvocation)
+	return isPurposeKey(purposes, document.KeyPurposeCapabilityInvocation)
 }
 
 func isPurposeKey(purposes []string, mode string) bool {

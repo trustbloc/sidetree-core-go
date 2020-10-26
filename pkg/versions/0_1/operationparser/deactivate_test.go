@@ -45,7 +45,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "missing unique suffix")
 	})
 	t.Run("missing signed data", func(t *testing.T) {
-		op, err := parser.ParseDeactivateOperation([]byte(`{"did_suffix":"abc"}`), false)
+		op, err := parser.ParseDeactivateOperation([]byte(`{"didSuffix":"abc"}`), false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing signed data")
 		require.Nil(t, op)

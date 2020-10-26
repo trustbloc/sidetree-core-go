@@ -76,7 +76,6 @@ func TestTransformDocument(t *testing.T) {
 	pk := didDoc.PublicKeys()[0]
 	require.Contains(t, pk.ID(), testID)
 	require.NotEmpty(t, pk.Type())
-	require.Empty(t, pk.JWK())
 	require.NotEmpty(t, pk.PublicKeyJwk())
 	require.Empty(t, pk.PublicKeyBase58())
 
@@ -157,7 +156,6 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 	pk := didDoc.PublicKeys()[0]
 	require.Contains(t, pk.ID(), testID)
 	require.Equal(t, "Ed25519VerificationKey2018", pk.Type())
-	require.Empty(t, pk.JWK())
 	require.Empty(t, pk.PublicKeyJwk())
 
 	// test base58 encoding
@@ -212,15 +210,15 @@ const ed25519DocTemplate = `{
 	{
   		"id": "dual-assertion-general",
   		"type": "Ed25519VerificationKey2018",
-		"purpose": ["general", "assertion"],
-  		"jwk": %s
+		"purposes": ["verificationMethod", "assertionMethod"],
+  		"publicKeyJwk": %s
 	}
   ],
   "service": [
 	{
 	   "id": "oidc",
 	   "type": "OpenIdConnectVersion1.0Service",
-	   "endpoint": "https://openid.example.com/"
+	   "serviceEndpoint": "https://openid.example.com/"
 	}
   ]
 }`
@@ -230,8 +228,8 @@ const ed25519Invalid = `{
 	{
   		"id": "dual-assertion-general",
   		"type": "Ed25519VerificationKey2018",
-		"purpose": ["general", "assertion"],
-      	"jwk": {
+		"purposes": ["verificationMethod", "assertionMethod"],
+      	"publicKeyJwk": {
         	"kty": "OKP",
         	"crv": "curve",
         	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -246,7 +244,7 @@ func TestIsAuthenticationKey(t *testing.T) {
 	ok := isAuthenticationKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeAuth}
+	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeAuthentication}
 	ok = isAuthenticationKey(pk.Purpose())
 	require.True(t, ok)
 }
@@ -256,7 +254,7 @@ func TestIsAssertionKey(t *testing.T) {
 	ok := isAssertionKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeAssertion}
+	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeAssertionMethod}
 	ok = isAssertionKey(pk.Purpose())
 	require.True(t, ok)
 }
@@ -266,7 +264,7 @@ func TestIsAgreementKey(t *testing.T) {
 	ok := isAgreementKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeAgreement}
+	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeKeyAgreement}
 	ok = isAgreementKey(pk.Purpose())
 	require.True(t, ok)
 }
@@ -276,7 +274,7 @@ func TestIsDelegationKey(t *testing.T) {
 	ok := isDelegationKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeDelegation}
+	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeCapabilityDelegation}
 	ok = isDelegationKey(pk.Purpose())
 	require.True(t, ok)
 }
@@ -286,7 +284,7 @@ func TestIsInvocationKey(t *testing.T) {
 	ok := isInvocationKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeInvocation}
+	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeCapabilityInvocation}
 	ok = isInvocationKey(pk.Purpose())
 	require.True(t, ok)
 }
@@ -296,7 +294,7 @@ func TestIsGeneralKey(t *testing.T) {
 	ok := isGeneralKey(pk.Purpose())
 	require.False(t, ok)
 
-	pk[document.PurposeProperty] = []interface{}{document.KeyPurposeGeneral}
+	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeVerificationMethod}
 	ok = isGeneralKey(pk.Purpose())
 	require.True(t, ok)
 }

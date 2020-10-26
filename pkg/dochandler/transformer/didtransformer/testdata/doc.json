@@ -3,8 +3,8 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "purpose": ["general", "auth", "assertion", "agreement", "delegation", "invocation"],
-      "jwk": {
+      "purposes": ["verificationMethod", "authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -14,8 +14,8 @@
     {
       "id": "dual-auth-gen",
       "type": "JsonWebKey2020",
-      "purpose": ["auth", "general"],
-      "jwk": {
+      "purposes": ["authentication", "verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -25,8 +25,8 @@
     {
       "id": "auth-only",
       "type": "JsonWebKey2020",
-      "purpose": ["auth"],
-      "jwk": {
+      "purposes": ["authentication"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -36,8 +36,8 @@
     {
       "id": "dual-assertion-gen",
       "type": "JsonWebKey2020",
-      "purpose": ["assertion", "general"],
-      "jwk": {
+      "purposes": ["assertionMethod", "verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -47,8 +47,8 @@
     {
       "id": "assertion-only",
       "type": "JsonWebKey2020",
-      "purpose": ["assertion"],
-      "jwk": {
+      "purposes": ["assertionMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -58,8 +58,8 @@
     {
       "id": "dual-agreement-gen",
       "type": "JsonWebKey2020",
-      "purpose": ["agreement", "general"],
-      "jwk": {
+      "purposes": ["keyAgreement", "verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -69,8 +69,8 @@
     {
       "id": "agreement-only",
       "type": "JsonWebKey2020",
-      "purpose": ["agreement"],
-      "jwk": {
+      "purposes": ["keyAgreement"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -80,8 +80,8 @@
     {
       "id": "dual-invocation-gen",
       "type": "JsonWebKey2020",
-      "purpose": ["invocation", "general"],
-      "jwk": {
+      "purposes": ["capabilityInvocation", "verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -91,8 +91,8 @@
     {
       "id": "invocation-only",
       "type": "JsonWebKey2020",
-      "purpose": ["invocation"],
-      "jwk": {
+      "purposes": ["capabilityInvocation"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -102,8 +102,8 @@
     {
       "id": "dual-delegation-gen",
       "type": "JsonWebKey2020",
-      "purpose": ["delegation", "general"],
-      "jwk": {
+      "purposes": ["capabilityDelegation", "verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -113,8 +113,8 @@
     {
       "id": "delegation-only",
       "type": "JsonWebKey2020",
-      "purpose": ["delegation"],
-      "jwk": {
+      "purposes": ["capabilityDelegation"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -124,8 +124,8 @@
     {
       "id": "general-only",
       "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -139,7 +139,7 @@
       "type": "IdentityHub",
       "routingKeys": "routingKeysValue",
       "recipientKeys": "recipientKeysValue",
-      "endpoint": "https://example.com/hub/"
+      "serviceEndpoint": "https://example.com/hub/"
     }
   ]
 }

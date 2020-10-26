@@ -1221,8 +1221,8 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -1235,8 +1235,8 @@ const recoveredDocTemplate = `{
 	"publicKey": [{
 		  "id": "recovered%s",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -1275,7 +1275,7 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 		MaxAnchorFileSize:            mocks.MaxBatchFileSize,
 		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
 		KeyAlgorithms:                []string{"Ed25519", "P-256"},
-		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"},
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	latestVersion := mocks.GetProtocolVersion(latest)

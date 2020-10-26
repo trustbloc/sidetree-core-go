@@ -32,11 +32,11 @@ const (
 	// RemovePublicKeys captures enum value "remove-public-keys".
 	RemovePublicKeys Action = "remove-public-keys"
 
-	// AddServiceEndpoints captures "add-service-endpoints".
-	AddServiceEndpoints Action = "add-service-endpoints"
+	// AddServiceEndpoints captures "add-services".
+	AddServiceEndpoints Action = "add-services"
 
-	// RemoveServiceEndpoints captures "remove-service-endpoints".
-	RemoveServiceEndpoints Action = "remove-service-endpoints"
+	// RemoveServiceEndpoints captures "remove-services".
+	RemoveServiceEndpoints Action = "remove-services"
 
 	// JSONPatch captures enum value "json-patch".
 	JSONPatch Action = "ietf-json-patch"
@@ -53,11 +53,11 @@ const (
 	// PatchesKey captures "patches" key.
 	PatchesKey Key = "patches"
 
-	// PublicKeys captures "public_keys" key.
-	PublicKeys Key = "public_keys"
+	// PublicKeys captures "publicKeys" key.
+	PublicKeys Key = "publicKeys"
 
-	// ServiceEndpointsKey captures "service_endpoints" key.
-	ServiceEndpointsKey Key = "service_endpoints"
+	// ServiceEndpointsKey captures "services" key.
+	ServiceEndpointsKey Key = "services"
 
 	// ServiceEndpointIdsKey captures "ids" key.
 	ServiceEndpointIdsKey Key = "ids"

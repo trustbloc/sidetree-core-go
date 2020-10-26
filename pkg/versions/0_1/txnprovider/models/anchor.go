@@ -15,8 +15,8 @@ import (
 
 // AnchorFile defines the schema of an anchor file.
 type AnchorFile struct {
-	// MapFileHash is encoded hash of the map file
-	MapFileHash string `json:"mapFileHash,omitempty"`
+	// MapFileURI is map file URI
+	MapFileURI string `json:"mapFileUri,omitempty"`
 
 	// Operations contain proving data for create, recover and deactivate operations.
 	Operations Operations `json:"operations"`
@@ -25,16 +25,16 @@ type AnchorFile struct {
 // CreateOperation contains create operation data.
 type CreateOperation struct {
 	// SuffixData object
-	SuffixData *model.SuffixDataModel `json:"suffix_data"`
+	SuffixData *model.SuffixDataModel `json:"suffixData"`
 }
 
 // SignedOperation contains operation proving data.
 type SignedOperation struct {
 	// DidSuffix is the suffix of the DID
-	DidSuffix string `json:"did_suffix"`
+	DidSuffix string `json:"didSuffix"`
 
 	// SignedData is compact JWS
-	SignedData string `json:"signed_data"`
+	SignedData string `json:"signedData"`
 }
 
 // Operations contains operation proving data.
@@ -49,7 +49,7 @@ type Operations struct {
 // returns anchor file model.
 func CreateAnchorFile(mapAddress string, ops []*model.Operation) *AnchorFile {
 	return &AnchorFile{
-		MapFileHash: mapAddress,
+		MapFileURI: mapAddress,
 		Operations: Operations{
 			Create:     getCreateOperations(ops),
 			Recover:    getSignedOperations(batch.OperationTypeRecover, ops),

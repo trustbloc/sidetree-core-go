@@ -69,7 +69,7 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 		return nil, err
 	}
 
-	if af.MapFileHash == "" {
+	if af.MapFileURI == "" {
 		// if there's no map file that means that we have only deactivate operations in the batch
 		anchorOps, e := h.parseAnchorOperations(af, txn)
 		if e != nil {
@@ -79,7 +79,7 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 		return createAnchoredOperations(anchorOps.Deactivate)
 	}
 
-	mf, err := h.getMapFile(af.MapFileHash)
+	mf, err := h.getMapFile(af.MapFileURI)
 	if err != nil {
 		return nil, err
 	}

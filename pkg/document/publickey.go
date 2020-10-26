@@ -11,14 +11,11 @@ const (
 	// ControllerProperty defines key for controller.
 	ControllerProperty = "controller"
 
-	// PurposeProperty describes key purpose property.
-	PurposeProperty = "purpose"
+	// PurposesProperty describes key purposes property.
+	PurposesProperty = "purposes"
 
 	// PublicKeyJwkProperty describes external public key JWK.
 	PublicKeyJwkProperty = "publicKeyJwk"
-
-	// JwkProperty describes internal public key JWK.
-	JwkProperty = "jwk"
 
 	// TypeProperty describes type.
 	TypeProperty = "type"
@@ -31,18 +28,18 @@ const (
 type KeyPurpose string
 
 const (
-	// KeyPurposeAuth defines key purpose as authentication key.
-	KeyPurposeAuth = "auth"
-	// KeyPurposeAssertion defines key purpose as assertion key.
-	KeyPurposeAssertion = "assertion"
-	// KeyPurposeAgreement defines key purpose as agreement key.
-	KeyPurposeAgreement = "agreement"
-	// KeyPurposeDelegation defines key purpose as delegation key.
-	KeyPurposeDelegation = "delegation"
-	// KeyPurposeInvocation defines key purpose as invocation key.
-	KeyPurposeInvocation = "invocation"
-	// KeyPurposeGeneral defines key purpose as general key.
-	KeyPurposeGeneral = "general"
+	// KeyPurposeAuthentication defines key purpose as authentication key.
+	KeyPurposeAuthentication = "authentication"
+	// KeyPurposeAssertionMethod defines key purpose as assertion key.
+	KeyPurposeAssertionMethod = "assertionMethod"
+	// KeyPurposeKeyAgreement defines key purpose as agreement key.
+	KeyPurposeKeyAgreement = "keyAgreement"
+	// KeyPurposeCapabilityDelegation defines key purpose as delegation key.
+	KeyPurposeCapabilityDelegation = "capabilityDelegation"
+	// KeyPurposeCapabilityInvocation defines key purpose as invocation key.
+	KeyPurposeCapabilityInvocation = "capabilityInvocation"
+	// KeyPurposeVerificationMethod defines key purpose as verification(general key).
+	KeyPurposeVerificationMethod = "verificationMethod"
 )
 
 // PublicKey must include id and type properties, and exactly one value property.
@@ -68,21 +65,6 @@ func (pk PublicKey) Controller() string {
 	return stringEntry(pk[ControllerProperty])
 }
 
-// JWK is value property of internal keys.
-func (pk PublicKey) JWK() JWK {
-	entry, ok := pk[JwkProperty]
-	if !ok {
-		return nil
-	}
-
-	json, ok := entry.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	return NewJWK(json)
-}
-
 // PublicKeyJwk is value property for JWK.
 func (pk PublicKey) PublicKeyJwk() JWK {
 	entry, ok := pk[PublicKeyJwkProperty]
@@ -105,7 +87,7 @@ func (pk PublicKey) PublicKeyBase58() string {
 
 // Purpose describes key purpose.
 func (pk PublicKey) Purpose() []string {
-	return StringArray(pk[PurposeProperty])
+	return StringArray(pk[PurposesProperty])
 }
 
 // JSONLdObject returns map that represents JSON LD Object.

@@ -65,35 +65,35 @@ func TestValidateReplacePatch(t *testing.T) {
 const replacePatch = `{
    "action": "replace",
    "document": {
-      "public_keys": [
+      "publicKeys": [
       {
          "id": "key-1",
-         "purpose": ["auth"],
+         "purposes": ["authentication"],
          "type": "EcdsaSecp256k1VerificationKey2019",
-         "jwk": {
+         "publicKeyJwk": {
             "kty": "EC",
             "crv": "P-256K",
             "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
             "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
          }
       }],
-      "service_endpoints": [
+      "services": [
       {
          "id": "sds3",
          "type": "SecureDataStore",
-         "endpoint": "http://hub.my-personal-server.com"
+         "serviceEndpoint": "http://hub.my-personal-server.com"
       }]
    }
 }`
 
 const replaceDocWithExtraProperties = `{
    "id": "some-id",
-   "public_keys": [
+   "publicKeys": [
    {
       "id": "key-1",
-      "purpose": ["auth"],
+      "purposes": ["authentication"],
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "jwk": {
+      "publicKeyJwk": {
          "kty": "EC",
          "crv": "P-256K",
          "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -103,11 +103,11 @@ const replaceDocWithExtraProperties = `{
 }`
 
 const replaceDocInvalidPublicKey = `{
-   "public_keys": [
+   "publicKeys": [
    {
       "id": "key-1",
-      "purpose": ["auth"],
-      "jwk": {
+      "purposes": ["authentication"],
+      "publicKeyJwk": {
          "kty": "EC",
          "crv": "P-256K",
          "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -117,7 +117,7 @@ const replaceDocInvalidPublicKey = `{
 }`
 
 const replaceDocInvalidServiceEndpoint = `{
-   "service_endpoints": [
+   "services": [
    {
       "id": "sds3",
       "type": "SecureDataStore"

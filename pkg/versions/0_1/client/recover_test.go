@@ -106,7 +106,7 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, "recover", request["type"])
-		require.Equal(t, didSuffix, request["did_suffix"])
+		require.Equal(t, didSuffix, request["didSuffix"])
 	})
 
 	t.Run("success - json patches", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, "recover", request["type"])
-		require.Equal(t, didSuffix, request["did_suffix"])
+		require.Equal(t, didSuffix, request["didSuffix"])
 	})
 }
 

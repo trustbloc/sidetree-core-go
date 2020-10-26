@@ -21,7 +21,7 @@ const (
 	// HeaderJSONWebKey is:
 	// For JWS: the public key that corresponds to the key used to digitally sign the JWS.
 	// For JWE: the public key to which the JWE was encrypted.
-	HeaderJSONWebKey = "jwk" // JSON
+	HeaderJSONWebKey = "publicKeyJwk" // JSON
 
 	// HeaderKeyID is a hint:
 	// For JWS: indicating which key was used to secure the JWS.

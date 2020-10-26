@@ -232,7 +232,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 
 func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	pc := newMockProtocolClient()
-	pc.Protocol.Patches = []string{"replace", "add-public-keys", "remove-public-keys", "add-service-endpoints", "remove-service-endpoints", "ietf-json-patch"}
+	pc.Protocol.Patches = []string{"replace", "add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"}
 
 	parser := operationparser.New(pc.Protocol)
 	oa := operationapplier.New(pc.Protocol, parser, doccomposer.New())
@@ -476,8 +476,8 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -490,8 +490,8 @@ const invalidDocNoPurpose = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",	
-		  "purpose": [],
-		  "jwk": {
+		  "purposes": [],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -607,7 +607,7 @@ func getUpdateOperation() *batchapi.Operation {
 }
 
 // test value taken from reference implementation.
-const interopResolveDidWithInitialState = `did:sidetree:EiDahaOGH-liLLdDtTxEAdc8i-cfCz-WUcQdRJheMVNn3A:eyJkZWx0YSI6eyJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljX2tleXMiOlt7ImlkIjoiYW55U2lnbmluZ0tleUlkIiwiandrIjp7ImNydiI6InNlY3AyNTZrMSIsImt0eSI6IkVDIiwieCI6Ikg2MXZxQW1fLVRDM09yRlNxUHJFZlNmZzQyMk5SOFFIUHFyMG1MeDY0RE0iLCJ5IjoiczBXbldZODdKcmlCamJ5b1kzRmRVbWlmSzdKSlJMUjY1R3RQdGhYZXl1YyJ9LCJwdXJwb3NlIjpbImF1dGgiXSwidHlwZSI6IkVjZHNhU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOSJ9XSwic2VydmljZV9lbmRwb2ludHMiOlt7ImVuZHBvaW50IjoiaHR0cDovL2FueS5lbmRwb2ludCIsImlkIjoiYW55U2VydmljZUVuZHBvaW50SWQiLCJ0eXBlIjoiYW55VHlwZSJ9XX19XSwidXBkYXRlX2NvbW1pdG1lbnQiOiJFaUJNV0UySkZhRmlwUGR0aGNGaVFlay1TWFRNaTVJV0lGWEFOOGhLRkN5TEp3In0sInN1ZmZpeF9kYXRhIjp7ImRlbHRhX2hhc2giOiJFaUJQNmdBT3h4M1lPTDhQWlBaRzNtZWRGZ2RxV1NEYXlWWDN1MVcyZi1JUEVRIiwicmVjb3ZlcnlfY29tbWl0bWVudCI6IkVpQmc4b3F2VTBacV9INUJvcW1XZjBJcmhldFE5MXdYYzVmRFBwSWpCOXdXNXcifX0`
+const interopResolveDidWithInitialState = "did:sidetree:EiA5vyaRzJIxbkuZbvwEXiC__u8ieFx50TAAo98tBzCuyA:eyJkZWx0YSI6eyJwYXRjaGVzIjpbeyJhY3Rpb24iOiJyZXBsYWNlIiwiZG9jdW1lbnQiOnsicHVibGljS2V5cyI6W3siaWQiOiJzaWduaW5nS2V5IiwicHVibGljS2V5SndrIjp7ImNydiI6InNlY3AyNTZrMSIsImt0eSI6IkVDIiwieCI6ImRTYUJSTnRHdnlqMjJlOVQ0TjVMajdYdjd1eGlQTHdTRnhraHYwNC1tZzAiLCJ5IjoieDY3U0lmaURlMWxOdjhvS1MxeGNCb29iLTlsTm1hM2FmbzFlcmQzNXBnZyJ9LCJwdXJwb3NlcyI6WyJ2ZXJpZmljYXRpb25NZXRob2QiLCJhdXRoZW50aWNhdGlvbiIsImFzc2VydGlvbk1ldGhvZCIsImNhcGFiaWxpdHlJbnZvY2F0aW9uIiwiY2FwYWJpbGl0eURlbGVnYXRpb24iLCJrZXlBZ3JlZW1lbnQiXSwidHlwZSI6IkVjZHNhU2VjcDI1NmsxVmVyaWZpY2F0aW9uS2V5MjAxOSJ9XSwic2VydmljZXMiOlt7ImlkIjoic2VydmljZUlkMTIzIiwic2VydmljZUVuZHBvaW50IjoiaHR0cHM6Ly93d3cudXJsLmNvbSIsInR5cGUiOiJzb21lVHlwZSJ9XX19XSwidXBkYXRlQ29tbWl0bWVudCI6IkVpQXZUSVQtMFhCV1hhcnBqdk1QUGhaaTNjNHNVMUNpX3JPelBEN1c1djhTaHcifSwic3VmZml4RGF0YSI6eyJkZWx0YUhhc2giOiJFaUJPbWtQNmtuN3lqdDBWb2NtY1B1OU9RT3NaaTE5OUV2aC14QjQ4ZWJ1YlFBIiwicmVjb3ZlcnlDb21taXRtZW50IjoiRWlBQVpKWXJ5Mjl2SUNrd21zbzhGTDkyV0FJU01BaHNMOHhrQ204ZFlWbnFfdyJ9fQ"
 
 func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()

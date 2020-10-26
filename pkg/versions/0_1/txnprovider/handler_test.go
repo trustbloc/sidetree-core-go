@@ -92,7 +92,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.Equal(t, deactivateOpsNum, len(af.Operations.Deactivate))
 		require.Equal(t, 0, len(af.Operations.Update))
 
-		bytes, err = handler.cas.Read(af.MapFileHash)
+		bytes, err = handler.cas.Read(af.MapFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 

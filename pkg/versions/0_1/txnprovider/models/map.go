@@ -21,7 +21,7 @@ type MapFile struct {
 
 // Chunk holds chunk file URI.
 type Chunk struct {
-	ChunkFileURI string `json:"chunk_file_uri"`
+	ChunkFileURI string `json:"chunkFileUri"`
 }
 
 // CreateMapFile will create map file model from operations and chunk file URI.

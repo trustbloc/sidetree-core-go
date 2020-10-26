@@ -62,7 +62,7 @@ func TestParser_ParseDID(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, testDID, did)
-		require.Equal(t, `{"delta":{},"suffix_data":{},"type":"create"}`, string(initial))
+		require.Equal(t, `{"delta":{},"suffixData":{},"type":"create"}`, string(initial))
 	})
 
 	t.Run("success - did with dot in namespace and initial state", func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestParser_ParseDID(t *testing.T) {
 		did, initial, err := parser.ParseDID(namespaceWithDot, didWithDotWithInitialState)
 		require.NoError(t, err)
 		require.Equal(t, didWithDot, did)
-		require.Equal(t, `{"delta":{},"suffix_data":{},"type":"create"}`, string(initial))
+		require.Equal(t, `{"delta":{},"suffixData":{},"type":"create"}`, string(initial))
 	})
 
 	t.Run("error - initial state not encoded", func(t *testing.T) {

@@ -223,12 +223,12 @@ func TestValidateJWK(t *testing.T) {
 
 func TestGeneralKeyPurpose(t *testing.T) {
 	for _, pubKeyType := range allowedKeyTypesGeneral {
-		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeGeneral})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod})
 		err := validatePublicKeys([]document.PublicKey{pk})
 		require.NoError(t, err, "valid purpose for type")
 	}
 
-	pk := createMockPublicKeyWithTypeAndPurpose("invalid", []interface{}{document.KeyPurposeGeneral})
+	pk := createMockPublicKeyWithTypeAndPurpose("invalid", []interface{}{document.KeyPurposeVerificationMethod})
 	err := validatePublicKeys([]document.PublicKey{pk})
 	require.Error(t, err, "invalid purpose for type")
 }
@@ -240,14 +240,14 @@ func TestInvalidKeyPurpose(t *testing.T) {
 }
 
 func TestVerificationKeyPurpose(t *testing.T) {
-	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeAssertion)
-	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeAuth)
-	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeDelegation)
-	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeInvocation)
+	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeAssertionMethod)
+	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeAuthentication)
+	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeCapabilityDelegation)
+	testKeyPurpose(t, allowedKeyTypesVerification, document.KeyPurposeCapabilityInvocation)
 }
 
 func TestAgreementKeyPurpose(t *testing.T) {
-	testKeyPurpose(t, allowedKeyTypesAgreement, document.KeyPurposeAgreement)
+	testKeyPurpose(t, allowedKeyTypesAgreement, document.KeyPurposeKeyAgreement)
 }
 
 func reader(t *testing.T, filename string) io.Reader {
@@ -259,7 +259,7 @@ func reader(t *testing.T, filename string) io.Reader {
 
 func testKeyPurpose(t *testing.T, allowedKeys existenceMap, pubKeyPurpose string) {
 	for _, pubKeyType := range allowedKeys {
-		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeGeneral, pubKeyPurpose})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose})
 		err := validatePublicKeys([]document.PublicKey{pk})
 		require.NoError(t, err, "valid purpose for type")
 
@@ -274,15 +274,15 @@ func testKeyPurpose(t *testing.T, allowedKeys existenceMap, pubKeyPurpose string
 			continue
 		}
 
-		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeGeneral, pubKeyPurpose, document.KeyPurposeAgreement})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose, document.KeyPurposeKeyAgreement})
 		err := validatePublicKeys([]document.PublicKey{pk})
 		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeGeneral, pubKeyPurpose, document.KeyPurposeAssertion})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose, document.KeyPurposeAssertionMethod})
 		err = validatePublicKeys([]document.PublicKey{pk})
 		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeGeneral, pubKeyPurpose})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose})
 		err = validatePublicKeys([]document.PublicKey{pk})
 		require.Error(t, err, "invalid purpose for type")
 
@@ -294,10 +294,10 @@ func testKeyPurpose(t *testing.T, allowedKeys existenceMap, pubKeyPurpose string
 
 func createMockPublicKeyWithTypeAndPurpose(pubKeyType string, purpose []interface{}) document.PublicKey {
 	pk := map[string]interface{}{
-		"id":      "key1",
-		"type":    pubKeyType,
-		"purpose": purpose,
-		"jwk": map[string]interface{}{
+		"id":       "key1",
+		"type":     pubKeyType,
+		"purposes": purpose,
+		"publicKeyJwk": map[string]interface{}{
 			"kty": "kty",
 			"crv": "crv",
 			"x":   "x",
@@ -314,8 +314,8 @@ const moreProperties = `{
       "id": "key1",
       "other": "unknown",
       "type": "JsonWebKey2020",
-      "purpose": ["general"], 
-      "jwk": {
+      "purposes": ["verificationMethod"], 
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -330,8 +330,8 @@ const noPurpose = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": [], 
-      "jwk": {
+      "purposes": [], 
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -346,8 +346,8 @@ const wrongPurpose = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": ["invalid"],
-      "jwk": {
+      "purposes": ["invalid"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -362,8 +362,8 @@ const tooMuchPurpose = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": ["general", "auth", "assertion", "agreement", "delegation", "invocation", "other"],
-      "jwk": {
+      "purposes": ["verificationMethod", "authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation", "other"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -378,8 +378,8 @@ const idLong = `{
     {
       "id": "idwihmorethan50characters123456789012345678901234567890",
       "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -392,8 +392,8 @@ const noID = `{
   "publicKey": [
     {
       "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -408,8 +408,8 @@ const invalidKeyType = `{
     {
       "id": "key1",
       "type": "InvalidKeyType",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -424,8 +424,8 @@ const duplicateID = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -435,8 +435,8 @@ const duplicateID = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purpose": ["general"],
-      "jwk": {
+      "purposes": ["verificationMethod"],
+      "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
         "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -450,7 +450,7 @@ const serviceDoc = `{
 	"service": [{
 		"id": "sid-123_ABC",
 		"type": "VerifiableCredentialService",
-		"endpoint": "https://example.com/vc/"
+		"serviceEndpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -458,7 +458,7 @@ const serviceDocNoID = `{
 	"service": [{
 		"id": "",
 		"type": "VerifiableCredentialService",
-		"endpoint": "https://example.com/vc/"
+		"serviceEndpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -466,7 +466,7 @@ const serviceDocLongID = `{
 	"service": [{
 		"id": "thisissomeidthathasmorethan50characters123456789012345678901234567890",
 		"type": "VerifiableCredentialService",
-		"endpoint": "https://example.com/vc/"
+		"serviceEndpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -474,7 +474,7 @@ const serviceDocLongType = `{
 	"service": [{
 		"id": "id",
 		"type": "VerifiableCredentialServiceVerifiableCredentialServiceVerifiableCredentialService",
-		"endpoint": "https://example.com/vc/"
+		"serviceEndpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -482,7 +482,7 @@ const serviceDocLongServiceEndpoint = `{
 	"service": [{
 		"id": "sid",
 		"type": "VerifiableCredentialService",
-		"endpoint": "https://example.com/vc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		"serviceEndpoint": "https://example.com/vc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	}]
 }`
 
@@ -490,7 +490,7 @@ const serviceDocEndpointNotURI = `{
 	"service": [{
 		"id": "vcs",
 		"type": "type",
-		"endpoint": "hello"
+		"serviceEndpoint": "hello"
 	}]
 }`
 
@@ -498,7 +498,7 @@ const serviceDocNoType = `{
 	"service": [{
 		"id": "vcs",
 		"type": "",
-		"endpoint": "https://example.com/vc/"
+		"serviceEndpoint": "https://example.com/vc/"
 	}]
 }`
 
@@ -506,7 +506,7 @@ const serviceDocNoServiceEndpoint = `{
 	"service": [{
 		"id": "vcs",
 		"type": "VerifiableCredentialService",
-		"endpoint": ""
+		"serviceEndpoint": ""
 	}]
 }`
 
@@ -515,6 +515,6 @@ const serviceDocOptionalProperty = `{
 		"id": "vcs",
 		"routingKeys": "value",
 		"type": "VerifiableCredentialService",
-		"endpoint": "https://example.com/vc/"
+		"serviceEndpoint": "https://example.com/vc/"
 	}]
 }`

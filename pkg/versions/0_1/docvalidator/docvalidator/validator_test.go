@@ -99,6 +99,6 @@ var (
 	validDoc   = []byte(`{ "name": "John Smith" }`)
 	invalidDoc = []byte(`{ "id" : "001", "name": "John Smith" }`)
 
-	validUpdate   = []byte(`{ "did_suffix": "abc" }`)
+	validUpdate   = []byte(`{ "didSuffix": "abc" }`)
 	invalidUpdate = []byte(`{ "patch": "" }`)
 )

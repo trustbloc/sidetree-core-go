@@ -20,7 +20,7 @@ type CreateRequest struct {
 
 	// Suffix data object
 	// Required: true
-	SuffixData *SuffixDataModel `json:"suffix_data,omitempty"`
+	SuffixData *SuffixDataModel `json:"suffixData,omitempty"`
 
 	// Delta object
 	// Required: true
@@ -31,17 +31,17 @@ type CreateRequest struct {
 type SuffixDataModel struct {
 
 	// Hash of the delta object
-	DeltaHash string `json:"delta_hash,omitempty"`
+	DeltaHash string `json:"deltaHash,omitempty"`
 
 	// Commitment hash for the next recovery or deactivate operation
-	RecoveryCommitment string `json:"recovery_commitment,omitempty"`
+	RecoveryCommitment string `json:"recoveryCommitment,omitempty"`
 }
 
 // DeltaModel contains patch data (patches used for create, recover, update).
 type DeltaModel struct {
 
 	// Commitment hash for the next update operation
-	UpdateCommitment string `json:"update_commitment,omitempty"`
+	UpdateCommitment string `json:"updateCommitment,omitempty"`
 
 	// Patches defines document patches
 	Patches []patch.Patch `json:"patches,omitempty"`
@@ -53,10 +53,10 @@ type UpdateRequest struct {
 	Operation batch.OperationType `json:"type"`
 
 	// DidSuffix is the suffix of the DID
-	DidSuffix string `json:"did_suffix"`
+	DidSuffix string `json:"didSuffix"`
 
 	// SignedData is compact JWS - signature information
-	SignedData string `json:"signed_data"`
+	SignedData string `json:"signedData"`
 
 	// Delta is encoded delta object
 	Delta *DeltaModel `json:"delta"`
@@ -70,32 +70,32 @@ type DeactivateRequest struct {
 
 	// DidSuffix of the DID
 	// Required: true
-	DidSuffix string `json:"did_suffix"`
+	DidSuffix string `json:"didSuffix"`
 
 	// Compact JWS - signature information
-	SignedData string `json:"signed_data"`
+	SignedData string `json:"signedData"`
 }
 
 // UpdateSignedDataModel defines signed data model for update.
 type UpdateSignedDataModel struct {
 	// UpdateKey is the current update key
-	UpdateKey *jws.JWK `json:"update_key"`
+	UpdateKey *jws.JWK `json:"updateKey"`
 
 	// DeltaHash of the unsigned delta object
-	DeltaHash string `json:"delta_hash"`
+	DeltaHash string `json:"deltaHash"`
 }
 
 // RecoverSignedDataModel defines signed data model for recovery.
 type RecoverSignedDataModel struct {
 
 	// DeltaHash of the unsigned delta object
-	DeltaHash string `json:"delta_hash"`
+	DeltaHash string `json:"deltaHash"`
 
 	// RecoveryKey is The current recovery key
-	RecoveryKey *jws.JWK `json:"recovery_key"`
+	RecoveryKey *jws.JWK `json:"recoveryKey"`
 
 	// RecoveryCommitment is the commitment used for the next recovery/deactivate
-	RecoveryCommitment string `json:"recovery_commitment"`
+	RecoveryCommitment string `json:"recoveryCommitment"`
 }
 
 // DeactivateSignedDataModel defines data model for deactivate.
@@ -103,10 +103,10 @@ type DeactivateSignedDataModel struct {
 
 	// DidSuffix is the suffix of the DID
 	// Required: true
-	DidSuffix string `json:"did_suffix"`
+	DidSuffix string `json:"didSuffix"`
 
 	// RecoveryKey is the current recovery key
-	RecoveryKey *jws.JWK `json:"recovery_key"`
+	RecoveryKey *jws.JWK `json:"recoveryKey"`
 }
 
 // RecoverRequest is the struct for document recovery payload.
@@ -117,10 +117,10 @@ type RecoverRequest struct {
 
 	// DidSuffix is the suffix of the DID
 	// Required: true
-	DidSuffix string `json:"did_suffix"`
+	DidSuffix string `json:"didSuffix"`
 
 	// Compact JWS - signature information
-	SignedData string `json:"signed_data"`
+	SignedData string `json:"signedData"`
 
 	// Delta object
 	// Required: true

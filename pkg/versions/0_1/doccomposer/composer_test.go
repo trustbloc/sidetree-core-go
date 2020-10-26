@@ -374,8 +374,8 @@ const testDoc = `{
 		{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -385,8 +385,8 @@ const testDoc = `{
 		{
 		  "id": "key2",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -398,12 +398,12 @@ const testDoc = `{
     {
       "id": "svc1",
       "type": "SecureDataStore",
-      "endpoint": "http://hub.my-personal-server.com"
+      "serviceEndpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "svc2",
       "type": "SecureDataStore",
-      "endpoint": "http://some-cloud.com/hub"
+      "serviceEndpoint": "http://some-cloud.com/hub"
     }
   ]
 }`
@@ -411,8 +411,8 @@ const testDoc = `{
 const addKeys = `[{
 		  "id": "key3",
 		  "type": "JsonWebKey2020",
-		  "purpose": ["general"],
-		  "jwk": {
+		  "purposes": ["verificationMethod"],
+		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -423,8 +423,8 @@ const addKeys = `[{
 const updateExistingKey = `[{
 	"id": "key2",
 	"type": "JsonWebKey2020",
-	"purpose": ["general"],
-	"jwk": {
+	"purposes": ["verificationMethod"],
+	"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
@@ -436,7 +436,7 @@ const addServices = `[
     {
       "id": "svc3",
       "type": "SecureDataStore",
-      "endpoint": "http://hub.my-personal-server.com"
+      "serviceEndpoint": "http://hub.my-personal-server.com"
     }
   ]`
 
@@ -444,27 +444,27 @@ const updateExistingService = `[
     {
       "id": "svc2",
       "type": "updatedServiceType",
-      "endpoint": "http://hub.my-personal-server.com"
+      "serviceEndpoint": "http://hub.my-personal-server.com"
     }
   ]`
 
 const replaceDoc = `{
-	"public_keys": [
+	"publicKeys": [
 	{
 		"id": "key-1",
-		"purpose": ["auth"],
+		"purposes": ["authentication"],
 		"type": "EcdsaSecp256k1VerificationKey2019",
-		"jwk": {
+		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
 			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
 			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
 		}
 	}],
-	"service_endpoints": [
+	"services": [
 	{
 		"id": "sds3",
 		"type": "SecureDataStore",
-		"endpoint": "http://hub.my-personal-server.com"
+		"serviceEndpoint": "http://hub.my-personal-server.com"
 	}]
 }`

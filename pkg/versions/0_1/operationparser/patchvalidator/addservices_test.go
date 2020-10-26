@@ -23,7 +23,7 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		delete(p, patch.ServiceEndpointsKey)
 		err = NewAddServicesValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "add-service-endpoints patch is missing key: service_endpoints")
+		require.Contains(t, err.Error(), "add-services patch is missing key: services")
 	})
 	t.Run("error - service is missing id", func(t *testing.T) {
 		p, err := patch.NewAddServiceEndpointsPatch(testAddServiceEndpointsMissingID)
@@ -36,17 +36,17 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 }
 
 const addServiceEndpoints = `{
-  "action": "add-service-endpoints",
-  "service_endpoints": [
+  "action": "add-services",
+  "services": [
     {
       "id": "sds1",
       "type": "SecureDataStore",
-      "endpoint": "http://hub.my-personal-server.com"
+      "serviceEndpoint": "http://hub.my-personal-server.com"
     },
     {
       "id": "sds2",
       "type": "SecureDataStore",
-      "endpoint": "http://some-cloud.com/hub"
+      "serviceEndpoint": "http://some-cloud.com/hub"
     }
   ]
 }`
@@ -55,6 +55,6 @@ const testAddServiceEndpointsMissingID = `[
     {
       "id": "",
       "type": "SecureDataStore",
-      "endpoint": "http://some-cloud.com/hub"
+      "serviceEndpoint": "http://some-cloud.com/hub"
     }
   ]`

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	didSuffix = "did_suffix"
+	didSuffix = "didSuffix"
 )
 
 // Validator is responsible for validating did operations and sidetree rules.
