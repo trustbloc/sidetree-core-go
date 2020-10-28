@@ -56,11 +56,11 @@ const (
 	// PublicKeys captures "publicKeys" key.
 	PublicKeys Key = "publicKeys"
 
-	// ServiceEndpointsKey captures "services" key.
-	ServiceEndpointsKey Key = "services"
+	// ServicesKey captures "services" key.
+	ServicesKey Key = "services"
 
-	// ServiceEndpointIdsKey captures "ids" key.
-	ServiceEndpointIdsKey Key = "ids"
+	// IdsKey captures "ids" key.
+	IdsKey Key = "ids"
 
 	// ActionKey captures "action" key.
 	ActionKey Key = "action"
@@ -68,9 +68,9 @@ const (
 
 var actionConfig = map[Action]Key{
 	AddPublicKeys:          PublicKeys,
-	RemovePublicKeys:       PublicKeys,
-	AddServiceEndpoints:    ServiceEndpointsKey,
-	RemoveServiceEndpoints: ServiceEndpointIdsKey,
+	RemovePublicKeys:       IdsKey,
+	AddServiceEndpoints:    ServicesKey,
+	RemoveServiceEndpoints: IdsKey,
 	JSONPatch:              PatchesKey,
 	Replace:                DocumentKey,
 }
@@ -189,7 +189,7 @@ func NewRemovePublicKeysPatch(publicKeyIds string) (Patch, error) {
 
 	patch := make(Patch)
 	patch[ActionKey] = RemovePublicKeys
-	patch[PublicKeys] = getGenericArray(ids)
+	patch[IdsKey] = getGenericArray(ids)
 
 	return patch, nil
 }
@@ -203,7 +203,7 @@ func NewAddServiceEndpointsPatch(serviceEndpoints string) (Patch, error) {
 
 	patch := make(Patch)
 	patch[ActionKey] = AddServiceEndpoints
-	patch[ServiceEndpointsKey] = services
+	patch[ServicesKey] = services
 
 	return patch, nil
 }
@@ -221,7 +221,7 @@ func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
 
 	patch := make(Patch)
 	patch[ActionKey] = RemoveServiceEndpoints
-	patch[ServiceEndpointIdsKey] = getGenericArray(ids)
+	patch[IdsKey] = getGenericArray(ids)
 
 	return patch, nil
 }
