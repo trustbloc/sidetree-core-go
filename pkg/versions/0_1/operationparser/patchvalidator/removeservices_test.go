@@ -27,7 +27,7 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 	t.Run("error - invalid service ids", func(t *testing.T) {
 		p := make(patch.Patch)
 		p[patch.ActionKey] = patch.RemoveServiceEndpoints
-		p[patch.ServiceEndpointIdsKey] = "invalid"
+		p[patch.IdsKey] = "invalid"
 
 		err := NewRemoveServicesValidator().Validate(p)
 		require.Error(t, err)

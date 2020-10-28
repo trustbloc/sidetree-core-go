@@ -235,13 +235,13 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		value, err := patch.GetValue()
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
-		require.Equal(t, value, patch[PublicKeys])
+		require.Equal(t, value, patch[IdsKey])
 	})
 	t.Run("missing public key ids", func(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "remove-public-keys"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "remove-public-keys patch is missing key: publicKeys")
+		require.Contains(t, err.Error(), "remove-public-keys patch is missing key: ids")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		const ids = `["key1", "key2"]`
@@ -256,7 +256,7 @@ func TestRemovePublicKeysPatch(t *testing.T) {
 		value, err := p.GetValue()
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
-		require.Equal(t, value, p[PublicKeys])
+		require.Equal(t, value, p[IdsKey])
 	})
 	t.Run("empty public key ids", func(t *testing.T) {
 		const ids = `[]`
@@ -287,7 +287,7 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		value, err := patch.GetValue()
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
-		require.Equal(t, value, patch[ServiceEndpointsKey])
+		require.Equal(t, value, patch[ServicesKey])
 	})
 	t.Run("missing service endpoints", func(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "add-services"}`))
@@ -307,7 +307,7 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		value, err := p.GetValue()
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
-		require.Equal(t, value, p[ServiceEndpointsKey])
+		require.Equal(t, value, p[ServicesKey])
 	})
 	t.Run("error - not json", func(t *testing.T) {
 		p, err := NewAddServiceEndpointsPatch("not-json")
@@ -330,7 +330,7 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 		value, err := p.GetValue()
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
-		require.Equal(t, value, p[ServiceEndpointIdsKey])
+		require.Equal(t, value, p[IdsKey])
 	})
 	t.Run("missing public key ids", func(t *testing.T) {
 		patch, err := FromBytes([]byte(`{"action": "remove-services"}`))
@@ -351,7 +351,7 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 		value, err := p.GetValue()
 		require.NoError(t, err)
 		require.NotEmpty(t, value)
-		require.Equal(t, value, p[ServiceEndpointIdsKey])
+		require.Equal(t, value, p[IdsKey])
 	})
 	t.Run("empty service ids", func(t *testing.T) {
 		const ids = `[]`
@@ -450,7 +450,7 @@ const testAddPublicKeys = `[{
 
 const removePublicKeysPatch = `{
   "action": "remove-public-keys",
-  "publicKeys": ["key1", "key2"]
+  "ids": ["key1", "key2"]
 }`
 
 const addServiceEndpoints = `{

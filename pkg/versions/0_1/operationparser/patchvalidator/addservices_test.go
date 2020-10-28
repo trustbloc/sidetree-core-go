@@ -20,7 +20,7 @@ func TestAddServiceEndpointsPatch(t *testing.T) {
 		p, err := patch.FromBytes([]byte(addServiceEndpoints))
 		require.NoError(t, err)
 
-		delete(p, patch.ServiceEndpointsKey)
+		delete(p, patch.ServicesKey)
 		err = NewAddServicesValidator().Validate(p)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "add-services patch is missing key: services")
