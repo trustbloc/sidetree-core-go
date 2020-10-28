@@ -114,12 +114,12 @@ func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperati
 			continue
 		}
 
-		key := fmt.Sprintf(keyFormat, uintToStr(p.HashAlgorithmInMultiHashCode), uintToStr(p.HashAlgorithm))
+		key := fmt.Sprintf(keyFormat, uintToStr(p.MultihashAlgorithm), uintToStr(p.HashAlgorithm))
 
 		if _, ok := previousVersions[key]; !ok {
 			previousVersions[key] = &commitmentParams{
 				HashCode:      p.HashAlgorithm,
-				MultihashCode: p.HashAlgorithmInMultiHashCode,
+				MultihashCode: p.MultihashAlgorithm,
 			}
 		}
 		for _, val := range previousVersions {
@@ -192,7 +192,7 @@ func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm 
 
 	opMap := s.createOperationHashMap(ops, &commitmentParams{
 		HashCode:      p.Protocol().HashAlgorithm,
-		MultihashCode: p.Protocol().HashAlgorithmInMultiHashCode,
+		MultihashCode: p.Protocol().MultihashAlgorithm,
 	})
 
 	// holds applied commitments

@@ -540,7 +540,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.NotNil(t, reveal)
 		require.NotEmpty(t, p)
 
-		value, err := commitment.Calculate(reveal, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
 		require.NoError(t, err)
 
 		c, err := getCommitment(recoveryKey, getProtocol(1))
@@ -556,7 +556,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 
-		value, err := commitment.Calculate(reveal, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
 		require.NoError(t, err)
 
 		c, err := getCommitment(updateKey, getProtocol(1))
@@ -572,7 +572,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 
-		value, err := commitment.Calculate(reveal, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
 		require.NoError(t, err)
 
 		c, err := getCommitment(recoveryKey, getProtocol(1))
@@ -869,7 +869,7 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, getProtocol(blockNumber).HashAlgorithmInMultiHashCode)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, getProtocol(blockNumber).MultihashAlgorithm)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -912,7 +912,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return nil, "", err
 	}
@@ -996,7 +996,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 }
 
 func getRecoverRequest(signer client.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel, blockNum uint64) (*model.RecoverRequest, error) {
-	deltaHash, err := docutil.CalculateModelMultihash(deltaModel, getProtocol(blockNum).HashAlgorithmInMultiHashCode)
+	deltaHash, err := docutil.CalculateModelMultihash(deltaModel, getProtocol(blockNum).MultihashAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -1031,7 +1031,7 @@ func getDefaultRecoverRequest(signer client.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, p.HashAlgorithmInMultiHashCode)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1197,7 +1197,7 @@ func getCommitment(key *ecdsa.PrivateKey, p protocol.Protocol) (string, error) {
 		return "", err
 	}
 
-	return commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+	return commitment.Calculate(pubKey, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
 }
 
 func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p protocol.Protocol) (*model.SuffixDataModel, error) {
@@ -1206,7 +1206,7 @@ func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p prot
 		return nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, p.HashAlgorithmInMultiHashCode)
+	deltaHash, err := docutil.CalculateModelMultihash(delta, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -1264,18 +1264,18 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 
 	//nolint:gomnd
 	latest := protocol.Protocol{
-		GenesisTime:                  100,
-		HashAlgorithmInMultiHashCode: sha2_256,
-		HashAlgorithm:                7, // crypto code for sha512 hash function
-		MaxOperationCount:            2,
-		MaxOperationSize:             mocks.MaxOperationByteSize,
-		CompressionAlgorithm:         "GZIP",
-		MaxChunkFileSize:             mocks.MaxBatchFileSize,
-		MaxMapFileSize:               mocks.MaxBatchFileSize,
-		MaxAnchorFileSize:            mocks.MaxBatchFileSize,
-		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
-		KeyAlgorithms:                []string{"Ed25519", "P-256"},
-		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		GenesisTime:          100,
+		MultihashAlgorithm:   sha2_256,
+		HashAlgorithm:        7, // crypto code for sha512 hash function
+		MaxOperationCount:    2,
+		MaxOperationSize:     mocks.MaxOperationByteSize,
+		CompressionAlgorithm: "GZIP",
+		MaxChunkFileSize:     mocks.MaxBatchFileSize,
+		MaxMapFileSize:       mocks.MaxBatchFileSize,
+		MaxAnchorFileSize:    mocks.MaxBatchFileSize,
+		SignatureAlgorithms:  []string{"EdDSA", "ES256"},
+		KeyAlgorithms:        []string{"Ed25519", "P-256"},
+		Patches:              []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	latestVersion := mocks.GetProtocolVersion(latest)

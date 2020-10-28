@@ -261,7 +261,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 
 	var createOps []*model.Operation
 	for _, op := range af.Operations.Create {
-		suffix, err := docutil.CalculateModelMultihash(op.SuffixData, h.HashAlgorithmInMultiHashCode)
+		suffix, err := docutil.CalculateModelMultihash(op.SuffixData, h.MultihashAlgorithm)
 		if err != nil {
 			return nil, err
 		}

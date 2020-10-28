@@ -95,7 +95,7 @@ func (p *Parser) validateSignedDataForUpdate(signedData *model.UpdateSignedDataM
 		return fmt.Errorf("signed data for update: %s", err.Error())
 	}
 
-	code := uint64(p.HashAlgorithmInMultiHashCode)
+	code := uint64(p.MultihashAlgorithm)
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, code) {
 		return fmt.Errorf("delta hash is not computed with the required hash algorithm: %d", code)
 	}

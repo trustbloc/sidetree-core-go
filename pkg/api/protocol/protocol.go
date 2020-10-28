@@ -27,8 +27,8 @@ type Protocol struct {
 	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to.
 	// (e.g. block number in a blockchain)
 	GenesisTime uint64 `json:"genesisTime"`
-	// HashAlgorithmInMultiHashCode is hash algorithm in multihash code.
-	HashAlgorithmInMultiHashCode uint `json:"multiHashAlgorithm"`
+	// MultihashAlgorithm is multihash algorithm code.
+	MultihashAlgorithm uint `json:"multihashAlgorithm"`
 	// HashAlgorithm is hash algorithm
 	HashAlgorithm uint `json:"hashAlgorithm"`
 	// MaxOperationCount defines maximum number of operations per batch.

@@ -28,10 +28,10 @@ const (
 
 func TestParseRecoverOperation(t *testing.T) {
 	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		SignatureAlgorithms:          []string{"alg"},
-		KeyAlgorithms:                []string{"crv"},
-		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MultihashAlgorithm:  sha2_256,
+		SignatureAlgorithms: []string{"alg"},
+		KeyAlgorithms:       []string{"crv"},
+		Patches:             []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -143,8 +143,8 @@ func TestParseRecoverOperation(t *testing.T) {
 
 func TestValidateSignedDataForRecovery(t *testing.T) {
 	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		KeyAlgorithms:                []string{"crv"},
+		MultihashAlgorithm: sha2_256,
+		KeyAlgorithms:      []string{"crv"},
 	}
 
 	parser := New(p)
@@ -177,8 +177,8 @@ func TestParseSignedData(t *testing.T) {
 	mockSigner := NewMockSigner()
 
 	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		SignatureAlgorithms:          []string{"alg"},
+		MultihashAlgorithm:  sha2_256,
+		SignatureAlgorithms: []string{"alg"},
 	}
 
 	parser := New(p)

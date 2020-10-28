@@ -188,7 +188,7 @@ func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, commitment string, p 
 		RecoveryCommitment: commitment,
 		UpdateCommitment:   commitment, // not evaluated in operation getting commitment/reveal value
 		RecoveryKey:        jwk,
-		MultihashCode:      p.HashAlgorithmInMultiHashCode,
+		MultihashCode:      p.MultihashAlgorithm,
 		Signer:             ecsigner.New(recoveryKey, "ES256", ""),
 	}
 
@@ -200,7 +200,7 @@ func generateCreateRequest(recoveryCommitment, updateCommitment string, p protoc
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment,
-		MultihashCode:      p.HashAlgorithmInMultiHashCode,
+		MultihashCode:      p.MultihashAlgorithm,
 	}
 
 	return client.NewCreateRequest(info)
@@ -237,7 +237,7 @@ func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p pro
 		UpdateCommitment: commitment,
 		UpdateKey:        jwk,
 		Patches:          []patch.Patch{testPatch},
-		MultihashCode:    p.HashAlgorithmInMultiHashCode,
+		MultihashCode:    p.MultihashAlgorithm,
 	}
 
 	return client.NewUpdateRequest(info)
@@ -254,7 +254,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.HashAlgorithmInMultiHashCode, crypto.Hash(p.HashAlgorithm))
+	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
 	if err != nil {
 		return nil, "", err
 	}
