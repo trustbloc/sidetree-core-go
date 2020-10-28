@@ -23,9 +23,9 @@ const sha2_256 = 18
 
 func TestParseDeactivateOperation(t *testing.T) {
 	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		SignatureAlgorithms:          []string{"alg"},
-		KeyAlgorithms:                []string{"crv"},
+		MultihashAlgorithm:  sha2_256,
+		SignatureAlgorithms: []string{"alg"},
+		KeyAlgorithms:       []string{"crv"},
 	}
 
 	parser := New(p)
@@ -105,9 +105,9 @@ func TestParseDeactivateOperation(t *testing.T) {
 	})
 	t.Run("error - key algorithm not supported", func(t *testing.T) {
 		p := protocol.Protocol{
-			HashAlgorithmInMultiHashCode: sha2_256,
-			SignatureAlgorithms:          []string{"alg"},
-			KeyAlgorithms:                []string{"other"},
+			MultihashAlgorithm:  sha2_256,
+			SignatureAlgorithms: []string{"alg"},
+			KeyAlgorithms:       []string{"other"},
 		}
 		parser := New(p)
 

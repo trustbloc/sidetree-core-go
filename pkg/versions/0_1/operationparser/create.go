@@ -44,7 +44,7 @@ func (p *Parser) ParseCreateOperation(request []byte, anchor bool) (*model.Opera
 		}
 	}
 
-	uniqueSuffix, err := docutil.CalculateModelMultihash(schema.SuffixData, p.HashAlgorithmInMultiHashCode)
+	uniqueSuffix, err := docutil.CalculateModelMultihash(schema.SuffixData, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func (p *Parser) ValidateDelta(delta *model.DeltaModel) error {
 		}
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(p.HashAlgorithmInMultiHashCode)) {
-		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", p.HashAlgorithmInMultiHashCode)
+	if !docutil.IsComputedUsingHashAlgorithm(delta.UpdateCommitment, uint64(p.MultihashAlgorithm)) {
+		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
 	}
 
 	return nil
@@ -117,12 +117,12 @@ func (p *Parser) ValidateSuffixData(suffixData *model.SuffixDataModel) error {
 		return errors.New("missing suffix data")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(p.HashAlgorithmInMultiHashCode)) {
-		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", p.HashAlgorithmInMultiHashCode)
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.RecoveryCommitment, uint64(p.MultihashAlgorithm)) {
+		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(p.HashAlgorithmInMultiHashCode)) {
-		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", p.HashAlgorithmInMultiHashCode)
+	if !docutil.IsComputedUsingHashAlgorithm(suffixData.DeltaHash, uint64(p.MultihashAlgorithm)) {
+		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
 	}
 
 	return nil

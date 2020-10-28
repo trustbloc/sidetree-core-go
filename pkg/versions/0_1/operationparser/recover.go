@@ -86,7 +86,7 @@ func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDa
 		return fmt.Errorf("signed data for recovery: %s", err.Error())
 	}
 
-	code := uint64(p.HashAlgorithmInMultiHashCode)
+	code := uint64(p.MultihashAlgorithm)
 	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, code) {
 		return fmt.Errorf("next recovery commitment hash is not computed with the required hash algorithm: %d", code)
 	}

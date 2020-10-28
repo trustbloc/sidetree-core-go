@@ -132,7 +132,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.NotEmpty(t, anchorString)
 
 		invalid := mocks.NewMockProtocolClient().Protocol
-		invalid.HashAlgorithmInMultiHashCode = 55
+		invalid.MultihashAlgorithm = 55
 
 		provider := NewOperationProvider(invalid, operationparser.New(invalid), cas, cp)
 

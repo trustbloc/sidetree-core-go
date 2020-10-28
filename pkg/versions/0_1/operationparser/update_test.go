@@ -23,10 +23,10 @@ import (
 
 func TestParseUpdateOperation(t *testing.T) {
 	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		SignatureAlgorithms:          []string{"alg"},
-		KeyAlgorithms:                []string{"crv"},
-		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MultihashAlgorithm:  sha2_256,
+		SignatureAlgorithms: []string{"alg"},
+		KeyAlgorithms:       []string{"crv"},
+		Patches:             []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -110,9 +110,9 @@ func TestParseUpdateOperation(t *testing.T) {
 
 func TestParseSignedDataForUpdate(t *testing.T) {
 	p := protocol.Protocol{
-		HashAlgorithmInMultiHashCode: sha2_256,
-		SignatureAlgorithms:          []string{"alg"},
-		KeyAlgorithms:                []string{"crv"},
+		MultihashAlgorithm:  sha2_256,
+		SignatureAlgorithms: []string{"alg"},
+		KeyAlgorithms:       []string{"crv"},
 	}
 
 	parser := New(p)
@@ -161,8 +161,8 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 func TestValidateUpdateDelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		p := protocol.Protocol{
-			HashAlgorithmInMultiHashCode: sha2_256,
-			Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+			MultihashAlgorithm: sha2_256,
+			Patches:            []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 		}
 
 		parser := New(p)
