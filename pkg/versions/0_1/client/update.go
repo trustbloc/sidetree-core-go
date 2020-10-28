@@ -9,7 +9,7 @@ package client
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
@@ -67,7 +67,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.UpdateRequest{
-		Operation:  batch.OperationTypeUpdate,
+		Operation:  operation.TypeUpdate,
 		DidSuffix:  info.DidSuffix,
 		Delta:      delta,
 		SignedData: jws,

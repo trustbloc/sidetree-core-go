@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -54,22 +54,22 @@ func New(p protocol.Protocol, parser OperationParser, dc protocol.DocumentCompos
 }
 
 // Apply applies the given anchored operation.
-func (s *Applier) Apply(operation *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	switch operation.Type {
-	case batch.OperationTypeCreate:
-		return s.applyCreateOperation(operation, rm)
-	case batch.OperationTypeUpdate:
-		return s.applyUpdateOperation(operation, rm)
-	case batch.OperationTypeDeactivate:
-		return s.applyDeactivateOperation(operation, rm)
-	case batch.OperationTypeRecover:
-		return s.applyRecoverOperation(operation, rm)
+func (s *Applier) Apply(op *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+	switch op.Type {
+	case operation.TypeCreate:
+		return s.applyCreateOperation(op, rm)
+	case operation.TypeUpdate:
+		return s.applyUpdateOperation(op, rm)
+	case operation.TypeDeactivate:
+		return s.applyDeactivateOperation(op, rm)
+	case operation.TypeRecover:
+		return s.applyRecoverOperation(op, rm)
 	default:
 		return nil, fmt.Errorf("operation type not supported for process operation")
 	}
 }
 
-func (s *Applier) applyCreateOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	logger.Debugf("Applying create operation: %+v", anchoredOp)
 
 	if rm.Doc != nil {
@@ -119,7 +119,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *batch.AnchoredOperation, rm *
 	return result, nil
 }
 
-func (s *Applier) applyUpdateOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
+func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
 	logger.Debugf("Applying update operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
@@ -168,7 +168,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *batch.AnchoredOperation, rm *
 	}, nil
 }
 
-func (s *Applier) applyDeactivateOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	logger.Debugf("[%s] Applying deactivate operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
@@ -206,7 +206,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *batch.AnchoredOperation, 
 	}, nil
 }
 
-func (s *Applier) applyRecoverOperation(anchoredOp *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
+func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
 	logger.Debugf("Applying recover operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {

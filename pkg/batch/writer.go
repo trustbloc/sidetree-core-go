@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
@@ -43,7 +43,7 @@ const (
 type Option func(opts *Options) error
 
 type batchCutter interface {
-	Add(operation *batch.OperationInfo, protocolGenesisTime uint64) (uint, error)
+	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error)
 	Cut(force bool) (cutter.Result, error)
 }
 
@@ -142,12 +142,12 @@ func (r *Writer) Stopped() bool {
 }
 
 // Add the given operation to a queue of operations to be batched and anchored on blockchain.
-func (r *Writer) Add(operation *batch.OperationInfo, protocolGenesisTime uint64) error {
+func (r *Writer) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) error {
 	if r.Stopped() {
 		return errors.New("writer is stopped")
 	}
 
-	_, err := r.batchCutter.Add(operation, protocolGenesisTime)
+	_, err := r.batchCutter.Add(op, protocolGenesisTime)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (r *Writer) Add(operation *batch.OperationInfo, protocolGenesisTime uint64)
 	select {
 	case r.sendChan <- process{force: false}:
 		// Send a notification that an operation was added to the queue
-		logger.Infof("[%s] operation added to the queue", operation.UniqueSuffix)
+		logger.Infof("[%s] operation added to the queue", op.UniqueSuffix)
 
 		return nil
 	case <-r.exitChan:
@@ -275,7 +275,7 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	return len(result.Operations), pending, nil
 }
 
-func (r *Writer) process(ops []*batch.OperationInfo, protocolGenesisTime uint64) error {
+func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime uint64) error {
 	if len(ops) == 0 {
 		return errors.New("create batch called with no pending operations, should not happen")
 	}

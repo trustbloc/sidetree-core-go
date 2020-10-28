@@ -18,7 +18,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
@@ -115,7 +115,7 @@ func TestApplier_Apply(t *testing.T) {
 	t.Run("invalid operation type error", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		doc, err := applier.Apply(&batch.AnchoredOperation{Type: "invalid"}, &protocol.ResolutionModel{Doc: make(document.Document)})
+		doc, err := applier.Apply(&operation.AnchoredOperation{Type: "invalid"}, &protocol.ResolutionModel{Doc: make(document.Document)})
 		require.Error(t, err)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
 		require.Nil(t, doc)
@@ -697,7 +697,7 @@ func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, opera
 	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, operationNumber)
 }
 
-func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*operation.AnchoredOperation, *ecdsa.PrivateKey, error) {
 	op, nextUpdateKey, err := getUpdateOperation(privateKey, uniqueSuffix, operationNumber)
 	if err != nil {
 		return nil, nil, err
@@ -753,16 +753,16 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
-	operation := &model.Operation{
+	op := &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
 		Delta:        delta,
-		Type:         batch.OperationTypeUpdate,
+		Type:         operation.TypeUpdate,
 		SignedData:   jws,
 	}
 
-	return operation, nextUpdateKey, nil
+	return op, nextUpdateKey, nil
 }
 
 func generateKeyAndCommitment() (*ecdsa.PrivateKey, string, error) {
@@ -790,7 +790,7 @@ func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (
 	return getDeactivateOperationWithSigner(signer, privateKey, uniqueSuffix)
 }
 
-func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.AnchoredOperation, error) {
+func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*operation.AnchoredOperation, error) {
 	op, err := getDeactivateOperation(privateKey, uniqueSuffix)
 	if err != nil {
 		return nil, err
@@ -819,7 +819,7 @@ func getDeactivateOperationWithSigner(singer client.Signer, privateKey *ecdsa.Pr
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
-		Type:         batch.OperationTypeDeactivate,
+		Type:         operation.TypeDeactivate,
 		SignedData:   jws,
 	}, nil
 }
@@ -830,7 +830,7 @@ func getRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix 
 	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix)
 }
 
-func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, operationNumber uint) (*operation.AnchoredOperation, *ecdsa.PrivateKey, error) {
 	op, nextRecoveryKey, err := getRecoverOperation(recoveryKey, updateKey, uniqueSuffix)
 	if err != nil {
 		return nil, nil, err
@@ -853,7 +853,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 	return &model.Operation{
 		Namespace:       mocks.DefaultNS,
 		UniqueSuffix:    uniqueSuffix,
-		Type:            batch.OperationTypeRecover,
+		Type:            operation.TypeRecover,
 		OperationBuffer: operationBuffer,
 		Delta:           recoverRequest.Delta,
 		SignedData:      recoverRequest.SignedData,
@@ -874,7 +874,7 @@ func getRecoverRequest(signer client.Signer, delta *model.DeltaModel, signedData
 	}
 
 	return &model.RecoverRequest{
-		Operation:  batch.OperationTypeRecover,
+		Operation:  operation.TypeRecover,
 		DidSuffix:  "suffix",
 		Delta:      delta,
 		SignedData: jws,
@@ -973,7 +973,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		Namespace:       mocks.DefaultNS,
 		ID:              "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:    uniqueSuffix,
-		Type:            batch.OperationTypeCreate,
+		Type:            operation.TypeCreate,
 		OperationBuffer: operationBuffer,
 		Delta:           delta,
 		SuffixData:      suffixData,
@@ -984,7 +984,7 @@ func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.Operat
 	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc)
 }
 
-func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.AnchoredOperation, error) {
+func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*operation.AnchoredOperation, error) {
 	op, err := getCreateOperation(recoveryKey, updateKey)
 	if err != nil {
 		return nil, err
@@ -993,7 +993,7 @@ func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batc
 	return getAnchoredOperation(op), nil
 }
 
-func getAnchoredOperation(op *model.Operation) *batch.AnchoredOperation {
+func getAnchoredOperation(op *model.Operation) *operation.AnchoredOperation {
 	anchoredOp, err := model.GetAnchoredOperation(op)
 	if err != nil {
 		panic(err)
@@ -1002,7 +1002,7 @@ func getAnchoredOperation(op *model.Operation) *batch.AnchoredOperation {
 	return anchoredOp
 }
 
-func getAnchoredOperationWithBlockNum(op *model.Operation, blockNum uint64) *batch.AnchoredOperation {
+func getAnchoredOperationWithBlockNum(op *model.Operation, blockNum uint64) *operation.AnchoredOperation {
 	anchored := getAnchoredOperation(op)
 	anchored.TransactionTime = blockNum
 
@@ -1026,7 +1026,7 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey) (*model.CreateRe
 	}
 
 	return &model.CreateRequest{
-		Operation:  batch.OperationTypeCreate,
+		Operation:  operation.TypeCreate,
 		Delta:      delta,
 		SuffixData: suffixData,
 	}, nil

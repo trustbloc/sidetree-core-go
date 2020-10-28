@@ -9,7 +9,7 @@ package client
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
@@ -82,7 +82,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.RecoverRequest{
-		Operation:  batch.OperationTypeRecover,
+		Operation:  operation.TypeRecover,
 		DidSuffix:  info.DidSuffix,
 		Delta:      delta,
 		SignedData: jws,

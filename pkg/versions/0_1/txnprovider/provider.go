@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -57,7 +57,7 @@ func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS,
 }
 
 // GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files.
-func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
+func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	// ParseAnchorData anchor address and number of operations from anchor string
 	anchorData, err := ParseAnchorData(txn.AnchorString)
 	if err != nil {
@@ -102,8 +102,8 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.Anc
 	return txnOps, nil
 }
 
-func createAnchoredOperations(ops []*model.Operation) ([]*batch.AnchoredOperation, error) {
-	var anchoredOps []*batch.AnchoredOperation
+func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOperation, error) {
+	var anchoredOps []*operation.AnchoredOperation
 	for _, op := range ops {
 		anchoredOp, err := model.GetAnchoredOperation(op)
 		if err != nil {
@@ -115,7 +115,7 @@ func createAnchoredOperations(ops []*model.Operation) ([]*batch.AnchoredOperatio
 	return anchoredOps, nil
 }
 
-func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
+func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	anchorOps, err := h.parseAnchorOperations(af, txn)
 	if err != nil {
 		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
@@ -272,7 +272,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 		}
 
 		create := &model.Operation{
-			Type:         batch.OperationTypeCreate,
+			Type:         operation.TypeCreate,
 			UniqueSuffix: suffix,
 			SuffixData:   op.SuffixData,
 		}
@@ -284,7 +284,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	var recoverOps []*model.Operation
 	for _, op := range af.Operations.Recover {
 		recover := &model.Operation{
-			Type:         batch.OperationTypeRecover,
+			Type:         operation.TypeRecover,
 			UniqueSuffix: op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
@@ -296,7 +296,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	var deactivateOps []*model.Operation
 	for _, op := range af.Operations.Deactivate {
 		deactivate := &model.Operation{
-			Type:         batch.OperationTypeDeactivate,
+			Type:         operation.TypeDeactivate,
 			UniqueSuffix: op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
@@ -325,7 +325,7 @@ func parseMapOperations(mf *models.MapFile) *MapOperations {
 	var updateOps []*model.Operation
 	for _, op := range mf.Operations.Update {
 		update := &model.Operation{
-			Type:         batch.OperationTypeUpdate,
+			Type:         operation.TypeUpdate,
 			UniqueSuffix: op.DidSuffix,
 			SignedData:   op.SignedData,
 		}
@@ -337,7 +337,7 @@ func parseMapOperations(mf *models.MapFile) *MapOperations {
 	return &MapOperations{Update: updateOps, Suffixes: suffixes}
 }
 
-func getOperations(filter batch.OperationType, ops []*model.Operation) []*model.Operation {
+func getOperations(filter operation.Type, ops []*model.Operation) []*model.Operation {
 	var result []*model.Operation
 	for _, op := range ops {
 		if op.Type == filter {

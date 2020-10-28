@@ -19,7 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
@@ -377,7 +377,7 @@ func TestProcessOperation(t *testing.T) {
 		store, _ := getDefaultStore(recoveryKey, updateKey)
 
 		p := New("test", store, pc)
-		doc, err := p.applyOperation(&batch.AnchoredOperation{Type: "invalid"}, &protocol.ResolutionModel{Doc: make(document.Document)})
+		doc, err := p.applyOperation(&operation.AnchoredOperation{Type: "invalid"}, &protocol.ResolutionModel{Doc: make(document.Document)})
 		require.Error(t, err)
 		require.Equal(t, "operation type not supported for process operation", err.Error())
 		require.Nil(t, doc)
@@ -778,7 +778,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		bytes, err := canonicalizer.MarshalCanonical(request)
 		require.NoError(t, err)
 
-		value, err := p.getCommitment(&batch.AnchoredOperation{OperationBuffer: bytes})
+		value, err := p.getCommitment(&operation.AnchoredOperation{OperationBuffer: bytes})
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "operation type [other] not supported")
@@ -805,17 +805,17 @@ func TestGetNextOperationCommitment(t *testing.T) {
 }
 
 func TestOpsWithTxnGreaterThan(t *testing.T) {
-	op1 := &batch.AnchoredOperation{
+	op1 := &operation.AnchoredOperation{
 		TransactionTime:   1,
 		TransactionNumber: 1,
 	}
 
-	op2 := &batch.AnchoredOperation{
+	op2 := &operation.AnchoredOperation{
 		TransactionTime:   1,
 		TransactionNumber: 2,
 	}
 
-	ops := []*batch.AnchoredOperation{op1, op2}
+	ops := []*operation.AnchoredOperation{op1, op2}
 
 	txns := getOpsWithTxnGreaterThan(ops, 0, 0)
 	require.Equal(t, 2, len(txns))
@@ -833,7 +833,7 @@ func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, block
 	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, blockNum)
 }
 
-func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+func getAnchoredUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*operation.AnchoredOperation, *ecdsa.PrivateKey, error) {
 	op, nextUpdateKey, err := getUpdateOperation(privateKey, uniqueSuffix, blockNumber)
 	if err != nil {
 		return nil, nil, err
@@ -889,16 +889,16 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
-	operation := &model.Operation{
+	op := &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
 		Delta:        delta,
-		Type:         batch.OperationTypeUpdate,
+		Type:         operation.TypeUpdate,
 		SignedData:   jws,
 	}
 
-	return operation, nextUpdateKey, nil
+	return op, nextUpdateKey, nil
 }
 
 func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, error) {
@@ -926,7 +926,7 @@ func getDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (
 	return getDeactivateOperationWithSigner(signer, privateKey, uniqueSuffix)
 }
 
-func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*batch.AnchoredOperation, error) {
+func getAnchoredDeactivateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string) (*operation.AnchoredOperation, error) {
 	op, err := getDeactivateOperation(privateKey, uniqueSuffix)
 	if err != nil {
 		return nil, err
@@ -955,7 +955,7 @@ func getDeactivateOperationWithSigner(singer client.Signer, privateKey *ecdsa.Pr
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
-		Type:         batch.OperationTypeDeactivate,
+		Type:         operation.TypeDeactivate,
 		SignedData:   jws,
 	}, nil
 }
@@ -970,7 +970,7 @@ func getRecoverOperationWithBlockNum(recoveryKey, updateKey *ecdsa.PrivateKey, u
 	return getRecoverOperationWithSigner(signer, recoveryKey, updateKey, uniqueSuffix, blockNum)
 }
 
-func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*batch.AnchoredOperation, *ecdsa.PrivateKey, error) {
+func getAnchoredRecoverOperation(recoveryKey, updateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNumber uint64) (*operation.AnchoredOperation, *ecdsa.PrivateKey, error) {
 	op, nextRecoveryKey, err := getRecoverOperationWithBlockNum(recoveryKey, updateKey, uniqueSuffix, blockNumber)
 	if err != nil {
 		return nil, nil, err
@@ -988,7 +988,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 	return &model.Operation{
 		Namespace:       mocks.DefaultNS,
 		UniqueSuffix:    uniqueSuffix,
-		Type:            batch.OperationTypeRecover,
+		Type:            operation.TypeRecover,
 		OperationBuffer: []byte(recoverRequest.Operation),
 		Delta:           recoverRequest.Delta,
 		SignedData:      recoverRequest.SignedData,
@@ -1009,7 +1009,7 @@ func getRecoverRequest(signer client.Signer, deltaModel *model.DeltaModel, signe
 	}
 
 	return &model.RecoverRequest{
-		Operation:  batch.OperationTypeRecover,
+		Operation:  operation.TypeRecover,
 		DidSuffix:  "suffix",
 		Delta:      deltaModel,
 		SignedData: jws,
@@ -1114,7 +1114,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		Namespace:       mocks.DefaultNS,
 		ID:              "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix:    uniqueSuffix,
-		Type:            batch.OperationTypeCreate,
+		Type:            operation.TypeCreate,
 		OperationBuffer: operationBuffer,
 		Delta:           delta,
 		SuffixData:      suffixData,
@@ -1125,7 +1125,7 @@ func getCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey, blockNum uint6
 	return getCreateOperationWithDoc(recoveryKey, updateKey, validDoc, blockNum)
 }
 
-func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batch.AnchoredOperation, error) {
+func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*operation.AnchoredOperation, error) {
 	op, err := getCreateOperation(recoveryKey, updateKey, defaultBlockNumber)
 	if err != nil {
 		return nil, err
@@ -1134,7 +1134,7 @@ func getAnchoredCreateOperation(recoveryKey, updateKey *ecdsa.PrivateKey) (*batc
 	return getAnchoredOperation(op, defaultBlockNumber), nil
 }
 
-func getAnchoredOperation(op *model.Operation, blockNum uint64) *batch.AnchoredOperation {
+func getAnchoredOperation(op *model.Operation, blockNum uint64) *operation.AnchoredOperation {
 	anchoredOp, err := model.GetAnchoredOperation(op)
 	if err != nil {
 		panic(err)
@@ -1163,7 +1163,7 @@ func getCreateRequest(recoveryKey, updateKey *ecdsa.PrivateKey, p protocol.Proto
 	}
 
 	return &model.CreateRequest{
-		Operation:  batch.OperationTypeCreate,
+		Operation:  operation.TypeCreate,
 		Delta:      delta,
 		SuffixData: suffixData,
 	}, nil

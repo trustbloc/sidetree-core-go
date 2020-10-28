@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -40,7 +40,7 @@ func (p *Parser) ParseRecoverOperation(request []byte, anchor bool) (*model.Oper
 
 	return &model.Operation{
 		OperationBuffer: request,
-		Type:            batch.OperationTypeRecover,
+		Type:            operation.TypeRecover,
 		UniqueSuffix:    schema.DidSuffix,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,

@@ -9,22 +9,22 @@ package model
 import (
 	"fmt"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 )
 
 // GetAnchoredOperation is utility method for converting operation model into anchored operation.
-func GetAnchoredOperation(op *Operation) (*batch.AnchoredOperation, error) {
+func GetAnchoredOperation(op *Operation) (*operation.AnchoredOperation, error) {
 	var request interface{}
 	switch op.Type {
-	case batch.OperationTypeCreate:
+	case operation.TypeCreate:
 		request = CreateRequest{
 			Operation:  op.Type,
 			SuffixData: op.SuffixData,
 			Delta:      op.Delta,
 		}
 
-	case batch.OperationTypeUpdate:
+	case operation.TypeUpdate:
 		request = UpdateRequest{
 			Operation:  op.Type,
 			DidSuffix:  op.UniqueSuffix,
@@ -32,14 +32,14 @@ func GetAnchoredOperation(op *Operation) (*batch.AnchoredOperation, error) {
 			SignedData: op.SignedData,
 		}
 
-	case batch.OperationTypeDeactivate:
+	case operation.TypeDeactivate:
 		request = DeactivateRequest{
 			Operation:  op.Type,
 			DidSuffix:  op.UniqueSuffix,
 			SignedData: op.SignedData,
 		}
 
-	case batch.OperationTypeRecover:
+	case operation.TypeRecover:
 		request = RecoverRequest{
 			Operation:  op.Type,
 			DidSuffix:  op.UniqueSuffix,
@@ -56,7 +56,7 @@ func GetAnchoredOperation(op *Operation) (*batch.AnchoredOperation, error) {
 		return nil, fmt.Errorf("failed to canonicalize anchored operation[%v]: %s", op, err.Error())
 	}
 
-	return &batch.AnchoredOperation{
+	return &operation.AnchoredOperation{
 		Type:            op.Type,
 		UniqueSuffix:    op.UniqueSuffix,
 		OperationBuffer: operationBuffer,

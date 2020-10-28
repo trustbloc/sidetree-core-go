@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 import (
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
@@ -16,7 +16,7 @@ import (
 type CreateRequest struct {
 	// operation
 	// Required: true
-	Operation batch.OperationType `json:"type,omitempty"`
+	Operation operation.Type `json:"type,omitempty"`
 
 	// Suffix data object
 	// Required: true
@@ -50,7 +50,7 @@ type DeltaModel struct {
 // UpdateRequest is the struct for update request.
 type UpdateRequest struct {
 	// Operation defines operation type
-	Operation batch.OperationType `json:"type"`
+	Operation operation.Type `json:"type"`
 
 	// DidSuffix is the suffix of the DID
 	DidSuffix string `json:"didSuffix"`
@@ -66,7 +66,7 @@ type UpdateRequest struct {
 type DeactivateRequest struct {
 	// Operation
 	// Required: true
-	Operation batch.OperationType `json:"type"`
+	Operation operation.Type `json:"type"`
 
 	// DidSuffix of the DID
 	// Required: true
@@ -113,7 +113,7 @@ type DeactivateSignedDataModel struct {
 type RecoverRequest struct {
 	// operation
 	// Required: true
-	Operation batch.OperationType `json:"type"`
+	Operation operation.Type `json:"type"`
 
 	// DidSuffix is the suffix of the DID
 	// Required: true

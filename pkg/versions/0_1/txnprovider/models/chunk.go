@@ -9,7 +9,7 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -24,9 +24,9 @@ type ChunkFile struct {
 func CreateChunkFile(ops []*model.Operation) *ChunkFile {
 	var deltas []*model.DeltaModel
 
-	deltas = append(deltas, getDeltas(batch.OperationTypeCreate, ops)...)
-	deltas = append(deltas, getDeltas(batch.OperationTypeRecover, ops)...)
-	deltas = append(deltas, getDeltas(batch.OperationTypeUpdate, ops)...)
+	deltas = append(deltas, getDeltas(operation.TypeCreate, ops)...)
+	deltas = append(deltas, getDeltas(operation.TypeRecover, ops)...)
+	deltas = append(deltas, getDeltas(operation.TypeUpdate, ops)...)
 
 	return &ChunkFile{Deltas: deltas}
 }
@@ -41,7 +41,7 @@ func ParseChunkFile(content []byte) (*ChunkFile, error) {
 	return cf, nil
 }
 
-func getDeltas(filter batch.OperationType, ops []*model.Operation) []*model.DeltaModel {
+func getDeltas(filter operation.Type, ops []*model.Operation) []*model.DeltaModel {
 	var deltas []*model.DeltaModel
 	for _, op := range ops {
 		if op.Type == filter {

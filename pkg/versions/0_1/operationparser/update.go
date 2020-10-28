@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
@@ -36,7 +36,7 @@ func (p *Parser) ParseUpdateOperation(request []byte, anchor bool) (*model.Opera
 	}
 
 	return &model.Operation{
-		Type:            batch.OperationTypeUpdate,
+		Type:            operation.TypeUpdate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
 		Delta:           schema.Delta,

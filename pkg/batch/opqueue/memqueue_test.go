@@ -11,13 +11,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 )
 
 var (
-	op1 = &batch.OperationInfo{Namespace: "ns", UniqueSuffix: "op1", Data: []byte("op1")}
-	op2 = &batch.OperationInfo{Namespace: "ns", UniqueSuffix: "op2", Data: []byte("op2")}
-	op3 = &batch.OperationInfo{Namespace: "ns", UniqueSuffix: "op3", Data: []byte("op3")}
+	op1 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op1", OperationBuffer: []byte("op1")}
+	op2 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op2", OperationBuffer: []byte("op2")}
+	op3 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op3", OperationBuffer: []byte("op3")}
 )
 
 func TestMemQueue(t *testing.T) {
@@ -46,14 +46,14 @@ func TestMemQueue(t *testing.T) {
 	ops, err = q.Peek(1)
 	require.NoError(t, err)
 	require.Len(t, ops, 1)
-	require.Equal(t, *op1, ops[0].OperationInfo)
+	require.Equal(t, *op1, ops[0].QueuedOperation)
 
 	ops, err = q.Peek(4)
 	require.NoError(t, err)
 	require.Len(t, ops, 3)
-	require.Equal(t, *op1, ops[0].OperationInfo)
-	require.Equal(t, *op2, ops[1].OperationInfo)
-	require.Equal(t, *op3, ops[2].OperationInfo)
+	require.Equal(t, *op1, ops[0].QueuedOperation)
+	require.Equal(t, *op2, ops[1].QueuedOperation)
+	require.Equal(t, *op3, ops[2].QueuedOperation)
 
 	n, l, err := q.Remove(1)
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestMemQueue(t *testing.T) {
 	ops, err = q.Peek(1)
 	require.NoError(t, err)
 	require.Len(t, ops, 1)
-	require.Equal(t, *op2, ops[0].OperationInfo)
+	require.Equal(t, *op2, ops[0].QueuedOperation)
 
 	n, l, err = q.Remove(5)
 	require.NoError(t, err)

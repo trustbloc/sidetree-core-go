@@ -9,7 +9,7 @@ package client
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -56,7 +56,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.DeactivateRequest{
-		Operation:  batch.OperationTypeDeactivate,
+		Operation:  operation.TypeDeactivate,
 		DidSuffix:  info.DidSuffix,
 		SignedData: jws,
 	}

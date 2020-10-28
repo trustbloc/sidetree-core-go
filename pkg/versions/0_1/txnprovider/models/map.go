@@ -9,7 +9,7 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -30,7 +30,7 @@ func CreateMapFile(uri []string, ops []*model.Operation) *MapFile {
 	return &MapFile{
 		Chunks: getChunks(uri),
 		Operations: Operations{
-			Update: getSignedOperations(batch.OperationTypeUpdate, ops),
+			Update: getSignedOperations(operation.TypeUpdate, ops),
 		},
 	}
 }
@@ -56,7 +56,7 @@ func getChunks(uris []string) []Chunk {
 	return chunks
 }
 
-func getSignedOperations(filter batch.OperationType, ops []*model.Operation) []SignedOperation {
+func getSignedOperations(filter operation.Type, ops []*model.Operation) []SignedOperation {
 	var result []SignedOperation
 	for _, op := range ops {
 		if op.Type == filter {

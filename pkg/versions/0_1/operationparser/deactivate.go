@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -32,7 +32,7 @@ func (p *Parser) ParseDeactivateOperation(request []byte, anchor bool) (*model.O
 	}
 
 	return &model.Operation{
-		Type:            batch.OperationTypeDeactivate,
+		Type:            operation.TypeDeactivate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
 		SignedData:      schema.SignedData,

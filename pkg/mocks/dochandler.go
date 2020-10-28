@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -70,7 +70,7 @@ func (m *MockDocumentHandler) Protocol() protocol.Client {
 // Operation is used for parsing operation request.
 type Operation struct {
 	// Operation defines operation type
-	Operation batch.OperationType `json:"type,omitempty"`
+	Operation operation.Type `json:"type,omitempty"`
 
 	// SuffixData object
 	SuffixData *model.SuffixDataModel `json:"suffixData,omitempty"`
@@ -88,28 +88,28 @@ func (m *MockDocumentHandler) ProcessOperation(operationBuffer []byte, _ uint64)
 		return nil, m.err
 	}
 
-	var operation Operation
-	err := json.Unmarshal(operationBuffer, &operation)
+	var op Operation
+	err := json.Unmarshal(operationBuffer, &op)
 	if err != nil {
 		return nil, fmt.Errorf("bad request: %s", err.Error())
 	}
 
 	var suffix string
-	switch operation.Operation {
-	case batch.OperationTypeCreate:
-		suffix, err = docutil.CalculateModelMultihash(operation.SuffixData, sha2_256)
+	switch op.Operation {
+	case operation.TypeCreate:
+		suffix, err = docutil.CalculateModelMultihash(op.SuffixData, sha2_256)
 		if err != nil {
 			return nil, err
 		}
-	case batch.OperationTypeUpdate, batch.OperationTypeDeactivate, batch.OperationTypeRecover:
-		suffix = operation.DidSuffix
+	case operation.TypeUpdate, operation.TypeDeactivate, operation.TypeRecover:
+		suffix = op.DidSuffix
 	default:
-		return nil, fmt.Errorf("bad request: operation type [%s] not supported", operation.Operation)
+		return nil, fmt.Errorf("bad request: operation type [%s] not supported", op.Operation)
 	}
 
 	id := m.namespace + docutil.NamespaceDelimiter + suffix
 
-	if operation.Operation == batch.OperationTypeDeactivate {
+	if op.Operation == operation.TypeDeactivate {
 		m.store[id] = nil
 
 		return nil, nil
@@ -120,7 +120,7 @@ func (m *MockDocumentHandler) ProcessOperation(operationBuffer []byte, _ uint64)
 		doc = make(document.Document)
 	}
 
-	doc, err = doccomposer.New().ApplyPatches(doc, operation.Delta.Patches)
+	doc, err = doccomposer.New().ApplyPatches(doc, op.Delta.Patches)
 	if err != nil {
 		return nil, err
 	}

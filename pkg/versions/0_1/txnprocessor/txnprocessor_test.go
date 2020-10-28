@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
 
@@ -41,13 +41,13 @@ func TestTxnProcessor_Process(t *testing.T) {
 func TestProcessTxnOperations(t *testing.T) {
 	t.Run("test error from operationStore Put", func(t *testing.T) {
 		providers := &Providers{
-			OpStore: &mockOperationStore{putFunc: func(ops []*batch.AnchoredOperation) error {
+			OpStore: &mockOperationStore{putFunc: func(ops []*operation.AnchoredOperation) error {
 				return fmt.Errorf("put error")
 			}},
 		}
 
 		p := New(providers)
-		err := p.processTxnOperations([]*batch.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
+		err := p.processTxnOperations([]*operation.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to store operation from anchor string")
 	})
@@ -87,7 +87,7 @@ func TestProcessTxnOperations(t *testing.T) {
 
 func TestUpdateOperation(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
-		updatedOps := updateAnchoredOperation(&batch.AnchoredOperation{UniqueSuffix: "abc"},
+		updatedOps := updateAnchoredOperation(&operation.AnchoredOperation{UniqueSuffix: "abc"},
 			txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.Equal(t, uint64(20), updatedOps.TransactionTime)
 		require.Equal(t, uint64(2), updatedOps.TransactionNumber)
@@ -95,11 +95,11 @@ func TestUpdateOperation(t *testing.T) {
 }
 
 type mockOperationStore struct {
-	putFunc func(ops []*batch.AnchoredOperation) error
-	getFunc func(suffix string) ([]*batch.AnchoredOperation, error)
+	putFunc func(ops []*operation.AnchoredOperation) error
+	getFunc func(suffix string) ([]*operation.AnchoredOperation, error)
 }
 
-func (m *mockOperationStore) Put(ops []*batch.AnchoredOperation) error {
+func (m *mockOperationStore) Put(ops []*operation.AnchoredOperation) error {
 	if m.putFunc != nil {
 		return m.putFunc(ops)
 	}
@@ -107,7 +107,7 @@ func (m *mockOperationStore) Put(ops []*batch.AnchoredOperation) error {
 	return nil
 }
 
-func (m *mockOperationStore) Get(suffix string) ([]*batch.AnchoredOperation, error) {
+func (m *mockOperationStore) Get(suffix string) ([]*operation.AnchoredOperation, error) {
 	if m.getFunc != nil {
 		return m.getFunc(suffix)
 	}
@@ -119,14 +119,14 @@ type mockTxnOpsProvider struct {
 	err error
 }
 
-func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
+func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 
-	op := &batch.AnchoredOperation{
+	op := &operation.AnchoredOperation{
 		UniqueSuffix: "abc",
 	}
 
-	return []*batch.AnchoredOperation{op}, nil
+	return []*operation.AnchoredOperation{op}, nil
 }

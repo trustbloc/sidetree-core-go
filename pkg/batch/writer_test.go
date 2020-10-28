@@ -16,8 +16,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
@@ -195,14 +195,14 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	writer.Start()
 	defer writer.Stop()
 
-	operation, err := generateOperation(1)
+	op, err := generateOperation(1)
 	require.NoError(t, err)
 
-	err = writer.Add(operation, 0)
+	err = writer.Add(op, 0)
 	require.Nil(t, err)
 
 	// add same operation again
-	err = writer.Add(operation, 0)
+	err = writer.Add(op, 0)
 	require.Nil(t, err)
 
 	time.Sleep(time.Second)
@@ -326,7 +326,7 @@ func TestAddError(t *testing.T) {
 
 	writer, err := New(namespace, ctx)
 	require.NoError(t, err)
-	require.EqualError(t, writer.Add(&batch.OperationInfo{}, 0), errExpected.Error())
+	require.EqualError(t, writer.Add(&operation.QueuedOperation{}, 0), errExpected.Error())
 }
 
 func TestStartWithExistingItems(t *testing.T) {
@@ -361,7 +361,7 @@ func TestProcessError(t *testing.T) {
 	t.Run("process operation error", func(t *testing.T) {
 		q := &mocks.OperationQueue{}
 
-		invalidQueue := []*batch.OperationInfoAtTime{{OperationInfo: batch.OperationInfo{Data: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}}
+		invalidQueue := []*operation.QueuedOperationAtTime{{QueuedOperation: operation.QueuedOperation{OperationBuffer: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}}
 
 		q.LenReturns(1)
 		q.PeekReturns(invalidQueue, nil)
@@ -436,7 +436,7 @@ func withError() Option {
 	}
 }
 
-func generateOperations(numOfOperations int) (ops []*batch.OperationInfo) {
+func generateOperations(numOfOperations int) (ops []*operation.QueuedOperation) {
 	for j := 1; j <= numOfOperations; j++ {
 		op, err := generateOperation(j)
 		if err != nil {
@@ -449,15 +449,15 @@ func generateOperations(numOfOperations int) (ops []*batch.OperationInfo) {
 	return
 }
 
-func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (ops []*batch.OperationInfoAtTime) {
+func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (ops []*operation.QueuedOperationAtTime) {
 	for j := 1; j <= numOfOperations; j++ {
 		op, err := generateOperation(j)
 		if err != nil {
 			panic(err)
 		}
 
-		ops = append(ops, &batch.OperationInfoAtTime{
-			OperationInfo:       *op,
+		ops = append(ops, &operation.QueuedOperationAtTime{
+			QueuedOperation:     *op,
 			ProtocolGenesisTime: protocolGenesisTime,
 		})
 	}
@@ -465,7 +465,7 @@ func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (
 	return
 }
 
-func generateOperation(num int) (*batch.OperationInfo, error) {
+func generateOperation(num int) (*operation.QueuedOperation, error) {
 	jwk := &jws.JWK{
 		Crv: "crv",
 		Kty: "kty",
@@ -490,10 +490,10 @@ func generateOperation(num int) (*batch.OperationInfo, error) {
 		return nil, err
 	}
 
-	op := &batch.OperationInfo{
-		Namespace:    "did:sidetree",
-		UniqueSuffix: string(num),
-		Data:         request,
+	op := &operation.QueuedOperation{
+		Namespace:       "did:sidetree",
+		UniqueSuffix:    string(num),
+		OperationBuffer: request,
 	}
 
 	return op, nil

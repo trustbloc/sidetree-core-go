@@ -9,22 +9,22 @@ package opqueue
 import (
 	"sync"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 )
 
 // MemQueue implements an in-memory operation queue.
 type MemQueue struct {
-	items []*batch.OperationInfoAtTime
+	items []*operation.QueuedOperationAtTime
 	mutex sync.RWMutex
 }
 
 // Add adds the given data to the tail of the queue and returns the new length of the queue.
-func (q *MemQueue) Add(data *batch.OperationInfo, protocolGenesisTime uint64) (uint, error) {
+func (q *MemQueue) Add(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
-	q.items = append(q.items, &batch.OperationInfoAtTime{
-		OperationInfo:       *data,
+	q.items = append(q.items, &operation.QueuedOperationAtTime{
+		QueuedOperation:     *data,
 		ProtocolGenesisTime: protocolGenesisTime,
 	})
 
@@ -32,7 +32,7 @@ func (q *MemQueue) Add(data *batch.OperationInfo, protocolGenesisTime uint64) (u
 }
 
 // Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
-func (q *MemQueue) Peek(num uint) ([]*batch.OperationInfoAtTime, error) {
+func (q *MemQueue) Peek(num uint) ([]*operation.QueuedOperationAtTime, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 

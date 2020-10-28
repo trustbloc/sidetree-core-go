@@ -12,18 +12,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
 var (
-	operation1 = &batch.OperationInfo{UniqueSuffix: "1", Data: []byte("operation1")}
-	operation2 = &batch.OperationInfo{UniqueSuffix: "2", Data: []byte("operation2")}
-	operation3 = &batch.OperationInfo{UniqueSuffix: "3", Data: []byte("operation3")}
-	operation4 = &batch.OperationInfo{UniqueSuffix: "4", Data: []byte("operation4")}
-	operation5 = &batch.OperationInfo{UniqueSuffix: "5", Data: []byte("operation5")}
-	operation6 = &batch.OperationInfo{UniqueSuffix: "6", Data: []byte("operation6")}
+	operation1 = &operation.QueuedOperation{UniqueSuffix: "1", OperationBuffer: []byte("operation1")}
+	operation2 = &operation.QueuedOperation{UniqueSuffix: "2", OperationBuffer: []byte("operation2")}
+	operation3 = &operation.QueuedOperation{UniqueSuffix: "3", OperationBuffer: []byte("operation3")}
+	operation4 = &operation.QueuedOperation{UniqueSuffix: "4", OperationBuffer: []byte("operation4")}
+	operation5 = &operation.QueuedOperation{UniqueSuffix: "5", OperationBuffer: []byte("operation5")}
+	operation6 = &operation.QueuedOperation{UniqueSuffix: "6", OperationBuffer: []byte("operation6")}
 )
 
 func TestBatchCutter(t *testing.T) {

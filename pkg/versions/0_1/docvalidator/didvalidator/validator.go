@@ -9,7 +9,7 @@ package didvalidator
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
@@ -25,7 +25,7 @@ type Validator struct {
 // OperationStoreClient defines interface for retrieving all operations related to document.
 type OperationStoreClient interface {
 	// Get retrieves all operations related to document
-	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
+	Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error)
 }
 
 // New creates a new did validator.

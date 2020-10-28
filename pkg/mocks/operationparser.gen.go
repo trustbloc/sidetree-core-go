@@ -4,7 +4,7 @@ package mocks
 import (
 	"sync"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
@@ -36,18 +36,18 @@ type OperationParser struct {
 		result1 *jws.JWK
 		result2 error
 	}
-	ParseStub        func(string, []byte) (*batch.Operation, error)
+	ParseStub        func(string, []byte) (*operation.Operation, error)
 	parseMutex       sync.RWMutex
 	parseArgsForCall []struct {
 		arg1 string
 		arg2 []byte
 	}
 	parseReturns struct {
-		result1 *batch.Operation
+		result1 *operation.Operation
 		result2 error
 	}
 	parseReturnsOnCall map[int]struct {
-		result1 *batch.Operation
+		result1 *operation.Operation
 		result2 error
 	}
 	ParseDIDStub        func(string, string) (string, []byte, error)
@@ -206,7 +206,7 @@ func (fake *OperationParser) GetRevealValueReturnsOnCall(i int, result1 *jws.JWK
 	}{result1, result2}
 }
 
-func (fake *OperationParser) Parse(arg1 string, arg2 []byte) (*batch.Operation, error) {
+func (fake *OperationParser) Parse(arg1 string, arg2 []byte) (*operation.Operation, error) {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
@@ -236,7 +236,7 @@ func (fake *OperationParser) ParseCallCount() int {
 	return len(fake.parseArgsForCall)
 }
 
-func (fake *OperationParser) ParseCalls(stub func(string, []byte) (*batch.Operation, error)) {
+func (fake *OperationParser) ParseCalls(stub func(string, []byte) (*operation.Operation, error)) {
 	fake.parseMutex.Lock()
 	defer fake.parseMutex.Unlock()
 	fake.ParseStub = stub
@@ -249,28 +249,28 @@ func (fake *OperationParser) ParseArgsForCall(i int) (string, []byte) {
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *OperationParser) ParseReturns(result1 *batch.Operation, result2 error) {
+func (fake *OperationParser) ParseReturns(result1 *operation.Operation, result2 error) {
 	fake.parseMutex.Lock()
 	defer fake.parseMutex.Unlock()
 	fake.ParseStub = nil
 	fake.parseReturns = struct {
-		result1 *batch.Operation
+		result1 *operation.Operation
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *OperationParser) ParseReturnsOnCall(i int, result1 *batch.Operation, result2 error) {
+func (fake *OperationParser) ParseReturnsOnCall(i int, result1 *operation.Operation, result2 error) {
 	fake.parseMutex.Lock()
 	defer fake.parseMutex.Unlock()
 	fake.ParseStub = nil
 	if fake.parseReturnsOnCall == nil {
 		fake.parseReturnsOnCall = make(map[int]struct {
-			result1 *batch.Operation
+			result1 *operation.Operation
 			result2 error
 		})
 	}
 	fake.parseReturnsOnCall[i] = struct {
-		result1 *batch.Operation
+		result1 *operation.Operation
 		result2 error
 	}{result1, result2}
 }

@@ -9,7 +9,7 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -52,8 +52,8 @@ func CreateAnchorFile(mapAddress string, ops []*model.Operation) *AnchorFile {
 		MapFileURI: mapAddress,
 		Operations: Operations{
 			Create:     getCreateOperations(ops),
-			Recover:    getSignedOperations(batch.OperationTypeRecover, ops),
-			Deactivate: getSignedOperations(batch.OperationTypeDeactivate, ops),
+			Recover:    getSignedOperations(operation.TypeRecover, ops),
+			Deactivate: getSignedOperations(operation.TypeDeactivate, ops),
 		},
 	}
 }
@@ -61,7 +61,7 @@ func CreateAnchorFile(mapAddress string, ops []*model.Operation) *AnchorFile {
 func getCreateOperations(ops []*model.Operation) []CreateOperation {
 	var result []CreateOperation
 	for _, op := range ops {
-		if op.Type == batch.OperationTypeCreate {
+		if op.Type == operation.TypeCreate {
 			create := CreateOperation{SuffixData: op.SuffixData}
 
 			result = append(result, create)

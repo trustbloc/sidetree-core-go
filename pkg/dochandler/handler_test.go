@@ -15,8 +15,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
@@ -432,7 +432,7 @@ func getCreateOperation() *model.Operation {
 
 func getCreateOperationWithInitialState(suffixData *model.SuffixDataModel, delta *model.DeltaModel) (*model.Operation, error) {
 	request := &model.CreateRequest{
-		Operation:  batchapi.OperationTypeCreate,
+		Operation:  operation.TypeCreate,
 		SuffixData: suffixData,
 		Delta:      delta,
 	}
@@ -448,7 +448,7 @@ func getCreateOperationWithInitialState(suffixData *model.SuffixDataModel, delta
 	}
 
 	return &model.Operation{
-		Type:            batchapi.OperationTypeCreate,
+		Type:            operation.TypeCreate,
 		UniqueSuffix:    uniqueSuffix,
 		ID:              namespace + docutil.NamespaceDelimiter + uniqueSuffix,
 		OperationBuffer: payload,
@@ -457,13 +457,13 @@ func getCreateOperationWithInitialState(suffixData *model.SuffixDataModel, delta
 	}, nil
 }
 
-func getAnchoredCreateOperation() *batchapi.AnchoredOperation {
+func getAnchoredCreateOperation() *operation.AnchoredOperation {
 	op := getCreateOperation()
 
 	return getAnchoredOperation(op)
 }
 
-func getAnchoredOperation(op *model.Operation) *batchapi.AnchoredOperation {
+func getAnchoredOperation(op *model.Operation) *operation.AnchoredOperation {
 	anchoredOp, err := model.GetAnchoredOperation(op)
 	if err != nil {
 		panic(err)
@@ -516,7 +516,7 @@ func getCreateRequestWithDoc(doc string) (*model.CreateRequest, error) {
 	}
 
 	return &model.CreateRequest{
-		Operation:  batchapi.OperationTypeCreate,
+		Operation:  operation.TypeCreate,
 		Delta:      delta,
 		SuffixData: suffixData,
 	}, nil
@@ -586,9 +586,9 @@ func getUpdateDelta() *model.DeltaModel {
 	}
 }
 
-func getUpdateOperation() *batchapi.Operation {
+func getUpdateOperation() *operation.Operation {
 	request := &model.UpdateRequest{
-		Operation: batchapi.OperationTypeUpdate,
+		Operation: operation.TypeUpdate,
 		DidSuffix: getCreateOperation().UniqueSuffix,
 		Delta:     getUpdateDelta(),
 	}
@@ -598,9 +598,9 @@ func getUpdateOperation() *batchapi.Operation {
 		panic(err)
 	}
 
-	return &batchapi.Operation{
+	return &operation.Operation{
 		OperationBuffer: payload,
-		Type:            batchapi.OperationTypeUpdate,
+		Type:            operation.TypeUpdate,
 		UniqueSuffix:    request.DidSuffix,
 		ID:              namespace + docutil.NamespaceDelimiter + request.DidSuffix,
 	}

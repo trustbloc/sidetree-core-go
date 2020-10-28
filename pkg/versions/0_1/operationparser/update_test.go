@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
@@ -37,7 +37,7 @@ func TestParseUpdateOperation(t *testing.T) {
 
 		op, err := parser.ParseUpdateOperation(payload, false)
 		require.NoError(t, err)
-		require.Equal(t, batch.OperationTypeUpdate, op.Type)
+		require.Equal(t, operation.TypeUpdate, op.Type)
 	})
 	t.Run("invalid json", func(t *testing.T) {
 		schema, err := parser.ParseUpdateOperation([]byte(""), false)
@@ -233,7 +233,7 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 	return &model.UpdateRequest{
 		DidSuffix:  "suffix",
 		SignedData: compactJWS,
-		Operation:  batch.OperationTypeUpdate,
+		Operation:  operation.TypeUpdate,
 		Delta:      delta,
 	}, nil
 }

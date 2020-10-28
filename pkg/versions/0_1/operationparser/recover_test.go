@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
@@ -42,7 +42,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := parser.ParseRecoverOperation(request, false)
 		require.NoError(t, err)
-		require.Equal(t, batch.OperationTypeRecover, op.Type)
+		require.Equal(t, operation.TypeRecover, op.Type)
 	})
 	t.Run("parse recover request error", func(t *testing.T) {
 		schema, err := parser.ParseRecoverOperation([]byte(""), false)
@@ -386,7 +386,7 @@ func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedD
 	}
 
 	return &model.RecoverRequest{
-		Operation:  batch.OperationTypeRecover,
+		Operation:  operation.TypeRecover,
 		DidSuffix:  "suffix",
 		Delta:      delta,
 		SignedData: compactJWS,

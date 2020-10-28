@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -38,13 +38,13 @@ func TestParseCreateOperation(t *testing.T) {
 
 		op, err := parser.ParseCreateOperation(request, false)
 		require.NoError(t, err)
-		require.Equal(t, batch.OperationTypeCreate, op.Type)
+		require.Equal(t, operation.TypeCreate, op.Type)
 	})
 
 	t.Run("success - JCS", func(t *testing.T) {
 		op, err := parser.ParseCreateOperation([]byte(jcsRequest), true)
 		require.NoError(t, err)
-		require.Equal(t, batch.OperationTypeCreate, op.Type)
+		require.Equal(t, operation.TypeCreate, op.Type)
 	})
 
 	t.Run("parse create request error", func(t *testing.T) {
@@ -233,7 +233,7 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	}
 
 	return &model.CreateRequest{
-		Operation:  batch.OperationTypeCreate,
+		Operation:  operation.TypeCreate,
 		Delta:      delta,
 		SuffixData: suffixData,
 	}, nil

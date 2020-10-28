@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -83,7 +83,7 @@ func parseInitialState(initialState string) (*model.CreateRequest, error) {
 		return nil, errors.New("initial state is not valid")
 	}
 
-	createRequest.Operation = batch.OperationTypeCreate
+	createRequest.Operation = operation.TypeCreate
 
 	return &createRequest, nil
 }

@@ -10,24 +10,24 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 )
 
 // MockOperationStore mocks store for testing purposes.
 type MockOperationStore struct {
 	sync.RWMutex
-	operations map[string][]*batch.AnchoredOperation
+	operations map[string][]*operation.AnchoredOperation
 	Err        error
 	Validate   bool
 }
 
 // NewMockOperationStore creates mock operations store.
 func NewMockOperationStore(err error) *MockOperationStore {
-	return &MockOperationStore{operations: make(map[string][]*batch.AnchoredOperation), Err: err, Validate: true}
+	return &MockOperationStore{operations: make(map[string][]*operation.AnchoredOperation), Err: err, Validate: true}
 }
 
 // Put mocks storing operation.
-func (m *MockOperationStore) Put(op *batch.AnchoredOperation) error {
+func (m *MockOperationStore) Put(op *operation.AnchoredOperation) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -37,7 +37,7 @@ func (m *MockOperationStore) Put(op *batch.AnchoredOperation) error {
 	opsSize = len(m.operations[op.UniqueSuffix])
 	m.RUnlock()
 
-	if m.Validate && op.Type == batch.OperationTypeCreate && opsSize > 0 {
+	if m.Validate && op.Type == operation.TypeCreate && opsSize > 0 {
 		// Nothing to do; already created
 		return nil
 	}
@@ -51,7 +51,7 @@ func (m *MockOperationStore) Put(op *batch.AnchoredOperation) error {
 }
 
 // Get mocks retrieving operations from the store.
-func (m *MockOperationStore) Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error) {
+func (m *MockOperationStore) Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}

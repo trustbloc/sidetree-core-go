@@ -15,7 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
@@ -57,7 +57,7 @@ func TestIsValidPayload(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	v := New(store)
 
-	store.Put(&batch.AnchoredOperation{UniqueSuffix: "abc"})
+	store.Put(&operation.AnchoredOperation{UniqueSuffix: "abc"})
 
 	err := v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
@@ -81,7 +81,7 @@ func TestIsValidPayload_StoreErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "not found")
 
 	// scenario: found in the store and is valid
-	store.Put(&batch.AnchoredOperation{UniqueSuffix: "abc"})
+	store.Put(&operation.AnchoredOperation{UniqueSuffix: "abc"})
 	err = v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
 
