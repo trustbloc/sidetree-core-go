@@ -9,7 +9,7 @@ package cutter
 import (
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
@@ -18,12 +18,12 @@ var logger = log.New("sidetree-core-cutter")
 // OperationQueue defines the functions for adding and removing operations from a queue.
 type OperationQueue interface {
 	// Add adds the given operation to the tail of the queue and returns the new length of the queue.
-	Add(data *batch.OperationInfo, protocolGenesisTime uint64) (uint, error)
+	Add(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error)
 	// Remove removes (up to) the given number of items from the head of the queue.
 	// Returns the actual number of items that were removed and the new length of the queue.
 	Remove(num uint) (uint, uint, error)
 	// Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
-	Peek(num uint) ([]*batch.OperationInfoAtTime, error)
+	Peek(num uint) ([]*operation.QueuedOperationAtTime, error)
 	// Len returns the number of operation in the queue.
 	Len() uint
 }
@@ -35,7 +35,7 @@ type Committer = func() (pending uint, err error)
 // Result is the result of a batch 'Cut'.
 type Result struct {
 	// Operations holds the operations that were cut from the queue
-	Operations []*batch.OperationInfo
+	Operations []*operation.QueuedOperation
 	// ProtocolGenesisTime is the genesis time of the protocol version that was used to add the operations to the queue
 	ProtocolGenesisTime uint64
 	// Pending is the number of operations remaining in the queue
@@ -61,9 +61,9 @@ func New(client protocol.Client, queue OperationQueue) *BatchCutter {
 
 // Add adds the given operation to pending batch queue and returns the total
 // number of pending operations.
-func (r *BatchCutter) Add(operation *batch.OperationInfo, protocolGenesisTime uint64) (uint, error) {
+func (r *BatchCutter) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error) {
 	// Enqueuing operation into batch
-	return r.pendingBatch.Add(operation, protocolGenesisTime)
+	return r.pendingBatch.Add(op, protocolGenesisTime)
 }
 
 // Cut returns the current batch along with number of items that should be remaining in the queue after the committer is called.
@@ -118,8 +118,8 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 }
 
 // getOperationsAtProtocolVersion iterates through the operations and returns the operations which are at the same protocol genesis time.
-func getOperationsAtProtocolVersion(opsAtTime []*batch.OperationInfoAtTime) ([]*batch.OperationInfo, uint64) {
-	var ops []*batch.OperationInfo
+func getOperationsAtProtocolVersion(opsAtTime []*operation.QueuedOperationAtTime) ([]*operation.QueuedOperation, uint64) {
+	var ops []*operation.QueuedOperation
 	var protocolGenesisTime uint64
 
 	for _, op := range opsAtTime {
@@ -135,10 +135,10 @@ func getOperationsAtProtocolVersion(opsAtTime []*batch.OperationInfoAtTime) ([]*
 		}
 
 		ops = append(ops,
-			&batch.OperationInfo{
-				Data:         op.Data,
-				UniqueSuffix: op.UniqueSuffix,
-				Namespace:    op.Namespace,
+			&operation.QueuedOperation{
+				OperationBuffer: op.OperationBuffer,
+				UniqueSuffix:    op.UniqueSuffix,
+				Namespace:       op.Namespace,
 			},
 		)
 	}

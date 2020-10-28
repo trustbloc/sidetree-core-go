@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -36,7 +36,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 
 		op, err := parser.ParseDeactivateOperation(payload, false)
 		require.NoError(t, err)
-		require.Equal(t, batch.OperationTypeDeactivate, op.Type)
+		require.Equal(t, operation.TypeDeactivate, op.Type)
 	})
 	t.Run("missing unique suffix", func(t *testing.T) {
 		schema, err := parser.ParseDeactivateOperation([]byte("{}"), false)
@@ -128,7 +128,7 @@ func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.D
 	}
 
 	return &model.DeactivateRequest{
-		Operation:  batch.OperationTypeDeactivate,
+		Operation:  operation.TypeDeactivate,
 		DidSuffix:  "did",
 		SignedData: compactJWS,
 	}, nil

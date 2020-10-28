@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package protocol
 
 import (
-	batchapi "github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -58,7 +58,7 @@ type TxnProcessor interface {
 
 // OperationParser defines the functions for parsing operations.
 type OperationParser interface {
-	Parse(namespace string, operation []byte) (*batchapi.Operation, error)
+	Parse(namespace string, operation []byte) (*operation.Operation, error)
 	ParseDID(namespace, shortOrLongFormDID string) (string, []byte, error)
 	GetRevealValue(operation []byte) (*jws.JWK, error)
 	GetCommitment(operation []byte) (string, error)
@@ -76,7 +76,7 @@ type ResolutionModel struct {
 
 // OperationApplier applies the given operation to the document.
 type OperationApplier interface {
-	Apply(op *batchapi.AnchoredOperation, rm *ResolutionModel) (*ResolutionModel, error)
+	Apply(op *operation.AnchoredOperation, rm *ResolutionModel) (*ResolutionModel, error)
 }
 
 // DocumentComposer applies patches to the given document.
@@ -87,12 +87,12 @@ type DocumentComposer interface {
 // OperationHandler defines an interface for creating chunks, map and anchor files.
 type OperationHandler interface {
 	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string.
-	PrepareTxnFiles(ops []*batchapi.OperationInfo) (string, error)
+	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, error)
 }
 
 // OperationProvider retrieves the anchored operations for  the given sidetree transaction.
 type OperationProvider interface {
-	GetTxnOperations(sidetreeTxn *txn.SidetreeTxn) ([]*batchapi.AnchoredOperation, error)
+	GetTxnOperations(sidetreeTxn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error)
 }
 
 // DocumentValidator is an interface for validating document operations.

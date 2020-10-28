@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
@@ -21,7 +21,7 @@ var logger = log.New("sidetree-core-observer")
 
 // OperationStore interface to access operation store.
 type OperationStore interface {
-	Put(ops []*batch.AnchoredOperation) error
+	Put(ops []*operation.AnchoredOperation) error
 }
 
 // Providers contains the providers required by the TxnProcessor.
@@ -54,12 +54,12 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
 	return p.processTxnOperations(txnOps, sidetreeTxn)
 }
 
-func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) error {
+func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) error {
 	logger.Debugf("processing %d transaction operations", len(txnOps))
 
 	batchSuffixes := make(map[string]bool)
 
-	var ops []*batch.AnchoredOperation
+	var ops []*operation.AnchoredOperation
 	for _, op := range txnOps {
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
@@ -84,7 +84,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*batch.AnchoredOperation, s
 	return nil
 }
 
-func updateAnchoredOperation(op *batch.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) *batch.AnchoredOperation {
+func updateAnchoredOperation(op *operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) *operation.AnchoredOperation {
 	//  The logical blockchain time that this operation was anchored on the blockchain
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within

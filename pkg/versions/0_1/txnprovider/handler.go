@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -37,42 +37,42 @@ func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProv
 
 // PrepareTxnFiles will create batch files(chunk, map, anchor) from batch operations,
 // store those files in CAS and return anchor string.
-func (h *OperationHandler) PrepareTxnFiles(operations []*batch.OperationInfo) (string, error) {
-	ops, err := h.parseOperations(operations)
+func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (string, error) {
+	parsedOps, err := h.parseOperations(ops)
 	if err != nil {
 		return "", err
 	}
 
-	deactivateOps := getOperations(batch.OperationTypeDeactivate, ops)
+	deactivateOps := getOperations(operation.TypeDeactivate, parsedOps)
 
 	// special case: if all ops are deactivate don't create chunk and map files
 	mapFileAddr := ""
 	if len(deactivateOps) != len(ops) {
-		chunkFileAddr, innerErr := h.createChunkFile(ops)
+		chunkFileAddr, innerErr := h.createChunkFile(parsedOps)
 		if innerErr != nil {
 			return "", innerErr
 		}
 
-		mapFileAddr, innerErr = h.createMapFile([]string{chunkFileAddr}, ops)
+		mapFileAddr, innerErr = h.createMapFile([]string{chunkFileAddr}, parsedOps)
 		if innerErr != nil {
 			return "", innerErr
 		}
 	}
 
-	anchorAddr, err := h.createAnchorFile(mapFileAddr, ops)
+	anchorAddr, err := h.createAnchorFile(mapFileAddr, parsedOps)
 	if err != nil {
 		return "", err
 	}
 
 	ad := AnchorData{
-		NumberOfOperations: len(ops),
+		NumberOfOperations: len(parsedOps),
 		AnchorAddress:      anchorAddr,
 	}
 
 	return ad.GetAnchorString(), nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*batch.OperationInfo) ([]*model.Operation, error) {
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) ([]*model.Operation, error) {
 	if len(ops) == 0 {
 		return nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
@@ -81,7 +81,7 @@ func (h *OperationHandler) parseOperations(ops []*batch.OperationInfo) ([]*model
 
 	var operations []*model.Operation
 	for _, d := range ops {
-		op, e := h.parser.ParseOperation(d.Namespace, d.Data)
+		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer)
 		if e != nil {
 			return nil, e
 		}

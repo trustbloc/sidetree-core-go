@@ -15,7 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -124,7 +124,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		deactivate := &model.DeactivateRequest{
-			Operation: batch.OperationTypeDeactivate,
+			Operation: operation.TypeDeactivate,
 			DidSuffix: suffix,
 		}
 
@@ -153,7 +153,7 @@ func getCreateRequest() (*model.CreateRequest, error) {
 	suffixData := getSuffixData()
 
 	return &model.CreateRequest{
-		Operation:  batch.OperationTypeCreate,
+		Operation:  operation.TypeCreate,
 		Delta:      delta,
 		SuffixData: suffixData,
 	}, nil

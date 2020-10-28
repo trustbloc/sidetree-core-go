@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package model
 
 import (
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 )
 
 // Operation is used for parsing operation request.
 type Operation struct {
 
 	// Type defines operation type
-	Type batch.OperationType
+	Type operation.Type
 
 	// Namespace defines document namespace
 	Namespace string

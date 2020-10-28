@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -51,7 +51,7 @@ func (p *Parser) ParseCreateOperation(request []byte, anchor bool) (*model.Opera
 
 	return &model.Operation{
 		OperationBuffer: request,
-		Type:            batch.OperationTypeCreate,
+		Type:            operation.TypeCreate,
 		UniqueSuffix:    uniqueSuffix,
 		Delta:           schema.Delta,
 		SuffixData:      schema.SuffixData,

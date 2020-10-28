@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -29,14 +29,14 @@ func New(p protocol.Protocol) *Parser {
 }
 
 // Parse parses and validates operation.
-func (p *Parser) Parse(namespace string, operationBuffer []byte) (*batch.Operation, error) {
+func (p *Parser) Parse(namespace string, operationBuffer []byte) (*operation.Operation, error) {
 	// parse and validate operation buffer using this versions model and validation rules
 	internal, err := p.ParseOperation(namespace, operationBuffer)
 	if err != nil {
 		return nil, err
 	}
 
-	return &batch.Operation{
+	return &operation.Operation{
 		Type:            internal.Type,
 		UniqueSuffix:    internal.UniqueSuffix,
 		ID:              internal.ID,
@@ -55,13 +55,13 @@ func (p *Parser) ParseOperation(namespace string, operationBuffer []byte) (*mode
 	var op *model.Operation
 	var parseErr error
 	switch schema.Operation {
-	case batch.OperationTypeCreate:
+	case operation.TypeCreate:
 		op, parseErr = p.ParseCreateOperation(operationBuffer, false)
-	case batch.OperationTypeUpdate:
+	case operation.TypeUpdate:
 		op, parseErr = p.ParseUpdateOperation(operationBuffer, false)
-	case batch.OperationTypeDeactivate:
+	case operation.TypeDeactivate:
 		op, parseErr = p.ParseDeactivateOperation(operationBuffer, false)
-	case batch.OperationTypeRecover:
+	case operation.TypeRecover:
 		op, parseErr = p.ParseRecoverOperation(operationBuffer, false)
 	default:
 		return nil, fmt.Errorf("parse operation: operation type [%s] not supported", schema.Operation)
@@ -81,5 +81,5 @@ func (p *Parser) ParseOperation(namespace string, operationBuffer []byte) (*mode
 type operationSchema struct {
 
 	// operation
-	Operation batch.OperationType `json:"type"`
+	Operation operation.Type `json:"type"`
 }

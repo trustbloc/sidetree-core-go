@@ -25,7 +25,7 @@ import (
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -57,7 +57,7 @@ type OperationProcessor interface {
 
 // BatchWriter is an interface to add an operation to the batch.
 type BatchWriter interface {
-	Add(operation *batch.OperationInfo, protocolGenesisTime uint64) error
+	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) error
 }
 
 // DocumentTransformer transforms a document from internal to external form.
@@ -89,41 +89,41 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenes
 		return nil, err
 	}
 
-	operation, err := pv.OperationParser().Parse(r.namespace, operationBuffer)
+	op, err := pv.OperationParser().Parse(r.namespace, operationBuffer)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	// perform validation for operation request
-	if err := r.validateOperation(operation, pv); err != nil {
+	if err := r.validateOperation(op, pv); err != nil {
 		logger.Warnf("Failed to validate operation: %s", err.Error())
 
 		return nil, err
 	}
 
 	// validated operation will be added to the batch
-	if err := r.addToBatch(operation, pv.Protocol().GenesisTime); err != nil {
+	if err := r.addToBatch(op, pv.Protocol().GenesisTime); err != nil {
 		logger.Errorf("Failed to add operation to batch: %s", err.Error())
 
 		return nil, err
 	}
 
-	logger.Infof("[%s] operation added to the batch", operation.ID)
+	logger.Infof("[%s] operation added to the batch", op.ID)
 
 	// create operation will also return document
-	if operation.Type == batch.OperationTypeCreate {
-		return r.getCreateResponse(operation, pv)
+	if op.Type == operation.TypeCreate {
+		return r.getCreateResponse(op, pv)
 	}
 
 	return nil, nil
 }
 
-func (r *DocumentHandler) getCreateResult(operation *batch.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
+func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
 	// we can use operation applier to generate create response even though operation is not anchored yet
-	anchored := &batch.AnchoredOperation{
-		Type:            operation.Type,
-		UniqueSuffix:    operation.UniqueSuffix,
-		OperationBuffer: operation.OperationBuffer,
+	anchored := &operation.AnchoredOperation{
+		Type:            op.Type,
+		UniqueSuffix:    op.UniqueSuffix,
+		OperationBuffer: op.OperationBuffer,
 	}
 
 	rm := &protocol.ResolutionModel{}
@@ -135,13 +135,13 @@ func (r *DocumentHandler) getCreateResult(operation *batch.Operation, pv protoco
 	return rm, nil
 }
 
-func (r *DocumentHandler) getCreateResponse(operation *batch.Operation, pv protocol.Version) (*document.ResolutionResult, error) {
-	rm, err := r.getCreateResult(operation, pv)
+func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol.Version) (*document.ResolutionResult, error) {
+	rm, err := r.getCreateResult(op, pv)
 	if err != nil {
 		return nil, err
 	}
 
-	externalResult, err := r.transformToExternalDoc(rm.Doc, operation.ID)
+	externalResult, err := r.transformToExternalDoc(rm.Doc, op.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +256,6 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
-	op.ID = longFormDID
-
 	rm, err := r.getCreateResult(op, pv)
 	if err != nil {
 		return nil, err
@@ -273,7 +271,7 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
-	externalResult, err := r.transformToExternalDoc(rm.Doc, op.ID)
+	externalResult, err := r.transformToExternalDoc(rm.Doc, longFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform create with initial state to external document: %s", err.Error())
 	}
@@ -298,31 +296,31 @@ func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id 
 }
 
 // helper for adding operations to the batch.
-func (r *DocumentHandler) addToBatch(operation *batch.Operation, genesisTime uint64) error {
+func (r *DocumentHandler) addToBatch(op *operation.Operation, genesisTime uint64) error {
 	return r.writer.Add(
-		&batch.OperationInfo{
-			Namespace:    r.namespace,
-			UniqueSuffix: operation.UniqueSuffix,
-			Data:         operation.OperationBuffer,
+		&operation.QueuedOperation{
+			Namespace:       r.namespace,
+			UniqueSuffix:    op.UniqueSuffix,
+			OperationBuffer: op.OperationBuffer,
 		}, genesisTime)
 }
 
-func (r *DocumentHandler) validateOperation(operation *batch.Operation, pv protocol.Version) error {
+func (r *DocumentHandler) validateOperation(op *operation.Operation, pv protocol.Version) error {
 	// check maximum operation size against protocol
-	if len(operation.OperationBuffer) > int(pv.Protocol().MaxOperationSize) {
+	if len(op.OperationBuffer) > int(pv.Protocol().MaxOperationSize) {
 		return errors.New("operation byte size exceeds protocol max operation byte size")
 	}
 
-	if operation.Type == batch.OperationTypeCreate {
-		return r.validateCreateDocument(operation, pv)
+	if op.Type == operation.TypeCreate {
+		return r.validateCreateDocument(op, pv)
 	}
 
 	// TODO: Change interface for IsValidPayload to batch.Operation (impacts fabric)
-	return pv.DocumentValidator().IsValidPayload(operation.OperationBuffer)
+	return pv.DocumentValidator().IsValidPayload(op.OperationBuffer)
 }
 
-func (r *DocumentHandler) validateCreateDocument(operation *batch.Operation, pv protocol.Version) error {
-	rm, err := r.getCreateResult(operation, pv)
+func (r *DocumentHandler) validateCreateDocument(op *operation.Operation, pv protocol.Version) error {
+	rm, err := r.getCreateResult(op, pv)
 	if err != nil {
 		return err
 	}

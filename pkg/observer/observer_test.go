@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprocessor"
@@ -103,11 +103,11 @@ func (m mockLedger) RegisterForSidetreeTxn() <-chan []txn.SidetreeTxn {
 }
 
 type mockOperationStore struct {
-	putFunc func(ops []*batch.AnchoredOperation) error
-	getFunc func(suffix string) ([]*batch.AnchoredOperation, error)
+	putFunc func(ops []*operation.AnchoredOperation) error
+	getFunc func(suffix string) ([]*operation.AnchoredOperation, error)
 }
 
-func (m *mockOperationStore) Put(ops []*batch.AnchoredOperation) error {
+func (m *mockOperationStore) Put(ops []*operation.AnchoredOperation) error {
 	if m.putFunc != nil {
 		return m.putFunc(ops)
 	}
@@ -115,7 +115,7 @@ func (m *mockOperationStore) Put(ops []*batch.AnchoredOperation) error {
 	return nil
 }
 
-func (m *mockOperationStore) Get(suffix string) ([]*batch.AnchoredOperation, error) {
+func (m *mockOperationStore) Get(suffix string) ([]*operation.AnchoredOperation, error) {
 	if m.getFunc != nil {
 		return m.getFunc(suffix)
 	}
@@ -127,14 +127,14 @@ type mockTxnOpsProvider struct {
 	err error
 }
 
-func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*batch.AnchoredOperation, error) {
+func (m *mockTxnOpsProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 
-	op := &batch.AnchoredOperation{
+	op := &operation.AnchoredOperation{
 		UniqueSuffix: "abc",
 	}
 
-	return []*batch.AnchoredOperation{op}, nil
+	return []*operation.AnchoredOperation{op}, nil
 }

@@ -18,7 +18,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -142,13 +142,13 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		op := &batch.OperationInfo{
-			Data:         []byte(`{"key":"value"}`),
-			UniqueSuffix: "suffix",
-			Namespace:    defaultNS,
+		op := &operation.QueuedOperation{
+			OperationBuffer: []byte(`{"key":"value"}`),
+			UniqueSuffix:    "suffix",
+			Namespace:       defaultNS,
 		}
 
-		anchorString, err := handler.PrepareTxnFiles([]*batch.OperationInfo{op})
+		anchorString, err := handler.PrepareTxnFiles([]*operation.QueuedOperation{op})
 		require.Error(t, err)
 		require.Empty(t, anchorString)
 		require.Contains(t, err.Error(), "parse operation: operation type [] not supported")
@@ -238,17 +238,17 @@ func TestWriteModelToCAS(t *testing.T) {
 	})
 }
 
-func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) []*batch.OperationInfo {
-	var ops []*batch.OperationInfo
-	ops = append(ops, generateOperations(createOpsNum, batch.OperationTypeCreate)...)
-	ops = append(ops, generateOperations(recoverOpsNum, batch.OperationTypeRecover)...)
-	ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
-	ops = append(ops, generateOperations(updateOpsNum, batch.OperationTypeUpdate)...)
+func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) []*operation.QueuedOperation {
+	var ops []*operation.QueuedOperation
+	ops = append(ops, generateOperations(createOpsNum, operation.TypeCreate)...)
+	ops = append(ops, generateOperations(recoverOpsNum, operation.TypeRecover)...)
+	ops = append(ops, generateOperations(deactivateOpsNum, operation.TypeDeactivate)...)
+	ops = append(ops, generateOperations(updateOpsNum, operation.TypeUpdate)...)
 
 	return ops
 }
 
-func generateOperations(numOfOperations int, opType batch.OperationType) (ops []*batch.OperationInfo) {
+func generateOperations(numOfOperations int, opType operation.Type) (ops []*operation.QueuedOperation) {
 	for j := 1; j <= numOfOperations; j++ {
 		op, err := generateOperationInfo(j, opType)
 		if err != nil {
@@ -261,20 +261,20 @@ func generateOperations(numOfOperations int, opType batch.OperationType) (ops []
 	return
 }
 
-func generateOperationInfo(num int, opType batch.OperationType) (*batch.OperationInfo, error) {
+func generateOperationInfo(num int, opType operation.Type) (*operation.QueuedOperation, error) {
 	op, err := generateOperationBuffer(num, opType)
 	if err != nil {
 		return nil, err
 	}
 
-	return &batch.OperationInfo{
-		Data:         op,
-		UniqueSuffix: fmt.Sprintf("%s-%d", opType, num),
-		Namespace:    defaultNS,
+	return &operation.QueuedOperation{
+		OperationBuffer: op,
+		UniqueSuffix:    fmt.Sprintf("%s-%d", opType, num),
+		Namespace:       defaultNS,
 	}, nil
 }
 
-func generateOperation(num int, opType batch.OperationType) (*model.Operation, error) {
+func generateOperation(num int, opType operation.Type) (*model.Operation, error) {
 	op, err := generateOperationBuffer(num, opType)
 	if err != nil {
 		return nil, err
@@ -290,15 +290,15 @@ func generateOperation(num int, opType batch.OperationType) (*model.Operation, e
 	return parser.ParseOperation(defaultNS, op)
 }
 
-func generateOperationBuffer(num int, opType batch.OperationType) ([]byte, error) {
+func generateOperationBuffer(num int, opType operation.Type) ([]byte, error) {
 	switch opType {
-	case batch.OperationTypeCreate:
+	case operation.TypeCreate:
 		return generateCreateOperation(num)
-	case batch.OperationTypeRecover:
+	case operation.TypeRecover:
 		return generateRecoverOperation(num)
-	case batch.OperationTypeDeactivate:
+	case operation.TypeDeactivate:
 		return generateDeactivateOperation(num)
-	case batch.OperationTypeUpdate:
+	case operation.TypeUpdate:
 		return generateUpdateOperation(num)
 	default:
 		return nil, errors.New("operation type not supported")

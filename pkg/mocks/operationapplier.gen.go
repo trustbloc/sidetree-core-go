@@ -4,15 +4,15 @@ package mocks
 import (
 	"sync"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
 type OperationApplier struct {
-	ApplyStub        func(*batch.AnchoredOperation, *protocol.ResolutionModel) (*protocol.ResolutionModel, error)
+	ApplyStub        func(*operation.AnchoredOperation, *protocol.ResolutionModel) (*protocol.ResolutionModel, error)
 	applyMutex       sync.RWMutex
 	applyArgsForCall []struct {
-		arg1 *batch.AnchoredOperation
+		arg1 *operation.AnchoredOperation
 		arg2 *protocol.ResolutionModel
 	}
 	applyReturns struct {
@@ -27,11 +27,11 @@ type OperationApplier struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OperationApplier) Apply(arg1 *batch.AnchoredOperation, arg2 *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (fake *OperationApplier) Apply(arg1 *operation.AnchoredOperation, arg2 *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	fake.applyMutex.Lock()
 	ret, specificReturn := fake.applyReturnsOnCall[len(fake.applyArgsForCall)]
 	fake.applyArgsForCall = append(fake.applyArgsForCall, struct {
-		arg1 *batch.AnchoredOperation
+		arg1 *operation.AnchoredOperation
 		arg2 *protocol.ResolutionModel
 	}{arg1, arg2})
 	fake.recordInvocation("Apply", []interface{}{arg1, arg2})
@@ -52,13 +52,13 @@ func (fake *OperationApplier) ApplyCallCount() int {
 	return len(fake.applyArgsForCall)
 }
 
-func (fake *OperationApplier) ApplyCalls(stub func(*batch.AnchoredOperation, *protocol.ResolutionModel) (*protocol.ResolutionModel, error)) {
+func (fake *OperationApplier) ApplyCalls(stub func(*operation.AnchoredOperation, *protocol.ResolutionModel) (*protocol.ResolutionModel, error)) {
 	fake.applyMutex.Lock()
 	defer fake.applyMutex.Unlock()
 	fake.ApplyStub = stub
 }
 
-func (fake *OperationApplier) ApplyArgsForCall(i int) (*batch.AnchoredOperation, *protocol.ResolutionModel) {
+func (fake *OperationApplier) ApplyArgsForCall(i int) (*operation.AnchoredOperation, *protocol.ResolutionModel) {
 	fake.applyMutex.RLock()
 	defer fake.applyMutex.RUnlock()
 	argsForCall := fake.applyArgsForCall[i]

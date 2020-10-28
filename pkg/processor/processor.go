@@ -15,7 +15,7 @@ import (
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -35,7 +35,7 @@ type OperationProcessor struct {
 // OperationStoreClient defines interface for retrieving all operations related to document.
 type OperationStoreClient interface {
 	// Get retrieves all operations related to document
-	Get(uniqueSuffix string) ([]*batch.AnchoredOperation, error)
+	Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error)
 }
 
 // New returns new operation processor with the given name. (Note that name is only used for logging.)
@@ -96,10 +96,10 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}, nil
 }
 
-func (s *OperationProcessor) createOperationHashMap(ops []*batch.AnchoredOperation, params *commitmentParams) map[string][]*batch.AnchoredOperation {
+func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation, params *commitmentParams) map[string][]*operation.AnchoredOperation {
 	const keyFormat = "%s_%s"
 
-	opMap := make(map[string][]*batch.AnchoredOperation)
+	opMap := make(map[string][]*operation.AnchoredOperation)
 
 	previousVersions := make(map[string]*commitmentParams)
 	if params != nil {
@@ -141,16 +141,16 @@ func uintToStr(val uint) string {
 	return strconv.Itoa(int(val))
 }
 
-func splitOperations(ops []*batch.AnchoredOperation) (createOps, updateOps, fullOps []*batch.AnchoredOperation) {
+func splitOperations(ops []*operation.AnchoredOperation) (createOps, updateOps, fullOps []*operation.AnchoredOperation) {
 	for _, op := range ops {
 		switch op.Type {
-		case batch.OperationTypeCreate:
+		case operation.TypeCreate:
 			createOps = append(createOps, op)
-		case batch.OperationTypeUpdate:
+		case operation.TypeUpdate:
 			updateOps = append(updateOps, op)
-		case batch.OperationTypeRecover:
+		case operation.TypeRecover:
 			fullOps = append(fullOps, op)
-		case batch.OperationTypeDeactivate:
+		case operation.TypeDeactivate:
 			fullOps = append(fullOps, op)
 		}
 	}
@@ -159,7 +159,7 @@ func splitOperations(ops []*batch.AnchoredOperation) (createOps, updateOps, full
 }
 
 // pre-condition: operations have to be sorted.
-func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber uint64) []*batch.AnchoredOperation {
+func getOpsWithTxnGreaterThan(ops []*operation.AnchoredOperation, txnTime, txnNumber uint64) []*operation.AnchoredOperation {
 	for index, op := range ops {
 		if op.TransactionTime < txnTime {
 			continue
@@ -177,7 +177,7 @@ func getOpsWithTxnGreaterThan(ops []*batch.AnchoredOperation, txnTime, txnNumber
 	return nil
 }
 
-func (s *OperationProcessor) applyOperations(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel {
 	// suffix for logging
 	uniqueSuffix := ops[0].UniqueSuffix
 
@@ -250,7 +250,7 @@ func getRecoveryCommitment(rm *protocol.ResolutionModel) string {
 	return rm.RecoveryCommitment
 }
 
-func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*batch.AnchoredOperation, rm *protocol.ResolutionModel) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*operation.AnchoredOperation, rm *protocol.ResolutionModel) *protocol.ResolutionModel {
 	for _, op := range createOps {
 		var state *protocol.ResolutionModel
 		var err error
@@ -270,7 +270,7 @@ func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*batch.A
 }
 
 // this function should be used for update, recover and deactivate operations (create is handled differently).
-func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOperation, rm *protocol.ResolutionModel, currCommitment string, processedCommitments map[string]bool) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel, currCommitment string, processedCommitments map[string]bool) *protocol.ResolutionModel {
 	for _, op := range ops {
 		var state *protocol.ResolutionModel
 		var err error
@@ -312,16 +312,16 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*batch.AnchoredOpera
 	return nil
 }
 
-func (s *OperationProcessor) applyOperation(operation *batch.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	p, err := s.pc.Get(operation.ProtocolGenesisTime)
+func (s *OperationProcessor) applyOperation(op *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
-		return nil, fmt.Errorf("apply '%s' operation: %s", operation.Type, err.Error())
+		return nil, fmt.Errorf("apply '%s' operation: %s", op.Type, err.Error())
 	}
 
-	return p.OperationApplier().Apply(operation, rm)
+	return p.OperationApplier().Apply(op, rm)
 }
 
-func sortOperations(ops []*batch.AnchoredOperation) {
+func sortOperations(ops []*operation.AnchoredOperation) {
 	sort.Slice(ops, func(i, j int) bool {
 		if ops[i].TransactionTime < ops[j].TransactionTime {
 			return true
@@ -331,8 +331,8 @@ func sortOperations(ops []*batch.AnchoredOperation) {
 	})
 }
 
-func (s *OperationProcessor) getRevealValue(op *batch.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) {
-	if op.Type == batch.OperationTypeCreate {
+func (s *OperationProcessor) getRevealValue(op *operation.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) {
+	if op.Type == operation.TypeCreate {
 		return nil, protocol.Protocol{}, errors.New("create operation doesn't have reveal value")
 	}
 
@@ -349,7 +349,7 @@ func (s *OperationProcessor) getRevealValue(op *batch.AnchoredOperation) (*jws.J
 	return commitmentKey, p.Protocol(), nil
 }
 
-func (s *OperationProcessor) getCommitment(op *batch.AnchoredOperation) (string, error) {
+func (s *OperationProcessor) getCommitment(op *operation.AnchoredOperation) (string, error) {
 	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
 		return "", fmt.Errorf("get next operation commitment: %s", err.Error())

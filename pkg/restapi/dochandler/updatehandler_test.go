@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
@@ -260,7 +260,7 @@ func getUnsupportedRequest() []byte {
 type operationSchema struct {
 
 	// operation
-	Operation batch.OperationType `json:"type"`
+	Operation operation.Type `json:"type"`
 }
 
 const validDoc = `{

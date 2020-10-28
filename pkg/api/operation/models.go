@@ -4,30 +4,29 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package batch
+package operation
 
-// Operation defines minimum information.
-// TODO: See if you can merge OperationInfo and Operation.
+// Operation holds minimum information required for parsing/validating client request.
 type Operation struct {
 
 	// Type defines operation type.
-	Type OperationType `json:"type"`
+	Type Type
 
 	// UniqueSuffix defines document unique suffix.
-	UniqueSuffix string `json:"uniqueSuffix"`
+	UniqueSuffix string
 
 	// ID defines ID
-	ID string `json:"id"`
+	ID string
 
 	// OperationBuffer is the original operation request
-	OperationBuffer []byte `json:"operationBuffer"`
+	OperationBuffer []byte
 }
 
 // AnchoredOperation defines an anchored operation (stored in document operation store).
 type AnchoredOperation struct {
 
 	// Type defines operation type.
-	Type OperationType `json:"type"`
+	Type Type `json:"type"`
 
 	// UniqueSuffix defines document unique suffix.
 	UniqueSuffix string `json:"uniqueSuffix"`
@@ -45,33 +44,33 @@ type AnchoredOperation struct {
 	ProtocolGenesisTime uint64 `json:"protocolGenesisTime"`
 }
 
-// OperationType defines valid values for operation type.
-type OperationType string
+// Type defines valid values for operation type.
+type Type string
 
 const (
 
-	// OperationTypeCreate captures "create" operation type.
-	OperationTypeCreate OperationType = "create"
+	// TypeCreate captures "create" operation type.
+	TypeCreate Type = "create"
 
-	// OperationTypeUpdate captures "update" operation type.
-	OperationTypeUpdate OperationType = "update"
+	// TypeUpdate captures "update" operation type.
+	TypeUpdate Type = "update"
 
-	// OperationTypeDeactivate captures "deactivate" operation type.
-	OperationTypeDeactivate OperationType = "deactivate"
+	// TypeDeactivate captures "deactivate" operation type.
+	TypeDeactivate Type = "deactivate"
 
-	// OperationTypeRecover captures "recover" operation type.
-	OperationTypeRecover OperationType = "recover"
+	// TypeRecover captures "recover" operation type.
+	TypeRecover Type = "recover"
 )
 
-// OperationInfo contains the unique suffix and namespace as well as the operation buffer.
-type OperationInfo struct {
-	Data         []byte
-	UniqueSuffix string
-	Namespace    string
+// QueuedOperation stores minimum required operation info for operations queue.
+type QueuedOperation struct {
+	OperationBuffer []byte
+	UniqueSuffix    string
+	Namespace       string
 }
 
-// OperationInfoAtTime contains OperationInfo at a given protocol genesis time.
-type OperationInfoAtTime struct {
-	OperationInfo
+// QueuedOperationAtTime contains queued operation info with protocol genesis time.
+type QueuedOperationAtTime struct {
+	QueuedOperation
 	ProtocolGenesisTime uint64
 }

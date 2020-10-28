@@ -9,7 +9,7 @@ package observer
 import (
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
@@ -23,12 +23,12 @@ type Ledger interface {
 
 // OperationStore interface to access operation store.
 type OperationStore interface {
-	Put(ops []*batch.AnchoredOperation) error
+	Put(ops []*operation.AnchoredOperation) error
 }
 
 // OperationFilter filters out operations before they are persisted.
 type OperationFilter interface {
-	Filter(uniqueSuffix string, ops []*batch.AnchoredOperation) ([]*batch.AnchoredOperation, error)
+	Filter(uniqueSuffix string, ops []*operation.AnchoredOperation) ([]*operation.AnchoredOperation, error)
 }
 
 // Providers contains all of the providers required by the TxnProcessor.

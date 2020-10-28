@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/batch"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
@@ -166,8 +166,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 	t.Run("success - deactivate only", func(t *testing.T) {
 		const deactivateOpsNum = 2
 
-		var ops []*batch.OperationInfo
-		ops = append(ops, generateOperations(deactivateOpsNum, batch.OperationTypeDeactivate)...)
+		var ops []*operation.QueuedOperation
+		ops = append(ops, generateOperations(deactivateOpsNum, operation.TypeDeactivate)...)
 
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
@@ -371,13 +371,13 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
-		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		createOp, err := generateOperation(1, operation.TypeCreate)
 		require.NoError(t, err)
 
-		updateOp, err := generateOperation(2, batch.OperationTypeUpdate)
+		updateOp, err := generateOperation(2, operation.TypeUpdate)
 		require.NoError(t, err)
 
-		deactivateOp, err := generateOperation(3, batch.OperationTypeDeactivate)
+		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
@@ -405,13 +405,13 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 	t.Run("error - anchor, map, chunk file operation number mismatch", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
-		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		createOp, err := generateOperation(1, operation.TypeCreate)
 		require.NoError(t, err)
 
-		updateOp, err := generateOperation(2, batch.OperationTypeUpdate)
+		updateOp, err := generateOperation(2, operation.TypeUpdate)
 		require.NoError(t, err)
 
-		deactivateOp, err := generateOperation(3, batch.OperationTypeDeactivate)
+		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
@@ -444,13 +444,13 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 	t.Run("error - duplicate operations found in anchor/map files", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
-		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		createOp, err := generateOperation(1, operation.TypeCreate)
 		require.NoError(t, err)
 
-		updateOp, err := generateOperation(2, batch.OperationTypeUpdate)
+		updateOp, err := generateOperation(2, operation.TypeUpdate)
 		require.NoError(t, err)
 
-		deactivateOp, err := generateOperation(3, batch.OperationTypeDeactivate)
+		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
@@ -486,7 +486,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 	t.Run("error - invalid delta", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
-		createOp, err := generateOperation(1, batch.OperationTypeCreate)
+		createOp, err := generateOperation(1, operation.TypeCreate)
 		require.NoError(t, err)
 
 		af := &models.AnchorFile{
