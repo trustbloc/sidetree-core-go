@@ -27,6 +27,7 @@ func TestNewTransformer(t *testing.T) {
 	transformer := New()
 	require.NotNil(t, transformer)
 	require.Empty(t, transformer.methodCtx)
+	require.Equal(t, false, transformer.includeBase)
 
 	const ctx1 = "ctx-1"
 	transformer = New(WithMethodContext([]string{ctx1}))
@@ -37,6 +38,9 @@ func TestNewTransformer(t *testing.T) {
 	transformer = New(WithMethodContext([]string{ctx1, ctx2}))
 	require.Equal(t, 2, len(transformer.methodCtx))
 	require.Equal(t, ctx2, transformer.methodCtx[1])
+
+	transformer = New(WithBase(true))
+	require.Equal(t, true, transformer.includeBase)
 }
 
 func TestTransformDocument(t *testing.T) {
@@ -114,6 +118,43 @@ func TestWithMethodContext(t *testing.T) {
 	require.Equal(t, 3, len(didDoc.Context()))
 	require.Equal(t, "ctx-1", didDoc.Context()[1])
 	require.Equal(t, "ctx-2", didDoc.Context()[2])
+}
+
+func TestWithBase(t *testing.T) {
+	r := reader(t, "testdata/doc.json")
+	docBytes, err := ioutil.ReadAll(r)
+	require.NoError(t, err)
+	doc, err := document.FromBytes(docBytes)
+	require.NoError(t, err)
+
+	// document to be transformed has to have 'id' field
+	// this field is added by sidetree protocol for any document
+	const testID = "doc:abc:123"
+	doc[document.IDProperty] = testID
+
+	transformer := New(WithBase(true))
+
+	result, err := transformer.TransformDocument(doc)
+	require.NoError(t, err)
+
+	jsonTransformed, err := json.Marshal(result.Document)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(didDoc.Context()))
+
+	// second context is @base
+	baseMap := didDoc.Context()[1].(map[string]interface{})
+	baseMap["@base"] = testID
+
+	// validate service id doesn't contain document id
+	service := didDoc.Services()[0]
+	require.NotContains(t, service.ID(), testID)
+
+	// validate public key id doesn't contain document id
+	pk := didDoc.PublicKeys()[0]
+	require.NotContains(t, pk.ID(), testID)
 }
 
 func TestEd25519VerificationKey2018(t *testing.T) {

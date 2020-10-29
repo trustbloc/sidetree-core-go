@@ -48,8 +48,8 @@ func (doc DIDDocument) ID() string {
 }
 
 // Context is the context of did document.
-func (doc DIDDocument) Context() []string {
-	return StringArray(doc[ContextProperty])
+func (doc DIDDocument) Context() []interface{} {
+	return interfaceArray(doc[ContextProperty])
 }
 
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations.

@@ -33,9 +33,17 @@ func WithMethodContext(ctx []string) Option {
 	}
 }
 
+// WithBase sets optional @base context.
+func WithBase(enabled bool) Option {
+	return func(opts *Transformer) {
+		opts.includeBase = enabled
+	}
+}
+
 // Transformer is responsible for transforming internal to external document.
 type Transformer struct {
-	methodCtx []string // used for setting additional contexts during resolution
+	methodCtx   []string // used for setting additional contexts during resolution
+	includeBase bool
 }
 
 // New creates a new DID Transformer.
@@ -51,7 +59,7 @@ func New(opts ...Option) *Transformer {
 }
 
 // TransformDocument takes internal representation of document and transforms it to required representation.
-func (v *Transformer) TransformDocument(doc document.Document) (*document.ResolutionResult, error) {
+func (t *Transformer) TransformDocument(doc document.Document) (*document.ResolutionResult, error) {
 	internal := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
 	// start with empty document
@@ -61,8 +69,12 @@ func (v *Transformer) TransformDocument(doc document.Document) (*document.Resolu
 	ctx := []interface{}{didContext}
 
 	// add optional method contexts
-	for _, c := range v.methodCtx {
+	for _, c := range t.methodCtx {
 		ctx = append(ctx, c)
+	}
+
+	if t.includeBase {
+		ctx = append(ctx, getBase(internal.ID()))
 	}
 
 	external[document.ContextProperty] = ctx
@@ -75,25 +87,33 @@ func (v *Transformer) TransformDocument(doc document.Document) (*document.Resolu
 	}
 
 	// add keys
-	err := processKeys(internal, result)
+	err := t.processKeys(internal, result)
 	if err != nil {
 		return nil, err
 	}
 
 	// add services
-	processServices(internal, result)
+	t.processServices(internal, result)
 
 	return result, nil
 }
 
+func getBase(id string) interface{} {
+	return &struct {
+		Base string `json:"@base"`
+	}{
+		Base: id,
+	}
+}
+
 // processServices will process services and add them to external document.
-func processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
+func (t *Transformer) processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
 	var services []document.Service
 
 	// add did to service id
 	for _, sv := range internal.Services() {
 		externalService := make(document.Service)
-		externalService[document.IDProperty] = internal.ID() + "#" + sv.ID()
+		externalService[document.IDProperty] = t.getObjectID(internal.ID(), sv.ID())
 		externalService[document.TypeProperty] = sv.Type()
 		externalService[document.ServiceEndpointProperty] = sv.ServiceEndpoint()
 
@@ -129,7 +149,7 @@ func processServices(internal document.DIDDocument, resolutionResult *document.R
 // -- invocation: the key MUST be included in the capabilityInvocation section of the resolved DID Document
 // (same rules as for auth)
 // -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata.
-func processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint:gocyclo,funlen,gocognit
+func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint:gocyclo,funlen,gocognit
 	var authentication []interface{}
 	var assertionMethod []interface{}
 	var agreementKey []interface{}
@@ -144,7 +164,7 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 		relativeID := "#" + pk.ID()
 
 		externalPK := make(document.PublicKey)
-		externalPK[document.IDProperty] = internal.ID() + relativeID
+		externalPK[document.IDProperty] = t.getObjectID(internal.ID(), pk.ID())
 		externalPK[document.TypeProperty] = pk.Type()
 		externalPK[document.ControllerProperty] = internal[document.IDProperty]
 
@@ -220,6 +240,15 @@ func processKeys(internal document.DIDDocument, resolutionResult *document.Resol
 	}
 
 	return nil
+}
+
+func (t *Transformer) getObjectID(docID string, objectID string) interface{} {
+	relativeID := "#" + objectID
+	if t.includeBase {
+		return relativeID
+	}
+
+	return docID + relativeID
 }
 
 func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
