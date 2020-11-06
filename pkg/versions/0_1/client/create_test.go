@@ -125,7 +125,7 @@ func TestNewCreateRequest(t *testing.T) {
 const addKeys = `[{
 	"id": "test",
 	"type": "JsonWebKey2020",
-	"purposes": ["verificationMethod"],
+	"purposes": ["authentication"],
 	"publicKeyJwk": {
 		"kty": "EC",
 		"crv": "P-256K",

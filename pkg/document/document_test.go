@@ -16,7 +16,7 @@ import (
 )
 
 func TestFromBytes(t *testing.T) {
-	r := reader(t, "testdata/doc.json")
+	r := reader(t, "testdata/pk-doc.json")
 
 	data, err := ioutil.ReadAll(r)
 	require.Nil(t, err)

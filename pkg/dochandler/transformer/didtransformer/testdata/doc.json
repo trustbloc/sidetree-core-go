@@ -3,7 +3,7 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "purposes": ["verificationMethod", "authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation"],
+      "purposes": ["authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -12,18 +12,7 @@
       }
     },
     {
-      "id": "dual-auth-gen",
-      "type": "JsonWebKey2020",
-      "purposes": ["authentication", "verificationMethod"],
-      "publicKeyJwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-    },
-    {
-      "id": "auth-only",
+      "id": "auth",
       "type": "JsonWebKey2020",
       "purposes": ["authentication"],
       "publicKeyJwk": {
@@ -34,18 +23,7 @@
       }
     },
     {
-      "id": "dual-assertion-gen",
-      "type": "JsonWebKey2020",
-      "purposes": ["assertionMethod", "verificationMethod"],
-      "publicKeyJwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-    },
-    {
-      "id": "assertion-only",
+      "id": "assertion",
       "type": "JsonWebKey2020",
       "purposes": ["assertionMethod"],
       "publicKeyJwk": {
@@ -56,18 +34,7 @@
       }
     },
     {
-      "id": "dual-agreement-gen",
-      "type": "JsonWebKey2020",
-      "purposes": ["keyAgreement", "verificationMethod"],
-      "publicKeyJwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-    },
-    {
-      "id": "agreement-only",
+      "id": "agreement",
       "type": "JsonWebKey2020",
       "purposes": ["keyAgreement"],
       "publicKeyJwk": {
@@ -78,18 +45,7 @@
       }
     },
     {
-      "id": "dual-invocation-gen",
-      "type": "JsonWebKey2020",
-      "purposes": ["capabilityInvocation", "verificationMethod"],
-      "publicKeyJwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-    },
-    {
-      "id": "invocation-only",
+      "id": "invocation",
       "type": "JsonWebKey2020",
       "purposes": ["capabilityInvocation"],
       "publicKeyJwk": {
@@ -100,18 +56,7 @@
       }
     },
     {
-      "id": "dual-delegation-gen",
-      "type": "JsonWebKey2020",
-      "purposes": ["capabilityDelegation", "verificationMethod"],
-      "publicKeyJwk": {
-        "kty": "EC",
-        "crv": "P-256K",
-        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
-        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
-      }
-    },
-    {
-      "id": "delegation-only",
+      "id": "delegation",
       "type": "JsonWebKey2020",
       "purposes": ["capabilityDelegation"],
       "publicKeyJwk": {
@@ -122,9 +67,9 @@
       }
     },
     {
-      "id": "general-only",
+      "id": "general",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"],
+      "purposes": [],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",

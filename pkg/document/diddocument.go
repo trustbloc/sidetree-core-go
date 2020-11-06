@@ -23,6 +23,9 @@ const (
 	// PublicKeyProperty defines key for public key property.
 	PublicKeyProperty = "publicKey"
 
+	// VerificationMethodProperty defines key for verification method.
+	VerificationMethodProperty = "verificationMethod"
+
 	// AuthenticationProperty defines key for authentication property.
 	AuthenticationProperty = "authentication"
 
@@ -55,6 +58,11 @@ func (doc DIDDocument) Context() []interface{} {
 // PublicKeys are used for digital signatures, encryption and other cryptographic operations.
 func (doc DIDDocument) PublicKeys() []PublicKey {
 	return ParsePublicKeys(doc[PublicKeyProperty])
+}
+
+// VerificationMethods (formerly public keys) are used for digital signatures, encryption and other cryptographic operations.
+func (doc DIDDocument) VerificationMethods() []PublicKey {
+	return ParsePublicKeys(doc[VerificationMethodProperty])
 }
 
 // ParsePublicKeys is helper function for parsing public keys.
@@ -113,28 +121,28 @@ func (doc DIDDocument) JSONLdObject() map[string]interface{} {
 	return doc
 }
 
-// Authentication returns authentication array (mixture of strings and objects).
-func (doc DIDDocument) Authentication() []interface{} {
+// Authentications returns authentication array (mixture of strings and objects).
+func (doc DIDDocument) Authentications() []interface{} {
 	return interfaceArray(doc[AuthenticationProperty])
 }
 
-// AssertionMethod returns assertion method array (mixture of strings and objects).
-func (doc DIDDocument) AssertionMethod() []interface{} {
+// AssertionMethods returns assertion method array (mixture of strings and objects).
+func (doc DIDDocument) AssertionMethods() []interface{} {
 	return interfaceArray(doc[AssertionMethodProperty])
 }
 
-// AgreementKey returns agreement method array (mixture of strings and objects).
-func (doc DIDDocument) AgreementKey() []interface{} {
+// AgreementKeys returns agreement method array (mixture of strings and objects).
+func (doc DIDDocument) AgreementKeys() []interface{} {
 	return interfaceArray(doc[KeyAgreementProperty])
 }
 
-// DelegationKey returns delegation method array (mixture of strings and objects).
-func (doc DIDDocument) DelegationKey() []interface{} {
+// DelegationKeys returns delegation method array (mixture of strings and objects).
+func (doc DIDDocument) DelegationKeys() []interface{} {
 	return interfaceArray(doc[DelegationKeyProperty])
 }
 
-// InvocationKey returns invocation method array (mixture of strings and objects).
-func (doc DIDDocument) InvocationKey() []interface{} {
+// InvocationKeys returns invocation method array (mixture of strings and objects).
+func (doc DIDDocument) InvocationKeys() []interface{} {
 	return interfaceArray(doc[InvocationKeyProperty])
 }
 

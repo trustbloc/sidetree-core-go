@@ -158,7 +158,7 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purposes": ["verificationMethod"],
+		  "purposes": ["assertionMethod"],
 		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",

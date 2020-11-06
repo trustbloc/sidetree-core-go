@@ -3,7 +3,7 @@
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purposes": ["authentication", "verificationMethod"],
+      "purposes": ["authentication"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",

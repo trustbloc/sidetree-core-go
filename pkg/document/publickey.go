@@ -38,8 +38,6 @@ const (
 	KeyPurposeCapabilityDelegation = "capabilityDelegation"
 	// KeyPurposeCapabilityInvocation defines key purpose as invocation key.
 	KeyPurposeCapabilityInvocation = "capabilityInvocation"
-	// KeyPurposeVerificationMethod defines key purpose as verification(general key).
-	KeyPurposeVerificationMethod = "verificationMethod"
 )
 
 // PublicKey must include id and type properties, and exactly one value property.

@@ -18,26 +18,36 @@ import (
 )
 
 func TestValidatePublicKeys(t *testing.T) {
-	r := reader(t, "testdata/doc.json")
+	t.Run("success", func(t *testing.T) {
+		r := reader(t, "testdata/doc.json")
 
-	data, err := ioutil.ReadAll(r)
-	require.Nil(t, err)
+		data, err := ioutil.ReadAll(r)
+		require.Nil(t, err)
 
-	doc, err := document.DidDocumentFromBytes(data)
-	require.Nil(t, err)
+		doc, err := document.DidDocumentFromBytes(data)
+		require.Nil(t, err)
 
-	err = validatePublicKeys(doc.PublicKeys())
-	require.Nil(t, err)
-}
+		err = validatePublicKeys(doc.PublicKeys())
+		require.Nil(t, err)
+	})
 
-func TestValidatePublicKeysErrors(t *testing.T) {
-	t.Run("missing purpose", func(t *testing.T) {
+	t.Run("success - missing purpose", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(noPurpose))
 		require.Nil(t, err)
 
 		err = validatePublicKeys(doc.PublicKeys())
+		require.NoError(t, err)
+	})
+}
+
+func TestValidatePublicKeysErrors(t *testing.T) {
+	t.Run("error - empty purpose", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(emptyPurpose))
+		require.Nil(t, err)
+
+		err = validatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing purpose")
+		require.Contains(t, err.Error(), "if 'purposes' key is specified, it must contain at least one purpose")
 	})
 	t.Run("invalid purpose", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(wrongPurpose))
@@ -69,7 +79,7 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 
 		err = validatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "public key id is missing")
+		require.Contains(t, err.Error(), "key 'id' is required for public key")
 	})
 	t.Run("invalid id - too long", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(idLong))
@@ -94,7 +104,7 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 
 		err = validatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid number of public key properties")
+		require.Contains(t, err.Error(), "key 'other' is not allowed for public key")
 	})
 }
 
@@ -222,13 +232,13 @@ func TestValidateJWK(t *testing.T) {
 }
 
 func TestGeneralKeyPurpose(t *testing.T) {
-	for _, pubKeyType := range allowedKeyTypesGeneral {
-		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod})
+	for _, pubKeyType := range allowedKeyTypesAgreement {
+		pk := createMockPublicKeyWithType(pubKeyType)
 		err := validatePublicKeys([]document.PublicKey{pk})
 		require.NoError(t, err, "valid purpose for type")
 	}
 
-	pk := createMockPublicKeyWithTypeAndPurpose("invalid", []interface{}{document.KeyPurposeVerificationMethod})
+	pk := createMockPublicKeyWithTypeAndPurpose("invalid", []interface{}{document.KeyPurposeAuthentication})
 	err := validatePublicKeys([]document.PublicKey{pk})
 	require.Error(t, err, "invalid purpose for type")
 }
@@ -259,7 +269,7 @@ func reader(t *testing.T, filename string) io.Reader {
 
 func testKeyPurpose(t *testing.T, allowedKeys existenceMap, pubKeyPurpose string) {
 	for _, pubKeyType := range allowedKeys {
-		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{pubKeyPurpose})
 		err := validatePublicKeys([]document.PublicKey{pk})
 		require.NoError(t, err, "valid purpose for type")
 
@@ -274,15 +284,15 @@ func testKeyPurpose(t *testing.T, allowedKeys existenceMap, pubKeyPurpose string
 			continue
 		}
 
-		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose, document.KeyPurposeKeyAgreement})
+		pk := createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{pubKeyPurpose, document.KeyPurposeKeyAgreement})
 		err := validatePublicKeys([]document.PublicKey{pk})
 		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose, document.KeyPurposeAssertionMethod})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{pubKeyPurpose, document.KeyPurposeAssertionMethod})
 		err = validatePublicKeys([]document.PublicKey{pk})
 		require.Error(t, err, "invalid purpose for type")
 
-		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{document.KeyPurposeVerificationMethod, pubKeyPurpose})
+		pk = createMockPublicKeyWithTypeAndPurpose(pubKeyType, []interface{}{pubKeyPurpose})
 		err = validatePublicKeys([]document.PublicKey{pk})
 		require.Error(t, err, "invalid purpose for type")
 
@@ -308,13 +318,27 @@ func createMockPublicKeyWithTypeAndPurpose(pubKeyType string, purpose []interfac
 	return pk
 }
 
+func createMockPublicKeyWithType(pubKeyType string) document.PublicKey {
+	pk := map[string]interface{}{
+		"id":   "key1",
+		"type": pubKeyType,
+		"publicKeyJwk": map[string]interface{}{
+			"kty": "kty",
+			"crv": "crv",
+			"x":   "x",
+			"y":   "y",
+		},
+	}
+
+	return pk
+}
+
 const moreProperties = `{
   "publicKey": [
     {
       "id": "key1",
       "other": "unknown",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"], 
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -326,6 +350,21 @@ const moreProperties = `{
 }`
 
 const noPurpose = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "type": "JsonWebKey2020",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ]
+}`
+
+const emptyPurpose = `{
   "publicKey": [
     {
       "id": "key1",
@@ -362,7 +401,7 @@ const tooMuchPurpose = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod", "authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation", "other"],
+      "purposes": ["authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation", "other"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -378,7 +417,6 @@ const idLong = `{
     {
       "id": "idwihmorethan50characters123456789012345678901234567890",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -392,7 +430,6 @@ const noID = `{
   "publicKey": [
     {
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -408,7 +445,6 @@ const invalidKeyType = `{
     {
       "id": "key1",
       "type": "InvalidKeyType",
-      "purposes": ["verificationMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -424,7 +460,6 @@ const duplicateID = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -435,7 +470,6 @@ const duplicateID = `{
     {
       "id": "key1",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",

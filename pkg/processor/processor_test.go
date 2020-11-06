@@ -1221,7 +1221,6 @@ const validDoc = `{
 	"publicKey": [{
 		  "id": "key1",
 		  "type": "JsonWebKey2020",
-		  "purposes": ["verificationMethod"],
 		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -1235,7 +1234,6 @@ const recoveredDocTemplate = `{
 	"publicKey": [{
 		  "id": "recovered%s",
 		  "type": "JsonWebKey2020",
-		  "purposes": ["verificationMethod"],
 		  "publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",

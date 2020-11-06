@@ -77,29 +77,29 @@ func TestTransformDocument(t *testing.T) {
 	require.Equal(t, "IdentityHub", service.Type())
 
 	// validate public keys
-	pk := didDoc.PublicKeys()[0]
+	pk := didDoc.VerificationMethods()[0]
 	require.Contains(t, pk.ID(), testID)
 	require.NotEmpty(t, pk.Type())
 	require.NotEmpty(t, pk.PublicKeyJwk())
 	require.Empty(t, pk.PublicKeyBase58())
 
-	expectedPublicKeys := []string{"master", "general-only", "dual-auth-gen", "dual-assertion-gen", "dual-agreement-gen", "dual-delegation-gen", "dual-invocation-gen"}
-	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
+	expectedPublicKeys := []string{"master", "general", "authentication", "assertion", "agreement", "delegation", "invocation"}
+	require.Equal(t, len(expectedPublicKeys), len(didDoc.VerificationMethods()))
 
-	expectedAuthenticationKeys := []string{"master", "dual-auth-gen", "auth-only"}
-	require.Equal(t, len(expectedAuthenticationKeys), len(didDoc.Authentication()))
+	expectedAuthenticationKeys := []string{"master", "authentication"}
+	require.Equal(t, len(expectedAuthenticationKeys), len(didDoc.Authentications()))
 
-	expectedAssertionMethodKeys := []string{"master", "dual-assertion-gen", "assertion-only"}
-	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethod()))
+	expectedAssertionMethodKeys := []string{"master", "assertion"}
+	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethods()))
 
-	expectedAgreementKeys := []string{"master", "dual-agreement-gen", "agreement-only"}
-	require.Equal(t, len(expectedAgreementKeys), len(didDoc.AgreementKey()))
+	expectedAgreementKeys := []string{"master", "agreement"}
+	require.Equal(t, len(expectedAgreementKeys), len(didDoc.AgreementKeys()))
 
-	expectedDelegationKeys := []string{"master", "dual-delegation-gen", "delegation-only"}
-	require.Equal(t, len(expectedDelegationKeys), len(didDoc.DelegationKey()))
+	expectedDelegationKeys := []string{"master", "delegation"}
+	require.Equal(t, len(expectedDelegationKeys), len(didDoc.DelegationKeys()))
 
-	expectedInvocationKeys := []string{"master", "dual-invocation-gen", "invocation-only"}
-	require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKey()))
+	expectedInvocationKeys := []string{"master", "invocation"}
+	require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKeys()))
 }
 
 func TestWithMethodContext(t *testing.T) {
@@ -153,7 +153,7 @@ func TestWithBase(t *testing.T) {
 	require.NotContains(t, service.ID(), testID)
 
 	// validate public key id doesn't contain document id
-	pk := didDoc.PublicKeys()[0]
+	pk := didDoc.VerificationMethods()[0]
 	require.NotContains(t, pk.ID(), testID)
 }
 
@@ -184,7 +184,7 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 
 	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
 	require.NoError(t, err)
-	require.Equal(t, didDoc.PublicKeys()[0].Controller(), didDoc.ID())
+	require.Equal(t, didDoc.VerificationMethods()[0].Controller(), didDoc.ID())
 	require.Equal(t, didContext, didDoc.Context()[0])
 
 	// validate service
@@ -194,7 +194,7 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 	require.Equal(t, "OpenIdConnectVersion1.0Service", service.Type())
 
 	// validate public key
-	pk := didDoc.PublicKeys()[0]
+	pk := didDoc.VerificationMethods()[0]
 	require.Contains(t, pk.ID(), testID)
 	require.Equal(t, "Ed25519VerificationKey2018", pk.Type())
 	require.Empty(t, pk.PublicKeyJwk())
@@ -203,14 +203,14 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 	require.Equal(t, base58.Encode(publicKey), pk.PublicKeyBase58())
 
 	// validate length of expected keys
-	expectedPublicKeys := []string{"dual-assertion-general"}
-	require.Equal(t, len(expectedPublicKeys), len(didDoc.PublicKeys()))
+	expectedPublicKeys := []string{"assertion"}
+	require.Equal(t, len(expectedPublicKeys), len(didDoc.VerificationMethods()))
 
-	expectedAssertionMethodKeys := []string{"dual-assertion-general"}
-	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethod()))
+	expectedAssertionMethodKeys := []string{"assertion"}
+	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethods()))
 
-	require.Equal(t, 0, len(didDoc.Authentication()))
-	require.Equal(t, 0, len(didDoc.AgreementKey()))
+	require.Equal(t, 0, len(didDoc.Authentications()))
+	require.Equal(t, 0, len(didDoc.AgreementKeys()))
 }
 
 func TestEd25519VerificationKey2018_Error(t *testing.T) {
@@ -249,9 +249,9 @@ func reader(t *testing.T, filename string) io.Reader {
 const ed25519DocTemplate = `{
   "publicKey": [
 	{
-  		"id": "dual-assertion-general",
+  		"id": "assertion",
   		"type": "Ed25519VerificationKey2018",
-		"purposes": ["verificationMethod", "assertionMethod"],
+		"purposes": ["assertionMethod"],
   		"publicKeyJwk": %s
 	}
   ],
@@ -267,9 +267,9 @@ const ed25519DocTemplate = `{
 const ed25519Invalid = `{
   "publicKey": [
 	{
-  		"id": "dual-assertion-general",
+  		"id": "assertion",
   		"type": "Ed25519VerificationKey2018",
-		"purposes": ["verificationMethod", "assertionMethod"],
+		"purposes": ["assertionMethod"],
       	"publicKeyJwk": {
         	"kty": "OKP",
         	"crv": "curve",
@@ -279,63 +279,3 @@ const ed25519Invalid = `{
 	}
   ]
 }`
-
-func TestIsAuthenticationKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	ok := isAuthenticationKey(pk.Purpose())
-	require.False(t, ok)
-
-	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeAuthentication}
-	ok = isAuthenticationKey(pk.Purpose())
-	require.True(t, ok)
-}
-
-func TestIsAssertionKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	ok := isAssertionKey(pk.Purpose())
-	require.False(t, ok)
-
-	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeAssertionMethod}
-	ok = isAssertionKey(pk.Purpose())
-	require.True(t, ok)
-}
-
-func TestIsAgreementKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	ok := isAgreementKey(pk.Purpose())
-	require.False(t, ok)
-
-	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeKeyAgreement}
-	ok = isAgreementKey(pk.Purpose())
-	require.True(t, ok)
-}
-
-func TestIsDelegationKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	ok := isDelegationKey(pk.Purpose())
-	require.False(t, ok)
-
-	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeCapabilityDelegation}
-	ok = isDelegationKey(pk.Purpose())
-	require.True(t, ok)
-}
-
-func TestIsInvocationKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	ok := isInvocationKey(pk.Purpose())
-	require.False(t, ok)
-
-	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeCapabilityInvocation}
-	ok = isInvocationKey(pk.Purpose())
-	require.True(t, ok)
-}
-
-func TestIsGeneralKey(t *testing.T) {
-	pk := document.NewPublicKey(map[string]interface{}{})
-	ok := isGeneralKey(pk.Purpose())
-	require.False(t, ok)
-
-	pk[document.PurposesProperty] = []interface{}{document.KeyPurposeVerificationMethod}
-	ok = isGeneralKey(pk.Purpose())
-	require.True(t, ok)
-}

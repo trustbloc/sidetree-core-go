@@ -426,7 +426,7 @@ const addPublicKeysPatch = `{
 	"publicKeys": [{
 		"id": "key1",
 		"type": "JsonWebKey2020",
-		"purposes": ["verificationMethod"],
+		"purposes": ["assertionMethod"],
 		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
@@ -439,7 +439,6 @@ const addPublicKeysPatch = `{
 const testAddPublicKeys = `[{
 	"id": "key1",
 	"type": "JsonWebKey2020",
-	"purposes": ["verificationMethod"],
 	"publicKeyJwk": {
 		"kty": "EC",
 		"crv": "P-256K",
@@ -491,7 +490,7 @@ const testDoc = `{
 	"publicKey": [{
 		"id": "key1",
 		"type": "JsonWebKey2020",
-		"purposes": ["verificationMethod"],
+		"purposes": ["authentication"],
 		"publicKeyJwk": {
 			"kty": "EC",
 			"crv": "P-256K",
