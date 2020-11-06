@@ -15,8 +15,15 @@ import (
 
 // AnchorFile defines the schema of an anchor file.
 type AnchorFile struct {
+
 	// MapFileURI is map file URI
 	MapFileURI string `json:"mapFileUri,omitempty"`
+
+	// CoreProofFileURI is core proof file URI
+	CoreProofFileURI string `json:"coreProofFileUri,omitempty"`
+
+	// ProvisionalProofFileURI is provisional proof file URI
+	ProvisionalProofFileURI string `json:"provisionalProofFileUri,omitempty"`
 
 	// Operations contain proving data for create, recover and deactivate operations.
 	Operations Operations `json:"operations"`
@@ -26,15 +33,6 @@ type AnchorFile struct {
 type CreateOperation struct {
 	// SuffixData object
 	SuffixData *model.SuffixDataModel `json:"suffixData"`
-}
-
-// SignedOperation contains operation proving data.
-type SignedOperation struct {
-	// DidSuffix is the suffix of the DID
-	DidSuffix string `json:"didSuffix"`
-
-	// SignedData is compact JWS
-	SignedData string `json:"signedData"`
 }
 
 // Operations contains operation proving data.
@@ -47,9 +45,11 @@ type Operations struct {
 
 // CreateAnchorFile will create anchor file from provided operations.
 // returns anchor file model.
-func CreateAnchorFile(mapAddress string, ops []*model.Operation) *AnchorFile {
+func CreateAnchorFile(coreProofURI, provisionalProofURI, mapURI string, ops []*model.Operation) *AnchorFile {
 	return &AnchorFile{
-		MapFileURI: mapAddress,
+		CoreProofFileURI:        coreProofURI,
+		ProvisionalProofFileURI: provisionalProofURI,
+		MapFileURI:              mapURI,
 		Operations: Operations{
 			Create:     getCreateOperations(ops),
 			Recover:    getSignedOperations(operation.TypeRecover, ops),

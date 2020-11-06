@@ -492,7 +492,7 @@ func generateOperation(num int) (*operation.QueuedOperation, error) {
 
 	op := &operation.QueuedOperation{
 		Namespace:       "did:sidetree",
-		UniqueSuffix:    string(num),
+		UniqueSuffix:    fmt.Sprint(num),
 		OperationBuffer: request,
 	}
 

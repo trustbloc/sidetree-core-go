@@ -56,22 +56,6 @@ func getChunks(uris []string) []Chunk {
 	return chunks
 }
 
-func getSignedOperations(filter operation.Type, ops []*model.Operation) []SignedOperation {
-	var result []SignedOperation
-	for _, op := range ops {
-		if op.Type == filter {
-			upd := SignedOperation{
-				DidSuffix:  op.UniqueSuffix,
-				SignedData: op.SignedData,
-			}
-
-			result = append(result, upd)
-		}
-	}
-
-	return result
-}
-
 //  get map file struct from bytes.
 var getMapFile = func(bytes []byte) (*MapFile, error) {
 	return unmarshalMapFile(bytes)

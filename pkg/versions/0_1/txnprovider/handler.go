@@ -43,23 +43,35 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 		return "", err
 	}
 
+	updateOps := getOperations(operation.TypeUpdate, parsedOps)
+	recoverOps := getOperations(operation.TypeRecover, parsedOps)
 	deactivateOps := getOperations(operation.TypeDeactivate, parsedOps)
 
 	// special case: if all ops are deactivate don't create chunk and map files
-	mapFileAddr := ""
+	mapFileURI := ""
 	if len(deactivateOps) != len(ops) {
-		chunkFileAddr, innerErr := h.createChunkFile(parsedOps)
+		chunkFileURI, innerErr := h.createChunkFile(parsedOps)
 		if innerErr != nil {
 			return "", innerErr
 		}
 
-		mapFileAddr, innerErr = h.createMapFile([]string{chunkFileAddr}, parsedOps)
+		mapFileURI, innerErr = h.createMapFile([]string{chunkFileURI}, parsedOps)
 		if innerErr != nil {
 			return "", innerErr
 		}
 	}
 
-	anchorAddr, err := h.createAnchorFile(mapFileAddr, parsedOps)
+	coreProofURI, err := h.createCoreProofFile(recoverOps, deactivateOps)
+	if err != nil {
+		return "", err
+	}
+
+	provisionalProofURI, err := h.createProvisionalProofFile(updateOps)
+	if err != nil {
+		return "", err
+	}
+
+	anchorAddr, err := h.createAnchorFile(coreProofURI, provisionalProofURI, mapFileURI, parsedOps)
 	if err != nil {
 		return "", err
 	}
@@ -100,12 +112,36 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) ([]
 	return operations, nil
 }
 
-// createAnchorFile will create anchor file from operations and map file and write it to CAS
+// createAnchorFile will create anchor file from operations, proof files and map file and write it to CAS
 // returns anchor file address.
-func (h *OperationHandler) createAnchorFile(mapAddress string, ops []*model.Operation) (string, error) {
-	anchorFile := models.CreateAnchorFile(mapAddress, ops)
+func (h *OperationHandler) createAnchorFile(coreProofURI, provisionalProofURI, mapURI string, ops []*model.Operation) (string, error) {
+	anchorFile := models.CreateAnchorFile(coreProofURI, provisionalProofURI, mapURI, ops)
 
 	return h.writeModelToCAS(anchorFile, "anchor")
+}
+
+// createCoreProofFile will create core proof file from recover and deactivate operations and write it to CAS
+// returns core proof file address.
+func (h *OperationHandler) createCoreProofFile(recoverOps, deactivateOps []*model.Operation) (string, error) {
+	if len(recoverOps)+len(deactivateOps) == 0 {
+		return "", nil
+	}
+
+	chunkFile := models.CreateCoreProofFile(recoverOps, deactivateOps)
+
+	return h.writeModelToCAS(chunkFile, "core proof")
+}
+
+// createProvisionalProofFile will create provisional proof file from update operations and write it to CAS
+// returns provisional proof file address.
+func (h *OperationHandler) createProvisionalProofFile(updateOps []*model.Operation) (string, error) {
+	if len(updateOps) == 0 {
+		return "", nil
+	}
+
+	chunkFile := models.CreateProvisionalProofFile(updateOps)
+
+	return h.writeModelToCAS(chunkFile, "provisional proof")
 }
 
 // createChunkFile will create chunk file from operations and write it to CAS

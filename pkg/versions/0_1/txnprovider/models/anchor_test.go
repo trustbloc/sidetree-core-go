@@ -25,7 +25,7 @@ func TestCreateAnchorFile(t *testing.T) {
 
 	ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-	af := CreateAnchorFile("address", ops)
+	af := CreateAnchorFile("coreURI", "provisionalURI", "mapURI", ops)
 	require.NotNil(t, af)
 	require.Equal(t, createOpsNum, len(af.Operations.Create))
 	require.Equal(t, 0, len(af.Operations.Update))
@@ -41,7 +41,7 @@ func TestParseAnchorFile(t *testing.T) {
 
 	ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-	model := CreateAnchorFile("address", ops)
+	model := CreateAnchorFile("coreURI", "provisionalURI", "mapURI", ops)
 
 	bytes, err := json.Marshal(model)
 	require.NoError(t, err)
