@@ -120,6 +120,100 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, cf)
 		require.Equal(t, createOpsNum+recoverOpsNum+updateOpsNum, len(cf.Deltas))
+
+		bytes, err = handler.cas.Read(af.CoreProofFileURI)
+		require.NoError(t, err)
+		require.NotNil(t, bytes)
+
+		content, err = compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
+		var cpf models.CoreProofFile
+		err = json.Unmarshal(content, &cpf)
+		require.NoError(t, err)
+		require.NotNil(t, cpf)
+		require.Equal(t, recoverOpsNum, len(cpf.Operations.Recover))
+		require.Equal(t, deactivateOpsNum, len(cpf.Operations.Deactivate))
+
+		bytes, err = handler.cas.Read(af.ProvisionalProofFileURI)
+		require.NoError(t, err)
+		require.NotNil(t, bytes)
+
+		content, err = compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
+		var ppf models.ProvisionalProofFile
+		err = json.Unmarshal(content, &ppf)
+		require.NoError(t, err)
+		require.NotNil(t, ppf)
+		require.Equal(t, updateOpsNum, len(ppf.Operations.Update))
+	})
+
+	t.Run("success - no recover, deactivate or update ops", func(t *testing.T) {
+		const zeroUpdateOps = 0
+		const zeroRecoverOps = 0
+		const zeroDeactiveOps = 0
+		ops := getTestOperations(createOpsNum, zeroUpdateOps, zeroDeactiveOps, zeroRecoverOps)
+
+		handler := NewOperationHandler(
+			protocol,
+			mocks.NewMockCasClient(nil),
+			compression,
+			operationparser.New(protocol))
+
+		anchorString, err := handler.PrepareTxnFiles(ops)
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorString)
+
+		anchorData, err := ParseAnchorData(anchorString)
+		require.NoError(t, err)
+
+		bytes, err := handler.cas.Read(anchorData.AnchorAddress)
+		require.NoError(t, err)
+		require.NotNil(t, bytes)
+
+		content, err := compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
+		var af models.AnchorFile
+		err = json.Unmarshal(content, &af)
+		require.NoError(t, err)
+		require.NotNil(t, af)
+		require.Equal(t, createOpsNum, len(af.Operations.Create))
+		require.Equal(t, zeroRecoverOps, len(af.Operations.Recover))
+		require.Equal(t, zeroDeactiveOps, len(af.Operations.Deactivate))
+		require.Equal(t, zeroUpdateOps, len(af.Operations.Update))
+		require.Empty(t, af.CoreProofFileURI)
+		require.Empty(t, af.ProvisionalProofFileURI)
+
+		bytes, err = handler.cas.Read(af.MapFileURI)
+		require.NoError(t, err)
+		require.NotNil(t, bytes)
+
+		content, err = compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
+		var mf models.MapFile
+		err = json.Unmarshal(content, &mf)
+		require.NoError(t, err)
+		require.NotNil(t, mf)
+		require.Equal(t, 0, len(mf.Operations.Update))
+		require.Equal(t, 0, len(mf.Operations.Create))
+		require.Equal(t, 0, len(mf.Operations.Recover))
+		require.Equal(t, 0, len(mf.Operations.Deactivate))
+
+		bytes, err = handler.cas.Read(mf.Chunks[0].ChunkFileURI)
+		require.NoError(t, err)
+		require.NotNil(t, bytes)
+
+		content, err = compression.Decompress(compressionAlgorithm, bytes)
+		require.NoError(t, err)
+
+		var cf models.ChunkFile
+		err = json.Unmarshal(content, &cf)
+		require.NoError(t, err)
+		require.NotNil(t, cf)
+		require.Equal(t, createOpsNum+zeroRecoverOps+zeroUpdateOps, len(cf.Deltas))
 	})
 
 	t.Run("error - no operations provided", func(t *testing.T) {
@@ -181,7 +275,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
 		require.Empty(t, anchorString)
-		require.Contains(t, err.Error(), "failed to store anchor file: CAS error")
+		require.Contains(t, err.Error(), "failed to store core proof file: CAS error")
 	})
 }
 
