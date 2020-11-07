@@ -13,7 +13,7 @@ import (
 )
 
 func TestValid(t *testing.T) {
-	r := reader(t, "testdata/doc.json")
+	r := reader(t, "testdata/pk-doc.json")
 
 	doc, err := DIDDocumentFromReader(r)
 	require.Nil(t, err)
@@ -25,7 +25,7 @@ func TestValid(t *testing.T) {
 		{
 			"id":       "key1",
 			"type":     "JsonWebKey2020",
-			"purposes": []interface{}{"authentication", "verificationMethod"},
+			"purposes": []interface{}{"authentication"},
 			"publicKeyJwk": map[string]interface{}{
 				"kty": "EC",
 				"crv": "P-256K",
@@ -51,7 +51,31 @@ func TestValid(t *testing.T) {
 	require.NotNil(t, jsonld)
 
 	require.Empty(t, doc.Context())
-	require.Equal(t, "whatever", doc.Authentication()[0])
+	require.Equal(t, "whatever", doc.Authentications()[0])
+}
+
+func TestValidWithVerificationMethods(t *testing.T) {
+	r := reader(t, "testdata/vm-doc.json")
+
+	doc, err := DIDDocumentFromReader(r)
+	require.Nil(t, err)
+	require.NotNil(t, doc)
+	require.Equal(t, "", doc.ID())
+
+	publicKeys := doc.VerificationMethods()
+	require.Equal(t, []PublicKey{
+		{
+			"id":       "key1",
+			"type":     "JsonWebKey2020",
+			"purposes": []interface{}{"authentication"},
+			"publicKeyJwk": map[string]interface{}{
+				"kty": "EC",
+				"crv": "P-256K",
+				"x":   "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+				"y":   "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc",
+			},
+		},
+	}, publicKeys)
 }
 
 func TestEmptyDoc(t *testing.T) {
@@ -61,26 +85,13 @@ func TestEmptyDoc(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, doc)
 
-	publicKeys := doc.PublicKeys()
-	require.Equal(t, 0, len(publicKeys))
-
-	services := doc.Services()
-	require.Equal(t, 0, len(services))
-
-	authentication := doc.Authentication()
-	require.Equal(t, 0, len(authentication))
-
-	assertionMethod := doc.AssertionMethod()
-	require.Equal(t, 0, len(assertionMethod))
-
-	agreementKey := doc.AgreementKey()
-	require.Equal(t, 0, len(agreementKey))
-
-	delegationKey := doc.DelegationKey()
-	require.Equal(t, 0, len(delegationKey))
-
-	invocationKey := doc.InvocationKey()
-	require.Equal(t, 0, len(invocationKey))
+	require.Equal(t, 0, len(doc.PublicKeys()))
+	require.Equal(t, 0, len(doc.Services()))
+	require.Equal(t, 0, len(doc.Authentications()))
+	require.Equal(t, 0, len(doc.AssertionMethods()))
+	require.Equal(t, 0, len(doc.AgreementKeys()))
+	require.Equal(t, 0, len(doc.DelegationKeys()))
+	require.Equal(t, 0, len(doc.InvocationKeys()))
 }
 
 func TestInvalidLists(t *testing.T) {

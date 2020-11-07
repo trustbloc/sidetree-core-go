@@ -27,8 +27,6 @@ const (
 	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
 	ed25519VerificationKey2018        = "Ed25519VerificationKey2018"
 
-	maxPublicKeyProperties = 4
-
 	// public keys, services id length.
 	maxIDLength = 50
 
@@ -36,9 +34,8 @@ const (
 	maxServiceEndpointLength = 100
 )
 
-var allowedOps = map[document.KeyPurpose]bool{
+var allowedPurposes = map[document.KeyPurpose]bool{
 	document.KeyPurposeAuthentication:       true,
-	document.KeyPurposeVerificationMethod:   true,
 	document.KeyPurposeAssertionMethod:      true,
 	document.KeyPurposeKeyAgreement:         true,
 	document.KeyPurposeCapabilityDelegation: true,
@@ -71,7 +68,6 @@ var allowedKeyTypesAgreement = existenceMap{
 }
 
 var allowedKeyTypes = map[string]existenceMap{
-	document.KeyPurposeVerificationMethod:   allowedKeyTypesGeneral,
 	document.KeyPurposeAuthentication:       allowedKeyTypesVerification,
 	document.KeyPurposeAssertionMethod:      allowedKeyTypesVerification,
 	document.KeyPurposeKeyAgreement:         allowedKeyTypesAgreement,
@@ -83,15 +79,14 @@ var allowedKeyTypes = map[string]existenceMap{
 func validatePublicKeys(pubKeys []document.PublicKey) error {
 	ids := make(map[string]string)
 
-	// the expected fields are id, purpose, type and jwk
 	for _, pubKey := range pubKeys {
-		kid := pubKey.ID()
-		if err := validateKID(kid); err != nil {
+		if err := validatePublicKeyProperties(pubKey); err != nil {
 			return err
 		}
 
-		if len(pubKey) != maxPublicKeyProperties {
-			return errors.New("invalid number of public key properties")
+		kid := pubKey.ID()
+		if err := validateID(kid); err != nil {
+			return fmt.Errorf("public key: %s", err.Error())
 		}
 
 		if _, ok := ids[kid]; ok {
@@ -115,13 +110,21 @@ func validatePublicKeys(pubKeys []document.PublicKey) error {
 	return nil
 }
 
-func validateKID(kid string) error {
-	if kid == "" {
-		return errors.New("public key id is missing")
+func validatePublicKeyProperties(pubKey document.PublicKey) error {
+	requiredKeys := []string{document.TypeProperty, document.IDProperty, document.PublicKeyJwkProperty}
+	optionalKeys := []string{document.PurposesProperty}
+	allowedKeys := append(requiredKeys, optionalKeys...)
+
+	for _, required := range requiredKeys {
+		if _, ok := pubKey[required]; !ok {
+			return fmt.Errorf("key '%s' is required for public key", required)
+		}
 	}
 
-	if err := validateID(kid); err != nil {
-		return fmt.Errorf("public key: %s", err.Error())
+	for key := range pubKey {
+		if !contains(allowedKeys, key) {
+			return fmt.Errorf("key '%s' is not allowed for public key", key)
+		}
 	}
 
 	return nil
@@ -211,6 +214,14 @@ func validateServiceEndpoint(serviceEndpoint string) error {
 
 // validateKeyTypePurpose validates if the public key type is valid for a certain purpose.
 func validateKeyTypePurpose(pubKey document.PublicKey) bool {
+	if len(pubKey.Purpose()) == 0 {
+		// general key
+		_, ok := allowedKeyTypesGeneral[pubKey.Type()]
+		if !ok {
+			return false
+		}
+	}
+
 	for _, purpose := range pubKey.Purpose() {
 		allowed, ok := allowedKeyTypes[purpose]
 		if !ok {
@@ -235,21 +246,21 @@ func validateJWK(jwk document.JWK) error {
 	return jwk.Validate()
 }
 
-// The object MUST include a purpose property, and its value MUST be an array that includes one or more of the following:
-// - ops: the key is allowed to generate DID operations for the DID.
-// - general: the key is to be included in the publicKeys section of the resolved DID Document.
-// - auth: the key is to be included in the authentication section of the resolved DID Document.
+// The object MAY include a purposes property, and if included, its value MUST be an array of one or more
+// of the strings listed in allowed purposes array.
 func validateKeyPurposes(pubKey document.PublicKey) error {
-	if len(pubKey.Purpose()) == 0 {
-		return fmt.Errorf("key '%s' is missing purposes", pubKey.ID())
+	_, exists := pubKey[document.PurposesProperty]
+
+	if exists && len(pubKey.Purpose()) == 0 {
+		return fmt.Errorf("if '%s' key is specified, it must contain at least one purpose", document.PurposesProperty)
 	}
 
-	if len(pubKey.Purpose()) > len(allowedOps) {
-		return fmt.Errorf("public key purpose exceeds maximum length: %d", len(allowedOps))
+	if len(pubKey.Purpose()) > len(allowedPurposes) {
+		return fmt.Errorf("public key purpose exceeds maximum length: %d", len(allowedPurposes))
 	}
 
 	for _, purpose := range pubKey.Purpose() {
-		if _, ok := allowedOps[document.KeyPurpose(purpose)]; !ok {
+		if _, ok := allowedPurposes[document.KeyPurpose(purpose)]; !ok {
 			return fmt.Errorf("invalid purpose: %s", purpose)
 		}
 	}

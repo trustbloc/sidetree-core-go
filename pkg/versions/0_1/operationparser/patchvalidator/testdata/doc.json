@@ -3,7 +3,7 @@
     {
       "id": "master",
       "type": "EcdsaSecp256k1VerificationKey2019",
-      "purposes": ["verificationMethod", "authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation"],
+      "purposes": ["authentication", "assertionMethod", "keyAgreement", "capabilityDelegation", "capabilityInvocation"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -14,7 +14,7 @@
     {
       "id": "dual-auth-gen",
       "type": "JsonWebKey2020",
-      "purposes": ["authentication", "verificationMethod"],
+      "purposes": ["authentication"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -36,7 +36,7 @@
     {
       "id": "dual-assertion-gen",
       "type": "JsonWebKey2020",
-      "purposes": ["assertionMethod", "verificationMethod"],
+      "purposes": ["assertionMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -58,7 +58,7 @@
     {
       "id": "dual-agreement-gen",
       "type": "JsonWebKey2020",
-      "purposes": ["keyAgreement", "verificationMethod"],
+      "purposes": ["keyAgreement"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -80,7 +80,7 @@
     {
       "id": "dual-invocation-gen",
       "type": "JsonWebKey2020",
-      "purposes": ["capabilityInvocation", "verificationMethod"],
+      "purposes": ["capabilityInvocation"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -102,7 +102,7 @@
     {
       "id": "dual-delegation-gen",
       "type": "JsonWebKey2020",
-      "purposes": ["capabilityDelegation", "verificationMethod"],
+      "purposes": ["capabilityDelegation"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
@@ -124,7 +124,6 @@
     {
       "id": "general-only",
       "type": "JsonWebKey2020",
-      "purposes": ["verificationMethod"],
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",

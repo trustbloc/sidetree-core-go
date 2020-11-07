@@ -132,36 +132,28 @@ func (t *Transformer) processServices(internal document.DIDDocument, resolutionR
 	}
 }
 
-// processKeys will process keys according to Sidetree rules bellow and add them to external document
-// -- general: the key is to be included in the publicKeys section of the resolved DID Document.
-// -- auth: the key is to be included in the authentication section of the resolved DID Document as follows:
-// If the general purpose value IS NOT present in the purpose array,
-// the key descriptor object will be included directly in the authentication section of the resolved DID Document.
-// If the general purpose value IS present in the purpose array,
-// the key descriptor object will be directly included in the publicKeys section of the resolved DID Document,
-// and included by reference in the authentication section.
-// -- assertion: the key MUST be included in the assertionMethod section of the resolved DID Document
-// (same rules as for auth)
-// -- agreement: the key MUST be included in the keyAgreement section of the resolved DID Document
-// (same rules as for auth)
-// -- delegation: the key MUST be included in the capabilityDelegation section of the resolved DID Document
-// (same rules as for auth)
-// -- invocation: the key MUST be included in the capabilityInvocation section of the resolved DID Document
-// (same rules as for auth)
-// -- ops: the key is allowed to generate DID operations for the DID and will be included in method metadata.
+// processKeys will process keys according to Sidetree rules bellow and add them to external document.
+// every key will be included in the verificationMethod section of the resolved DID Document.
+//
+// -- authentication: the key MUST be included by reference (full id) in the authentication section of the resolved DID Document
+// -- assertion: the key MUST be included by reference in the assertionMethod section.
+// -- agreement: the key MUST be included by reference in the keyAgreement section.
+// -- delegation: the key MUST be included by reference in the capabilityDelegation section.
+// -- invocation: the key MUST be included by reference in the capabilityInvocation section.
 func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint:gocyclo,funlen,gocognit
-	var authentication []interface{}
-	var assertionMethod []interface{}
-	var agreementKey []interface{}
-	var delegationKey []interface{}
-	var invocationKey []interface{}
+	purposes := map[string][]interface{}{
+		document.AuthenticationProperty:  make([]interface{}, 0),
+		document.AssertionMethodProperty: make([]interface{}, 0),
+		document.KeyAgreementProperty:    make([]interface{}, 0),
+		document.DelegationKeyProperty:   make([]interface{}, 0),
+		document.InvocationKeyProperty:   make([]interface{}, 0),
+	}
 
 	var publicKeys []document.PublicKey
 
-	// add controller to public key
 	for _, pk := range internal.PublicKeys() {
-		// construct relative DID URL for inclusion in authentication and assertion method
-		relativeID := "#" + pk.ID()
+		// construct full DID URL for inclusion in purpose sections
+		id := internal.ID() + "#" + pk.ID()
 
 		externalPK := make(document.PublicKey)
 		externalPK[document.IDProperty] = t.getObjectID(internal.ID(), pk.ID())
@@ -178,65 +170,32 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 			externalPK[document.PublicKeyJwkProperty] = pk.PublicKeyJwk()
 		}
 
-		purposes := pk.Purpose()
-		if isGeneralKey(purposes) { //nolint:nestif
-			publicKeys = append(publicKeys, externalPK)
+		publicKeys = append(publicKeys, externalPK)
 
-			// add into authentication by reference if the key has both auth and general purpose
-			if isAuthenticationKey(purposes) {
-				authentication = append(authentication, relativeID)
+		for _, p := range pk.Purpose() {
+			switch p {
+			case document.KeyPurposeAuthentication:
+				purposes[document.AuthenticationProperty] = append(purposes[document.AuthenticationProperty], id)
+			case document.KeyPurposeAssertionMethod:
+				purposes[document.AssertionMethodProperty] = append(purposes[document.AssertionMethodProperty], id)
+			case document.KeyPurposeKeyAgreement:
+				purposes[document.KeyAgreementProperty] = append(purposes[document.KeyAgreementProperty], id)
+			case document.KeyPurposeCapabilityDelegation:
+				purposes[document.DelegationKeyProperty] = append(purposes[document.DelegationKeyProperty], id)
+			case document.KeyPurposeCapabilityInvocation:
+				purposes[document.InvocationKeyProperty] = append(purposes[document.InvocationKeyProperty], id)
 			}
-			// add into assertionMethod by reference if the key has both assertion and general purpose
-			if isAssertionKey(purposes) {
-				assertionMethod = append(assertionMethod, relativeID)
-			}
-			// add into keyAgreement by reference if the key has both agreement and general purpose
-			if isAgreementKey(purposes) {
-				agreementKey = append(agreementKey, relativeID)
-			}
-			// add into capabilityDelegation by reference if the key has both delegation and general purpose
-			if isDelegationKey(purposes) {
-				delegationKey = append(delegationKey, relativeID)
-			}
-			// add into capabilityInvocation by reference if the key has both invocation and general purpose
-			if isInvocationKey(purposes) {
-				invocationKey = append(invocationKey, relativeID)
-			}
-		} else if isAuthenticationKey(purposes) {
-			authentication = append(authentication, externalPK)
-		} else if isAssertionKey(purposes) {
-			assertionMethod = append(assertionMethod, externalPK)
-		} else if isAgreementKey(purposes) {
-			agreementKey = append(agreementKey, externalPK)
-		} else if isDelegationKey(purposes) {
-			delegationKey = append(delegationKey, externalPK)
-		} else if isInvocationKey(purposes) {
-			invocationKey = append(invocationKey, externalPK)
 		}
 	}
 
 	if len(publicKeys) > 0 {
-		resolutionResult.Document[document.PublicKeyProperty] = publicKeys
+		resolutionResult.Document[document.VerificationMethodProperty] = publicKeys
 	}
 
-	if len(authentication) > 0 {
-		resolutionResult.Document[document.AuthenticationProperty] = authentication
-	}
-
-	if len(assertionMethod) > 0 {
-		resolutionResult.Document[document.AssertionMethodProperty] = assertionMethod
-	}
-
-	if len(agreementKey) > 0 {
-		resolutionResult.Document[document.KeyAgreementProperty] = agreementKey
-	}
-
-	if len(delegationKey) > 0 {
-		resolutionResult.Document[document.DelegationKeyProperty] = delegationKey
-	}
-
-	if len(invocationKey) > 0 {
-		resolutionResult.Document[document.InvocationKeyProperty] = invocationKey
+	for key, value := range purposes {
+		if len(value) > 0 {
+			resolutionResult.Document[key] = value
+		}
 	}
 
 	return nil
@@ -260,44 +219,4 @@ func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
 	}
 
 	return internaljws.GetED25519PublicKey(jwk)
-}
-
-// isGeneralKey returns true if key is a general key.
-func isGeneralKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeVerificationMethod)
-}
-
-// isAuthenticationKey returns true if key is an authentication key.
-func isAuthenticationKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeAuthentication)
-}
-
-// isAssertionKey returns true if key is an assertion key.
-func isAssertionKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeAssertionMethod)
-}
-
-// isAgreementKey returns true if key is an agreement key.
-func isAgreementKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeKeyAgreement)
-}
-
-// isDelegationKey returns true if key is an delegation key.
-func isDelegationKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeCapabilityDelegation)
-}
-
-// isInvocationKey returns true if key is an invocation key.
-func isInvocationKey(purposes []string) bool {
-	return isPurposeKey(purposes, document.KeyPurposeCapabilityInvocation)
-}
-
-func isPurposeKey(purposes []string, mode string) bool {
-	for _, purpose := range purposes {
-		if purpose == mode {
-			return true
-		}
-	}
-
-	return false
 }

@@ -125,7 +125,6 @@ var (
 	"publicKey": [{
       	"id": "key-1",
       	"type": "JsonWebKey2020",
-      	"purposes": ["verificationMethod"],
 		"publicKeyJwk": {
 			"kty": "EC",
         	"crv": "P-256K",

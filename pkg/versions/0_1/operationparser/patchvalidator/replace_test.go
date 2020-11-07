@@ -50,7 +50,7 @@ func TestValidateReplacePatch(t *testing.T) {
 		require.NotNil(t, p)
 
 		err = NewReplaceValidator().Validate(p)
-		require.Contains(t, err.Error(), "invalid number of public key properties")
+		require.Contains(t, err.Error(), "key 'type' is required for public key")
 	})
 	t.Run("error - services (missing endpoint)", func(t *testing.T) {
 		p, err := patch.NewReplacePatch(replaceDocInvalidServiceEndpoint)

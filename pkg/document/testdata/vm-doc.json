@@ -1,0 +1,15 @@
+{
+  "verificationMethod": [
+    {
+      "id": "key1",
+      "type": "JsonWebKey2020",
+      "purposes": ["authentication"],
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ]
+}
