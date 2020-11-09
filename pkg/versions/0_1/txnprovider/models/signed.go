@@ -36,3 +36,12 @@ func getSignedOperations(filter operation.Type, ops []*model.Operation) []Signed
 
 	return result
 }
+
+func getSignedData(ops []*model.Operation) []string {
+	var result []string
+	for _, op := range ops {
+		result = append(result, op.SignedData)
+	}
+
+	return result
+}

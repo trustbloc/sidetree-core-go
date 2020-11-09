@@ -71,26 +71,15 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 
 	if af.MapFileURI == "" {
 		// if there's no map file that means that we have only deactivate operations in the batch
-		anchorOps, e := h.parseAnchorOperations(af, txn)
-		if e != nil {
-			return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
-		}
-
-		return createAnchoredOperations(anchorOps.Deactivate)
+		return h.processDeactivateOnly(af, txn)
 	}
 
-	mf, err := h.getMapFile(af.MapFileURI)
+	files, err := h.getBatchFiles(af)
 	if err != nil {
 		return nil, err
 	}
 
-	chunkAddress := mf.Chunks[0].ChunkFileURI
-	cf, err := h.getChunkFile(chunkAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	txnOps, err := h.assembleBatchOperations(af, mf, cf, txn)
+	txnOps, err := h.assembleBatchOperations(af, files.Map, files.Chunk, txn)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +89,72 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 	}
 
 	return txnOps, nil
+}
+
+func (h *OperationProvider) processDeactivateOnly(af *models.AnchorFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+	anchorOps, e := h.parseAnchorOperations(af, txn)
+	if e != nil {
+		return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
+	}
+
+	// deactivate operations must have signed data in core proof file
+	// TODO: signed data will be used to assemble anchor operations bellow upon SIP-1 completion
+	_, err := h.getCoreProofFile(af.CoreProofFileURI)
+	if err != nil {
+		return nil, err
+	}
+
+	return createAnchoredOperations(anchorOps.Deactivate)
+}
+
+// batchFiles contains the content of all batch files that are referenced in anchor file.
+type batchFiles struct {
+	Map              *models.MapFile
+	ProvisionalProof *models.ProvisionalProofFile
+	CoreProof        *models.CoreProofFile
+	Chunk            *models.ChunkFile
+}
+
+// getBatchFiles retrieves all batch files that are referenced in anchor file.
+func (h *OperationProvider) getBatchFiles(af *models.AnchorFile) (*batchFiles, error) {
+	var err error
+
+	files := &batchFiles{}
+
+	files.Map, err = h.getMapFile(af.MapFileURI)
+	if err != nil {
+		return nil, err
+	}
+
+	// core proof file will not exist if we have only update operations in the batch
+	if af.CoreProofFileURI != "" {
+		files.CoreProof, err = h.getCoreProofFile(af.CoreProofFileURI)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// provisional proof file will not exist if we don't have any update operations in the batch
+	if af.ProvisionalProofFileURI != "" {
+		files.ProvisionalProof, err = h.getProvisionalProofFile(af.ProvisionalProofFileURI)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(files.Map.Chunks) == 0 {
+		return nil, errors.Errorf("map file is missing chunk file URI")
+	}
+
+	chunkURI := files.Map.Chunks[0].ChunkFileURI
+	files.Chunk, err = h.getChunkFile(chunkURI)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf("successfully downloaded batch files")
+
+	return files, nil
 }
 
 func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOperation, error) {
@@ -184,63 +239,97 @@ func checkForDuplicates(values []string) error {
 }
 
 // getAnchorFile will download anchor file from cas and parse it into anchor file model.
-func (h *OperationProvider) getAnchorFile(address string) (*models.AnchorFile, error) {
-	content, err := h.readFromCAS(address, h.CompressionAlgorithm, h.MaxAnchorFileSize)
+func (h *OperationProvider) getAnchorFile(uri string) (*models.AnchorFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxAnchorFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading anchor file[%s]", address)
+		return nil, errors.Wrapf(err, "error reading anchor file")
 	}
 
 	af, err := models.ParseAnchorFile(content)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse content for anchor file[%s]", address)
+		return nil, errors.Wrapf(err, "failed to parse content for anchor file[%s]", uri)
 	}
 
 	return af, nil
 }
 
-// getMapFile will download map file from cas and parse it into map file model.
-func (h *OperationProvider) getMapFile(address string) (*models.MapFile, error) {
-	content, err := h.readFromCAS(address, h.CompressionAlgorithm, h.MaxMapFileSize)
+// getCoreProofFile will download core proof file from cas and parse it into core proof file model.
+func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProofFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading map file[%s]", address)
+		return nil, errors.Wrapf(err, "error reading core proof file")
+	}
+
+	logger.Debugf("successfully downloaded core proof file[%s]: %s", uri, string(content))
+
+	cpf, err := models.ParseCoreProofFile(content)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse content for core proof file[%s]", uri)
+	}
+
+	return cpf, nil
+}
+
+// getProvisionalProofFile will download provisional proof file from cas and parse it into provisional proof file model.
+func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.ProvisionalProofFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProofFileSize)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading provisional proof file")
+	}
+
+	logger.Debugf("successfully downloaded provisional proof file[%s]: %s", uri, string(content))
+
+	ppf, err := models.ParseProvisionalProofFile(content)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse content for provisional proof file[%s]", uri)
+	}
+
+	return ppf, nil
+}
+
+// getMapFile will download map file from cas and parse it into map file model.
+func (h *OperationProvider) getMapFile(uri string) (*models.MapFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxMapFileSize)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading map file")
 	}
 
 	mf, err := models.ParseMapFile(content)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse content for map file[%s]", address)
+		return nil, errors.Wrapf(err, "failed to parse content for map file[%s]", uri)
 	}
 
 	return mf, nil
 }
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model.
-func (h *OperationProvider) getChunkFile(address string) (*models.ChunkFile, error) {
-	content, err := h.readFromCAS(address, h.CompressionAlgorithm, h.MaxChunkFileSize)
+func (h *OperationProvider) getChunkFile(uri string) (*models.ChunkFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxChunkFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading chunk file[%s]", address)
+		return nil, errors.Wrapf(err, "error reading chunk file")
 	}
 
 	cf, err := models.ParseChunkFile(content)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse content for chunk file[%s]", address)
+		return nil, errors.Wrapf(err, "failed to parse content for chunk file[%s]", uri)
 	}
 
 	return cf, nil
 }
 
-func (h *OperationProvider) readFromCAS(address, alg string, maxSize uint) ([]byte, error) {
-	bytes, err := h.cas.Read(address)
+func (h *OperationProvider) readFromCAS(uri, alg string, maxSize uint) ([]byte, error) {
+	bytes, err := h.cas.Read(uri)
 	if err != nil {
-		return nil, errors.Wrapf(err, "retrieve CAS content[%s]", address)
+		return nil, errors.Wrapf(err, "retrieve CAS content at uri[%s]", uri)
 	}
 
 	if len(bytes) > int(maxSize) {
-		return nil, fmt.Errorf("content[%s] size %d exceeded maximum size %d", address, len(bytes), maxSize)
+		return nil, fmt.Errorf("uri[%s]: content size %d exceeded maximum size %d", uri, len(bytes), maxSize)
 	}
 
 	content, err := h.dp.Decompress(alg, bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "decompress CAS content[%s] using '%s'", address, alg)
+		return nil, errors.Wrapf(err, "decompress CAS uri[%s] using '%s'", uri, alg)
 	}
 
 	return content, nil

@@ -145,7 +145,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		schema, err := parser.ParseSignedDataForUpdate(compactJWS)
 		require.Error(t, err)
 		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required multihash algorithm: 18")
 	})
 	t.Run("payload not JSON object", func(t *testing.T) {
 		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())

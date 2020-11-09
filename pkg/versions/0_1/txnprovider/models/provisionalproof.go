@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -25,7 +24,7 @@ type ProvisionalProofFile struct {
 
 // ProvisionalProofOperations contains proving data for any update operation to be included in the batch.
 type ProvisionalProofOperations struct {
-	Update []SignedOperation `json:"update,omitempty"`
+	Update []string `json:"update,omitempty"`
 }
 
 // CreateProvisionalProofFile will create provisional proof file model from operations.
@@ -33,7 +32,7 @@ type ProvisionalProofOperations struct {
 func CreateProvisionalProofFile(updateOps []*model.Operation) *ProvisionalProofFile {
 	return &ProvisionalProofFile{
 		Operations: ProvisionalProofOperations{
-			Update: getSignedOperations(operation.TypeUpdate, updateOps),
+			Update: getSignedData(updateOps),
 		},
 	}
 }

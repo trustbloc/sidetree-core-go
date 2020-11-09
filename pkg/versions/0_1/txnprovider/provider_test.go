@@ -8,6 +8,7 @@ package txnprovider
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -118,7 +119,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		require.Error(t, err)
 		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "error reading anchor file[anchor]: retrieve CAS content[anchor]: CAS error")
+		require.Contains(t, err.Error(), "error reading anchor file: retrieve CAS content at uri[anchor]: CAS error")
 	})
 
 	t.Run("error - parse anchor operations error", func(t *testing.T) {
@@ -343,7 +344,7 @@ func TestHandler_readFromCAS(t *testing.T) {
 		file, err := provider.getChunkFile("address")
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), " retrieve CAS content[address]: CAS error")
+		require.Contains(t, err.Error(), " retrieve CAS content at uri[address]: CAS error")
 	})
 
 	t.Run("error - content exceeds maximum size", func(t *testing.T) {
@@ -362,6 +363,192 @@ func TestHandler_readFromCAS(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "compression algorithm 'alg' not supported")
+	})
+}
+
+func TestHandler_GetCorePoofFile(t *testing.T) {
+	cp := compression.New(compression.WithDefaultAlgorithms())
+	p := protocol.Protocol{MaxProofFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	uri, err := cas.Write(content)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		file, err := provider.getCoreProofFile(uri)
+		require.NoError(t, err)
+		require.NotNil(t, file)
+	})
+
+	t.Run("error - core proof file exceeds maximum size", func(t *testing.T) {
+		lowMaxFileSize := protocol.Protocol{MaxProofFileSize: 10, CompressionAlgorithm: compressionAlgorithm}
+		provider := NewOperationProvider(lowMaxFileSize, operationparser.New(p), cas, cp)
+
+		file, err := provider.getCoreProofFile(uri)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "exceeded maximum size 10")
+	})
+
+	t.Run("error - parse core proof file error (invalid JSON)", func(t *testing.T) {
+		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
+		require.NoError(t, err)
+		address, err := cas.Write(content)
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+		file, err := provider.getCoreProofFile(address)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "failed to parse content for core proof file")
+	})
+}
+
+func TestHandler_GetProvisionalPoofFile(t *testing.T) {
+	cp := compression.New(compression.WithDefaultAlgorithms())
+	p := protocol.Protocol{MaxProofFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	uri, err := cas.Write(content)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		file, err := provider.getProvisionalProofFile(uri)
+		require.NoError(t, err)
+		require.NotNil(t, file)
+	})
+
+	t.Run("error - core provisional file exceeds maximum size", func(t *testing.T) {
+		lowMaxFileSize := protocol.Protocol{MaxProofFileSize: 10, CompressionAlgorithm: compressionAlgorithm}
+		provider := NewOperationProvider(lowMaxFileSize, operationparser.New(p), cas, cp)
+
+		file, err := provider.getProvisionalProofFile(uri)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "exceeded maximum size 10")
+	})
+
+	t.Run("error - parse provisional proof file error (invalid JSON)", func(t *testing.T) {
+		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
+		require.NoError(t, err)
+		address, err := cas.Write(content)
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+		file, err := provider.getProvisionalProofFile(address)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "failed to parse content for provisional proof file")
+	})
+}
+
+func TestHandler_GetBatchFiles(t *testing.T) {
+	cp := compression.New(compression.WithDefaultAlgorithms())
+
+	cas := mocks.NewMockCasClient(nil)
+	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
+	require.NoError(t, err)
+	uri, err := cas.Write(content)
+	require.NoError(t, err)
+
+	mapFile, err := cp.Compress(compressionAlgorithm, []byte(fmt.Sprintf(`{"chunks":[{"chunkFileUri":"%s"}]}`, uri)))
+	require.NoError(t, err)
+	mapURI, err := cas.Write(mapFile)
+	require.NoError(t, err)
+
+	af := &models.AnchorFile{
+		MapFileURI:              mapURI,
+		CoreProofFileURI:        uri,
+		ProvisionalProofFileURI: uri,
+	}
+
+	t.Run("success", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		file, err := provider.getBatchFiles(af)
+		require.NoError(t, err)
+		require.NotNil(t, file)
+	})
+
+	t.Run("error - retrieve map file", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		p.MaxMapFileSize = 10
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		file, err := provider.getBatchFiles(af)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "exceeded maximum size 10")
+	})
+
+	t.Run("error - retrieve core proof file", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		p.MaxProofFileSize = 7
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		file, err := provider.getBatchFiles(af)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "exceeded maximum size 7")
+	})
+
+	t.Run("error - retrieve provisional proof file", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
+		ppfURI, err := cas.Write(content)
+		require.NoError(t, err)
+
+		af2 := &models.AnchorFile{
+			MapFileURI:              mapURI,
+			CoreProofFileURI:        uri,
+			ProvisionalProofFileURI: ppfURI,
+		}
+
+		file, err := provider.getBatchFiles(af2)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "failed to unmarshal provisional proof file: invalid character")
+	})
+
+	t.Run("error - map file is missing chunk file URI", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		af2 := &models.AnchorFile{
+			MapFileURI:              uri,
+			CoreProofFileURI:        uri,
+			ProvisionalProofFileURI: uri,
+		}
+
+		file, err := provider.getBatchFiles(af2)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "map file is missing chunk file URI")
+	})
+
+	t.Run("error - retrieve chunk file", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		p.MaxChunkFileSize = 10
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		file, err := provider.getBatchFiles(af)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "exceeded maximum size 10")
 	})
 }
 

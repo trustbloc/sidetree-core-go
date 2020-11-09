@@ -100,11 +100,11 @@ func validateCreateRequest(info *CreateRequestInfo) error {
 		return fmt.Errorf("multihash[%d] not supported", info.MultihashCode)
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(info.RecoveryCommitment, uint64(info.MultihashCode)) {
+	if !docutil.IsComputedUsingMultihashAlgorithm(info.RecoveryCommitment, uint64(info.MultihashCode)) {
 		return errors.New("next recovery commitment is not computed with the specified hash algorithm")
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(info.UpdateCommitment, uint64(info.MultihashCode)) {
+	if !docutil.IsComputedUsingMultihashAlgorithm(info.UpdateCommitment, uint64(info.MultihashCode)) {
 		return errors.New("next update commitment is not computed with the specified hash algorithm")
 	}
 
