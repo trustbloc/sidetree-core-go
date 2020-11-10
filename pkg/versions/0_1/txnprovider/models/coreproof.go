@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -27,8 +26,8 @@ type CoreProofFile struct {
 
 // CoreProofOperations contains proving data for any recover and deactivate operations to be included in a batch.
 type CoreProofOperations struct {
-	Recover    []SignedOperation `json:"recover,omitempty"`
-	Deactivate []SignedOperation `json:"deactivate,omitempty"`
+	Recover    []string `json:"recover,omitempty"`
+	Deactivate []string `json:"deactivate,omitempty"`
 }
 
 // CreateCoreProofFile will create core proof file from provided operations.
@@ -36,8 +35,8 @@ type CoreProofOperations struct {
 func CreateCoreProofFile(recoverOps, deactivateOps []*model.Operation) *CoreProofFile {
 	return &CoreProofFile{
 		Operations: CoreProofOperations{
-			Recover:    getSignedOperations(operation.TypeRecover, recoverOps),
-			Deactivate: getSignedOperations(operation.TypeDeactivate, deactivateOps),
+			Recover:    getSignedData(recoverOps),
+			Deactivate: getSignedData(deactivateOps),
 		},
 	}
 }

@@ -53,6 +53,7 @@ var (
 		MaxChunkFileSize:     1024,
 		MaxMapFileSize:       1024,
 		MaxAnchorFileSize:    1024,
+		MaxProofFileSize:     1024,
 		SignatureAlgorithms:  []string{"EdDSA", "ES256"},
 		KeyAlgorithms:        []string{"Ed25519", "P-256"},
 		Patches:              []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},

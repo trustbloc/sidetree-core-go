@@ -37,7 +37,7 @@ func ComputeMultihash(multihashCode uint, bytes []byte) ([]byte, error) {
 // GetHash will return hash based on specified multihash code.
 func GetHash(multihashCode uint) (h hash.Hash, err error) {
 	switch multihashCode {
-	case sha2_256:
+	case multihash.SHA2_256:
 		h = crypto.SHA256.New()
 	default:
 		err = fmt.Errorf("algorithm not supported, unable to compute hash")
@@ -56,8 +56,8 @@ func IsSupportedMultihash(encodedMultihash string) bool {
 	return multihash.ValidCode(code)
 }
 
-// IsComputedUsingHashAlgorithm checks to see if the given encoded hash has been hashed using multihash code.
-func IsComputedUsingHashAlgorithm(encodedMultihash string, code uint64) bool {
+// IsComputedUsingMultihashAlgorithm checks to see if the given encoded hash has been hashed using multihash code.
+func IsComputedUsingMultihashAlgorithm(encodedMultihash string, code uint64) bool {
 	mhCode, err := GetMultihashCode(encodedMultihash)
 	if err != nil {
 		return false

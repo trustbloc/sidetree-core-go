@@ -87,11 +87,11 @@ func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDa
 	}
 
 	code := uint64(p.MultihashAlgorithm)
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.RecoveryCommitment, code) {
+	if !docutil.IsComputedUsingMultihashAlgorithm(signedData.RecoveryCommitment, code) {
 		return fmt.Errorf("next recovery commitment hash is not computed with the required hash algorithm: %d", code)
 	}
 
-	if !docutil.IsComputedUsingHashAlgorithm(signedData.DeltaHash, code) {
+	if !docutil.IsComputedUsingMultihashAlgorithm(signedData.DeltaHash, code) {
 		return fmt.Errorf("patch data hash is not computed with the required hash algorithm: %d", code)
 	}
 

@@ -39,6 +39,8 @@ type Protocol struct {
 	CompressionAlgorithm string `json:"compressionAlgorithm"`
 	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS.
 	MaxAnchorFileSize uint `json:"maxAnchorFileSize"`
+	// MaxProofFileSize is maximum allowed size (in bytes) of proof files stored in CAS.
+	MaxProofFileSize uint `json:"maxProofFileSize"`
 	// MaxMapFileSize is maximum allowed size (in bytes) of map file stored in CAS.
 	MaxMapFileSize uint `json:"maxMapFileSize"`
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS.
