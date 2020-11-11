@@ -16,6 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
@@ -97,7 +98,7 @@ func (m *MockDocumentHandler) ProcessOperation(operationBuffer []byte, _ uint64)
 	var suffix string
 	switch op.Operation {
 	case operation.TypeCreate:
-		suffix, err = docutil.CalculateModelMultihash(op.SuffixData, sha2_256)
+		suffix, err = hashing.CalculateModelMultihash(op.SuffixData, sha2_256)
 		if err != nil {
 			return nil, err
 		}

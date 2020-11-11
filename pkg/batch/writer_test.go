@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package batch
 
 import (
-	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -472,7 +471,7 @@ func generateOperation(num int) (*operation.QueuedOperation, error) {
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -59,7 +59,7 @@ func (p *Parser) ParseDID(namespace, shortOrLongFormDID string) (string, []byte,
 
 // parse initial state will get create request from encoded initial value.
 func parseInitialState(initialState string) (*model.CreateRequest, error) {
-	decodedJCS, err := docutil.DecodeString(initialState)
+	decodedJCS, err := encoder.DecodeString(initialState)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func parseInitialState(initialState string) (*model.CreateRequest, error) {
 
 	fmt.Println(string(expected))
 
-	if docutil.EncodeToString(expected) != initialState {
+	if encoder.EncodeToString(expected) != initialState {
 		return nil, errors.New("initial state is not valid")
 	}
 

@@ -7,12 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package commitment
 
 import (
-	"crypto"
-
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
@@ -20,7 +18,7 @@ import (
 var logger = log.New("sidetree-core-commitment")
 
 // Calculate will calculate commitment hash from JWK.
-func Calculate(jwk *jws.JWK, multihashCode uint, hash crypto.Hash) (string, error) {
+func Calculate(jwk *jws.JWK, multihashCode uint) (string, error) {
 	data, err := canonicalizer.MarshalCanonical(jwk)
 	if err != nil {
 		return "", err
@@ -28,15 +26,20 @@ func Calculate(jwk *jws.JWK, multihashCode uint, hash crypto.Hash) (string, erro
 
 	logger.Debugf("calculating commitment from JWK: %s", string(data))
 
+	hash, err := hashing.GetHashFromMultihash(multihashCode)
+	if err != nil {
+		return "", err
+	}
+
 	dataHash, err := hashing.GetHash(hash, data)
 	if err != nil {
 		return "", err
 	}
 
-	multiHash, err := docutil.ComputeMultihash(multihashCode, dataHash)
+	multiHash, err := hashing.ComputeMultihash(multihashCode, dataHash)
 	if err != nil {
 		return "", err
 	}
 
-	return docutil.EncodeToString(multiHash), nil
+	return encoder.EncodeToString(multiHash), nil
 }

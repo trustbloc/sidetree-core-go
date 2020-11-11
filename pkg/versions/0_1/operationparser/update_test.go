@@ -14,7 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -209,7 +209,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 }
 
 func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
-	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}

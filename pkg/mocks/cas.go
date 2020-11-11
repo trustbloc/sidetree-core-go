@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 )
 
 const sha2_256 = 18
@@ -36,7 +36,7 @@ func (m *MockCasClient) Write(content []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash, err := docutil.ComputeMultihash(sha2_256, content)
+	hash, err := hashing.ComputeMultihash(sha2_256, content)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +73,7 @@ func (m *MockCasClient) Read(address string) ([]byte, error) {
 		return nil, err
 	}
 
-	valueHash, err := docutil.ComputeMultihash(sha2_256, value)
+	valueHash, err := hashing.ComputeMultihash(sha2_256, value)
 	if err != nil {
 		return nil, err
 	}

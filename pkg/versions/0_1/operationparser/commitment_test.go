@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package operationparser
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -254,7 +253,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
+	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, "", err
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -87,11 +87,11 @@ func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDa
 	}
 
 	code := uint64(p.MultihashAlgorithm)
-	if !docutil.IsComputedUsingMultihashAlgorithm(signedData.RecoveryCommitment, code) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(signedData.RecoveryCommitment, code) {
 		return fmt.Errorf("next recovery commitment hash is not computed with the required hash algorithm: %d", code)
 	}
 
-	if !docutil.IsComputedUsingMultihashAlgorithm(signedData.DeltaHash, code) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(signedData.DeltaHash, code) {
 		return fmt.Errorf("patch data hash is not computed with the required hash algorithm: %d", code)
 	}
 

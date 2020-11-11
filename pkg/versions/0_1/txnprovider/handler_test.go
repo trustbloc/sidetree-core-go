@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package txnprovider
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -406,7 +405,7 @@ func generateCreateOperation(num int) ([]byte, error) {
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +432,7 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	c, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -477,7 +476,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	c, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}

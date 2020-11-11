@@ -8,7 +8,6 @@ package dochandler
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -25,6 +24,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
@@ -58,7 +59,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	err = json.Unmarshal(create, &createReq)
 	require.NoError(t, err)
 
-	uniqueSuffix, err := docutil.CalculateModelMultihash(createReq.SuffixData, sha2_256)
+	uniqueSuffix, err := hashing.CalculateModelMultihash(createReq.SuffixData, sha2_256)
 	require.NoError(t, err)
 
 	id, err := docutil.CalculateID(namespace, createReq.SuffixData, sha2_256)
@@ -138,12 +139,12 @@ func TestUpdateHandler_Update(t *testing.T) {
 }
 
 func getCreateRequestInfo() (*client.CreateRequestInfo, error) {
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +174,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *client.UpdateRequestInfo {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -213,12 +214,12 @@ func getRecoverRequestInfo(uniqueSuffix string) *client.RecoverRequestInfo {
 		panic(err)
 	}
 
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -235,12 +236,12 @@ func getRecoverRequestInfo(uniqueSuffix string) *client.RecoverRequestInfo {
 }
 
 func computeMultihash(data string) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, []byte(data))
+	mh, err := hashing.ComputeMultihash(sha2_256, []byte(data))
 	if err != nil {
 		panic(err)
 	}
 
-	return docutil.EncodeToString(mh)
+	return encoder.EncodeToString(mh)
 }
 
 func getUnsupportedRequest() []byte {

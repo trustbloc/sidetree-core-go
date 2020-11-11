@@ -18,6 +18,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -114,7 +116,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 
-		suffix, err := docutil.CalculateModelMultihash(create.SuffixData, sha2_256)
+		suffix, err := hashing.CalculateModelMultihash(create.SuffixData, sha2_256)
 		require.NoError(t, err)
 
 		createBytes, err := canonicalizer.MarshalCanonical(create)
@@ -165,7 +167,7 @@ func canonicalizeThenEncode(value interface{}) (string, error) {
 		return "", err
 	}
 
-	return docutil.EncodeToString(jcsBytes), nil
+	return encoder.EncodeToString(jcsBytes), nil
 }
 
 func getDelta() (*model.DeltaModel, error) {

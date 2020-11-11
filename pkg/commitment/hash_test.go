@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package commitment
 
 import (
-	"crypto"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,27 +28,20 @@ func TestCalculate(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		commitment, err := Calculate(jwk, sha2_256, crypto.SHA256)
+		commitment, err := Calculate(jwk, sha2_256)
 		require.NoError(t, err)
 		require.NotEmpty(t, commitment)
 	})
 
 	t.Run(" error - multihash not supported", func(t *testing.T) {
-		commitment, err := Calculate(jwk, 55, crypto.SHA256)
+		commitment, err := Calculate(jwk, 55)
 		require.Error(t, err)
 		require.Empty(t, commitment)
 		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
 	})
 
-	t.Run(" error - hash not supported", func(t *testing.T) {
-		commitment, err := Calculate(jwk, sha2_256, 55)
-		require.Error(t, err)
-		require.Empty(t, commitment)
-		require.Contains(t, err.Error(), "hash function not available for: 55")
-	})
-
 	t.Run("error - canonicalization failed", func(t *testing.T) {
-		commitment, err := Calculate(nil, sha2_256, crypto.SHA256)
+		commitment, err := Calculate(nil, sha2_256)
 		require.Error(t, err)
 		require.Empty(t, commitment)
 		require.Contains(t, err.Error(), "Expected '{' but got 'n'")
