@@ -11,7 +11,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -51,7 +51,7 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		Patches:          info.Patches,
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, info.MultihashCode)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, info.MultihashCode)
 	if err != nil {
 		return nil, err
 	}

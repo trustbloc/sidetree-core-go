@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 )
 
 // NamespaceDelimiter is the delimiter that separates the namespace from the unique suffix.
@@ -17,7 +19,7 @@ const NamespaceDelimiter = ":"
 
 // CalculateID calculates the ID from model and namespace.
 func CalculateID(namespace string, value interface{}, hashAlgorithmAsMultihashCode uint) (string, error) {
-	uniqueSuffix, err := CalculateModelMultihash(value, hashAlgorithmAsMultihashCode)
+	uniqueSuffix, err := hashing.CalculateModelMultihash(value, hashAlgorithmAsMultihashCode)
 	if err != nil {
 		return "", err
 	}

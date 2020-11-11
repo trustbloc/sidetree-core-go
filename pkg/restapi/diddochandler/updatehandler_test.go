@@ -8,7 +8,6 @@ package diddochandler
 
 import (
 	"bytes"
-	"crypto"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -117,7 +117,7 @@ func getDelta() (*model.DeltaModel, error) {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func getDelta() (*model.DeltaModel, error) {
 }
 
 func getSuffixData() (*model.SuffixDataModel, error) {
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256, crypto.SHA256)
+	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}

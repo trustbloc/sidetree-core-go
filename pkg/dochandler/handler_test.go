@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +25,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/transformer/doctransformer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -163,7 +164,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	longFormPart := ":" + docutil.EncodeToString(createReq)
+	longFormPart := ":" + encoder.EncodeToString(createReq)
 
 	t.Run("success - initial state", func(t *testing.T) {
 		result, err := dochandler.ResolveDocument(docID + longFormPart)
@@ -274,7 +275,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 	})
 	require.NoError(t, err)
 
-	longFormPart := ":" + docutil.EncodeToString(createReq)
+	longFormPart := ":" + encoder.EncodeToString(createReq)
 
 	result, err := dochandler.ResolveDocument(docID + longFormPart)
 	require.NotNil(t, err)
@@ -301,7 +302,7 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	longFormPart := ":" + docutil.EncodeToString(initialReq)
+	longFormPart := ":" + encoder.EncodeToString(initialReq)
 
 	result, err := dochandler.ResolveDocument(docID + longFormPart)
 	require.Error(t, err)
@@ -442,7 +443,7 @@ func getCreateOperationWithInitialState(suffixData *model.SuffixDataModel, delta
 		return nil, err
 	}
 
-	uniqueSuffix, err := docutil.CalculateModelMultihash(suffixData, sha2_256)
+	uniqueSuffix, err := hashing.CalculateModelMultihash(suffixData, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -553,12 +554,12 @@ func getSuffixData(delta *model.DeltaModel) (*model.SuffixDataModel, error) {
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
+	c, err := commitment.Calculate(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -570,12 +571,12 @@ func getSuffixData(delta *model.DeltaModel) (*model.SuffixDataModel, error) {
 }
 
 func encodedMultihash(data []byte) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, data)
+	mh, err := hashing.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}
 
-	return docutil.EncodeToString(mh)
+	return encoder.EncodeToString(mh)
 }
 
 func getUpdateDelta() *model.DeltaModel {

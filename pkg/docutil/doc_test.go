@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	multihashCode uint = 18
-	namespace          = "did:sidetree"
+	sha2_256  uint = 18
+	namespace      = "did:sidetree"
 )
 
 func TestCalculateID(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		id, err := CalculateID(namespace, suffixDataObject, multihashCode)
+		id, err := CalculateID(namespace, suffixDataObject, sha2_256)
 		require.Nil(t, err)
 		require.Equal(t, namespace+NamespaceDelimiter+expectedSuffixForSuffixObject, id)
 	})
@@ -29,29 +29,6 @@ func TestCalculateID(t *testing.T) {
 		require.NotNil(t, err)
 		require.Empty(t, id)
 		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
-	})
-}
-
-func TestCalculateModelMultihash(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		suffix, err := CalculateModelMultihash(suffixDataObject, multihashCode)
-		require.Nil(t, err)
-		require.Equal(t, expectedSuffixForSuffixObject, suffix)
-	})
-
-	t.Run("error - multihash algorithm not supported", func(t *testing.T) {
-		id, err := CalculateModelMultihash(suffixDataObject, 55)
-		require.NotNil(t, err)
-		require.Empty(t, id)
-		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
-	})
-
-	t.Run("error - marshal canonical", func(t *testing.T) {
-		var c chan int
-		result, err := CalculateModelMultihash(c, sha2_256)
-		require.Error(t, err)
-		require.Empty(t, result)
-		require.Contains(t, err.Error(), "json: unsupported type: chan int")
 	})
 }
 

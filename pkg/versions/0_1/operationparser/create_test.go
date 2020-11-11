@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package operationparser
 
 import (
-	"crypto"
 	"encoding/json"
 	"testing"
 
@@ -16,7 +15,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -267,7 +267,7 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		X:   "x",
 	}
 
-	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256, crypto.SHA256)
+	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		return nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, sha2_256)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -289,12 +289,12 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 }
 
 func computeMultihash(data []byte) string {
-	mh, err := docutil.ComputeMultihash(sha2_256, data)
+	mh, err := hashing.ComputeMultihash(sha2_256, data)
 	if err != nil {
 		panic(err)
 	}
 
-	return docutil.EncodeToString(mh)
+	return encoder.EncodeToString(mh)
 }
 
 const validDoc = `{

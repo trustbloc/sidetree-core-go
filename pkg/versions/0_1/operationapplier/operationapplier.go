@@ -15,7 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
@@ -91,7 +91,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 	}
 
 	// verify actual delta hash matches expected delta hash
-	err = docutil.IsValidModelMultihash(op.Delta, op.SuffixData.DeltaHash)
+	err = hashing.IsValidModelMultihash(op.Delta, op.SuffixData.DeltaHash)
 	if err != nil {
 		logger.Infof("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", anchoredOp.UniqueSuffix, anchoredOp.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 
@@ -137,7 +137,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
+	err = hashing.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
 		return nil, fmt.Errorf("update delta doesn't match delta hash: %s", err.Error())
 	}
@@ -239,7 +239,7 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 	}
 
 	// verify the delta against the signed delta hash
-	err = docutil.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
+	err = hashing.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
 		logger.Infof("Recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
 

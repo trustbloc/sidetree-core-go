@@ -31,6 +31,9 @@ type Operation struct {
 	// SignedData is signed data for the operation (compact JWS)
 	SignedData string
 
+	// RevealValue is
+	RevealValue string
+
 	// Delta is operation delta model
 	Delta *DeltaModel
 

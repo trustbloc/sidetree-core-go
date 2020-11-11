@@ -29,8 +29,6 @@ type Protocol struct {
 	GenesisTime uint64 `json:"genesisTime"`
 	// MultihashAlgorithm is multihash algorithm code.
 	MultihashAlgorithm uint `json:"multihashAlgorithm"`
-	// HashAlgorithm is hash algorithm
-	HashAlgorithm uint `json:"hashAlgorithm"`
 	// MaxOperationCount defines maximum number of operations per batch.
 	MaxOperationCount uint `json:"maxOperationCount"`
 	// MaxOperationSize is maximum uncompressed operation size.

@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -96,7 +96,7 @@ func (p *Parser) validateSignedDataForUpdate(signedData *model.UpdateSignedDataM
 	}
 
 	code := uint64(p.MultihashAlgorithm)
-	if !docutil.IsComputedUsingMultihashAlgorithm(signedData.DeltaHash, code) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(signedData.DeltaHash, code) {
 		return fmt.Errorf("delta hash is not computed with the required multihash algorithm: %d", code)
 	}
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
@@ -38,7 +39,7 @@ func TestParser_ParseDID(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println(string(reqBytes))
 
-	initialState := docutil.EncodeToString(reqBytes)
+	initialState := encoder.EncodeToString(reqBytes)
 
 	t.Run("success - just did, no initial state value", func(t *testing.T) {
 		did, initial, err := parser.ParseDID(docNS, testDID)
@@ -87,7 +88,7 @@ func TestParser_ParseDID(t *testing.T) {
 	})
 
 	t.Run("error - initial state not JSON", func(t *testing.T) {
-		invalidJCS := docutil.EncodeToString([]byte(`not JSON`))
+		invalidJCS := encoder.EncodeToString([]byte(`not JSON`))
 
 		did, initial, err := parser.ParseDID(docNS, testDID+longFormSeparator+invalidJCS)
 		require.Error(t, err)
@@ -97,7 +98,7 @@ func TestParser_ParseDID(t *testing.T) {
 	})
 
 	t.Run("error - initial state not expected JCS", func(t *testing.T) {
-		unexpectedJCS := docutil.EncodeToString([]byte(`{"key":"value"}`))
+		unexpectedJCS := encoder.EncodeToString([]byte(`{"key":"value"}`))
 
 		did, initial, err := parser.ParseDID(docNS, testDID+longFormSeparator+unexpectedJCS)
 		require.Error(t, err)

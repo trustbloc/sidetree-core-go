@@ -7,11 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
-	"crypto"
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
@@ -96,14 +94,12 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 	}, nil
 }
 
-func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation, params *commitmentParams) map[string][]*operation.AnchoredOperation {
-	const keyFormat = "%s_%s"
-
+func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation, multihashAlg uint) map[string][]*operation.AnchoredOperation {
 	opMap := make(map[string][]*operation.AnchoredOperation)
 
-	previousVersions := make(map[string]*commitmentParams)
-	if params != nil {
-		previousVersions[fmt.Sprintf(keyFormat, uintToStr(params.MultihashCode), uintToStr(params.HashCode))] = params
+	previousVersions := make(map[uint]bool)
+	if multihashAlg != 0 {
+		previousVersions[multihashAlg] = true
 	}
 
 	for _, op := range ops {
@@ -114,16 +110,12 @@ func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOpe
 			continue
 		}
 
-		key := fmt.Sprintf(keyFormat, uintToStr(p.MultihashAlgorithm), uintToStr(p.HashAlgorithm))
-
-		if _, ok := previousVersions[key]; !ok {
-			previousVersions[key] = &commitmentParams{
-				HashCode:      p.HashAlgorithm,
-				MultihashCode: p.MultihashAlgorithm,
-			}
+		if _, ok := previousVersions[p.MultihashAlgorithm]; !ok {
+			previousVersions[p.MultihashAlgorithm] = true
 		}
-		for _, val := range previousVersions {
-			c, err := commitment.Calculate(r, val.MultihashCode, crypto.Hash(val.HashCode))
+
+		for key := range previousVersions {
+			c, err := commitment.Calculate(r, key)
 			if err != nil {
 				logger.Infof("[%s] Skipped calculating commitment while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 
@@ -135,10 +127,6 @@ func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOpe
 	}
 
 	return opMap
-}
-
-func uintToStr(val uint) string {
-	return strconv.Itoa(int(val))
 }
 
 func splitOperations(ops []*operation.AnchoredOperation) (createOps, updateOps, fullOps []*operation.AnchoredOperation) {
@@ -190,10 +178,7 @@ func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation,
 		return state
 	}
 
-	opMap := s.createOperationHashMap(ops, &commitmentParams{
-		HashCode:      p.Protocol().HashAlgorithm,
-		MultihashCode: p.Protocol().MultihashAlgorithm,
-	})
+	opMap := s.createOperationHashMap(ops, p.Protocol().MultihashAlgorithm)
 
 	// holds applied commitments
 	commitmentMap := make(map[string]bool)
@@ -361,9 +346,4 @@ func (s *OperationProcessor) getCommitment(op *operation.AnchoredOperation) (str
 	}
 
 	return nextCommitment, nil
-}
-
-type commitmentParams struct {
-	MultihashCode uint
-	HashCode      uint
 }

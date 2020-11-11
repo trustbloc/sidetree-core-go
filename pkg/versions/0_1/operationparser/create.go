@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser/patchvalidator"
@@ -38,13 +38,13 @@ func (p *Parser) ParseCreateOperation(request []byte, anchor bool) (*model.Opera
 		}
 
 		// verify actual delta hash matches expected delta hash
-		err = docutil.IsValidModelMultihash(schema.Delta, schema.SuffixData.DeltaHash)
+		err = hashing.IsValidModelMultihash(schema.Delta, schema.SuffixData.DeltaHash)
 		if err != nil {
 			return nil, fmt.Errorf("parse create operation: delta doesn't match suffix data delta hash: %s", err.Error())
 		}
 	}
 
-	uniqueSuffix, err := docutil.CalculateModelMultihash(schema.SuffixData, p.MultihashAlgorithm)
+	uniqueSuffix, err := hashing.CalculateModelMultihash(schema.SuffixData, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (p *Parser) ValidateDelta(delta *model.DeltaModel) error {
 		}
 	}
 
-	if !docutil.IsComputedUsingMultihashAlgorithm(delta.UpdateCommitment, uint64(p.MultihashAlgorithm)) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(delta.UpdateCommitment, uint64(p.MultihashAlgorithm)) {
 		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
 	}
 
@@ -117,11 +117,11 @@ func (p *Parser) ValidateSuffixData(suffixData *model.SuffixDataModel) error {
 		return errors.New("missing suffix data")
 	}
 
-	if !docutil.IsComputedUsingMultihashAlgorithm(suffixData.RecoveryCommitment, uint64(p.MultihashAlgorithm)) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(suffixData.RecoveryCommitment, uint64(p.MultihashAlgorithm)) {
 		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
 	}
 
-	if !docutil.IsComputedUsingMultihashAlgorithm(suffixData.DeltaHash, uint64(p.MultihashAlgorithm)) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(suffixData.DeltaHash, uint64(p.MultihashAlgorithm)) {
 		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
 	}
 

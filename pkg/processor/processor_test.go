@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package processor
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -24,7 +23,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -38,7 +37,9 @@ import (
 )
 
 const (
-	sha2_256          = 18
+	sha2_256 = 18
+	sha2_512 = 19
+
 	dummyUniqueSuffix = "dummy"
 
 	updateKeyID = "update-key"
@@ -540,7 +541,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.NotNil(t, reveal)
 		require.NotEmpty(t, p)
 
-		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
+		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm)
 		require.NoError(t, err)
 
 		c, err := getCommitment(recoveryKey, getProtocol(1))
@@ -556,7 +557,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 
-		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
+		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm)
 		require.NoError(t, err)
 
 		c, err := getCommitment(updateKey, getProtocol(1))
@@ -572,7 +573,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, reveal)
 
-		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
+		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm)
 		require.NoError(t, err)
 
 		c, err := getCommitment(recoveryKey, getProtocol(1))
@@ -869,7 +870,7 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, getProtocol(blockNumber).MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, getProtocol(blockNumber).MultihashAlgorithm)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -912,7 +913,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
+	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, "", err
 	}
@@ -996,7 +997,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 }
 
 func getRecoverRequest(signer client.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel, blockNum uint64) (*model.RecoverRequest, error) {
-	deltaHash, err := docutil.CalculateModelMultihash(deltaModel, getProtocol(blockNum).MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(deltaModel, getProtocol(blockNum).MultihashAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -1031,7 +1032,7 @@ func getDefaultRecoverRequest(signer client.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, p.MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1090,7 +1091,7 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 		return nil, err
 	}
 
-	uniqueSuffix, err := docutil.CalculateModelMultihash(createRequest.SuffixData, sha2_256)
+	uniqueSuffix, err := hashing.CalculateModelMultihash(createRequest.SuffixData, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -1197,7 +1198,7 @@ func getCommitment(key *ecdsa.PrivateKey, p protocol.Protocol) (string, error) {
 		return "", err
 	}
 
-	return commitment.Calculate(pubKey, p.MultihashAlgorithm, crypto.Hash(p.HashAlgorithm))
+	return commitment.Calculate(pubKey, p.MultihashAlgorithm)
 }
 
 func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p protocol.Protocol) (*model.SuffixDataModel, error) {
@@ -1206,7 +1207,7 @@ func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p prot
 		return nil, err
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, p.MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -1263,8 +1264,7 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 	//nolint:gomnd
 	latest := protocol.Protocol{
 		GenesisTime:          100,
-		MultihashAlgorithm:   sha2_256,
-		HashAlgorithm:        7, // crypto code for sha512 hash function
+		MultihashAlgorithm:   sha2_512,
 		MaxOperationCount:    2,
 		MaxOperationSize:     mocks.MaxOperationByteSize,
 		CompressionAlgorithm: "GZIP",

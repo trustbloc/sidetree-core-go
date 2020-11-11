@@ -14,7 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
@@ -58,7 +58,7 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 		Patches:          patches,
 	}
 
-	deltaHash, err := docutil.CalculateModelMultihash(delta, info.MultihashCode)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, info.MultihashCode)
 	if err != nil {
 		return nil, err
 	}
@@ -100,11 +100,11 @@ func validateCreateRequest(info *CreateRequestInfo) error {
 		return fmt.Errorf("multihash[%d] not supported", info.MultihashCode)
 	}
 
-	if !docutil.IsComputedUsingMultihashAlgorithm(info.RecoveryCommitment, uint64(info.MultihashCode)) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(info.RecoveryCommitment, uint64(info.MultihashCode)) {
 		return errors.New("next recovery commitment is not computed with the specified hash algorithm")
 	}
 
-	if !docutil.IsComputedUsingMultihashAlgorithm(info.UpdateCommitment, uint64(info.MultihashCode)) {
+	if !hashing.IsComputedUsingMultihashAlgorithm(info.UpdateCommitment, uint64(info.MultihashCode)) {
 		return errors.New("next update commitment is not computed with the specified hash algorithm")
 	}
 

@@ -15,7 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
-	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
@@ -350,7 +350,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 
 	var createOps []*model.Operation
 	for _, op := range af.Operations.Create {
-		suffix, err := docutil.CalculateModelMultihash(op.SuffixData, h.MultihashAlgorithm)
+		suffix, err := hashing.CalculateModelMultihash(op.SuffixData, h.MultihashAlgorithm)
 		if err != nil {
 			return nil, err
 		}
