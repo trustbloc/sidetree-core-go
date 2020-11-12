@@ -11,44 +11,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 )
 
 func TestHandler_CreateMapFile(t *testing.T) {
-	const createOpsNum = 2
 	const updateOpsNum = 2
-	const deactivateOpsNum = 2
-	const recoverOpsNum = 2
 
-	ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
+	ops := generateOperations(updateOpsNum, operation.TypeUpdate)
 
 	chunks := []string{"chunk_uri"}
-	batch := CreateMapFile(chunks, ops)
+	batch := CreateProvisionalIndexFile(chunks, "provisionalURI", ops)
 	require.NotNil(t, batch)
 	require.Equal(t, updateOpsNum, len(batch.Operations.Update))
-	require.Equal(t, 0, len(batch.Operations.Create))
-	require.Equal(t, 0, len(batch.Operations.Deactivate))
-	require.Equal(t, 0, len(batch.Operations.Recover))
 }
 
 func TestHandler_ParseMapFile(t *testing.T) {
-	const createOpsNum = 2
-	const updateOpsNum = 2
-	const deactivateOpsNum = 2
-	const recoverOpsNum = 2
+	const updateOpsNum = 5
 
-	ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
+	ops := generateOperations(updateOpsNum, operation.TypeUpdate)
 
 	chunks := []string{"chunk_uri"}
-	model := CreateMapFile(chunks, ops)
+	model := CreateProvisionalIndexFile(chunks, "provisionalURI", ops)
 
 	bytes, err := json.Marshal(model)
 	require.NoError(t, err)
 
-	parsed, err := ParseMapFile(bytes)
+	parsed, err := ParseProvisionalIndexFile(bytes)
 	require.NoError(t, err)
 
-	require.Equal(t, 0, len(parsed.Operations.Create))
 	require.Equal(t, updateOpsNum, len(parsed.Operations.Update))
-	require.Equal(t, 0, len(parsed.Operations.Deactivate))
-	require.Equal(t, 0, len(parsed.Operations.Recover))
 }

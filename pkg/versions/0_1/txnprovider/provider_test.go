@@ -119,7 +119,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		require.Error(t, err)
 		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "error reading anchor file: retrieve CAS content at uri[anchor]: CAS error")
+		require.Contains(t, err.Error(), "error reading core index file: retrieve CAS content at uri[anchor]: CAS error")
 	})
 
 	t.Run("error - parse anchor operations error", func(t *testing.T) {
@@ -192,9 +192,9 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 	})
 }
 
-func TestHandler_GetAnchorFile(t *testing.T) {
+func TestHandler_GetCoreIndexFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxAnchorFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{MaxCoreIndexFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -207,37 +207,37 @@ func TestHandler_GetAnchorFile(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		provider := NewOperationProvider(p, parser, cas, cp)
 
-		file, err := provider.getAnchorFile(address)
+		file, err := provider.getCoreIndexFile(address)
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
 
-	t.Run("error - anchor file exceeds maximum size", func(t *testing.T) {
-		provider := NewOperationProvider(protocol.Protocol{MaxAnchorFileSize: 15, CompressionAlgorithm: compressionAlgorithm}, parser, cas, cp)
+	t.Run("error - core index file exceeds maximum size", func(t *testing.T) {
+		provider := NewOperationProvider(protocol.Protocol{MaxCoreIndexFileSize: 15, CompressionAlgorithm: compressionAlgorithm}, parser, cas, cp)
 
-		file, err := provider.getAnchorFile(address)
+		file, err := provider.getCoreIndexFile(address)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "exceeded maximum size 15")
 	})
 
-	t.Run("error - parse anchor file error (invalid JSON)", func(t *testing.T) {
+	t.Run("error - parse core index file error (invalid JSON)", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
 		address, err := cas.Write(content)
 
 		provider := NewOperationProvider(p, parser, cas, cp)
-		file, err := provider.getAnchorFile(address)
+		file, err := provider.getCoreIndexFile(address)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "failed to parse content for anchor file")
+		require.Contains(t, err.Error(), "failed to parse content for core index file")
 	})
 }
 
-func TestHandler_GetMapFile(t *testing.T) {
+func TestHandler_GetProvisionalIndexFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxMapFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{MaxProvisionalIndexFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -248,23 +248,23 @@ func TestHandler_GetMapFile(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
-		file, err := provider.getMapFile(address)
+		file, err := provider.getProvisionalIndexFile(address)
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
 
-	t.Run("error - map file exceeds maximum size", func(t *testing.T) {
-		lowMaxFileSize := protocol.Protocol{MaxMapFileSize: 5, CompressionAlgorithm: compressionAlgorithm}
+	t.Run("error - provisional index file exceeds maximum size", func(t *testing.T) {
+		lowMaxFileSize := protocol.Protocol{MaxProvisionalIndexFileSize: 5, CompressionAlgorithm: compressionAlgorithm}
 		parser := operationparser.New(lowMaxFileSize)
 		provider := NewOperationProvider(lowMaxFileSize, parser, cas, cp)
 
-		file, err := provider.getMapFile(address)
+		file, err := provider.getProvisionalIndexFile(address)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "exceeded maximum size 5")
 	})
 
-	t.Run("error - parse anchor file error (invalid JSON)", func(t *testing.T) {
+	t.Run("error - parse core index file error (invalid JSON)", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
@@ -272,10 +272,10 @@ func TestHandler_GetMapFile(t *testing.T) {
 
 		parser := operationparser.New(p)
 		provider := NewOperationProvider(p, parser, cas, cp)
-		file, err := provider.getMapFile(address)
+		file, err := provider.getProvisionalIndexFile(address)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "failed to parse content for map file")
+		require.Contains(t, err.Error(), "failed to parse content for provisional index file")
 	})
 }
 
@@ -457,15 +457,14 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 	uri, err := cas.Write(content)
 	require.NoError(t, err)
 
-	mapFile, err := cp.Compress(compressionAlgorithm, []byte(fmt.Sprintf(`{"chunks":[{"chunkFileUri":"%s"}]}`, uri)))
+	provisionalIndexFile, err := cp.Compress(compressionAlgorithm, []byte(fmt.Sprintf(`{"provisionalProofFileUri":"%s","chunks":[{"chunkFileUri":"%s"}]}`, uri, uri)))
 	require.NoError(t, err)
-	mapURI, err := cas.Write(mapFile)
+	mapURI, err := cas.Write(provisionalIndexFile)
 	require.NoError(t, err)
 
-	af := &models.AnchorFile{
-		MapFileURI:              mapURI,
+	af := &models.CoreIndexFile{
+		ProvisionalIndexFileURI: mapURI,
 		CoreProofFileURI:        uri,
-		ProvisionalProofFileURI: uri,
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -477,9 +476,9 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		require.NotNil(t, file)
 	})
 
-	t.Run("error - retrieve map file", func(t *testing.T) {
+	t.Run("error - retrieve provisional index file", func(t *testing.T) {
 		p := newMockProtocolClient().Protocol
-		p.MaxMapFileSize = 10
+		p.MaxProvisionalIndexFileSize = 10
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
@@ -510,10 +509,14 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		ppfURI, err := cas.Write(content)
 		require.NoError(t, err)
 
-		af2 := &models.AnchorFile{
-			MapFileURI:              mapURI,
+		provisionalIndexFile, err := cp.Compress(compressionAlgorithm, []byte(fmt.Sprintf(`{"provisionalProofFileUri":"%s","chunks":[{"chunkFileUri":"%s"}]}`, ppfURI, uri)))
+		require.NoError(t, err)
+		provisionalIndexURI, err := cas.Write(provisionalIndexFile)
+		require.NoError(t, err)
+
+		af2 := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: provisionalIndexURI,
 			CoreProofFileURI:        uri,
-			ProvisionalProofFileURI: ppfURI,
 		}
 
 		file, err := provider.getBatchFiles(af2)
@@ -522,21 +525,20 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		require.Contains(t, err.Error(), "failed to unmarshal provisional proof file: invalid character")
 	})
 
-	t.Run("error - map file is missing chunk file URI", func(t *testing.T) {
+	t.Run("error - provisional index file is missing chunk file URI", func(t *testing.T) {
 		p := newMockProtocolClient().Protocol
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
-		af2 := &models.AnchorFile{
-			MapFileURI:              uri,
+		af2 := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: uri,
 			CoreProofFileURI:        uri,
-			ProvisionalProofFileURI: uri,
 		}
 
 		file, err := provider.getBatchFiles(af2)
 		require.Error(t, err)
 		require.Nil(t, file)
-		require.Contains(t, err.Error(), "map file is missing chunk file URI")
+		require.Contains(t, err.Error(), "provisional index file is missing chunk file URI")
 	})
 
 	t.Run("error - retrieve chunk file", func(t *testing.T) {
@@ -567,29 +569,35 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
 		require.NoError(t, err)
 
-		af := &models.AnchorFile{
-			MapFileURI: "hash",
-			Operations: models.Operations{
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: "hash",
+			Operations: models.CoreOperations{
 				Create:     []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData}},
 			},
 		}
 
-		mf := &models.MapFile{
+		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
-			Operations: models.Operations{
+			Operations: models.ProvisionalOperations{
 				Update: []models.SignedOperation{{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData}},
 			},
 		}
 
 		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta, updateOp.Delta}}
 
-		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		batchFiles := &batchFiles{
+			CoreIndex:        cif,
+			ProvisionalIndex: pif,
+			Chunk:            cf,
+		}
+
+		file, err := provider.assembleBatchOperations(batchFiles, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
 
-	t.Run("error - anchor, map, chunk file operation number mismatch", func(t *testing.T) {
+	t.Run("error - core/provisional index, chunk file operation number mismatch", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
 		createOp, err := generateOperation(1, operation.TypeCreate)
@@ -601,9 +609,9 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
 		require.NoError(t, err)
 
-		af := &models.AnchorFile{
-			MapFileURI: "hash",
-			Operations: models.Operations{
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: "hash",
+			Operations: models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
 					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData},
@@ -611,9 +619,9 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			},
 		}
 
-		mf := &models.MapFile{
+		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
-			Operations: models.Operations{
+			Operations: models.ProvisionalOperations{
 				Update: []models.SignedOperation{{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData}},
 			},
 		}
@@ -621,14 +629,20 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		// don't add update operation delta to chunk file in order to cause error
 		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta}}
 
-		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		batchFiles := &batchFiles{
+			CoreIndex:        cif,
+			ProvisionalIndex: pif,
+			Chunk:            cf,
+		}
+
+		anchoredOps, err := provider.assembleBatchOperations(batchFiles, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
-		require.Nil(t, file)
+		require.Nil(t, anchoredOps)
 		require.Contains(t, err.Error(),
 			"number of create+recover+update operations[2] doesn't match number of deltas[1]")
 	})
 
-	t.Run("error - duplicate operations found in anchor/map files", func(t *testing.T) {
+	t.Run("error - duplicate operations found in core/provisional index files", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
 		createOp, err := generateOperation(1, operation.TypeCreate)
@@ -640,9 +654,9 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
 		require.NoError(t, err)
 
-		af := &models.AnchorFile{
-			MapFileURI: "hash",
-			Operations: models.Operations{
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: "hash",
+			Operations: models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.SignedOperation{
 					{DidSuffix: deactivateOp.UniqueSuffix, SignedData: deactivateOp.SignedData},
@@ -651,9 +665,9 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			},
 		}
 
-		mf := &models.MapFile{
+		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
-			Operations: models.Operations{
+			Operations: models.ProvisionalOperations{
 				Update: []models.SignedOperation{
 					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData},
 					{DidSuffix: updateOp.UniqueSuffix, SignedData: updateOp.SignedData},
@@ -663,11 +677,17 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta}}
 
-		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		batchFiles := &batchFiles{
+			CoreIndex:        cif,
+			ProvisionalIndex: pif,
+			Chunk:            cf,
+		}
+
+		anchoredOps, err := provider.assembleBatchOperations(batchFiles, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
-		require.Nil(t, file)
+		require.Nil(t, anchoredOps)
 		require.Contains(t, err.Error(),
-			"check for duplicate suffixes in anchor/map files: duplicate values found [deactivate-3 update-2]")
+			"check for duplicate suffixes in core/provisional index files: duplicate values found [deactivate-3 update-2]")
 	})
 
 	t.Run("error - invalid delta", func(t *testing.T) {
@@ -676,22 +696,28 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		createOp, err := generateOperation(1, operation.TypeCreate)
 		require.NoError(t, err)
 
-		af := &models.AnchorFile{
-			MapFileURI: "hash",
-			Operations: models.Operations{
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: "hash",
+			Operations: models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 			},
 		}
 
-		mf := &models.MapFile{
+		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
 		}
 
 		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{{Patches: []patch.Patch{}}}}
 
-		file, err := provider.assembleBatchOperations(af, mf, cf, &txn.SidetreeTxn{Namespace: defaultNS})
+		batchFiles := &batchFiles{
+			CoreIndex:        cif,
+			ProvisionalIndex: pif,
+			Chunk:            cf,
+		}
+
+		anchoredOps, err := provider.assembleBatchOperations(batchFiles, &txn.SidetreeTxn{Namespace: defaultNS})
 		require.Error(t, err)
-		require.Nil(t, file)
+		require.Nil(t, anchoredOps)
 		require.Contains(t, err.Error(), "validate delta: missing patches")
 	})
 }

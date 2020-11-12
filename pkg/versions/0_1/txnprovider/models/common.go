@@ -7,9 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package models
 
 import (
-	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
+
+// SortedOperations stores operations per type.
+type SortedOperations struct {
+	Create     []*model.Operation
+	Update     []*model.Operation
+	Recover    []*model.Operation
+	Deactivate []*model.Operation
+}
+
+// Size returns the length of all operations(combined).
+func (o *SortedOperations) Size() int {
+	return len(o.Create) + len(o.Recover) + len(o.Deactivate) + len(o.Update)
+}
 
 // SignedOperation contains operation proving data.
 type SignedOperation struct {
@@ -20,18 +32,15 @@ type SignedOperation struct {
 	SignedData string `json:"signedData"`
 }
 
-// TODO: Remove type check when SIP-1 fully completed.
-func getSignedOperations(filter operation.Type, ops []*model.Operation) []SignedOperation {
+func getSignedOperations(ops []*model.Operation) []SignedOperation {
 	var result []SignedOperation
 	for _, op := range ops {
-		if op.Type == filter {
-			upd := SignedOperation{
-				DidSuffix:  op.UniqueSuffix,
-				SignedData: op.SignedData,
-			}
-
-			result = append(result, upd)
+		upd := SignedOperation{
+			DidSuffix:  op.UniqueSuffix,
+			SignedData: op.SignedData,
 		}
+
+		result = append(result, upd)
 	}
 
 	return result

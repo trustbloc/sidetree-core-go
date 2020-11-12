@@ -43,55 +43,51 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 		return "", err
 	}
 
-	updateOps := getOperations(operation.TypeUpdate, parsedOps)
-	recoverOps := getOperations(operation.TypeRecover, parsedOps)
-	deactivateOps := getOperations(operation.TypeDeactivate, parsedOps)
-
-	// special case: if all ops are deactivate don't create chunk and map files
-	mapFileURI := ""
-	if len(deactivateOps) != len(ops) {
-		chunkFileURI, innerErr := h.createChunkFile(parsedOps)
+	// special case: if all ops are deactivate don't create chunk and provisional files
+	provisionalIndexURI := ""
+	if len(parsedOps.Deactivate) != len(ops) {
+		chunkURI, innerErr := h.createChunkFile(parsedOps)
 		if innerErr != nil {
 			return "", innerErr
 		}
 
-		mapFileURI, innerErr = h.createMapFile([]string{chunkFileURI}, parsedOps)
+		provisionalProofURI, innerErr := h.createProvisionalProofFile(parsedOps.Update)
+		if innerErr != nil {
+			return "", innerErr
+		}
+
+		provisionalIndexURI, innerErr = h.createProvisionalIndexFile([]string{chunkURI}, provisionalProofURI, parsedOps.Update)
 		if innerErr != nil {
 			return "", innerErr
 		}
 	}
 
-	coreProofURI, err := h.createCoreProofFile(recoverOps, deactivateOps)
+	coreProofURI, err := h.createCoreProofFile(parsedOps.Recover, parsedOps.Deactivate)
 	if err != nil {
 		return "", err
 	}
 
-	provisionalProofURI, err := h.createProvisionalProofFile(updateOps)
-	if err != nil {
-		return "", err
-	}
-
-	anchorAddr, err := h.createAnchorFile(coreProofURI, provisionalProofURI, mapFileURI, parsedOps)
+	anchorAddr, err := h.createCoreIndexFile(coreProofURI, provisionalIndexURI, parsedOps)
 	if err != nil {
 		return "", err
 	}
 
 	ad := AnchorData{
-		NumberOfOperations: len(parsedOps),
+		NumberOfOperations: parsedOps.Size(),
 		AnchorAddress:      anchorAddr,
 	}
 
 	return ad.GetAnchorString(), nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) ([]*model.Operation, error) {
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, error) {
 	if len(ops) == 0 {
 		return nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
 
 	batchSuffixes := make(map[string]bool)
 
-	var operations []*model.Operation
+	result := &models.SortedOperations{}
 	for _, d := range ops {
 		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer)
 		if e != nil {
@@ -105,19 +101,29 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) ([]
 			continue
 		}
 
-		operations = append(operations, op)
+		switch op.Type {
+		case operation.TypeCreate:
+			result.Create = append(result.Create, op)
+		case operation.TypeUpdate:
+			result.Update = append(result.Update, op)
+		case operation.TypeRecover:
+			result.Recover = append(result.Recover, op)
+		case operation.TypeDeactivate:
+			result.Deactivate = append(result.Deactivate, op)
+		}
+
 		batchSuffixes[op.UniqueSuffix] = true
 	}
 
-	return operations, nil
+	return result, nil
 }
 
-// createAnchorFile will create anchor file from operations, proof files and map file and write it to CAS
-// returns anchor file address.
-func (h *OperationHandler) createAnchorFile(coreProofURI, provisionalProofURI, mapURI string, ops []*model.Operation) (string, error) {
-	anchorFile := models.CreateAnchorFile(coreProofURI, provisionalProofURI, mapURI, ops)
+// createCoreIndexFile will create core index file from operations, proof files and provisional index file and write it to CAS
+// returns core index file address.
+func (h *OperationHandler) createCoreIndexFile(coreProofURI, mapURI string, ops *models.SortedOperations) (string, error) {
+	coreIndexFile := models.CreateCoreIndexFile(coreProofURI, mapURI, ops)
 
-	return h.writeModelToCAS(anchorFile, "anchor")
+	return h.writeModelToCAS(coreIndexFile, "core index")
 }
 
 // createCoreProofFile will create core proof file from recover and deactivate operations and write it to CAS
@@ -146,18 +152,19 @@ func (h *OperationHandler) createProvisionalProofFile(updateOps []*model.Operati
 
 // createChunkFile will create chunk file from operations and write it to CAS
 // returns chunk file address.
-func (h *OperationHandler) createChunkFile(ops []*model.Operation) (string, error) {
+func (h *OperationHandler) createChunkFile(ops *models.SortedOperations) (string, error) {
 	chunkFile := models.CreateChunkFile(ops)
 
 	return h.writeModelToCAS(chunkFile, "chunk")
 }
 
-// createMapFile will create map file from operations and chunk file URIs and write it to CAS
-// returns map file address.
-func (h *OperationHandler) createMapFile(uri []string, ops []*model.Operation) (string, error) {
-	mapFile := models.CreateMapFile(uri, ops)
+// createProvisionalIndexFile will create provisional index file from operations, provisional proof URI
+// and chunk file URIs. The provisional index file is then written to CAS.
+// returns the address of the provisional index file in the CAS.
+func (h *OperationHandler) createProvisionalIndexFile(chunks []string, provisionalURI string, ops []*model.Operation) (string, error) {
+	provisionalIndexFile := models.CreateProvisionalIndexFile(chunks, provisionalURI, ops)
 
-	return h.writeModelToCAS(mapFile, "map")
+	return h.writeModelToCAS(provisionalIndexFile, "provisional index")
 }
 
 func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (string, error) {

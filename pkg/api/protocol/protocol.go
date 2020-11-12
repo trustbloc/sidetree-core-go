@@ -35,12 +35,12 @@ type Protocol struct {
 	MaxOperationSize uint `json:"maxOperationSize"`
 	// CompressionAlgorithm is file compression algorithm.
 	CompressionAlgorithm string `json:"compressionAlgorithm"`
-	// MaxAnchorFileSize is maximum allowed size (in bytes) of anchor file stored in CAS.
-	MaxAnchorFileSize uint `json:"maxAnchorFileSize"`
+	// MaxCoreIndexFileSize is maximum allowed size (in bytes) of core index file stored in CAS.
+	MaxCoreIndexFileSize uint `json:"maxAnchorFileSize"`
 	// MaxProofFileSize is maximum allowed size (in bytes) of proof files stored in CAS.
 	MaxProofFileSize uint `json:"maxProofFileSize"`
-	// MaxMapFileSize is maximum allowed size (in bytes) of map file stored in CAS.
-	MaxMapFileSize uint `json:"maxMapFileSize"`
+	// MaxProvisionalIndexFileSize is maximum allowed size (in bytes) of provisional index file stored in CAS.
+	MaxProvisionalIndexFileSize uint `json:"maxProvisionalIndexFileSize"`
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS.
 	MaxChunkFileSize uint `json:"maxChunkFileSize"`
 	// Patches contains the list of allowed patches.
@@ -84,13 +84,13 @@ type DocumentComposer interface {
 	ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error)
 }
 
-// OperationHandler defines an interface for creating chunks, map and anchor files.
+// OperationHandler defines an interface for creating batch files.
 type OperationHandler interface {
-	// GetTxnOperations operations will create relevant files, store them in CAS and return anchor string.
+	// GetTxnOperations operations will create relevant batch files, store them in CAS and return anchor string.
 	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, error)
 }
 
-// OperationProvider retrieves the anchored operations for  the given sidetree transaction.
+// OperationProvider retrieves the anchored operations for the given Sidetree transaction.
 type OperationProvider interface {
 	GetTxnOperations(sidetreeTxn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error)
 }
