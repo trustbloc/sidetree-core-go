@@ -97,7 +97,7 @@ func TestStart(t *testing.T) {
 	require.Equal(t, 2, len(cf.Deltas))
 }
 
-func getBatchFiles(cc cas.Client, anchor string) (*models.AnchorFile, *models.MapFile, *models.ChunkFile, error) { //nolint: interfacer
+func getBatchFiles(cc cas.Client, anchor string) (*models.CoreIndexFile, *models.ProvisionalIndexFile, *models.ChunkFile, error) { //nolint: interfacer
 	bytes, err := cc.Read(anchor)
 	if err != nil {
 		return nil, nil, nil, err
@@ -110,13 +110,13 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.AnchorFile, *models.Ma
 		return nil, nil, nil, err
 	}
 
-	var af models.AnchorFile
+	var af models.CoreIndexFile
 	err = json.Unmarshal(content, &af)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	bytes, err = cc.Read(af.MapFileURI)
+	bytes, err = cc.Read(af.ProvisionalIndexFileURI)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -126,7 +126,7 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.AnchorFile, *models.Ma
 		return nil, nil, nil, err
 	}
 
-	var mf models.MapFile
+	var mf models.ProvisionalIndexFile
 	err = json.Unmarshal(content, &mf)
 	if err != nil {
 		return nil, nil, nil, err

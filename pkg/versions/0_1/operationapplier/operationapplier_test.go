@@ -43,18 +43,18 @@ const (
 
 var (
 	p = protocol.Protocol{
-		GenesisTime:          0,
-		MultihashAlgorithm:   sha2_256,
-		MaxOperationCount:    2,
-		MaxOperationSize:     1024,
-		CompressionAlgorithm: "GZIP",
-		MaxChunkFileSize:     1024,
-		MaxMapFileSize:       1024,
-		MaxAnchorFileSize:    1024,
-		MaxProofFileSize:     1024,
-		SignatureAlgorithms:  []string{"EdDSA", "ES256"},
-		KeyAlgorithms:        []string{"Ed25519", "P-256"},
-		Patches:              []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		GenesisTime:                 0,
+		MultihashAlgorithm:          sha2_256,
+		MaxOperationCount:           2,
+		MaxOperationSize:            1024,
+		CompressionAlgorithm:        "GZIP",
+		MaxChunkFileSize:            1024,
+		MaxProvisionalIndexFileSize: 1024,
+		MaxCoreIndexFileSize:        1024,
+		MaxProofFileSize:            1024,
+		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
+		KeyAlgorithms:               []string{"Ed25519", "P-256"},
+		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser = operationparser.New(p)

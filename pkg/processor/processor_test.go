@@ -1263,17 +1263,17 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 
 	//nolint:gomnd
 	latest := protocol.Protocol{
-		GenesisTime:          100,
-		MultihashAlgorithm:   sha2_512,
-		MaxOperationCount:    2,
-		MaxOperationSize:     mocks.MaxOperationByteSize,
-		CompressionAlgorithm: "GZIP",
-		MaxChunkFileSize:     mocks.MaxBatchFileSize,
-		MaxMapFileSize:       mocks.MaxBatchFileSize,
-		MaxAnchorFileSize:    mocks.MaxBatchFileSize,
-		SignatureAlgorithms:  []string{"EdDSA", "ES256"},
-		KeyAlgorithms:        []string{"Ed25519", "P-256"},
-		Patches:              []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		GenesisTime:                 100,
+		MultihashAlgorithm:          sha2_512,
+		MaxOperationCount:           2,
+		MaxOperationSize:            mocks.MaxOperationByteSize,
+		CompressionAlgorithm:        "GZIP",
+		MaxChunkFileSize:            mocks.MaxBatchFileSize,
+		MaxProvisionalIndexFileSize: mocks.MaxBatchFileSize,
+		MaxCoreIndexFileSize:        mocks.MaxBatchFileSize,
+		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
+		KeyAlgorithms:               []string{"Ed25519", "P-256"},
+		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	latestVersion := mocks.GetProtocolVersion(latest)

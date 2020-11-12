@@ -9,14 +9,25 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
-// MapFile defines the schema for map file and its related operations.
-type MapFile struct {
-	Chunks     []Chunk    `json:"chunks"`
-	Operations Operations `json:"operations,omitempty"`
+// ProvisionalIndexFile defines the schema for provisional index file and its related operations.
+type ProvisionalIndexFile struct {
+
+	// ProvisionalProofFileURI is provisional proof file URI
+	ProvisionalProofFileURI string `json:"provisionalProofFileUri,omitempty"`
+
+	// Chunks are chunk entries for the related delta data for a given chunk of operations in the batch.
+	Chunks []Chunk `json:"chunks"`
+
+	// Operations will contain provisional (update) operations
+	Operations ProvisionalOperations `json:"operations,omitempty"`
+}
+
+// ProvisionalOperations contains operation proving data for provisional (update) operations.
+type ProvisionalOperations struct {
+	Update []SignedOperation `json:"update,omitempty"`
 }
 
 // Chunk holds chunk file URI.
@@ -24,25 +35,27 @@ type Chunk struct {
 	ChunkFileURI string `json:"chunkFileUri"`
 }
 
-// CreateMapFile will create map file model from operations and chunk file URI.
+// CreateProvisionalIndexFile will create provisional index file model from operations and chunk file URI.
 // returns chunk file model.
-func CreateMapFile(uri []string, ops []*model.Operation) *MapFile {
-	return &MapFile{
-		Chunks: getChunks(uri),
-		Operations: Operations{
-			Update: getSignedOperations(operation.TypeUpdate, ops),
+func CreateProvisionalIndexFile(chunkURIs []string, provisionalProofURI string, updateOps []*model.Operation) *ProvisionalIndexFile {
+	return &ProvisionalIndexFile{
+		Chunks:                  getChunks(chunkURIs),
+		ProvisionalProofFileURI: provisionalProofURI,
+		Operations: ProvisionalOperations{
+			Update: getSignedOperations(updateOps),
 		},
 	}
 }
 
-// ParseMapFile will parse map file model from content.
-func ParseMapFile(content []byte) (*MapFile, error) {
-	mf, err := getMapFile(content)
+// ParseProvisionalIndexFile will parse content into provisional index file model.
+func ParseProvisionalIndexFile(content []byte) (*ProvisionalIndexFile, error) {
+	file := &ProvisionalIndexFile{}
+	err := json.Unmarshal(content, file)
 	if err != nil {
 		return nil, err
 	}
 
-	return mf, nil
+	return file, nil
 }
 
 func getChunks(uris []string) []Chunk {
@@ -54,20 +67,4 @@ func getChunks(uris []string) []Chunk {
 	}
 
 	return chunks
-}
-
-//  get map file struct from bytes.
-var getMapFile = func(bytes []byte) (*MapFile, error) {
-	return unmarshalMapFile(bytes)
-}
-
-// unmarshal map file bytes into map file model.
-func unmarshalMapFile(bytes []byte) (*MapFile, error) {
-	file := &MapFile{}
-	err := json.Unmarshal(bytes, file)
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
 }

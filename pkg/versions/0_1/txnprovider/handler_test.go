@@ -82,30 +82,26 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		content, err := compression.Decompress(compressionAlgorithm, bytes)
 		require.NoError(t, err)
 
-		var af models.AnchorFile
-		err = json.Unmarshal(content, &af)
+		var cif models.CoreIndexFile
+		err = json.Unmarshal(content, &cif)
 		require.NoError(t, err)
-		require.NotNil(t, af)
-		require.Equal(t, createOpsNum, len(af.Operations.Create))
-		require.Equal(t, recoverOpsNum, len(af.Operations.Recover))
-		require.Equal(t, deactivateOpsNum, len(af.Operations.Deactivate))
-		require.Equal(t, 0, len(af.Operations.Update))
+		require.NotNil(t, cif)
+		require.Equal(t, createOpsNum, len(cif.Operations.Create))
+		require.Equal(t, recoverOpsNum, len(cif.Operations.Recover))
+		require.Equal(t, deactivateOpsNum, len(cif.Operations.Deactivate))
 
-		bytes, err = handler.cas.Read(af.MapFileURI)
+		bytes, err = handler.cas.Read(cif.ProvisionalIndexFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
 		content, err = compression.Decompress(compressionAlgorithm, bytes)
 		require.NoError(t, err)
 
-		var mf models.MapFile
+		var mf models.ProvisionalIndexFile
 		err = json.Unmarshal(content, &mf)
 		require.NoError(t, err)
 		require.NotNil(t, mf)
 		require.Equal(t, updateOpsNum, len(mf.Operations.Update))
-		require.Equal(t, 0, len(mf.Operations.Create))
-		require.Equal(t, 0, len(mf.Operations.Recover))
-		require.Equal(t, 0, len(mf.Operations.Deactivate))
 
 		bytes, err = handler.cas.Read(mf.Chunks[0].ChunkFileURI)
 		require.NoError(t, err)
@@ -120,7 +116,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NotNil(t, cf)
 		require.Equal(t, createOpsNum+recoverOpsNum+updateOpsNum, len(cf.Deltas))
 
-		bytes, err = handler.cas.Read(af.CoreProofFileURI)
+		bytes, err = handler.cas.Read(cif.CoreProofFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
@@ -134,7 +130,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.Equal(t, recoverOpsNum, len(cpf.Operations.Recover))
 		require.Equal(t, deactivateOpsNum, len(cpf.Operations.Deactivate))
 
-		bytes, err = handler.cas.Read(af.ProvisionalProofFileURI)
+		bytes, err = handler.cas.Read(mf.ProvisionalProofFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
@@ -174,34 +170,29 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		content, err := compression.Decompress(compressionAlgorithm, bytes)
 		require.NoError(t, err)
 
-		var af models.AnchorFile
-		err = json.Unmarshal(content, &af)
+		var cif models.CoreIndexFile
+		err = json.Unmarshal(content, &cif)
 		require.NoError(t, err)
-		require.NotNil(t, af)
-		require.Equal(t, createOpsNum, len(af.Operations.Create))
-		require.Equal(t, zeroRecoverOps, len(af.Operations.Recover))
-		require.Equal(t, zeroDeactiveOps, len(af.Operations.Deactivate))
-		require.Equal(t, zeroUpdateOps, len(af.Operations.Update))
-		require.Empty(t, af.CoreProofFileURI)
-		require.Empty(t, af.ProvisionalProofFileURI)
+		require.NotNil(t, cif)
+		require.Equal(t, createOpsNum, len(cif.Operations.Create))
+		require.Equal(t, zeroRecoverOps, len(cif.Operations.Recover))
+		require.Equal(t, zeroDeactiveOps, len(cif.Operations.Deactivate))
+		require.Empty(t, cif.CoreProofFileURI)
 
-		bytes, err = handler.cas.Read(af.MapFileURI)
+		bytes, err = handler.cas.Read(cif.ProvisionalIndexFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
 		content, err = compression.Decompress(compressionAlgorithm, bytes)
 		require.NoError(t, err)
 
-		var mf models.MapFile
-		err = json.Unmarshal(content, &mf)
+		var pif models.ProvisionalIndexFile
+		err = json.Unmarshal(content, &pif)
 		require.NoError(t, err)
-		require.NotNil(t, mf)
-		require.Equal(t, 0, len(mf.Operations.Update))
-		require.Equal(t, 0, len(mf.Operations.Create))
-		require.Equal(t, 0, len(mf.Operations.Recover))
-		require.Equal(t, 0, len(mf.Operations.Deactivate))
+		require.NotNil(t, pif)
+		require.Equal(t, 0, len(pif.Operations.Update))
 
-		bytes, err = handler.cas.Read(mf.Chunks[0].ChunkFileURI)
+		bytes, err = handler.cas.Read(pif.Chunks[0].ChunkFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
@@ -262,7 +253,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.Contains(t, err.Error(), "failed to store chunk file: CAS error")
 	})
 
-	t.Run("error - write to CAS error for anchor file", func(t *testing.T) {
+	t.Run("error - write to CAS error for core index file", func(t *testing.T) {
 		ops := getTestOperations(0, 0, deactivateOpsNum, 0)
 
 		handler := NewOperationHandler(
@@ -288,7 +279,7 @@ func TestWriteModelToCAS(t *testing.T) {
 		operationparser.New(protocol))
 
 	t.Run("success", func(t *testing.T) {
-		address, err := handler.writeModelToCAS(&models.AnchorFile{}, "alias")
+		address, err := handler.writeModelToCAS(&models.CoreIndexFile{}, "alias")
 		require.NoError(t, err)
 		require.NotEmpty(t, address)
 	})
@@ -307,7 +298,7 @@ func TestWriteModelToCAS(t *testing.T) {
 			compression.New(compression.WithDefaultAlgorithms()),
 			operationparser.New(protocol))
 
-		address, err := handlerWithCASError.writeModelToCAS(&models.AnchorFile{}, "alias")
+		address, err := handlerWithCASError.writeModelToCAS(&models.CoreIndexFile{}, "alias")
 		require.Error(t, err)
 		require.Empty(t, address)
 		require.Contains(t, err.Error(), "failed to store alias file: CAS error")
@@ -324,7 +315,7 @@ func TestWriteModelToCAS(t *testing.T) {
 			operationparser.New(pc.Protocol),
 		)
 
-		address, err := handlerWithProtocolError.writeModelToCAS(&models.AnchorFile{}, "alias")
+		address, err := handlerWithProtocolError.writeModelToCAS(&models.CoreIndexFile{}, "alias")
 		require.Error(t, err)
 		require.Empty(t, address)
 		require.Contains(t, err.Error(), "compression algorithm 'invalid' not supported")

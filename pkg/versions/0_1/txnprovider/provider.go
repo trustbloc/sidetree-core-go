@@ -64,22 +64,22 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 		return nil, err
 	}
 
-	af, err := h.getAnchorFile(anchorData.AnchorAddress)
+	cif, err := h.getCoreIndexFile(anchorData.AnchorAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	if af.MapFileURI == "" {
-		// if there's no map file that means that we have only deactivate operations in the batch
-		return h.processDeactivateOnly(af, txn)
+	if cif.ProvisionalIndexFileURI == "" {
+		// if there's no provisional index file that means that we have only deactivate operations in the batch
+		return h.processDeactivateOnly(cif, txn)
 	}
 
-	files, err := h.getBatchFiles(af)
+	batchFiles, err := h.getBatchFiles(cif)
 	if err != nil {
 		return nil, err
 	}
 
-	txnOps, err := h.assembleBatchOperations(af, files.Map, files.Chunk, txn)
+	txnOps, err := h.assembleBatchOperations(batchFiles, txn)
 	if err != nil {
 		return nil, err
 	}
@@ -91,15 +91,15 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 	return txnOps, nil
 }
 
-func (h *OperationProvider) processDeactivateOnly(af *models.AnchorFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
-	anchorOps, e := h.parseAnchorOperations(af, txn)
+func (h *OperationProvider) processDeactivateOnly(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+	anchorOps, e := h.parseCoreIndexOperations(cif, txn)
 	if e != nil {
 		return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
 	}
 
 	// deactivate operations must have signed data in core proof file
 	// TODO: signed data will be used to assemble anchor operations bellow upon SIP-1 completion
-	_, err := h.getCoreProofFile(af.CoreProofFileURI)
+	_, err := h.getCoreProofFile(cif.CoreProofFileURI)
 	if err != nil {
 		return nil, err
 	}
@@ -107,46 +107,47 @@ func (h *OperationProvider) processDeactivateOnly(af *models.AnchorFile, txn *tx
 	return createAnchoredOperations(anchorOps.Deactivate)
 }
 
-// batchFiles contains the content of all batch files that are referenced in anchor file.
+// batchFiles contains the content of all batch files that are referenced in core index file.
 type batchFiles struct {
-	Map              *models.MapFile
+	CoreIndex        *models.CoreIndexFile
+	ProvisionalIndex *models.ProvisionalIndexFile
 	ProvisionalProof *models.ProvisionalProofFile
 	CoreProof        *models.CoreProofFile
 	Chunk            *models.ChunkFile
 }
 
-// getBatchFiles retrieves all batch files that are referenced in anchor file.
-func (h *OperationProvider) getBatchFiles(af *models.AnchorFile) (*batchFiles, error) {
+// getBatchFiles retrieves all batch files that are referenced in core index file.
+func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFiles, error) {
 	var err error
 
-	files := &batchFiles{}
+	files := &batchFiles{CoreIndex: cif}
 
-	files.Map, err = h.getMapFile(af.MapFileURI)
+	// core proof file will not exist if we have only update operations in the batch
+	if cif.CoreProofFileURI != "" {
+		files.CoreProof, err = h.getCoreProofFile(cif.CoreProofFileURI)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	files.ProvisionalIndex, err = h.getProvisionalIndexFile(cif.ProvisionalIndexFileURI)
 	if err != nil {
 		return nil, err
 	}
 
-	// core proof file will not exist if we have only update operations in the batch
-	if af.CoreProofFileURI != "" {
-		files.CoreProof, err = h.getCoreProofFile(af.CoreProofFileURI)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// provisional proof file will not exist if we don't have any update operations in the batch
-	if af.ProvisionalProofFileURI != "" {
-		files.ProvisionalProof, err = h.getProvisionalProofFile(af.ProvisionalProofFileURI)
+	if files.ProvisionalIndex.ProvisionalProofFileURI != "" {
+		files.ProvisionalProof, err = h.getProvisionalProofFile(files.ProvisionalIndex.ProvisionalProofFileURI)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if len(files.Map.Chunks) == 0 {
-		return nil, errors.Errorf("map file is missing chunk file URI")
+	if len(files.ProvisionalIndex.Chunks) == 0 {
+		return nil, errors.Errorf("provisional index file is missing chunk file URI")
 	}
 
-	chunkURI := files.Map.Chunks[0].ChunkFileURI
+	chunkURI := files.ProvisionalIndex.Chunks[0].ChunkFileURI
 	files.Chunk, err = h.getChunkFile(chunkURI)
 	if err != nil {
 		return nil, err
@@ -170,40 +171,40 @@ func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOper
 	return anchoredOps, nil
 }
 
-func (h *OperationProvider) assembleBatchOperations(af *models.AnchorFile, mf *models.MapFile, cf *models.ChunkFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
-	anchorOps, err := h.parseAnchorOperations(af, txn)
+func (h *OperationProvider) assembleBatchOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+	cifOps, err := h.parseCoreIndexOperations(batchFiles.CoreIndex, txn)
 	if err != nil {
 		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
 	}
 
 	logger.Debugf("successfully parsed anchor operations: create[%d], recover[%d], deactivate[%d]",
-		len(anchorOps.Create), len(anchorOps.Recover), len(anchorOps.Deactivate))
+		len(cifOps.Create), len(cifOps.Recover), len(cifOps.Deactivate))
 
-	mapOps := parseMapOperations(mf)
+	pifOps := parseProvisionalIndexOperations(batchFiles.ProvisionalIndex)
 
-	logger.Debugf("successfully parsed map operations: update[%d]", len(mapOps.Update))
+	logger.Debugf("successfully parsed map operations: update[%d]", len(pifOps.Update))
 
-	// check for duplicate suffixes for this combination anchor/map files
-	txnSuffixes := append(anchorOps.Suffixes, mapOps.Suffixes...)
+	// check for duplicate suffixes for this combination core/provisional index files
+	txnSuffixes := append(cifOps.Suffixes, pifOps.Suffixes...)
 	err = checkForDuplicates(txnSuffixes)
 	if err != nil {
-		return nil, fmt.Errorf("check for duplicate suffixes in anchor/map files: %s", err.Error())
+		return nil, fmt.Errorf("check for duplicate suffixes in core/provisional index files: %s", err.Error())
 	}
 
 	var operations []*model.Operation
-	operations = append(operations, anchorOps.Create...)
-	operations = append(operations, anchorOps.Recover...)
-	operations = append(operations, mapOps.Update...)
+	operations = append(operations, cifOps.Create...)
+	operations = append(operations, cifOps.Recover...)
+	operations = append(operations, pifOps.Update...)
 
-	if len(operations) != len(cf.Deltas) {
+	if len(operations) != len(batchFiles.Chunk.Deltas) {
 		// this should never happen since we are assembling batch files
 		return nil, fmt.Errorf("number of create+recover+update operations[%d] doesn't match number of deltas[%d]",
-			len(operations), len(cf.Deltas))
+			len(operations), len(batchFiles.Chunk.Deltas))
 	}
 
-	operations = append(operations, anchorOps.Deactivate...)
+	operations = append(operations, cifOps.Deactivate...)
 
-	for i, delta := range cf.Deltas {
+	for i, delta := range batchFiles.Chunk.Deltas {
 		// TODO: Evaluate whether delta should be validated here
 		err = h.parser.ValidateDelta(delta)
 		if err != nil {
@@ -238,19 +239,19 @@ func checkForDuplicates(values []string) error {
 	return nil
 }
 
-// getAnchorFile will download anchor file from cas and parse it into anchor file model.
-func (h *OperationProvider) getAnchorFile(uri string) (*models.AnchorFile, error) {
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxAnchorFileSize)
+// getCoreIndexFile will download core index file from cas and parse it into core index file model.
+func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxCoreIndexFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading anchor file")
+		return nil, errors.Wrapf(err, "error reading core index file")
 	}
 
-	af, err := models.ParseAnchorFile(content)
+	cif, err := models.ParseCoreIndexFile(content)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse content for anchor file[%s]", uri)
+		return nil, errors.Wrapf(err, "failed to parse content for core index file[%s]", uri)
 	}
 
-	return af, nil
+	return cif, nil
 }
 
 // getCoreProofFile will download core proof file from cas and parse it into core proof file model.
@@ -287,19 +288,19 @@ func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.Provisi
 	return ppf, nil
 }
 
-// getMapFile will download map file from cas and parse it into map file model.
-func (h *OperationProvider) getMapFile(uri string) (*models.MapFile, error) {
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxMapFileSize)
+// getProvisionalIndexFile will download provisional index file from cas and parse it into provisional index file model.
+func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.ProvisionalIndexFile, error) {
+	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProvisionalIndexFileSize)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading map file")
+		return nil, errors.Wrapf(err, "error reading provisional index file")
 	}
 
-	mf, err := models.ParseMapFile(content)
+	pif, err := models.ParseProvisionalIndexFile(content)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse content for map file[%s]", uri)
+		return nil, errors.Wrapf(err, "failed to parse content for provisional index file[%s]", uri)
 	}
 
-	return mf, nil
+	return pif, nil
 }
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model.
@@ -335,7 +336,7 @@ func (h *OperationProvider) readFromCAS(uri, alg string, maxSize uint) ([]byte, 
 	return content, nil
 }
 
-// anchorOperations contains parsed operations from anchor file.
+// anchorOperations contains operations which are assembled from batch files.
 type anchorOperations struct {
 	Create     []*model.Operation
 	Recover    []*model.Operation
@@ -343,13 +344,13 @@ type anchorOperations struct {
 	Suffixes   []string
 }
 
-func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *txn.SidetreeTxn) (*anchorOperations, error) {
-	logger.Debugf("parsing anchor operations for anchor address: %s", txn.AnchorString)
+func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*anchorOperations, error) {
+	logger.Debugf("parsing core index file operations for anchor string: %s", txn.AnchorString)
 
 	var suffixes []string
 
 	var createOps []*model.Operation
-	for _, op := range af.Operations.Create {
+	for _, op := range cif.Operations.Create {
 		suffix, err := hashing.CalculateModelMultihash(op.SuffixData, h.MultihashAlgorithm)
 		if err != nil {
 			return nil, err
@@ -371,7 +372,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	}
 
 	var recoverOps []*model.Operation
-	for _, op := range af.Operations.Recover {
+	for _, op := range cif.Operations.Recover {
 		recover := &model.Operation{
 			Type:         operation.TypeRecover,
 			UniqueSuffix: op.DidSuffix,
@@ -383,7 +384,7 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	}
 
 	var deactivateOps []*model.Operation
-	for _, op := range af.Operations.Deactivate {
+	for _, op := range cif.Operations.Deactivate {
 		deactivate := &model.Operation{
 			Type:         operation.TypeDeactivate,
 			UniqueSuffix: op.DidSuffix,
@@ -402,13 +403,13 @@ func (h *OperationProvider) parseAnchorOperations(af *models.AnchorFile, txn *tx
 	}, nil
 }
 
-// MapOperations contains parsed operations from map file.
-type MapOperations struct {
+// ProvisionalIndexOperations contains parsed operations from provisional index file.
+type ProvisionalIndexOperations struct {
 	Update   []*model.Operation
 	Suffixes []string
 }
 
-func parseMapOperations(mf *models.MapFile) *MapOperations {
+func parseProvisionalIndexOperations(mf *models.ProvisionalIndexFile) *ProvisionalIndexOperations {
 	var suffixes []string
 
 	var updateOps []*model.Operation
@@ -423,16 +424,5 @@ func parseMapOperations(mf *models.MapFile) *MapOperations {
 		updateOps = append(updateOps, update)
 	}
 
-	return &MapOperations{Update: updateOps, Suffixes: suffixes}
-}
-
-func getOperations(filter operation.Type, ops []*model.Operation) []*model.Operation {
-	var result []*model.Operation
-	for _, op := range ops {
-		if op.Type == filter {
-			result = append(result, op)
-		}
-	}
-
-	return result
+	return &ProvisionalIndexOperations{Update: updateOps, Suffixes: suffixes}
 }
