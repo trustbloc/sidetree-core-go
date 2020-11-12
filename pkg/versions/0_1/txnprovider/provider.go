@@ -177,12 +177,12 @@ func (h *OperationProvider) assembleBatchOperations(batchFiles *batchFiles, txn 
 		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
 	}
 
-	logger.Debugf("successfully parsed anchor operations: create[%d], recover[%d], deactivate[%d]",
+	logger.Debugf("successfully parsed core index operations: create[%d], recover[%d], deactivate[%d]",
 		len(cifOps.Create), len(cifOps.Recover), len(cifOps.Deactivate))
 
 	pifOps := parseProvisionalIndexOperations(batchFiles.ProvisionalIndex)
 
-	logger.Debugf("successfully parsed map operations: update[%d]", len(pifOps.Update))
+	logger.Debugf("successfully parsed provisional index operations: update[%d]", len(pifOps.Update))
 
 	// check for duplicate suffixes for this combination core/provisional index files
 	txnSuffixes := append(cifOps.Suffixes, pifOps.Suffixes...)
