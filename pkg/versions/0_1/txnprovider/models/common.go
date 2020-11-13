@@ -23,21 +23,21 @@ func (o *SortedOperations) Size() int {
 	return len(o.Create) + len(o.Recover) + len(o.Deactivate) + len(o.Update)
 }
 
-// SignedOperation contains operation proving data.
+// SignedOperation contains minimum proving data.
 type SignedOperation struct {
 	// DidSuffix is the suffix of the DID
 	DidSuffix string `json:"didSuffix"`
 
-	// SignedData is compact JWS
-	SignedData string `json:"signedData"`
+	// RevealValue is multihash of JWK
+	RevealValue string `json:"revealValue"`
 }
 
 func getSignedOperations(ops []*model.Operation) []SignedOperation {
 	var result []SignedOperation
 	for _, op := range ops {
 		upd := SignedOperation{
-			DidSuffix:  op.UniqueSuffix,
-			SignedData: op.SignedData,
+			DidSuffix:   op.UniqueSuffix,
+			RevealValue: op.RevealValue,
 		}
 
 		result = append(result, upd)

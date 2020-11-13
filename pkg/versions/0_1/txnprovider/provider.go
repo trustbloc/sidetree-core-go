@@ -44,6 +44,9 @@ type OperationParser interface {
 	ParseOperation(namespace string, operationBuffer []byte) (*model.Operation, error)
 	ValidateSuffixData(suffixData *model.SuffixDataModel) error
 	ValidateDelta(delta *model.DeltaModel) error
+	ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error)
+	ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error)
+	ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error)
 }
 
 // NewOperationProvider returns a new operation provider.
@@ -79,7 +82,7 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 		return nil, err
 	}
 
-	txnOps, err := h.assembleBatchOperations(batchFiles, txn)
+	txnOps, err := h.assembleAnchoredOperations(batchFiles, txn)
 	if err != nil {
 		return nil, err
 	}
@@ -92,19 +95,23 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 }
 
 func (h *OperationProvider) processDeactivateOnly(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
-	anchorOps, e := h.parseCoreIndexOperations(cif, txn)
+	cifOps, e := h.parseCoreIndexOperations(cif, txn)
 	if e != nil {
 		return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
 	}
 
 	// deactivate operations must have signed data in core proof file
-	// TODO: signed data will be used to assemble anchor operations bellow upon SIP-1 completion
-	_, err := h.getCoreProofFile(cif.CoreProofFileURI)
+	cpf, err := h.getCoreProofFile(cif.CoreProofFileURI)
 	if err != nil {
 		return nil, err
 	}
 
-	return createAnchoredOperations(anchorOps.Deactivate)
+	// add signed data from core proof file to deactivate operations
+	for i := range cifOps.Deactivate {
+		cifOps.Deactivate[i].SignedData = cpf.Operations.Deactivate[i]
+	}
+
+	return createAnchoredOperations(cifOps.Deactivate)
 }
 
 // batchFiles contains the content of all batch files that are referenced in core index file.
@@ -155,6 +162,8 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 
 	logger.Debugf("successfully downloaded batch files")
 
+	// TODO: Validate batch file counts here issue-473
+
 	return files, nil
 }
 
@@ -171,7 +180,7 @@ func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOper
 	return anchoredOps, nil
 }
 
-func (h *OperationProvider) assembleBatchOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	cifOps, err := h.parseCoreIndexOperations(batchFiles.CoreIndex, txn)
 	if err != nil {
 		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
@@ -193,7 +202,19 @@ func (h *OperationProvider) assembleBatchOperations(batchFiles *batchFiles, txn 
 
 	var operations []*model.Operation
 	operations = append(operations, cifOps.Create...)
+
+	// add signed data from core proof file
+	for i := range cifOps.Recover {
+		cifOps.Recover[i].SignedData = batchFiles.CoreProof.Operations.Recover[i]
+	}
+
 	operations = append(operations, cifOps.Recover...)
+
+	// add signed data from provisional proof file
+	for i := range pifOps.Update {
+		pifOps.Update[i].SignedData = batchFiles.ProvisionalProof.Operations.Update[i]
+	}
+
 	operations = append(operations, pifOps.Update...)
 
 	if len(operations) != len(batchFiles.Chunk.Deltas) {
@@ -202,19 +223,15 @@ func (h *OperationProvider) assembleBatchOperations(batchFiles *batchFiles, txn 
 			len(operations), len(batchFiles.Chunk.Deltas))
 	}
 
-	operations = append(operations, cifOps.Deactivate...)
-
 	for i, delta := range batchFiles.Chunk.Deltas {
-		// TODO: Evaluate whether delta should be validated here
-		err = h.parser.ValidateDelta(delta)
-		if err != nil {
-			return nil, fmt.Errorf("validate delta: %s", err.Error())
-		}
-
-		op := operations[i]
-
-		op.Delta = delta
+		operations[i].Delta = delta
 	}
+
+	// add signed data from core proof file to deactivate operations
+	for i := range cifOps.Deactivate {
+		cifOps.Deactivate[i].SignedData = batchFiles.CoreProof.Operations.Deactivate[i]
+	}
+	operations = append(operations, cifOps.Deactivate...)
 
 	return createAnchoredOperations(operations)
 }
@@ -251,11 +268,27 @@ func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile,
 		return nil, errors.Wrapf(err, "failed to parse content for core index file[%s]", uri)
 	}
 
+	err = h.validateCoreIndexFile(cif)
+	if err != nil {
+		return nil, errors.Wrapf(err, "core index file[%s]", uri)
+	}
+
 	return cif, nil
 }
 
+func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) error {
+	for i, op := range cif.Operations.Create {
+		err := h.parser.ValidateSuffixData(op.SuffixData)
+		if err != nil {
+			return fmt.Errorf("failed to validate suffix data for create[%d]: %s", i, err.Error())
+		}
+	}
+
+	return nil
+}
+
 // getCoreProofFile will download core proof file from cas and parse it into core proof file model.
-func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile, error) {
+func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile, error) { //nolint:dupl
 	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProofFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading core proof file")
@@ -268,11 +301,34 @@ func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile,
 		return nil, errors.Wrapf(err, "failed to parse content for core proof file[%s]", uri)
 	}
 
+	err = h.validateCoreProofFile(cpf)
+	if err != nil {
+		return nil, errors.Wrapf(err, "core proof file[%s]", uri)
+	}
+
 	return cpf, nil
 }
 
+func (h *OperationProvider) validateCoreProofFile(cpf *models.CoreProofFile) error {
+	for i, signedData := range cpf.Operations.Recover {
+		_, err := h.parser.ParseSignedDataForRecover(signedData)
+		if err != nil {
+			return fmt.Errorf("failed to validate signed data for recover[%d]: %s", i, err.Error())
+		}
+	}
+
+	for i, signedData := range cpf.Operations.Deactivate {
+		_, err := h.parser.ParseSignedDataForDeactivate(signedData)
+		if err != nil {
+			return fmt.Errorf("failed to validate signed data for deactivate[%d]: %s", i, err.Error())
+		}
+	}
+
+	return nil
+}
+
 // getProvisionalProofFile will download provisional proof file from cas and parse it into provisional proof file model.
-func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.ProvisionalProofFile, error) {
+func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.ProvisionalProofFile, error) { //nolint:dupl
 	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProofFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional proof file")
@@ -285,7 +341,23 @@ func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.Provisi
 		return nil, errors.Wrapf(err, "failed to parse content for provisional proof file[%s]", uri)
 	}
 
+	err = h.validateProvisionalProofFile(ppf)
+	if err != nil {
+		return nil, errors.Wrapf(err, "provisional proof file[%s]", uri)
+	}
+
 	return ppf, nil
+}
+
+func (h *OperationProvider) validateProvisionalProofFile(ppf *models.ProvisionalProofFile) error {
+	for i, signedData := range ppf.Operations.Update {
+		_, err := h.parser.ParseSignedDataForUpdate(signedData)
+		if err != nil {
+			return fmt.Errorf("failed to validate signed data for update[%d]: %s", i, err.Error())
+		}
+	}
+
+	return nil
 }
 
 // getProvisionalIndexFile will download provisional index file from cas and parse it into provisional index file model.
@@ -315,7 +387,23 @@ func (h *OperationProvider) getChunkFile(uri string) (*models.ChunkFile, error) 
 		return nil, errors.Wrapf(err, "failed to parse content for chunk file[%s]", uri)
 	}
 
+	err = h.validateChunkFile(cf)
+	if err != nil {
+		return nil, errors.Wrapf(err, "chunk file[%s]", uri)
+	}
+
 	return cf, nil
+}
+
+func (h *OperationProvider) validateChunkFile(cf *models.ChunkFile) error {
+	for i, delta := range cf.Deltas {
+		err := h.parser.ValidateDelta(delta)
+		if err != nil {
+			return fmt.Errorf("failed to validate delta[%d]: %s", i, err.Error())
+		}
+	}
+
+	return nil
 }
 
 func (h *OperationProvider) readFromCAS(uri, alg string, maxSize uint) ([]byte, error) {
@@ -336,15 +424,15 @@ func (h *OperationProvider) readFromCAS(uri, alg string, maxSize uint) ([]byte, 
 	return content, nil
 }
 
-// anchorOperations contains operations which are assembled from batch files.
-type anchorOperations struct {
+// coreOperations contains operations in core index file.
+type coreOperations struct {
 	Create     []*model.Operation
 	Recover    []*model.Operation
 	Deactivate []*model.Operation
 	Suffixes   []string
 }
 
-func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*anchorOperations, error) {
+func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*coreOperations, error) {
 	logger.Debugf("parsing core index file operations for anchor string: %s", txn.AnchorString)
 
 	var suffixes []string
@@ -352,11 +440,6 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 	var createOps []*model.Operation
 	for _, op := range cif.Operations.Create {
 		suffix, err := hashing.CalculateModelMultihash(op.SuffixData, h.MultihashAlgorithm)
-		if err != nil {
-			return nil, err
-		}
-
-		err = h.parser.ValidateSuffixData(op.SuffixData)
 		if err != nil {
 			return nil, err
 		}
@@ -376,7 +459,7 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 		recover := &model.Operation{
 			Type:         operation.TypeRecover,
 			UniqueSuffix: op.DidSuffix,
-			SignedData:   op.SignedData,
+			RevealValue:  op.RevealValue,
 		}
 
 		suffixes = append(suffixes, op.DidSuffix)
@@ -388,14 +471,14 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 		deactivate := &model.Operation{
 			Type:         operation.TypeDeactivate,
 			UniqueSuffix: op.DidSuffix,
-			SignedData:   op.SignedData,
+			RevealValue:  op.RevealValue,
 		}
 
 		suffixes = append(suffixes, op.DidSuffix)
 		deactivateOps = append(deactivateOps, deactivate)
 	}
 
-	return &anchorOperations{
+	return &coreOperations{
 		Create:     createOps,
 		Recover:    recoverOps,
 		Deactivate: deactivateOps,
@@ -403,13 +486,13 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 	}, nil
 }
 
-// ProvisionalIndexOperations contains parsed operations from provisional index file.
-type ProvisionalIndexOperations struct {
+// provisionalOperations contains parsed operations from provisional index file.
+type provisionalOperations struct {
 	Update   []*model.Operation
 	Suffixes []string
 }
 
-func parseProvisionalIndexOperations(mf *models.ProvisionalIndexFile) *ProvisionalIndexOperations {
+func parseProvisionalIndexOperations(mf *models.ProvisionalIndexFile) *provisionalOperations {
 	var suffixes []string
 
 	var updateOps []*model.Operation
@@ -417,12 +500,12 @@ func parseProvisionalIndexOperations(mf *models.ProvisionalIndexFile) *Provision
 		update := &model.Operation{
 			Type:         operation.TypeUpdate,
 			UniqueSuffix: op.DidSuffix,
-			SignedData:   op.SignedData,
+			RevealValue:  op.RevealValue,
 		}
 
 		suffixes = append(suffixes, op.DidSuffix)
 		updateOps = append(updateOps, update)
 	}
 
-	return &ProvisionalIndexOperations{Update: updateOps, Suffixes: suffixes}
+	return &provisionalOperations{Update: updateOps, Suffixes: suffixes}
 }
