@@ -760,6 +760,124 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "exceeded maximum size 10")
 	})
+
+	t.Run("error - missing core proof URI", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		recoverOp, err := generateOperation(1, operation.TypeRecover)
+		require.NoError(t, err)
+
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: "provisionalIndexURI",
+			CoreProofFileURI:        "",
+			Operations: models.CoreOperations{
+				Recover: []models.SignedOperation{
+					{
+						DidSuffix:   recoverOp.UniqueSuffix,
+						RevealValue: recoverOp.RevealValue,
+					},
+				},
+			},
+		}
+
+		file, err := provider.getBatchFiles(cif)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "missing core proof file URI")
+	})
+
+	t.Run("error - missing provisional proof URI", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		updateOp, err := generateOperation(1, operation.TypeUpdate)
+		require.NoError(t, err)
+
+		pif := &models.ProvisionalIndexFile{
+			ProvisionalProofFileURI: "",
+			Operations: models.ProvisionalOperations{
+				Update: []models.SignedOperation{
+					{
+						DidSuffix:   updateOp.UniqueSuffix,
+						RevealValue: updateOp.RevealValue,
+					},
+				},
+			},
+		}
+
+		pifBytes, err := json.Marshal(pif)
+		require.NoError(t, err)
+
+		compressed, err := cp.Compress(compressionAlgorithm, pifBytes)
+		require.NoError(t, err)
+		pifURI, err := cas.Write(compressed)
+		require.NoError(t, err)
+
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: pifURI,
+		}
+
+		file, err := provider.getBatchFiles(cif)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "missing provisional proof file URI")
+	})
+
+	t.Run("error - validate batch counts", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		recoverOp, err := generateOperation(3, operation.TypeRecover)
+		require.NoError(t, err)
+
+		cpf := &models.CoreProofFile{
+			Operations: models.CoreProofOperations{
+				Recover: []string{},
+			},
+		}
+
+		cpfBytes, err := json.Marshal(cpf)
+		require.NoError(t, err)
+
+		compressed, err := cp.Compress(compressionAlgorithm, cpfBytes)
+		require.NoError(t, err)
+		cpfURI, err := cas.Write(compressed)
+		require.NoError(t, err)
+
+		cif := &models.CoreIndexFile{
+			CoreProofFileURI: cpfURI,
+			Operations: models.CoreOperations{
+				Recover: []models.SignedOperation{
+					{
+						DidSuffix:   recoverOp.UniqueSuffix,
+						RevealValue: recoverOp.RevealValue,
+					},
+				},
+			},
+		}
+
+		file, err := provider.getBatchFiles(cif)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "number of recover ops[1] in core index doesn't match number of recover ops[0] in core proof")
+	})
+
+	t.Run("error - provisional index file is missing chunk file URI", func(t *testing.T) {
+		p := newMockProtocolClient().Protocol
+
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		af2 := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: uri,
+			CoreProofFileURI:        uri,
+		}
+
+		file, err := provider.getBatchFiles(af2)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "provisional index file is missing chunk file URI")
+	})
 }
 
 func TestHandler_assembleBatchOperations(t *testing.T) {
@@ -870,8 +988,15 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta}}
 
+		cpf := &models.CoreProofFile{
+			Operations: models.CoreProofOperations{
+				Deactivate: []string{deactivateOp.SignedData, deactivateOp.SignedData},
+			},
+		}
+
 		batchFiles := &batchFiles{
 			CoreIndex:        cif,
+			CoreProof:        cpf,
 			ProvisionalIndex: pif,
 			Chunk:            cf,
 		}
@@ -881,6 +1006,60 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.Nil(t, anchoredOps)
 		require.Contains(t, err.Error(),
 			"check for duplicate suffixes in core/provisional index files: duplicate values found [deactivate-3 update-2]")
+	})
+}
+
+func TestValidateBatchFileCounts(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		err = validateBatchFileCounts(batchFiles)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - deactivate ops number mismatch", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.CoreProof.Operations.Deactivate = []string{}
+
+		err = validateBatchFileCounts(batchFiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "number of deactivate ops[1] in core index doesn't match number of deactivate ops[0] in core proof")
+	})
+
+	t.Run("error - recover ops number mismatch", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.CoreProof.Operations.Recover = []string{}
+
+		err = validateBatchFileCounts(batchFiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "number of recover ops[1] in core index doesn't match number of recover ops[0] in core proof")
+	})
+
+	t.Run("error - update ops number mismatch", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.ProvisionalProof.Operations.Update = []string{}
+
+		err = validateBatchFileCounts(batchFiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "number of update ops[1] in provisional index doesn't match number of update ops[0] in provisional proof")
+	})
+
+	t.Run("error - delta mismatch", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.Chunk.Deltas = []*model.DeltaModel{}
+
+		err = validateBatchFileCounts(batchFiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "number of create+recover+update operations[3] doesn't match number of deltas[0]")
 	})
 }
 
@@ -906,7 +1085,8 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 	}
 
 	cif := &models.CoreIndexFile{
-		ProvisionalIndexFileURI: "hash",
+		ProvisionalIndexFileURI: "provisionalIndexURI",
+		CoreProofFileURI:        "coreProofURI",
 		Operations: models.CoreOperations{
 			Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 			Recover: []models.SignedOperation{
@@ -925,7 +1105,8 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 	}
 
 	pif := &models.ProvisionalIndexFile{
-		Chunks: []models.Chunk{},
+		Chunks:                  []models.Chunk{{ChunkFileURI: "chunkURI"}},
+		ProvisionalProofFileURI: "provisionalProofURI",
 		Operations: models.ProvisionalOperations{
 			Update: []models.SignedOperation{
 				{

@@ -72,11 +72,6 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 		return nil, err
 	}
 
-	if cif.ProvisionalIndexFileURI == "" {
-		// if there's no provisional index file that means that we have only deactivate operations in the batch
-		return h.processDeactivateOnly(cif, txn)
-	}
-
 	batchFiles, err := h.getBatchFiles(cif)
 	if err != nil {
 		return nil, err
@@ -94,32 +89,18 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 	return txnOps, nil
 }
 
-func (h *OperationProvider) processDeactivateOnly(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
-	cifOps, e := h.parseCoreIndexOperations(cif, txn)
-	if e != nil {
-		return nil, fmt.Errorf("parse anchor operations: %s", e.Error())
-	}
-
-	// deactivate operations must have signed data in core proof file
-	cpf, err := h.getCoreProofFile(cif.CoreProofFileURI)
-	if err != nil {
-		return nil, err
-	}
-
-	// add signed data from core proof file to deactivate operations
-	for i := range cifOps.Deactivate {
-		cifOps.Deactivate[i].SignedData = cpf.Operations.Deactivate[i]
-	}
-
-	return createAnchoredOperations(cifOps.Deactivate)
-}
-
 // batchFiles contains the content of all batch files that are referenced in core index file.
 type batchFiles struct {
 	CoreIndex        *models.CoreIndexFile
+	CoreProof        *models.CoreProofFile
 	ProvisionalIndex *models.ProvisionalIndexFile
 	ProvisionalProof *models.ProvisionalProofFile
-	CoreProof        *models.CoreProofFile
+	Chunk            *models.ChunkFile
+}
+
+type provisionalFiles struct {
+	ProvisionalIndex *models.ProvisionalIndexFile
+	ProvisionalProof *models.ProvisionalProofFile
 	Chunk            *models.ChunkFile
 }
 
@@ -129,6 +110,10 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 
 	files := &batchFiles{CoreIndex: cif}
 
+	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) > 0 && cif.CoreProofFileURI == "" {
+		return nil, errors.New("missing core proof file URI")
+	}
+
 	// core proof file will not exist if we have only update operations in the batch
 	if cif.CoreProofFileURI != "" {
 		files.CoreProof, err = h.getCoreProofFile(cif.CoreProofFileURI)
@@ -137,9 +122,39 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 		}
 	}
 
-	files.ProvisionalIndex, err = h.getProvisionalIndexFile(cif.ProvisionalIndexFileURI)
+	if cif.ProvisionalIndexFileURI != "" {
+		provisionalFiles, innerErr := h.getProvisionalFiles(cif.ProvisionalIndexFileURI)
+		if innerErr != nil {
+			return nil, innerErr
+		}
+
+		files.ProvisionalIndex = provisionalFiles.ProvisionalIndex
+		files.ProvisionalProof = provisionalFiles.ProvisionalProof
+		files.Chunk = provisionalFiles.Chunk
+	}
+
+	// validate batch file counts
+	err = validateBatchFileCounts(files)
 	if err != nil {
 		return nil, err
+	}
+
+	logger.Debugf("successfully downloaded and validated batch files")
+
+	return files, nil
+}
+
+func (h *OperationProvider) getProvisionalFiles(provisionalIndexURI string) (*provisionalFiles, error) {
+	var err error
+	files := &provisionalFiles{}
+
+	files.ProvisionalIndex, err = h.getProvisionalIndexFile(provisionalIndexURI)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(files.ProvisionalIndex.Operations.Update) > 0 && files.ProvisionalIndex.ProvisionalProofFileURI == "" {
+		return nil, errors.New("missing provisional proof file URI")
 	}
 
 	// provisional proof file will not exist if we don't have any update operations in the batch
@@ -160,11 +175,44 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 		return nil, err
 	}
 
-	logger.Debugf("successfully downloaded batch files")
-
-	// TODO: Validate batch file counts here issue-473
-
 	return files, nil
+}
+
+// validateBatchFileCounts validates that operation numbers match in batch files.
+func validateBatchFileCounts(batchFiles *batchFiles) error {
+	coreCreateNum := len(batchFiles.CoreIndex.Operations.Create)
+	coreRecoverNum := len(batchFiles.CoreIndex.Operations.Recover)
+	coreDeactivateNum := len(batchFiles.CoreIndex.Operations.Deactivate)
+
+	if batchFiles.CoreIndex.CoreProofFileURI != "" {
+		if coreRecoverNum != len(batchFiles.CoreProof.Operations.Recover) {
+			return fmt.Errorf("number of recover ops[%d] in core index doesn't match number of recover ops[%d] in core proof",
+				coreRecoverNum, len(batchFiles.CoreProof.Operations.Recover))
+		}
+
+		if coreDeactivateNum != len(batchFiles.CoreProof.Operations.Deactivate) {
+			return fmt.Errorf("number of deactivate ops[%d] in core index doesn't match number of deactivate ops[%d] in core proof",
+				coreDeactivateNum, len(batchFiles.CoreProof.Operations.Deactivate))
+		}
+	}
+
+	if batchFiles.CoreIndex.ProvisionalIndexFileURI != "" {
+		provisionalUpdateNum := len(batchFiles.ProvisionalIndex.Operations.Update)
+
+		if batchFiles.ProvisionalIndex.ProvisionalProofFileURI != "" && provisionalUpdateNum != len(batchFiles.ProvisionalProof.Operations.Update) {
+			return fmt.Errorf("number of update ops[%d] in provisional index doesn't match number of update ops[%d] in provisional proof",
+				provisionalUpdateNum, len(batchFiles.ProvisionalProof.Operations.Update))
+		}
+
+		expectedDeltaCount := coreCreateNum + coreRecoverNum + provisionalUpdateNum
+
+		if expectedDeltaCount != len(batchFiles.Chunk.Deltas) {
+			return fmt.Errorf("number of create+recover+update operations[%d] doesn't match number of deltas[%d]",
+				expectedDeltaCount, len(batchFiles.Chunk.Deltas))
+		}
+	}
+
+	return nil
 }
 
 func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOperation, error) {
@@ -183,11 +231,21 @@ func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOper
 func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	cifOps, err := h.parseCoreIndexOperations(batchFiles.CoreIndex, txn)
 	if err != nil {
-		return nil, fmt.Errorf("parse anchor operations: %s", err.Error())
+		return nil, fmt.Errorf("parse core index operations: %s", err.Error())
 	}
 
 	logger.Debugf("successfully parsed core index operations: create[%d], recover[%d], deactivate[%d]",
 		len(cifOps.Create), len(cifOps.Recover), len(cifOps.Deactivate))
+
+	// add signed data from core proof file to deactivate operations
+	for i := range cifOps.Deactivate {
+		cifOps.Deactivate[i].SignedData = batchFiles.CoreProof.Operations.Deactivate[i]
+	}
+
+	// deactivate operations only
+	if batchFiles.CoreIndex.ProvisionalIndexFileURI == "" {
+		return createAnchoredOperations(cifOps.Deactivate)
+	}
 
 	pifOps := parseProvisionalIndexOperations(batchFiles.ProvisionalIndex)
 
@@ -227,10 +285,6 @@ func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, t
 		operations[i].Delta = delta
 	}
 
-	// add signed data from core proof file to deactivate operations
-	for i := range cifOps.Deactivate {
-		cifOps.Deactivate[i].SignedData = batchFiles.CoreProof.Operations.Deactivate[i]
-	}
 	operations = append(operations, cifOps.Deactivate...)
 
 	return createAnchoredOperations(operations)
