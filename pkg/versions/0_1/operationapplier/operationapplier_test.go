@@ -49,6 +49,7 @@ var (
 		MaxOperationSize:            2000,
 		MaxProofSize:                500,
 		MaxDeltaSize:                1000,
+		MaxCasURILength:             100,
 		CompressionAlgorithm:        "GZIP",
 		MaxChunkFileSize:            1024,
 		MaxProvisionalIndexFileSize: 1024,

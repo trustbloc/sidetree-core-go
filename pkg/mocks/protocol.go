@@ -145,6 +145,7 @@ func GetDefaultProtocolParameters() protocol.Protocol {
 		MaxOperationSize:            MaxOperationByteSize,
 		MaxDeltaSize:                MaxDeltaByteSize,
 		MaxProofSize:                MaxProofByteSize,
+		MaxCasURILength:             100,
 		CompressionAlgorithm:        "GZIP",
 		MaxChunkFileSize:            MaxBatchFileSize,
 		MaxProvisionalIndexFileSize: MaxBatchFileSize,

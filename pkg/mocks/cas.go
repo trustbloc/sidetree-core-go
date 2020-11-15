@@ -8,10 +8,10 @@ package mocks
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"sync"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 )
 
@@ -41,7 +41,7 @@ func (m *MockCasClient) Write(content []byte) (string, error) {
 		return "", err
 	}
 
-	key := base64.URLEncoding.EncodeToString(hash)
+	key := encoder.EncodeToString(hash)
 
 	m.Lock()
 	defer m.Unlock()
@@ -68,7 +68,7 @@ func (m *MockCasClient) Read(address string) ([]byte, error) {
 	}
 
 	// decode address to verify hashes
-	decoded, err := base64.URLEncoding.DecodeString(address)
+	decoded, err := encoder.DecodeString(address)
 	if err != nil {
 		return nil, err
 	}

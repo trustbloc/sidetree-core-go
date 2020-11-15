@@ -1267,6 +1267,7 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 		MaxOperationSize:            mocks.MaxOperationByteSize,
 		MaxDeltaSize:                mocks.MaxDeltaByteSize,
 		MaxProofSize:                700, // has to be increased from 500 since we now use sha2_512
+		MaxCasURILength:             100,
 		CompressionAlgorithm:        "GZIP",
 		MaxChunkFileSize:            mocks.MaxBatchFileSize,
 		MaxProvisionalIndexFileSize: mocks.MaxBatchFileSize,
