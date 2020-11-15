@@ -121,17 +121,9 @@ func (p *Parser) validateProtectedHeaders(headers jws.Headers, allowedAlgorithms
 		return errors.New("missing protected headers")
 	}
 
-	// kid MUST be present in the protected header.
+	// kid MAY be present in the protected header.
 	// alg MUST be present in the protected header, its value MUST NOT be none.
 	// no additional members may be present in the protected header.
-
-	// TODO: There is discrepancy between spec "kid MUST be present in the protected header" (issue-365)
-	// and reference implementation ('kid' is not present; only one 'alg' header expected)
-	// so disable this check for now
-	// _, ok := headers.KeyID()
-	// if !ok {
-	// return errors.New("kid must be present in the protected header")
-	// }
 
 	alg, ok := headers.Algorithm()
 	if !ok {
