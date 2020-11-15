@@ -325,15 +325,6 @@ func TestValidateProtectedHeader(t *testing.T) {
 		require.Contains(t, err.Error(), "missing protected headers")
 	})
 
-	//t.Run("err - kid must be present in the protected header", func(t *testing.T) {
-	//	protected := make(jws.Headers)
-	//	protected[algKey] = "alg-1"
-	//
-	//	err := validateProtectedHeaders(protected, algs)
-	//	require.Error(t, err)
-	//	require.Contains(t, err.Error(), "kid must be present in the protected header")
-	//})
-
 	t.Run("err - algorithm must be present in the protected header", func(t *testing.T) {
 		protected := make(jws.Headers)
 		protected[kidKey] = "kid-1"

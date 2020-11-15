@@ -36,7 +36,7 @@ type Protocol struct {
 	// CompressionAlgorithm is file compression algorithm.
 	CompressionAlgorithm string `json:"compressionAlgorithm"`
 	// MaxCoreIndexFileSize is maximum allowed size (in bytes) of core index file stored in CAS.
-	MaxCoreIndexFileSize uint `json:"maxAnchorFileSize"`
+	MaxCoreIndexFileSize uint `json:"maxCoreIndexFileSize"`
 	// MaxProofFileSize is maximum allowed size (in bytes) of proof files stored in CAS.
 	MaxProofFileSize uint `json:"maxProofFileSize"`
 	// MaxProvisionalIndexFileSize is maximum allowed size (in bytes) of provisional index file stored in CAS.
