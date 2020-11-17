@@ -43,6 +43,12 @@ func TestParseRecoverOperation(t *testing.T) {
 		op, err := parser.ParseRecoverOperation(request, false)
 		require.NoError(t, err)
 		require.Equal(t, operation.TypeRecover, op.Type)
+
+		signedData, err := parser.ParseSignedDataForRecover(op.SignedData)
+		expectedRevealValue, err := parser.getRevealValueMultihash(signedData.RecoveryKey)
+		require.NoError(t, err)
+
+		require.Equal(t, expectedRevealValue, op.RevealValue)
 	})
 	t.Run("parse recover request error", func(t *testing.T) {
 		schema, err := parser.ParseRecoverOperation([]byte(""), false)
@@ -359,6 +365,47 @@ func TestValidateProtectedHeader(t *testing.T) {
 		err := parser.validateProtectedHeaders(protected, algs)
 		require.Error(t, err)
 		require.Equal(t, "algorithm 'alg-other' is not in the allowed list [alg-1 alg-2]", err.Error())
+	})
+}
+
+func TestGetRevealValueMultihash(t *testing.T) {
+	jwk := &jws.JWK{
+		Kty: "kty",
+		Crv: "crv",
+		X:   "x",
+	}
+
+	t.Run("success", func(t *testing.T) {
+		parser := New(protocol.Protocol{
+			MultihashAlgorithm: sha2_256,
+		})
+
+		rv, err := parser.getRevealValueMultihash(jwk)
+		require.Nil(t, err)
+		require.NotEmpty(t, rv)
+	})
+
+	t.Run("error - multihash algorithm not supported", func(t *testing.T) {
+		parser := New(protocol.Protocol{
+			MultihashAlgorithm: 55,
+		})
+
+		rv, err := parser.getRevealValueMultihash(jwk)
+		require.Error(t, err)
+		require.Empty(t, rv)
+		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
+	})
+
+	t.Run("error - marshal canonical", func(t *testing.T) {
+		parser := New(protocol.Protocol{
+			MultihashAlgorithm: sha2_256,
+		})
+
+		var c chan int
+		rv, err := parser.getRevealValueMultihash(c)
+		require.Error(t, err)
+		require.Empty(t, rv)
+		require.Contains(t, err.Error(), "json: unsupported type: chan int")
 	})
 }
 

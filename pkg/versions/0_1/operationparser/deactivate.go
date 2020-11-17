@@ -31,11 +31,17 @@ func (p *Parser) ParseDeactivateOperation(request []byte, anchor bool) (*model.O
 		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 
+	revealValue, err := p.getRevealValueMultihash(signedData.RecoveryKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reveal value multihash for deactivate: %s", err.Error())
+	}
+
 	return &model.Operation{
 		Type:            operation.TypeDeactivate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
 		SignedData:      schema.SignedData,
+		RevealValue:     revealValue,
 	}, nil
 }
 

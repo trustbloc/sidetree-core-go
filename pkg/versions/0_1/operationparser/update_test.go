@@ -38,6 +38,12 @@ func TestParseUpdateOperation(t *testing.T) {
 		op, err := parser.ParseUpdateOperation(payload, false)
 		require.NoError(t, err)
 		require.Equal(t, operation.TypeUpdate, op.Type)
+
+		signedData, err := parser.ParseSignedDataForUpdate(op.SignedData)
+		expectedRevealValue, err := parser.getRevealValueMultihash(signedData.UpdateKey)
+		require.NoError(t, err)
+
+		require.Equal(t, expectedRevealValue, op.RevealValue)
 	})
 	t.Run("invalid json", func(t *testing.T) {
 		schema, err := parser.ParseUpdateOperation([]byte(""), false)
