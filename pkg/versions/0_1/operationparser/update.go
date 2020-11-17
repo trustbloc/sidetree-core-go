@@ -23,7 +23,7 @@ func (p *Parser) ParseUpdateOperation(request []byte, anchor bool) (*model.Opera
 		return nil, err
 	}
 
-	_, err = p.ParseSignedDataForUpdate(schema.SignedData)
+	signedData, err := p.ParseSignedDataForUpdate(schema.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -35,12 +35,18 @@ func (p *Parser) ParseUpdateOperation(request []byte, anchor bool) (*model.Opera
 		}
 	}
 
+	revealValue, err := p.getRevealValueMultihash(signedData.UpdateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reveal value multihash for update: %s", err.Error())
+	}
+
 	return &model.Operation{
 		Type:            operation.TypeUpdate,
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
+		RevealValue:     revealValue,
 	}, nil
 }
 

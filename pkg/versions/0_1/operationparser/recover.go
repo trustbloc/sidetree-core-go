@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -26,7 +27,7 @@ func (p *Parser) ParseRecoverOperation(request []byte, anchor bool) (*model.Oper
 		return nil, err
 	}
 
-	_, err = p.ParseSignedDataForRecover(schema.SignedData)
+	signedData, err := p.ParseSignedDataForRecover(schema.SignedData)
 	if err != nil {
 		return nil, err
 	}
@@ -38,12 +39,18 @@ func (p *Parser) ParseRecoverOperation(request []byte, anchor bool) (*model.Oper
 		}
 	}
 
+	revealValue, err := p.getRevealValueMultihash(signedData.RecoveryKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reveal value multihash for recover: %s", err.Error())
+	}
+
 	return &model.Operation{
 		OperationBuffer: request,
 		Type:            operation.TypeRecover,
 		UniqueSuffix:    schema.DidSuffix,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
+		RevealValue:     revealValue,
 	}, nil
 }
 
@@ -189,4 +196,19 @@ func contains(values []string, value string) bool {
 	}
 
 	return false
+}
+
+// getRevealValueMultihash calculates reveal value multihash.
+func (p *Parser) getRevealValueMultihash(value interface{}) (string, error) {
+	bytes, err := canonicalizer.MarshalCanonical(value)
+	if err != nil {
+		return "", err
+	}
+
+	multiHashBytes, err := hashing.ComputeMultihash(p.MultihashAlgorithm, bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return string(multiHashBytes), nil
 }

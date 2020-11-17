@@ -110,10 +110,6 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 
 	files := &batchFiles{CoreIndex: cif}
 
-	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) > 0 && cif.CoreProofFileURI == "" {
-		return nil, errors.New("missing core proof file URI")
-	}
-
 	// core proof file will not exist if we have only update operations in the batch
 	if cif.CoreProofFileURI != "" {
 		files.CoreProof, err = h.getCoreProofFile(cif.CoreProofFileURI)
@@ -151,10 +147,6 @@ func (h *OperationProvider) getProvisionalFiles(provisionalIndexURI string) (*pr
 	files.ProvisionalIndex, err = h.getProvisionalIndexFile(provisionalIndexURI)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(files.ProvisionalIndex.Operations.Update) > 0 && files.ProvisionalIndex.ProvisionalProofFileURI == "" {
-		return nil, errors.New("missing provisional proof file URI")
 	}
 
 	// provisional proof file will not exist if we don't have any update operations in the batch
@@ -331,6 +323,10 @@ func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile,
 }
 
 func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) error {
+	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) > 0 && cif.CoreProofFileURI == "" {
+		return errors.New("missing core proof file URI")
+	}
+
 	for i, op := range cif.Operations.Create {
 		err := h.parser.ValidateSuffixData(op.SuffixData)
 		if err != nil {
@@ -426,7 +422,20 @@ func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.Provisi
 		return nil, errors.Wrapf(err, "failed to parse content for provisional index file[%s]", uri)
 	}
 
+	err = h.validateProvisionalIndexFile(pif)
+	if err != nil {
+		return nil, errors.Wrapf(err, "provisional index file[%s]", uri)
+	}
+
 	return pif, nil
+}
+
+func (h *OperationProvider) validateProvisionalIndexFile(pif *models.ProvisionalIndexFile) error {
+	if len(pif.Operations.Update) > 0 && pif.ProvisionalProofFileURI == "" {
+		return errors.New("missing provisional proof file URI")
+	}
+
+	return nil
 }
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model.

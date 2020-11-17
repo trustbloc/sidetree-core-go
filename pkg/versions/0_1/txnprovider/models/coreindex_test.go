@@ -17,7 +17,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
-func TestCreateAnchorFile(t *testing.T) {
+const (
+	signedData  = "signed-data"
+	revealValue = "reveal-value"
+)
+
+func TestCreateCoreIndex(t *testing.T) {
 	const createOpsNum = 2
 	const updateOpsNum = 2
 	const deactivateOpsNum = 2
@@ -32,7 +37,7 @@ func TestCreateAnchorFile(t *testing.T) {
 	require.Equal(t, recoverOpsNum, len(cif.Operations.Recover))
 }
 
-func TestParseAnchorFile(t *testing.T) {
+func TestParseCoreIndex(t *testing.T) {
 	const createOpsNum = 5
 	const updateOpsNum = 4
 	const deactivateOpsNum = 3
@@ -51,6 +56,9 @@ func TestParseAnchorFile(t *testing.T) {
 	require.Equal(t, createOpsNum, len(parsed.Operations.Create))
 	require.Equal(t, deactivateOpsNum, len(parsed.Operations.Deactivate))
 	require.Equal(t, recoverOpsNum, len(parsed.Operations.Recover))
+
+	require.Equal(t, parsed.Operations.Recover[0].RevealValue, revealValue)
+	require.Equal(t, parsed.Operations.Deactivate[0].RevealValue, revealValue)
 }
 
 func getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum int) *SortedOperations {
@@ -78,6 +86,7 @@ func generateOperation(num int, opType operation.Type) *model.Operation {
 		Namespace:    "did:sidetree",
 		SuffixData:   &model.SuffixDataModel{},
 		Delta:        &model.DeltaModel{},
-		SignedData:   "signed-data",
+		SignedData:   signedData,
+		RevealValue:  revealValue,
 	}
 }

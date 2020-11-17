@@ -37,6 +37,12 @@ func TestParseDeactivateOperation(t *testing.T) {
 		op, err := parser.ParseDeactivateOperation(payload, false)
 		require.NoError(t, err)
 		require.Equal(t, operation.TypeDeactivate, op.Type)
+
+		signedData, err := parser.ParseSignedDataForDeactivate(op.SignedData)
+		expectedRevealValue, err := parser.getRevealValueMultihash(signedData.RecoveryKey)
+		require.NoError(t, err)
+
+		require.Equal(t, expectedRevealValue, op.RevealValue)
 	})
 	t.Run("missing unique suffix", func(t *testing.T) {
 		schema, err := parser.ParseDeactivateOperation([]byte("{}"), false)

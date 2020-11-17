@@ -41,4 +41,6 @@ func TestHandler_ParseMapFile(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, updateOpsNum, len(parsed.Operations.Update))
+
+	require.Equal(t, parsed.Operations.Update[0].RevealValue, revealValue)
 }

@@ -258,6 +258,19 @@ func TestHandler_GetCoreIndexFile(t *testing.T) {
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "failed to validate suffix data for create[0]")
 	})
+
+	t.Run("error - missing core proof URI", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate signed data for first recover
+		batchFiles.CoreIndex.CoreProofFileURI = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing core proof file URI")
+	})
 }
 
 func TestHandler_ValidateCoreIndexFile(t *testing.T) {
@@ -327,6 +340,32 @@ func TestHandler_GetProvisionalIndexFile(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "failed to parse content for provisional index file")
+	})
+}
+
+func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
+	p := mocks.NewMockProtocolClient().Protocol
+
+	t.Run("success", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - missing provisional proof file", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate signed data for first recover
+		batchFiles.ProvisionalIndex.ProvisionalProofFileURI = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing provisional proof file URI")
 	})
 }
 
@@ -759,32 +798,6 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "exceeded maximum size 10")
-	})
-
-	t.Run("error - missing core proof URI", func(t *testing.T) {
-		p := newMockProtocolClient().Protocol
-		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
-
-		recoverOp, err := generateOperation(1, operation.TypeRecover)
-		require.NoError(t, err)
-
-		cif := &models.CoreIndexFile{
-			ProvisionalIndexFileURI: "provisionalIndexURI",
-			CoreProofFileURI:        "",
-			Operations: models.CoreOperations{
-				Recover: []models.SignedOperation{
-					{
-						DidSuffix:   recoverOp.UniqueSuffix,
-						RevealValue: recoverOp.RevealValue,
-					},
-				},
-			},
-		}
-
-		file, err := provider.getBatchFiles(cif)
-		require.Error(t, err)
-		require.Nil(t, file)
-		require.Contains(t, err.Error(), "missing core proof file URI")
 	})
 
 	t.Run("error - missing provisional proof URI", func(t *testing.T) {
