@@ -89,11 +89,11 @@ func TestStart(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that first anchor has two operations per batch
-	af, mf, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.AnchorAddress)
+	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
 	require.Nil(t, err)
 
-	require.Equal(t, 2, len(af.Operations.Create))
-	require.Equal(t, 0, len(mf.Operations.Update))
+	require.Equal(t, 2, len(cif.Operations.Create))
+	require.Equal(t, 0, len(pif.Operations.Update))
 	require.Equal(t, 2, len(cf.Deltas))
 }
 
@@ -110,13 +110,13 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.CoreIndexFile, *models
 		return nil, nil, nil, err
 	}
 
-	var af models.CoreIndexFile
-	err = json.Unmarshal(content, &af)
+	var cif models.CoreIndexFile
+	err = json.Unmarshal(content, &cif)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	bytes, err = cc.Read(af.ProvisionalIndexFileURI)
+	bytes, err = cc.Read(cif.ProvisionalIndexFileURI)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -126,13 +126,13 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.CoreIndexFile, *models
 		return nil, nil, nil, err
 	}
 
-	var mf models.ProvisionalIndexFile
-	err = json.Unmarshal(content, &mf)
+	var pif models.ProvisionalIndexFile
+	err = json.Unmarshal(content, &pif)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	bytes, err = cc.Read(mf.Chunks[0].ChunkFileURI)
+	bytes, err = cc.Read(pif.Chunks[0].ChunkFileURI)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -148,7 +148,7 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.CoreIndexFile, *models
 		return nil, nil, nil, err
 	}
 
-	return &af, &mf, &cf, nil
+	return &cif, &pif, &cf, nil
 }
 
 func TestBatchTimer(t *testing.T) {
@@ -174,14 +174,14 @@ func TestBatchTimer(t *testing.T) {
 	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
 	require.NoError(t, err)
 
-	af, mf, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.AnchorAddress)
+	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
 	require.Nil(t, err)
 
-	require.Equal(t, 1, len(af.Operations.Create))
-	require.Equal(t, 0, len(af.Operations.Recover))
-	require.Equal(t, 0, len(af.Operations.Deactivate))
+	require.Equal(t, 1, len(cif.Operations.Create))
+	require.Equal(t, 0, len(cif.Operations.Recover))
+	require.Equal(t, 0, len(cif.Operations.Deactivate))
 
-	require.Equal(t, 0, len(mf.Operations.Update))
+	require.Equal(t, 0, len(pif.Operations.Update))
 
 	require.Equal(t, 1, len(cf.Deltas))
 }
@@ -213,14 +213,14 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that first anchor has one operation per batch; second one has been discarded
-	af, mf, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.AnchorAddress)
+	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
 	require.Nil(t, err)
 
-	require.Equal(t, 1, len(af.Operations.Create))
-	require.Equal(t, 0, len(af.Operations.Recover))
-	require.Equal(t, 0, len(af.Operations.Deactivate))
+	require.Equal(t, 1, len(cif.Operations.Create))
+	require.Equal(t, 0, len(cif.Operations.Recover))
+	require.Equal(t, 0, len(cif.Operations.Deactivate))
 
-	require.Equal(t, 0, len(mf.Operations.Update))
+	require.Equal(t, 0, len(pif.Operations.Update))
 
 	require.Equal(t, 1, len(cf.Deltas))
 }

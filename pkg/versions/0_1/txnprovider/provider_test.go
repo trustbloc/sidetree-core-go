@@ -81,7 +81,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		// anchor string has 9 operations "9.anchorAddress"
+		// anchor string has 9 operations "9.coreIndexURI"
 		anchorString, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
@@ -112,14 +112,14 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		txnOps, err := handler.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      "1" + delimiter + "anchor",
+			AnchorString:      "1" + delimiter + "coreIndexURI",
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
 
 		require.Error(t, err)
 		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "error reading core index file: retrieve CAS content at uri[anchor]: CAS error")
+		require.Contains(t, err.Error(), "error reading core index file: retrieve CAS content at uri[coreIndexURI]: CAS error")
 	})
 
 	t.Run("error - parse core index operations error", func(t *testing.T) {
@@ -283,6 +283,19 @@ func TestHandler_ValidateCoreIndexFile(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
 		require.NoError(t, err)
+	})
+
+	t.Run("error - missing core proof URI", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate core proof URI
+		batchFiles.CoreIndex.CoreProofFileURI = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing core proof file URI")
 	})
 
 	t.Run("error - invalid suffix data for create", func(t *testing.T) {

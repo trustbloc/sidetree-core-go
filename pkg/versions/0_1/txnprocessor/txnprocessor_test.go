@@ -16,7 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
 
-const anchorString = "1.anchorAddress"
+const anchorString = "1.coreIndexURI"
 
 func TestTxnProcessor_Process(t *testing.T) {
 	t.Run("test error from txn operations provider", func(t *testing.T) {

@@ -4,18 +4,16 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// Package batch batches multiple operations in a single file (batch file) and stores the batch files in a distributed
-// content-addressable storage (DCAS or CAS). A reference to the operation batch is then anchored on the blockchain
-// as Sidetree transaction.
+// Package batch batches multiple operations into batch files and stores the batch files in a distributed
+// content-addressable storage (DCAS or CAS). A reference to the main batch file (core index) is then
+// anchored on the blockchain as Sidetree transaction.
 //
 // Batch Writer basic flow:
 //
 // 1) accept operations being delivered via Add method
-// 2) 'cut' configurable number of operations into batch file
-// 3) store batch file into CAS (content addressable storage)
-// 4) create an anchor file based on batch file address
-// 5) store anchor file into CAS
-// 6) write the address of anchor file to the underlying blockchain
+// 2) 'cut' configurable number of operations into batch files
+// 3) store batch files into CAS (content addressable storage)
+// 4) write the anchor string referencing core index file URI to the underlying blockchain
 package batch
 
 import (
@@ -77,7 +75,7 @@ type Context interface {
 
 // BlockchainClient defines an interface to access the underlying blockchain.
 type BlockchainClient interface {
-	// WriteAnchor writes the anchor file hash as a transaction to blockchain
+	// WriteAnchor writes the anchor string as a transaction to blockchain
 	WriteAnchor(anchor string, protocolGenesisTime uint64) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
@@ -92,8 +90,8 @@ type CompressionProvider interface {
 
 // New creates a new Writer with the given namespace.
 // Writer accepts operations being delivered via Add, orders them, and then uses the batch
-// cutter to form the operations batch file. This batch file will then be used to create
-// an anchor file. The hash of anchor file will be written to the given ledger.
+// cutter to form the operations batch files. The URI of main batch file (index core)
+// will be written as part of anchor string to the given ledger.
 func New(namespace string, context Context, options ...Option) (*Writer, error) {
 	rOpts, err := prepareOptsFromOptions(options...)
 	if err != nil {

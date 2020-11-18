@@ -26,7 +26,7 @@ var (
 // AnchorData holds anchored data.
 type AnchorData struct {
 	NumberOfOperations int
-	AnchorAddress      string
+	CoreIndexFileURI   string
 }
 
 // ParseAnchorData will parse anchor string into anchor data model.
@@ -49,11 +49,11 @@ func ParseAnchorData(data string) (*AnchorData, error) {
 
 	return &AnchorData{
 		NumberOfOperations: opsNum,
-		AnchorAddress:      parts[1],
+		CoreIndexFileURI:   parts[1],
 	}, nil
 }
 
 // GetAnchorString will create anchor string from anchor data.
 func (ad *AnchorData) GetAnchorString() string {
-	return fmt.Sprintf("%d", ad.NumberOfOperations) + delimiter + ad.AnchorAddress
+	return fmt.Sprintf("%d", ad.NumberOfOperations) + delimiter + ad.CoreIndexFileURI
 }

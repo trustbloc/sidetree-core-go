@@ -25,8 +25,8 @@ func NewMockBlockchainClient(err error) *MockBlockchainClient {
 	return &MockBlockchainClient{err: err, namespace: DefaultNS}
 }
 
-// WriteAnchor writes the anchor file hash as a transaction to blockchain.
-func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string, _ uint64) error {
+// WriteAnchor writes the anchor string as a transaction to blockchain.
+func (m *MockBlockchainClient) WriteAnchor(anchor string, _ uint64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -34,7 +34,7 @@ func (m *MockBlockchainClient) WriteAnchor(anchorFileHash string, _ uint64) erro
 	m.Lock()
 	defer m.Unlock()
 
-	m.anchors = append(m.anchors, anchorFileHash)
+	m.anchors = append(m.anchors, anchor)
 
 	return nil
 }
