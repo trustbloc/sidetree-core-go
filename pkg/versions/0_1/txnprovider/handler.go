@@ -67,14 +67,14 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 		return "", err
 	}
 
-	anchorAddr, err := h.createCoreIndexFile(coreProofURI, provisionalIndexURI, parsedOps)
+	coreIndexURI, err := h.createCoreIndexFile(coreProofURI, provisionalIndexURI, parsedOps)
 	if err != nil {
 		return "", err
 	}
 
 	ad := AnchorData{
 		NumberOfOperations: parsedOps.Size(),
-		AnchorAddress:      anchorAddr,
+		CoreIndexFileURI:   coreIndexURI,
 	}
 
 	return ad.GetAnchorString(), nil

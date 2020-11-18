@@ -75,7 +75,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		anchorData, err := ParseAnchorData(anchorString)
 		require.NoError(t, err)
 
-		bytes, err := handler.cas.Read(anchorData.AnchorAddress)
+		bytes, err := handler.cas.Read(anchorData.CoreIndexFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 
@@ -163,7 +163,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		anchorData, err := ParseAnchorData(anchorString)
 		require.NoError(t, err)
 
-		bytes, err := handler.cas.Read(anchorData.AnchorAddress)
+		bytes, err := handler.cas.Read(anchorData.CoreIndexFileURI)
 		require.NoError(t, err)
 		require.NotNil(t, bytes)
 

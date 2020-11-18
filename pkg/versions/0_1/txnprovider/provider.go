@@ -59,15 +59,16 @@ func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS,
 	}
 }
 
-// GetTxnOperations will read batch files(Chunk, map, anchor) and assemble batch operations from those files.
+// GetTxnOperations will read batch files(core/provisional index, proof files and chunk file)
+// and assemble batch operations from those files.
 func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
-	// ParseAnchorData anchor address and number of operations from anchor string
+	// parse core index file URI and number of operations from anchor string
 	anchorData, err := ParseAnchorData(txn.AnchorString)
 	if err != nil {
 		return nil, err
 	}
 
-	cif, err := h.getCoreIndexFile(anchorData.AnchorAddress)
+	cif, err := h.getCoreIndexFile(anchorData.CoreIndexFileURI)
 	if err != nil {
 		return nil, err
 	}
