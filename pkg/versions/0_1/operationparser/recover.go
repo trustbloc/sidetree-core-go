@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -200,15 +199,5 @@ func contains(values []string, value string) bool {
 
 // getRevealValueMultihash calculates reveal value multihash.
 func (p *Parser) getRevealValueMultihash(value interface{}) (string, error) {
-	bytes, err := canonicalizer.MarshalCanonical(value)
-	if err != nil {
-		return "", err
-	}
-
-	multiHashBytes, err := hashing.ComputeMultihash(p.MultihashAlgorithm, bytes)
-	if err != nil {
-		return "", err
-	}
-
-	return string(multiHashBytes), nil
+	return hashing.CalculateModelMultihash(value, p.MultihashAlgorithm)
 }

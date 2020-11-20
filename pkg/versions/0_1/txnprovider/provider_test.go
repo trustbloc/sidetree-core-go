@@ -9,14 +9,15 @@ package txnprovider
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/cas"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
@@ -298,6 +299,20 @@ func TestHandler_ValidateCoreIndexFile(t *testing.T) {
 		require.Contains(t, err.Error(), "missing core proof file URI")
 	})
 
+	t.Run("error - core proof URI present without recover and deactivate ops", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate deactivate and recover operations
+		batchFiles.CoreIndex.Operations.Deactivate = nil
+		batchFiles.CoreIndex.Operations.Recover = nil
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "core proof file URI should be empty if there are no recover and/or deactivate operations")
+	})
+
 	t.Run("error - invalid suffix data for create", func(t *testing.T) {
 		batchFiles, err := generateDefaultBatchFiles()
 		require.NoError(t, err)
@@ -309,6 +324,32 @@ func TestHandler_ValidateCoreIndexFile(t *testing.T) {
 		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to validate suffix data for create[0]")
+	})
+
+	t.Run("error - invalid did suffix for recover", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate did suffix for first recover
+		batchFiles.CoreIndex.Operations.Recover[0].DidSuffix = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate signed operation for recover[0]: missing did suffix")
+	})
+
+	t.Run("error - invalid reveal value for deactivate", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate reveal value for first deactivate
+		batchFiles.CoreIndex.Operations.Deactivate[0].RevealValue = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate signed operation for deactivate[0]: missing reveal value")
 	})
 }
 
@@ -379,6 +420,45 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing provisional proof file URI")
+	})
+
+	t.Run("error - provisional proof file uri present without update ops", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// remove update operations
+		batchFiles.ProvisionalIndex.Operations.Update = nil
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "provisional proof file URI should be empty if there are no update operations")
+	})
+
+	t.Run("error - missing did suffix", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate did suffix
+		batchFiles.ProvisionalIndex.Operations.Update[0].DidSuffix = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate signed operation for update[0]: missing did suffix")
+	})
+
+	t.Run("error - missing reveal value", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate did suffix
+		batchFiles.ProvisionalIndex.Operations.Update[0].RevealValue = ""
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate signed operation for update[0]: missing reveal value")
 	})
 }
 
@@ -710,21 +790,64 @@ func TestHandler_ValidateProvisionalPoofFile(t *testing.T) {
 
 func TestHandler_GetBatchFiles(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-
 	cas := mocks.NewMockCasClient(nil)
-	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
-	require.NoError(t, err)
-	uri, err := cas.Write(content)
+
+	updateOp, err := generateOperation(1, operation.TypeUpdate)
 	require.NoError(t, err)
 
-	provisionalIndexFile, err := cp.Compress(compressionAlgorithm, []byte(fmt.Sprintf(`{"provisionalProofFileUri":"%s","chunks":[{"chunkFileUri":"%s"}]}`, uri, uri)))
+	recoverOp, err := generateOperation(2, operation.TypeRecover)
 	require.NoError(t, err)
-	mapURI, err := cas.Write(provisionalIndexFile)
+
+	ppf := &models.ProvisionalProofFile{
+		Operations: models.ProvisionalProofOperations{
+			Update: []string{updateOp.SignedData},
+		},
+	}
+
+	ppfURI, err := writeToCAS(ppf, cas)
+	require.NoError(t, err)
+
+	cf := &models.ChunkFile{Deltas: []*model.DeltaModel{recoverOp.Delta, updateOp.Delta}}
+
+	chunkURI, err := writeToCAS(cf, cas)
+	require.NoError(t, err)
+
+	pif := &models.ProvisionalIndexFile{
+		Chunks:                  []models.Chunk{{ChunkFileURI: chunkURI}},
+		ProvisionalProofFileURI: ppfURI,
+		Operations: models.ProvisionalOperations{
+			Update: []models.SignedOperation{
+				{
+					DidSuffix:   updateOp.UniqueSuffix,
+					RevealValue: updateOp.RevealValue,
+				},
+			},
+		},
+	}
+
+	pifURI, err := writeToCAS(pif, cas)
+	require.NoError(t, err)
+
+	cpf := &models.CoreProofFile{
+		Operations: models.CoreProofOperations{
+			Recover: []string{recoverOp.SignedData},
+		},
+	}
+
+	cpfURI, err := writeToCAS(cpf, cas)
 	require.NoError(t, err)
 
 	af := &models.CoreIndexFile{
-		ProvisionalIndexFileURI: mapURI,
-		CoreProofFileURI:        uri,
+		ProvisionalIndexFileURI: pifURI,
+		CoreProofFileURI:        cpfURI,
+		Operations: models.CoreOperations{
+			Recover: []models.SignedOperation{
+				{
+					DidSuffix:   recoverOp.UniqueSuffix,
+					RevealValue: recoverOp.RevealValue,
+				},
+			},
+		},
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -766,39 +889,34 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
-		ppfURI, err := cas.Write(content)
+		invalidContentURI, err := cas.Write(content)
 		require.NoError(t, err)
 
-		provisionalIndexFile, err := cp.Compress(compressionAlgorithm, []byte(fmt.Sprintf(`{"provisionalProofFileUri":"%s","chunks":[{"chunkFileUri":"%s"}]}`, ppfURI, uri)))
-		require.NoError(t, err)
-		provisionalIndexURI, err := cas.Write(provisionalIndexFile)
+		pif2 := &models.ProvisionalIndexFile{
+			Chunks:                  []models.Chunk{{ChunkFileURI: chunkURI}},
+			ProvisionalProofFileURI: invalidContentURI,
+			Operations: models.ProvisionalOperations{
+				Update: []models.SignedOperation{
+					{
+						DidSuffix:   updateOp.UniqueSuffix,
+						RevealValue: updateOp.RevealValue,
+					},
+				},
+			},
+		}
+
+		provisionalIndexURI, err := writeToCAS(pif2, cas)
 		require.NoError(t, err)
 
 		af2 := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: provisionalIndexURI,
-			CoreProofFileURI:        uri,
+			CoreProofFileURI:        "",
 		}
 
 		file, err := provider.getBatchFiles(af2)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "failed to unmarshal provisional proof file: invalid character")
-	})
-
-	t.Run("error - provisional index file is missing chunk file URI", func(t *testing.T) {
-		p := newMockProtocolClient().Protocol
-
-		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
-
-		af2 := &models.CoreIndexFile{
-			ProvisionalIndexFileURI: uri,
-			CoreProofFileURI:        uri,
-		}
-
-		file, err := provider.getBatchFiles(af2)
-		require.Error(t, err)
-		require.Nil(t, file)
-		require.Contains(t, err.Error(), "provisional index file is missing chunk file URI")
 	})
 
 	t.Run("error - retrieve chunk file", func(t *testing.T) {
@@ -820,7 +938,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		updateOp, err := generateOperation(1, operation.TypeUpdate)
 		require.NoError(t, err)
 
-		pif := &models.ProvisionalIndexFile{
+		pif2 := &models.ProvisionalIndexFile{
 			ProvisionalProofFileURI: "",
 			Operations: models.ProvisionalOperations{
 				Update: []models.SignedOperation{
@@ -832,16 +950,11 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 			},
 		}
 
-		pifBytes, err := json.Marshal(pif)
-		require.NoError(t, err)
-
-		compressed, err := cp.Compress(compressionAlgorithm, pifBytes)
-		require.NoError(t, err)
-		pifURI, err := cas.Write(compressed)
+		pif2URI, err := writeToCAS(pif2, cas)
 		require.NoError(t, err)
 
 		cif := &models.CoreIndexFile{
-			ProvisionalIndexFileURI: pifURI,
+			ProvisionalIndexFileURI: pif2URI,
 		}
 
 		file, err := provider.getBatchFiles(cif)
@@ -891,15 +1004,14 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 
 	t.Run("error - provisional index file is missing chunk file URI", func(t *testing.T) {
 		p := newMockProtocolClient().Protocol
-
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
-		af2 := &models.CoreIndexFile{
-			ProvisionalIndexFileURI: uri,
-			CoreProofFileURI:        uri,
-		}
+		missingChunkURI, err := writeToCAS(&models.ProvisionalIndexFile{}, cas)
+		require.NoError(t, err)
 
-		file, err := provider.getBatchFiles(af2)
+		file, err := provider.getBatchFiles(&models.CoreIndexFile{
+			ProvisionalIndexFileURI: missingChunkURI,
+		})
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "provisional index file is missing chunk file URI")
@@ -1165,6 +1277,22 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 		ProvisionalProof: ppf,
 		Chunk:            cf,
 	}, nil
+}
+
+func writeToCAS(value interface{}, cas cas.Client) (string, error) {
+	bytes, err := canonicalizer.MarshalCanonical(value)
+	if err != nil {
+		return "", err
+	}
+
+	cp := compression.New(compression.WithDefaultAlgorithms())
+
+	compressed, err := cp.Compress(compressionAlgorithm, bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return cas.Write(compressed)
 }
 
 func newMockProtocolClient() *mocks.MockProtocolClient {
