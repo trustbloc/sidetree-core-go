@@ -136,7 +136,7 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 		return nil, err
 	}
 
-	logger.Debugf("successfully downloaded and validated batch files")
+	logger.Debugf("successfully downloaded and validated all batch files")
 
 	return files, nil
 }
@@ -304,11 +304,13 @@ func checkForDuplicates(values []string) error {
 }
 
 // getCoreIndexFile will download core index file from cas and parse it into core index file model.
-func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile, error) {
+func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile, error) { //nolint:dupl
 	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxCoreIndexFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading core index file")
 	}
+
+	logger.Debugf("successfully downloaded core index file uri[%s]: %s", uri, string(content))
 
 	cif, err := models.ParseCoreIndexFile(content)
 	if err != nil {
@@ -323,9 +325,13 @@ func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile,
 	return cif, nil
 }
 
-func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) error {
+func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) error { //nolint:gocyclo
 	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) > 0 && cif.CoreProofFileURI == "" {
 		return errors.New("missing core proof file URI")
+	}
+
+	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) == 0 && len(cif.CoreProofFileURI) > 0 {
+		return errors.New("core proof file URI should be empty if there are no recover and/or deactivate operations")
 	}
 
 	for i, op := range cif.Operations.Create {
@@ -333,6 +339,32 @@ func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) err
 		if err != nil {
 			return fmt.Errorf("failed to validate suffix data for create[%d]: %s", i, err.Error())
 		}
+	}
+
+	for i, op := range cif.Operations.Recover {
+		err := validateSignedOperation(op)
+		if err != nil {
+			return fmt.Errorf("failed to validate signed operation for recover[%d]: %s", i, err.Error())
+		}
+	}
+
+	for i, op := range cif.Operations.Deactivate {
+		err := validateSignedOperation(op)
+		if err != nil {
+			return fmt.Errorf("failed to validate signed operation for deactivate[%d]: %s", i, err.Error())
+		}
+	}
+
+	return nil
+}
+
+func validateSignedOperation(op models.SignedOperation) error {
+	if op.DidSuffix == "" {
+		return errors.New("missing did suffix")
+	}
+
+	if op.RevealValue == "" {
+		return errors.New("missing reveal value")
 	}
 
 	return nil
@@ -345,7 +377,7 @@ func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile,
 		return nil, errors.Wrapf(err, "error reading core proof file")
 	}
 
-	logger.Debugf("successfully downloaded core proof file[%s]: %s", uri, string(content))
+	logger.Debugf("successfully downloaded core proof file uri[%s]: %s", uri, string(content))
 
 	cpf, err := models.ParseCoreProofFile(content)
 	if err != nil {
@@ -385,7 +417,7 @@ func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.Provisi
 		return nil, errors.Wrapf(err, "error reading provisional proof file")
 	}
 
-	logger.Debugf("successfully downloaded provisional proof file[%s]: %s", uri, string(content))
+	logger.Debugf("successfully downloaded provisional proof file uri[%s]: %s", uri, string(content))
 
 	ppf, err := models.ParseProvisionalProofFile(content)
 	if err != nil {
@@ -412,11 +444,13 @@ func (h *OperationProvider) validateProvisionalProofFile(ppf *models.Provisional
 }
 
 // getProvisionalIndexFile will download provisional index file from cas and parse it into provisional index file model.
-func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.ProvisionalIndexFile, error) {
+func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.ProvisionalIndexFile, error) { //nolint:dupl
 	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProvisionalIndexFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional index file")
 	}
+
+	logger.Debugf("successfully downloaded provisional index file uri[%s]: %s", uri, string(content))
 
 	pif, err := models.ParseProvisionalIndexFile(content)
 	if err != nil {
@@ -436,15 +470,28 @@ func (h *OperationProvider) validateProvisionalIndexFile(pif *models.Provisional
 		return errors.New("missing provisional proof file URI")
 	}
 
+	if len(pif.Operations.Update) == 0 && len(pif.ProvisionalProofFileURI) > 0 {
+		return errors.New("provisional proof file URI should be empty if there are no update operations")
+	}
+
+	for i, op := range pif.Operations.Update {
+		err := validateSignedOperation(op)
+		if err != nil {
+			return fmt.Errorf("failed to validate signed operation for update[%d]: %s", i, err.Error())
+		}
+	}
+
 	return nil
 }
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model.
-func (h *OperationProvider) getChunkFile(uri string) (*models.ChunkFile, error) {
+func (h *OperationProvider) getChunkFile(uri string) (*models.ChunkFile, error) { //nolint:dupl
 	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxChunkFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading chunk file")
 	}
+
+	logger.Debugf("successfully downloaded chunk file uri[%s]: %s", uri, string(content))
 
 	cf, err := models.ParseChunkFile(content)
 	if err != nil {
