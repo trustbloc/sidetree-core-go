@@ -16,7 +16,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
-	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
@@ -44,7 +43,7 @@ func New(name string, store OperationStoreClient, pc protocol.Client) *Operation
 // Resolve document based on the given unique suffix.
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
-func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionResult, error) {
+func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionModel, error) {
 	ops, err := s.store.Get(uniqueSuffix)
 	if err != nil {
 		return nil, err
@@ -85,13 +84,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*document.ResolutionR
 		rm = s.applyOperations(filteredUpdateOps, rm, getUpdateCommitment)
 	}
 
-	return &document.ResolutionResult{
-		Document: rm.Doc,
-		MethodMetadata: document.MethodMetadata{
-			RecoveryCommitment: rm.RecoveryCommitment,
-			UpdateCommitment:   rm.UpdateCommitment,
-		},
-	}, nil
+	return rm, nil
 }
 
 func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation, multihashAlg uint) map[string][]*operation.AnchoredOperation {

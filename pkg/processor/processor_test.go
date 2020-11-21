@@ -145,7 +145,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated (done via json patch)
-		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
@@ -158,7 +158,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated again (done via json patch)
-		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special2", didDoc["test"])
 	})
 
@@ -177,7 +177,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated (done via json patch)
-		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special200", didDoc["test"])
 	})
 
@@ -195,7 +195,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated (done via json patch)
-		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special50", didDoc["test"])
 
 		// protocol value for hashing algorithm changed at block 100
@@ -207,7 +207,7 @@ func TestUpdateDocument(t *testing.T) {
 		result, err = p.Resolve(uniqueSuffix)
 		require.Nil(t, err)
 
-		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special500", didDoc["test"])
 
 		// test consecutive update within new protocol value
@@ -220,7 +220,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated again (done via json patch)
-		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special700", didDoc["test"])
 	})
 
@@ -242,7 +242,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated (done via json patch)
-		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
@@ -256,7 +256,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// service type value is updated since operation is valid
-		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special2", didDoc["test"])
 
 		// two successful update operations - next update with reused commitment from op 1
@@ -273,7 +273,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// service type value is not updated since commitment value was reused
-		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special2", didDoc["test"])
 	})
 
@@ -296,7 +296,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// check if service type value is updated (done via json patch)
-		didDoc := document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special1", didDoc["test"])
 
 		// update operation commitment is the same as next operation commitment
@@ -313,7 +313,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Nil(t, err)
 
 		// service type value is not updated since commitment value was reused
-		didDoc = document.DidDocumentFromJSONLDObject(result.Document)
+		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special1", didDoc["test"])
 	})
 }
@@ -433,7 +433,7 @@ func TestRecover(t *testing.T) {
 		require.NoError(t, err)
 
 		// test for recovered key
-		docBytes, err := result.Document.Bytes()
+		docBytes, err := result.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered1")
 
@@ -447,7 +447,7 @@ func TestRecover(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
-		docBytes, err = result.Document.Bytes()
+		docBytes, err = result.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered2")
 	})
@@ -466,7 +466,7 @@ func TestRecover(t *testing.T) {
 		require.NoError(t, err)
 
 		// test for recovered key
-		docBytes, err := result.Document.Bytes()
+		docBytes, err := result.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered200")
 
@@ -481,7 +481,7 @@ func TestRecover(t *testing.T) {
 		require.NotNil(t, result)
 
 		// test for recovered key
-		docBytes, err = result.Document.Bytes()
+		docBytes, err = result.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered300")
 	})
@@ -499,7 +499,7 @@ func TestRecover(t *testing.T) {
 		require.NoError(t, err)
 
 		// test for recovered key
-		docBytes, err := result.Document.Bytes()
+		docBytes, err := result.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered50")
 
@@ -514,7 +514,7 @@ func TestRecover(t *testing.T) {
 		require.NotNil(t, result)
 
 		// test for recovered key
-		docBytes, err = result.Document.Bytes()
+		docBytes, err = result.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered200")
 	})

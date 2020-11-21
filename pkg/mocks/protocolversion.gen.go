@@ -18,6 +18,16 @@ type ProtocolVersion struct {
 	documentComposerReturnsOnCall map[int]struct {
 		result1 protocol.DocumentComposer
 	}
+	DocumentTransformerStub        func() protocol.DocumentTransformer
+	documentTransformerMutex       sync.RWMutex
+	documentTransformerArgsForCall []struct {
+	}
+	documentTransformerReturns struct {
+		result1 protocol.DocumentTransformer
+	}
+	documentTransformerReturnsOnCall map[int]struct {
+		result1 protocol.DocumentTransformer
+	}
 	DocumentValidatorStub        func() protocol.DocumentValidator
 	documentValidatorMutex       sync.RWMutex
 	documentValidatorArgsForCall []struct {
@@ -151,6 +161,58 @@ func (fake *ProtocolVersion) DocumentComposerReturnsOnCall(i int, result1 protoc
 	}
 	fake.documentComposerReturnsOnCall[i] = struct {
 		result1 protocol.DocumentComposer
+	}{result1}
+}
+
+func (fake *ProtocolVersion) DocumentTransformer() protocol.DocumentTransformer {
+	fake.documentTransformerMutex.Lock()
+	ret, specificReturn := fake.documentTransformerReturnsOnCall[len(fake.documentTransformerArgsForCall)]
+	fake.documentTransformerArgsForCall = append(fake.documentTransformerArgsForCall, struct {
+	}{})
+	fake.recordInvocation("DocumentTransformer", []interface{}{})
+	fake.documentTransformerMutex.Unlock()
+	if fake.DocumentTransformerStub != nil {
+		return fake.DocumentTransformerStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.documentTransformerReturns
+	return fakeReturns.result1
+}
+
+func (fake *ProtocolVersion) DocumentTransformerCallCount() int {
+	fake.documentTransformerMutex.RLock()
+	defer fake.documentTransformerMutex.RUnlock()
+	return len(fake.documentTransformerArgsForCall)
+}
+
+func (fake *ProtocolVersion) DocumentTransformerCalls(stub func() protocol.DocumentTransformer) {
+	fake.documentTransformerMutex.Lock()
+	defer fake.documentTransformerMutex.Unlock()
+	fake.DocumentTransformerStub = stub
+}
+
+func (fake *ProtocolVersion) DocumentTransformerReturns(result1 protocol.DocumentTransformer) {
+	fake.documentTransformerMutex.Lock()
+	defer fake.documentTransformerMutex.Unlock()
+	fake.DocumentTransformerStub = nil
+	fake.documentTransformerReturns = struct {
+		result1 protocol.DocumentTransformer
+	}{result1}
+}
+
+func (fake *ProtocolVersion) DocumentTransformerReturnsOnCall(i int, result1 protocol.DocumentTransformer) {
+	fake.documentTransformerMutex.Lock()
+	defer fake.documentTransformerMutex.Unlock()
+	fake.DocumentTransformerStub = nil
+	if fake.documentTransformerReturnsOnCall == nil {
+		fake.documentTransformerReturnsOnCall = make(map[int]struct {
+			result1 protocol.DocumentTransformer
+		})
+	}
+	fake.documentTransformerReturnsOnCall[i] = struct {
+		result1 protocol.DocumentTransformer
 	}{result1}
 }
 
@@ -575,6 +637,8 @@ func (fake *ProtocolVersion) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.documentComposerMutex.RLock()
 	defer fake.documentComposerMutex.RUnlock()
+	fake.documentTransformerMutex.RLock()
+	defer fake.documentTransformerMutex.RUnlock()
 	fake.documentValidatorMutex.RLock()
 	defer fake.documentValidatorMutex.RUnlock()
 	fake.operationApplierMutex.RLock()

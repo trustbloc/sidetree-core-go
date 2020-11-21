@@ -21,6 +21,7 @@ import (
 //go:generate counterfeiter -o ../../mocks/txnprocessor.gen.go --fake-name TxnProcessor . TxnProcessor
 //go:generate counterfeiter -o ../../mocks/documentcomposer.gen.go --fake-name DocumentComposer . DocumentComposer
 //go:generate counterfeiter -o ../../mocks/documentvalidator.gen.go --fake-name DocumentValidator . DocumentValidator
+//go:generate counterfeiter -o ../../mocks/documenttransformer.gen.go --fake-name DocumentTransformer . DocumentTransformer
 
 // Protocol defines protocol parameters.
 type Protocol struct {
@@ -101,6 +102,14 @@ type DocumentValidator interface {
 	IsValidPayload(payload []byte) error
 }
 
+// DocumentTransformer transforms internal resolution model into external document(resolution result).
+type DocumentTransformer interface {
+	TransformDocument(rm *ResolutionModel, info TransformationInfo) (*document.ResolutionResult, error)
+}
+
+// TransformationInfo contains document transformation info.
+type TransformationInfo map[string]interface{}
+
 // Version contains the protocol and corresponding implementations that are compatible with the protocol version.
 type Version interface {
 	Version() string
@@ -112,6 +121,7 @@ type Version interface {
 	OperationProvider() OperationProvider
 	DocumentComposer() DocumentComposer
 	DocumentValidator() DocumentValidator
+	DocumentTransformer() DocumentTransformer
 }
 
 // Client defines interface for accessing protocol version/information.

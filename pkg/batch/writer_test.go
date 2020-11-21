@@ -52,7 +52,7 @@ func TestNew(t *testing.T) {
 	require.EqualValues(t, writer.batchTimeout, 10*time.Second)
 
 	writer, err = New(namespace, ctx, withError())
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to read opts: test error")
 	require.Nil(t, writer)
 

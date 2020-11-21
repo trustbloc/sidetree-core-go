@@ -60,7 +60,6 @@ func (h *UpdateHandler) doUpdate(operation []byte) (*document.ResolutionResult, 
 		return nil, err
 	}
 
-	// operation has been validated, now process it
 	result, err := h.processor.ProcessOperation(operation, currentProtocol.Protocol().GenesisTime)
 	if err != nil {
 		if strings.Contains(err.Error(), "bad request") {
