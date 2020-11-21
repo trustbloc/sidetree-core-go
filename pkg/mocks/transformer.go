@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package mocks
 
 import (
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
@@ -21,15 +22,20 @@ func NewDocumentTransformer() *MockDocumentTransformer {
 }
 
 // TransformDocument mocks transformation from internal to external document.
-func (m *MockDocumentTransformer) TransformDocument(internal document.Document) (*document.ResolutionResult, error) {
-	resolutionResult := &document.ResolutionResult{
-		Document:       internal,
-		MethodMetadata: document.MethodMetadata{},
-	}
-
+func (m *MockDocumentTransformer) TransformDocument(internal *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 
-	return resolutionResult, nil
+	internal.Doc[document.IDProperty] = info[document.IDProperty]
+
+	metadata := make(document.MethodMetadata)
+	metadata[document.PublishedProperty] = info[document.PublishedProperty]
+	metadata[document.RecoveryCommitmentProperty] = internal.RecoveryCommitment
+	metadata[document.UpdateCommitmentProperty] = internal.UpdateCommitment
+
+	return &document.ResolutionResult{
+		Document:       internal.Doc,
+		MethodMetadata: metadata,
+	}, nil
 }

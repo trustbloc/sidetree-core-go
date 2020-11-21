@@ -42,17 +42,16 @@ const (
 
 // DocumentHandler implements document handler.
 type DocumentHandler struct {
-	protocol    protocol.Client
-	processor   OperationProcessor
-	writer      BatchWriter
-	transformer DocumentTransformer
-	namespace   string
-	aliases     []string // namespace aliases
+	protocol  protocol.Client
+	processor OperationProcessor
+	writer    BatchWriter
+	namespace string
+	aliases   []string // namespace aliases
 }
 
 // OperationProcessor is an interface which resolves the document based on the ID.
 type OperationProcessor interface {
-	Resolve(uniqueSuffix string) (*document.ResolutionResult, error)
+	Resolve(uniqueSuffix string) (*protocol.ResolutionModel, error)
 }
 
 // BatchWriter is an interface to add an operation to the batch.
@@ -60,20 +59,14 @@ type BatchWriter interface {
 	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) error
 }
 
-// DocumentTransformer transforms a document from internal to external form.
-type DocumentTransformer interface {
-	TransformDocument(doc document.Document) (*document.ResolutionResult, error)
-}
-
 // New creates a new requestHandler with the context.
-func New(namespace string, aliases []string, pc protocol.Client, transformer DocumentTransformer, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
+func New(namespace string, aliases []string, pc protocol.Client, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
 	return &DocumentHandler{
-		protocol:    pc,
-		processor:   processor,
-		writer:      writer,
-		transformer: transformer,
-		namespace:   namespace,
-		aliases:     aliases,
+		protocol:  pc,
+		processor: processor,
+		writer:    writer,
+		namespace: namespace,
+		aliases:   aliases,
 	}
 }
 
@@ -141,16 +134,15 @@ func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol
 		return nil, err
 	}
 
-	externalResult, err := r.transformToExternalDoc(rm.Doc, op.ID)
-	if err != nil {
-		return nil, err
-	}
+	return pv.DocumentTransformer().TransformDocument(rm, getTransformationInfo(op.ID, false))
+}
 
-	externalResult.MethodMetadata.Published = false
-	externalResult.MethodMetadata.RecoveryCommitment = rm.RecoveryCommitment
-	externalResult.MethodMetadata.UpdateCommitment = rm.UpdateCommitment
+func getTransformationInfo(id string, published bool) protocol.TransformationInfo {
+	ti := make(protocol.TransformationInfo)
+	ti[document.IDProperty] = id
+	ti[document.PublishedProperty] = published
 
-	return externalResult, nil
+	return ti
 }
 
 // ResolveDocument fetches the latest DID Document of a DID. Two forms of string can be passed in the URI:
@@ -187,7 +179,7 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 	}
 
 	// resolve document from the blockchain
-	doc, err := r.resolveRequestWithID(ns, uniquePortion)
+	doc, err := r.resolveRequestWithID(ns, uniquePortion, pv)
 	if err == nil {
 		return doc, nil
 	}
@@ -216,7 +208,7 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
 }
 
-func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string, pv protocol.Version) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
 		logger.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
@@ -224,21 +216,14 @@ func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string) 
 		return nil, err
 	}
 
-	externalResult, err := r.transformToExternalDoc(internalResult.Document, namespace+docutil.NamespaceDelimiter+uniquePortion)
-	if err != nil {
-		return nil, err
-	}
+	ti := getTransformationInfo(namespace+docutil.NamespaceDelimiter+uniquePortion, true)
 
 	if r.namespace != namespace {
 		// we got here using alias; suggest using namespace
-		externalResult.MethodMetadata.CanonicalID = r.namespace + docutil.NamespaceDelimiter + uniquePortion
+		ti[document.CanonicalIDProperty] = r.namespace + docutil.NamespaceDelimiter + uniquePortion
 	}
 
-	externalResult.MethodMetadata.Published = true
-	externalResult.MethodMetadata.RecoveryCommitment = internalResult.MethodMetadata.RecoveryCommitment
-	externalResult.MethodMetadata.UpdateCommitment = internalResult.MethodMetadata.UpdateCommitment
-
-	return externalResult, nil
+	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
 }
 
 func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
@@ -271,28 +256,12 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
-	externalResult, err := r.transformToExternalDoc(rm.Doc, longFormDID)
+	externalResult, err := pv.DocumentTransformer().TransformDocument(rm, getTransformationInfo(longFormDID, false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform create with initial state to external document: %s", err.Error())
 	}
 
-	externalResult.MethodMetadata.Published = false
-	externalResult.MethodMetadata.RecoveryCommitment = rm.RecoveryCommitment
-	externalResult.MethodMetadata.UpdateCommitment = rm.UpdateCommitment
-
 	return externalResult, nil
-}
-
-// helper function to transform internal into external document and return resolution result.
-func (r *DocumentHandler) transformToExternalDoc(internal document.Document, id string) (*document.ResolutionResult, error) {
-	if internal == nil {
-		return nil, errors.New("internal document is nil")
-	}
-
-	// apply id to document so it can be added to all keys and services
-	internal[keyID] = id
-
-	return r.transformer.TransformDocument(internal)
 }
 
 // helper for adding operations to the batch.
@@ -315,7 +284,6 @@ func (r *DocumentHandler) validateOperation(op *operation.Operation, pv protocol
 		return r.validateCreateDocument(op, pv)
 	}
 
-	// TODO: Change interface for IsValidPayload to batch.Operation (impacts fabric)
 	return pv.DocumentValidator().IsValidPayload(op.OperationBuffer)
 }
 

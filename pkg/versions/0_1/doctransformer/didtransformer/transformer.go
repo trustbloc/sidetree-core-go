@@ -7,8 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package didtransformer
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/btcsuite/btcutil/base58"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -58,9 +62,28 @@ func New(opts ...Option) *Transformer {
 	return transformer
 }
 
-// TransformDocument takes internal representation of document and transforms it to required representation.
-func (t *Transformer) TransformDocument(doc document.Document) (*document.ResolutionResult, error) {
-	internal := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+// TransformDocument takes internal resolution model and transformation info and creates
+// external representation of document (resolution result).
+func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) { //nolint:funlen
+	if rm == nil || rm.Doc == nil {
+		return nil, errors.New("resolution model is required for document transformation")
+	}
+
+	if info == nil {
+		return nil, errors.New("transformation info is required for document transformation")
+	}
+
+	id, ok := info[document.IDProperty]
+	if !ok {
+		return nil, errors.New("id is required for document transformation")
+	}
+
+	published, ok := info[document.PublishedProperty]
+	if !ok {
+		return nil, errors.New("published is required for document transformation")
+	}
+
+	internal := document.DidDocumentFromJSONLDObject(rm.Doc.JSONLdObject())
 
 	// start with empty document
 	external := document.DidDocumentFromJSONLDObject(make(document.DIDDocument))
@@ -74,22 +97,32 @@ func (t *Transformer) TransformDocument(doc document.Document) (*document.Resolu
 	}
 
 	if t.includeBase {
-		ctx = append(ctx, getBase(internal.ID()))
+		ctx = append(ctx, getBase(id.(string)))
 	}
 
 	external[document.ContextProperty] = ctx
-	external[document.IDProperty] = internal.ID()
+	external[document.IDProperty] = id
+
+	metadata := make(document.MethodMetadata)
+	metadata[document.PublishedProperty] = published
+	metadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
+	metadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
+
+	_, ok = info[document.CanonicalIDProperty]
+	if ok {
+		metadata[document.CanonicalIDProperty] = info[document.CanonicalIDProperty]
+	}
 
 	result := &document.ResolutionResult{
 		Context:        didResolutionContext,
 		Document:       external.JSONLdObject(),
-		MethodMetadata: document.MethodMetadata{},
+		MethodMetadata: metadata,
 	}
 
 	// add keys
 	err := t.processKeys(internal, result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to transform public keys for did document: %s", err.Error())
 	}
 
 	// add services
@@ -110,10 +143,12 @@ func getBase(id string) interface{} {
 func (t *Transformer) processServices(internal document.DIDDocument, resolutionResult *document.ResolutionResult) {
 	var services []document.Service
 
+	did := resolutionResult.Document.ID()
+
 	// add did to service id
 	for _, sv := range internal.Services() {
 		externalService := make(document.Service)
-		externalService[document.IDProperty] = t.getObjectID(internal.ID(), sv.ID())
+		externalService[document.IDProperty] = t.getObjectID(did, sv.ID())
 		externalService[document.TypeProperty] = sv.Type()
 		externalService[document.ServiceEndpointProperty] = sv.ServiceEndpoint()
 
@@ -149,16 +184,18 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 		document.InvocationKeyProperty:   make([]interface{}, 0),
 	}
 
+	did := resolutionResult.Document.ID()
+
 	var publicKeys []document.PublicKey
 
 	for _, pk := range internal.PublicKeys() {
 		// construct full DID URL for inclusion in purpose sections
-		id := internal.ID() + "#" + pk.ID()
+		id := did + "#" + pk.ID()
 
 		externalPK := make(document.PublicKey)
-		externalPK[document.IDProperty] = t.getObjectID(internal.ID(), pk.ID())
+		externalPK[document.IDProperty] = t.getObjectID(did, pk.ID())
 		externalPK[document.TypeProperty] = pk.Type()
-		externalPK[document.ControllerProperty] = internal[document.IDProperty]
+		externalPK[document.ControllerProperty] = did
 
 		if pk.Type() == ed25519VerificationKey2018 {
 			ed25519PubKey, err := getED2519PublicKey(pk.PublicKeyJwk())

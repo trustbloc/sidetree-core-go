@@ -22,7 +22,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
-	"github.com/trustbloc/sidetree-core-go/pkg/dochandler/transformer/doctransformer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
@@ -32,6 +31,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doctransformer/didtransformer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doctransformer/doctransformer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
@@ -46,14 +47,14 @@ const (
 
 func TestDocumentHandler_New(t *testing.T) {
 	aliases := []string{"alias1", "alias2"}
-	dh := New(namespace, aliases, nil, nil, nil, nil)
+	dh := New(namespace, aliases, nil, nil, nil)
 	require.Equal(t, namespace, dh.Namespace())
 	require.Equal(t, aliases, dh.aliases)
 }
 
 func TestDocumentHandler_Protocol(t *testing.T) {
 	pc := newMockProtocolClient()
-	dh := New("", nil, pc, nil, nil, nil)
+	dh := New("", nil, pc, nil, nil)
 	require.NotNil(t, dh)
 }
 
@@ -65,7 +66,7 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	createOp := getCreateOperation()
 
 	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, doc)
 }
 
@@ -113,38 +114,38 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 
 	// scenario: not found in the store
 	result, err := dochandler.ResolveDocument(docID)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "not found")
 
 	// insert document in the store
 	err = store.Put(getAnchoredCreateOperation())
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// scenario: resolved document (success)
 	result, err = dochandler.ResolveDocument(docID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Equal(t, true, result.MethodMetadata.Published)
+	require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
 
 	// scenario: resolve document with alias namespace (success)
 	aliasID := alias + ":" + uniqueSuffix
 	result, err = dochandler.ResolveDocument(aliasID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Equal(t, true, result.MethodMetadata.Published)
-	require.Equal(t, result.MethodMetadata.CanonicalID, docID)
+	require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
+	require.Equal(t, result.MethodMetadata[document.CanonicalIDProperty], docID)
 	require.Equal(t, result.Document[keyID], aliasID)
 
 	// scenario: invalid namespace
 	result, err = dochandler.ResolveDocument("doc:invalid")
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "must start with configured namespace")
 
 	// scenario: invalid id
 	result, err = dochandler.ResolveDocument(namespace + docutil.NamespaceDelimiter)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "did suffix is empty")
 }
@@ -170,32 +171,36 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		result, err := dochandler.ResolveDocument(docID + longFormPart)
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.Equal(t, false, result.MethodMetadata.Published)
+		require.Equal(t, false, result.MethodMetadata[document.PublishedProperty])
 	})
 
 	t.Run("error - invalid initial state format (not encoded JCS)", func(t *testing.T) {
 		result, err := dochandler.ResolveDocument(docID + ":payload")
-		require.NotNil(t, err)
+		require.Error(t, err)
 		require.Nil(t, result)
 		require.Contains(t, err.Error(), "bad request: invalid character")
 	})
 
 	t.Run("error - did doesn't match the one created by parsing original create request", func(t *testing.T) {
 		result, err := dochandler.ResolveDocument(dochandler.namespace + ":someID" + longFormPart)
-		require.NotNil(t, err)
+		require.Error(t, err)
 		require.Nil(t, result)
 		require.Contains(t, err.Error(), "provided did doesn't match did created from initial state")
 	})
 
 	t.Run("error - transform create with initial state to external document", func(t *testing.T) {
-		dochandlerWithValidator, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
+		transformer := &mocks.DocumentTransformer{}
+		transformer.TransformDocumentReturns(nil, errors.New("test error"))
+
+		pc := newMockProtocolClient()
+		pc.CurrentVersion.DocumentTransformerReturns(transformer)
+
+		dochandlerWithValidator, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
 		require.NotNil(t, dochandlerWithValidator)
 		defer cleanup()
 
-		dochandlerWithValidator.transformer = &mocks.MockDocumentTransformer{Err: errors.New("test error")}
-
 		result, err := dochandlerWithValidator.ResolveDocument(docID + longFormPart)
-		require.NotNil(t, err)
+		require.Error(t, err)
 		require.Nil(t, result)
 		require.Equal(t, err.Error(), "failed to transform create with initial state to external document: test error")
 	})
@@ -237,10 +242,12 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 
 	parser := operationparser.New(pc.Protocol)
 	oa := operationapplier.New(pc.Protocol, parser, doccomposer.New())
+	transformer := didtransformer.New()
 
 	pv := pc.CurrentVersion
 	pv.OperationParserReturns(parser)
 	pv.OperationApplierReturns(oa)
+	pv.DocumentTransformerReturns(transformer)
 
 	pc.CurrentVersion.ProtocolReturns(pc.Protocol)
 
@@ -278,7 +285,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *t
 	longFormPart := ":" + encoder.EncodeToString(createReq)
 
 	result, err := dochandler.ResolveDocument(docID + longFormPart)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "bad request: operation byte size exceeds protocol max operation byte size")
 }
@@ -310,39 +317,23 @@ func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {
 	require.Contains(t, err.Error(), "bad request: key 'type' is required for public key")
 }
 
-func TestTransformToExternalDocument(t *testing.T) {
-	dochandler, cleanup := getDocumentHandler(nil)
-	defer cleanup()
-
-	result, err := dochandler.transformToExternalDoc(nil, "abc")
-	require.Error(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "internal document is nil")
-
-	doc := document.Document{}
-	result, err = dochandler.transformToExternalDoc(doc, "abc")
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, "abc", result.Document[keyID])
-}
-
 func TestGetUniquePortion(t *testing.T) {
 	const namespace = "did:sidetree"
 
 	// id doesn't contain namespace
 	uniquePortion, err := getSuffix(namespace, "invalid")
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "did must start with configured namespace")
 
 	// id equals namespace; unique portion is empty
 	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "did suffix is empty")
 
 	// valid unique portion
 	const unique = "exKwW0HjS5y4zBtJ7vYDwglYhtckdO15JDt1j5F5Q0A"
 	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter+unique)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, unique, uniquePortion)
 }
 
@@ -354,10 +345,10 @@ func TestProcessOperation_ParseOperationError(t *testing.T) {
 
 	// insert document in the store
 	err := store.Put(getAnchoredCreateOperation())
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	doc, err := dochandler.ProcessOperation(getUpdateOperation().OperationBuffer, 0)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "bad request: missing signed data")
 }
@@ -397,7 +388,6 @@ func getDocumentHandler(store processor.OperationStoreClient) (*DocumentHandler,
 }
 
 func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, protocol *mocks.MockProtocolClient) (*DocumentHandler, cleanup) {
-	transformer := doctransformer.New()
 	processor := processor.New("test", store, protocol)
 
 	ctx := &BatchContext{
@@ -414,7 +404,7 @@ func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, 
 	// start go routine for cutting batches
 	writer.Start()
 
-	return New(namespace, []string{alias}, protocol, transformer, writer, processor), func() { writer.Stop() }
+	return New(namespace, []string{alias}, protocol, writer, processor), func() { writer.Stop() }
 }
 
 func getCreateOperation() *model.Operation {
@@ -616,10 +606,12 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 		dc := doccomposer.New()
 		oa := operationapplier.New(v.Protocol(), parser, dc)
 		dv := &mocks.DocumentValidator{}
+		dt := doctransformer.New()
 		v.OperationParserReturns(parser)
 		v.OperationApplierReturns(oa)
 		v.DocumentComposerReturns(dc)
 		v.DocumentValidatorReturns(dv)
+		v.DocumentTransformerReturns(dt)
 	}
 
 	return pc

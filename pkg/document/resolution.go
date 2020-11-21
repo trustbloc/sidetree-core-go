@@ -14,9 +14,18 @@ type ResolutionResult struct {
 }
 
 // MethodMetadata contains document metadata.
-type MethodMetadata struct {
-	UpdateCommitment   string `json:"updateCommitment"`
-	RecoveryCommitment string `json:"recoveryCommitment"`
-	Published          bool   `json:"published"`
-	CanonicalID        string `json:"canonicalID,omitempty"`
-}
+type MethodMetadata map[string]interface{}
+
+const (
+	// UpdateCommitmentProperty is update commitment key.
+	UpdateCommitmentProperty = "updateCommitment"
+
+	// RecoveryCommitmentProperty is recovery commitment key.
+	RecoveryCommitmentProperty = "recoveryCommitment"
+
+	// PublishedProperty is published key.
+	PublishedProperty = "published"
+
+	// CanonicalIDProperty is canonical ID key.
+	CanonicalIDProperty = "canonicalID"
+)
