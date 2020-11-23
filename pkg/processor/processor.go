@@ -261,7 +261,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 		}
 
 		if currCommitment == nextCommitment {
-			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation commitment equals next operation commitment", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
+			logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: operation commitment(key) equals next operation commitment(key)", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
 
 			continue
 		}
@@ -270,7 +270,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 			// for recovery and update operations check if next commitment has been used already; if so skip to next operation
 			_, processed := processedCommitments[nextCommitment]
 			if processed {
-				logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: next operation commitment has already been used", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
+				logger.Infof("[%s] Skipped bad operation {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: next operation commitment(key) has already been used", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber)
 
 				continue
 			}

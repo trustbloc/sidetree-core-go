@@ -589,6 +589,11 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 		deactivateOps = append(deactivateOps, deactivate)
 	}
 
+	err := checkForDuplicates(suffixes)
+	if err != nil {
+		return nil, fmt.Errorf("check for duplicate suffixes in core index files: %s", err.Error())
+	}
+
 	return &coreOperations{
 		Create:     createOps,
 		Recover:    recoverOps,
