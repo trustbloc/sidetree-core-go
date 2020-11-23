@@ -23,8 +23,8 @@ func (o *SortedOperations) Size() int {
 	return len(o.Create) + len(o.Recover) + len(o.Deactivate) + len(o.Update)
 }
 
-// SignedOperation contains minimum proving data.
-type SignedOperation struct {
+// OperationReference contains minimum proving data.
+type OperationReference struct {
 	// DidSuffix is the suffix of the DID
 	DidSuffix string `json:"didSuffix"`
 
@@ -32,10 +32,10 @@ type SignedOperation struct {
 	RevealValue string `json:"revealValue"`
 }
 
-func getSignedOperations(ops []*model.Operation) []SignedOperation {
-	var result []SignedOperation
+func getOperationReferences(ops []*model.Operation) []OperationReference {
+	var result []OperationReference
 	for _, op := range ops {
-		upd := SignedOperation{
+		upd := OperationReference{
 			DidSuffix:   op.UniqueSuffix,
 			RevealValue: op.RevealValue,
 		}

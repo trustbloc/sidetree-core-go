@@ -816,7 +816,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		Chunks:                  []models.Chunk{{ChunkFileURI: chunkURI}},
 		ProvisionalProofFileURI: ppfURI,
 		Operations: models.ProvisionalOperations{
-			Update: []models.SignedOperation{
+			Update: []models.OperationReference{
 				{
 					DidSuffix:   updateOp.UniqueSuffix,
 					RevealValue: updateOp.RevealValue,
@@ -841,7 +841,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		ProvisionalIndexFileURI: pifURI,
 		CoreProofFileURI:        cpfURI,
 		Operations: models.CoreOperations{
-			Recover: []models.SignedOperation{
+			Recover: []models.OperationReference{
 				{
 					DidSuffix:   recoverOp.UniqueSuffix,
 					RevealValue: recoverOp.RevealValue,
@@ -896,7 +896,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 			Chunks:                  []models.Chunk{{ChunkFileURI: chunkURI}},
 			ProvisionalProofFileURI: invalidContentURI,
 			Operations: models.ProvisionalOperations{
-				Update: []models.SignedOperation{
+				Update: []models.OperationReference{
 					{
 						DidSuffix:   updateOp.UniqueSuffix,
 						RevealValue: updateOp.RevealValue,
@@ -941,7 +941,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		pif2 := &models.ProvisionalIndexFile{
 			ProvisionalProofFileURI: "",
 			Operations: models.ProvisionalOperations{
-				Update: []models.SignedOperation{
+				Update: []models.OperationReference{
 					{
 						DidSuffix:   updateOp.UniqueSuffix,
 						RevealValue: updateOp.RevealValue,
@@ -987,7 +987,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		cif := &models.CoreIndexFile{
 			CoreProofFileURI: cpfURI,
 			Operations: models.CoreOperations{
-				Recover: []models.SignedOperation{
+				Recover: []models.OperationReference{
 					{
 						DidSuffix:   recoverOp.UniqueSuffix,
 						RevealValue: recoverOp.RevealValue,
@@ -1048,7 +1048,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			ProvisionalIndexFileURI: "hash",
 			Operations: models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
-				Deactivate: []models.SignedOperation{
+				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 				},
 			},
@@ -1057,7 +1057,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
 			Operations: models.ProvisionalOperations{
-				Update: []models.SignedOperation{{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue}},
+				Update: []models.OperationReference{{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue}},
 			},
 		}
 
@@ -1107,7 +1107,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			ProvisionalIndexFileURI: "hash",
 			Operations: models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
-				Deactivate: []models.SignedOperation{
+				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 				},
@@ -1117,7 +1117,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
 			Operations: models.ProvisionalOperations{
-				Update: []models.SignedOperation{
+				Update: []models.OperationReference{
 					{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue},
 					{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue},
 				},
@@ -1227,13 +1227,13 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 		CoreProofFileURI:        "coreProofURI",
 		Operations: models.CoreOperations{
 			Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
-			Recover: []models.SignedOperation{
+			Recover: []models.OperationReference{
 				{
 					DidSuffix:   recoverOp.UniqueSuffix,
 					RevealValue: recoverOp.RevealValue,
 				},
 			},
-			Deactivate: []models.SignedOperation{
+			Deactivate: []models.OperationReference{
 				{
 					DidSuffix:   deactivateOp.UniqueSuffix,
 					RevealValue: deactivateOp.RevealValue,
@@ -1246,7 +1246,7 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 		Chunks:                  []models.Chunk{{ChunkFileURI: "chunkURI"}},
 		ProvisionalProofFileURI: "provisionalProofURI",
 		Operations: models.ProvisionalOperations{
-			Update: []models.SignedOperation{
+			Update: []models.OperationReference{
 				{
 					DidSuffix:   updateOp.UniqueSuffix,
 					RevealValue: updateOp.RevealValue,

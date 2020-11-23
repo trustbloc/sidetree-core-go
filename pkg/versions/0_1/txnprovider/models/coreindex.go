@@ -33,9 +33,9 @@ type CreateOperation struct {
 
 // CoreOperations contains operation proving data.
 type CoreOperations struct {
-	Create     []CreateOperation `json:"create,omitempty"`
-	Recover    []SignedOperation `json:"recover,omitempty"`
-	Deactivate []SignedOperation `json:"deactivate,omitempty"`
+	Create     []CreateOperation    `json:"create,omitempty"`
+	Recover    []OperationReference `json:"recover,omitempty"`
+	Deactivate []OperationReference `json:"deactivate,omitempty"`
 }
 
 // CreateCoreIndexFile will create core index file from provided operations.
@@ -46,8 +46,8 @@ func CreateCoreIndexFile(coreProofURI, mapURI string, ops *SortedOperations) *Co
 		ProvisionalIndexFileURI: mapURI,
 		Operations: CoreOperations{
 			Create:     assembleCreateOperations(ops.Create),
-			Recover:    getSignedOperations(ops.Recover),
-			Deactivate: getSignedOperations(ops.Deactivate),
+			Recover:    getOperationReferences(ops.Recover),
+			Deactivate: getOperationReferences(ops.Deactivate),
 		},
 	}
 }
