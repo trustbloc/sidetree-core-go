@@ -342,14 +342,14 @@ func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) err
 	}
 
 	for i, op := range cif.Operations.Recover {
-		err := validateSignedOperation(op)
+		err := validateOperationReference(op)
 		if err != nil {
 			return fmt.Errorf("failed to validate signed operation for recover[%d]: %s", i, err.Error())
 		}
 	}
 
 	for i, op := range cif.Operations.Deactivate {
-		err := validateSignedOperation(op)
+		err := validateOperationReference(op)
 		if err != nil {
 			return fmt.Errorf("failed to validate signed operation for deactivate[%d]: %s", i, err.Error())
 		}
@@ -358,7 +358,7 @@ func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) err
 	return nil
 }
 
-func validateSignedOperation(op models.SignedOperation) error {
+func validateOperationReference(op models.OperationReference) error {
 	if op.DidSuffix == "" {
 		return errors.New("missing did suffix")
 	}
@@ -475,7 +475,7 @@ func (h *OperationProvider) validateProvisionalIndexFile(pif *models.Provisional
 	}
 
 	for i, op := range pif.Operations.Update {
-		err := validateSignedOperation(op)
+		err := validateOperationReference(op)
 		if err != nil {
 			return fmt.Errorf("failed to validate signed operation for update[%d]: %s", i, err.Error())
 		}

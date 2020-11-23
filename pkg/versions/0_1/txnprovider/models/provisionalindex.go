@@ -25,9 +25,9 @@ type ProvisionalIndexFile struct {
 	Operations ProvisionalOperations `json:"operations,omitempty"`
 }
 
-// ProvisionalOperations contains operation proving data for provisional (update) operations.
+// ProvisionalOperations contains minimal operation proving data for provisional (update) operations.
 type ProvisionalOperations struct {
-	Update []SignedOperation `json:"update,omitempty"`
+	Update []OperationReference `json:"update,omitempty"`
 }
 
 // Chunk holds chunk file URI.
@@ -42,7 +42,7 @@ func CreateProvisionalIndexFile(chunkURIs []string, provisionalProofURI string, 
 		Chunks:                  getChunks(chunkURIs),
 		ProvisionalProofFileURI: provisionalProofURI,
 		Operations: ProvisionalOperations{
-			Update: getSignedOperations(updateOps),
+			Update: getOperationReferences(updateOps),
 		},
 	}
 }
