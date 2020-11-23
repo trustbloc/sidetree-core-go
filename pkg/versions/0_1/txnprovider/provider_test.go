@@ -1108,6 +1108,59 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			Operations: models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
+					{DidSuffix: "test-suffix", RevealValue: deactivateOp.RevealValue},
+				},
+			},
+		}
+
+		pif := &models.ProvisionalIndexFile{
+			Chunks: []models.Chunk{},
+			Operations: models.ProvisionalOperations{
+				Update: []models.OperationReference{
+					{DidSuffix: "test-suffix", RevealValue: updateOp.RevealValue},
+				},
+			},
+		}
+
+		cf := &models.ChunkFile{Deltas: []*model.DeltaModel{createOp.Delta}}
+
+		cpf := &models.CoreProofFile{
+			Operations: models.CoreProofOperations{
+				Deactivate: []string{deactivateOp.SignedData, deactivateOp.SignedData},
+			},
+		}
+
+		batchFiles := &batchFiles{
+			CoreIndex:        cif,
+			CoreProof:        cpf,
+			ProvisionalIndex: pif,
+			Chunk:            cf,
+		}
+
+		anchoredOps, err := provider.assembleAnchoredOperations(batchFiles, &txn.SidetreeTxn{Namespace: defaultNS})
+		require.Error(t, err)
+		require.Nil(t, anchoredOps)
+		require.Contains(t, err.Error(),
+			"check for duplicate suffixes in core/provisional index files: duplicate values found [test-suffix]")
+	})
+
+	t.Run("error - duplicate operations found in core index file", func(t *testing.T) {
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+
+		createOp, err := generateOperation(1, operation.TypeCreate)
+		require.NoError(t, err)
+
+		updateOp, err := generateOperation(2, operation.TypeUpdate)
+		require.NoError(t, err)
+
+		deactivateOp, err := generateOperation(3, operation.TypeDeactivate)
+		require.NoError(t, err)
+
+		cif := &models.CoreIndexFile{
+			ProvisionalIndexFileURI: "hash",
+			Operations: models.CoreOperations{
+				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
+				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 				},
@@ -1118,7 +1171,6 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 			Chunks: []models.Chunk{},
 			Operations: models.ProvisionalOperations{
 				Update: []models.OperationReference{
-					{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue},
 					{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue},
 				},
 			},
@@ -1143,7 +1195,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, anchoredOps)
 		require.Contains(t, err.Error(),
-			"check for duplicate suffixes in core/provisional index files: duplicate values found [deactivate-3 update-2]")
+			"check for duplicate suffixes in core index files: duplicate values found [deactivate-3]")
 	})
 }
 
