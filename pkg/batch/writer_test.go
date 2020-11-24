@@ -93,7 +93,7 @@ func TestStart(t *testing.T) {
 	require.Nil(t, err)
 
 	require.Equal(t, 2, len(cif.Operations.Create))
-	require.Equal(t, 0, len(pif.Operations.Update))
+	require.Nil(t, pif.Operations)
 	require.Equal(t, 2, len(cf.Deltas))
 }
 
@@ -181,7 +181,7 @@ func TestBatchTimer(t *testing.T) {
 	require.Equal(t, 0, len(cif.Operations.Recover))
 	require.Equal(t, 0, len(cif.Operations.Deactivate))
 
-	require.Equal(t, 0, len(pif.Operations.Update))
+	require.Nil(t, pif.Operations)
 
 	require.Equal(t, 1, len(cf.Deltas))
 }
@@ -220,7 +220,7 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	require.Equal(t, 0, len(cif.Operations.Recover))
 	require.Equal(t, 0, len(cif.Operations.Deactivate))
 
-	require.Equal(t, 0, len(pif.Operations.Update))
+	require.Nil(t, pif.Operations)
 
 	require.Equal(t, 1, len(cf.Deltas))
 }

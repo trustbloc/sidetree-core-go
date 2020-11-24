@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 )
 
 func TestHandler_CreateMapFile(t *testing.T) {
@@ -43,4 +44,19 @@ func TestHandler_ParseMapFile(t *testing.T) {
 	require.Equal(t, updateOpsNum, len(parsed.Operations.Update))
 
 	require.Equal(t, parsed.Operations.Update[0].RevealValue, revealValue)
+}
+
+func TestMarshalProvisionalIndexFile(t *testing.T) {
+	t.Run("success - provisional index with no operations ", func(t *testing.T) {
+		model := CreateProvisionalIndexFile([]string{"chunkURI"}, "", nil)
+		bytes, err := canonicalizer.MarshalCanonical(model)
+		require.NoError(t, err)
+		require.Equal(t, `{"chunks":[{"chunkFileUri":"chunkURI"}]}`, string(bytes))
+	})
+	t.Run("success - provisional index with operations", func(t *testing.T) {
+		model := CreateProvisionalIndexFile([]string{"chunkURI"}, "", generateOperations(1, operation.TypeUpdate))
+		bytes, err := canonicalizer.MarshalCanonical(model)
+		require.NoError(t, err)
+		require.Equal(t, `{"chunks":[{"chunkFileUri":"chunkURI"}],"operations":{"update":[{"didSuffix":"update-1","revealValue":"reveal-value"}]}}`, string(bytes))
+	})
 }

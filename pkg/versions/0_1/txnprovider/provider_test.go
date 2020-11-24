@@ -191,6 +191,87 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, deactivateOpsNum, len(txnOps))
 	})
+
+	t.Run("success - update only", func(t *testing.T) {
+		const updateOpsNum = 2
+
+		var ops []*operation.QueuedOperation
+		ops = append(ops, generateOperations(updateOpsNum, operation.TypeUpdate)...)
+
+		cas := mocks.NewMockCasClient(nil)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+
+		anchorString, err := handler.PrepareTxnFiles(ops)
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorString)
+
+		p := mocks.NewMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
+			AnchorString:      anchorString,
+			TransactionNumber: 1,
+			TransactionTime:   1,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, updateOpsNum, len(txnOps))
+	})
+
+	t.Run("success - create only", func(t *testing.T) {
+		const createOpsNum = 2
+
+		var ops []*operation.QueuedOperation
+		ops = append(ops, generateOperations(createOpsNum, operation.TypeCreate)...)
+
+		cas := mocks.NewMockCasClient(nil)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+
+		anchorString, err := handler.PrepareTxnFiles(ops)
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorString)
+
+		p := mocks.NewMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
+			AnchorString:      anchorString,
+			TransactionNumber: 1,
+			TransactionTime:   1,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, createOpsNum, len(txnOps))
+	})
+
+	t.Run("success - recover only", func(t *testing.T) {
+		const recoverOpsNum = 2
+
+		var ops []*operation.QueuedOperation
+		ops = append(ops, generateOperations(recoverOpsNum, operation.TypeRecover)...)
+
+		cas := mocks.NewMockCasClient(nil)
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+
+		anchorString, err := handler.PrepareTxnFiles(ops)
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorString)
+
+		p := mocks.NewMockProtocolClient().Protocol
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
+			Namespace:         defaultNS,
+			AnchorString:      anchorString,
+			TransactionNumber: 1,
+			TransactionTime:   1,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, recoverOpsNum, len(txnOps))
+	})
 }
 
 func TestHandler_GetCoreIndexFile(t *testing.T) {
@@ -815,7 +896,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 	pif := &models.ProvisionalIndexFile{
 		Chunks:                  []models.Chunk{{ChunkFileURI: chunkURI}},
 		ProvisionalProofFileURI: ppfURI,
-		Operations: models.ProvisionalOperations{
+		Operations: &models.ProvisionalOperations{
 			Update: []models.OperationReference{
 				{
 					DidSuffix:   updateOp.UniqueSuffix,
@@ -840,7 +921,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 	af := &models.CoreIndexFile{
 		ProvisionalIndexFileURI: pifURI,
 		CoreProofFileURI:        cpfURI,
-		Operations: models.CoreOperations{
+		Operations: &models.CoreOperations{
 			Recover: []models.OperationReference{
 				{
 					DidSuffix:   recoverOp.UniqueSuffix,
@@ -895,7 +976,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		pif2 := &models.ProvisionalIndexFile{
 			Chunks:                  []models.Chunk{{ChunkFileURI: chunkURI}},
 			ProvisionalProofFileURI: invalidContentURI,
-			Operations: models.ProvisionalOperations{
+			Operations: &models.ProvisionalOperations{
 				Update: []models.OperationReference{
 					{
 						DidSuffix:   updateOp.UniqueSuffix,
@@ -940,7 +1021,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 
 		pif2 := &models.ProvisionalIndexFile{
 			ProvisionalProofFileURI: "",
-			Operations: models.ProvisionalOperations{
+			Operations: &models.ProvisionalOperations{
 				Update: []models.OperationReference{
 					{
 						DidSuffix:   updateOp.UniqueSuffix,
@@ -986,7 +1067,7 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 
 		cif := &models.CoreIndexFile{
 			CoreProofFileURI: cpfURI,
-			Operations: models.CoreOperations{
+			Operations: &models.CoreOperations{
 				Recover: []models.OperationReference{
 					{
 						DidSuffix:   recoverOp.UniqueSuffix,
@@ -1046,7 +1127,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		cif := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: "hash",
-			Operations: models.CoreOperations{
+			Operations: &models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
@@ -1056,7 +1137,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
-			Operations: models.ProvisionalOperations{
+			Operations: &models.ProvisionalOperations{
 				Update: []models.OperationReference{{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue}},
 			},
 		}
@@ -1105,7 +1186,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		cif := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: "hash",
-			Operations: models.CoreOperations{
+			Operations: &models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
 					{DidSuffix: "test-suffix", RevealValue: deactivateOp.RevealValue},
@@ -1115,7 +1196,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
-			Operations: models.ProvisionalOperations{
+			Operations: &models.ProvisionalOperations{
 				Update: []models.OperationReference{
 					{DidSuffix: "test-suffix", RevealValue: updateOp.RevealValue},
 				},
@@ -1158,7 +1239,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		cif := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: "hash",
-			Operations: models.CoreOperations{
+			Operations: &models.CoreOperations{
 				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
@@ -1169,7 +1250,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 
 		pif := &models.ProvisionalIndexFile{
 			Chunks: []models.Chunk{},
-			Operations: models.ProvisionalOperations{
+			Operations: &models.ProvisionalOperations{
 				Update: []models.OperationReference{
 					{DidSuffix: updateOp.UniqueSuffix, RevealValue: updateOp.RevealValue},
 				},
@@ -1277,7 +1358,7 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 	cif := &models.CoreIndexFile{
 		ProvisionalIndexFileURI: "provisionalIndexURI",
 		CoreProofFileURI:        "coreProofURI",
-		Operations: models.CoreOperations{
+		Operations: &models.CoreOperations{
 			Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
 			Recover: []models.OperationReference{
 				{
@@ -1297,7 +1378,7 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 	pif := &models.ProvisionalIndexFile{
 		Chunks:                  []models.Chunk{{ChunkFileURI: "chunkURI"}},
 		ProvisionalProofFileURI: "provisionalProofURI",
-		Operations: models.ProvisionalOperations{
+		Operations: &models.ProvisionalOperations{
 			Update: []models.OperationReference{
 				{
 					DidSuffix:   updateOp.UniqueSuffix,

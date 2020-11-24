@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -89,4 +90,22 @@ func generateOperation(num int, opType operation.Type) *model.Operation {
 		SignedData:   signedData,
 		RevealValue:  revealValue,
 	}
+}
+
+func TestMarshalCoreIndexFile(t *testing.T) {
+	t.Run("success - check operations tag is omitted if no operations ", func(t *testing.T) {
+		model := CreateCoreIndexFile("", "provisionalIndexURI", &SortedOperations{})
+		bytes, err := canonicalizer.MarshalCanonical(model)
+		require.NoError(t, err)
+		// core index file can have just references to provisional index file (no operations)
+		require.Equal(t, `{"provisionalIndexFileUri":"provisionalIndexURI"}`, string(bytes))
+	})
+	t.Run("success - core index file can have just references to core proof file, no provisional index file (deactivate ops only))", func(t *testing.T) {
+		sortedOperations := getTestOperations(0, 0, 1, 0)
+
+		model := CreateCoreIndexFile("coreProofURI", "", sortedOperations)
+		bytes, err := canonicalizer.MarshalCanonical(model)
+		require.NoError(t, err)
+		require.Equal(t, `{"coreProofFileUri":"coreProofURI","operations":{"deactivate":[{"didSuffix":"deactivate-1","revealValue":"reveal-value"}]}}`, string(bytes))
+	})
 }
