@@ -22,7 +22,7 @@ type CoreIndexFile struct {
 	CoreProofFileURI string `json:"coreProofFileUri,omitempty"`
 
 	// CoreOperations contain proving data for create, recover and deactivate operations.
-	Operations CoreOperations `json:"operations"`
+	Operations *CoreOperations `json:"operations,omitempty"`
 }
 
 // CreateOperation contains create operation data.
@@ -40,15 +40,21 @@ type CoreOperations struct {
 
 // CreateCoreIndexFile will create core index file from provided operations.
 // returns core index file model.
-func CreateCoreIndexFile(coreProofURI, mapURI string, ops *SortedOperations) *CoreIndexFile {
+func CreateCoreIndexFile(coreProofURI, provisionalIndexURI string, ops *SortedOperations) *CoreIndexFile {
+	var coreOps *CoreOperations
+
+	if len(ops.Create)+len(ops.Recover)+len(ops.Deactivate) > 0 {
+		coreOps = &CoreOperations{}
+
+		coreOps.Create = assembleCreateOperations(ops.Create)
+		coreOps.Recover = getOperationReferences(ops.Recover)
+		coreOps.Deactivate = getOperationReferences(ops.Deactivate)
+	}
+
 	return &CoreIndexFile{
 		CoreProofFileURI:        coreProofURI,
-		ProvisionalIndexFileURI: mapURI,
-		Operations: CoreOperations{
-			Create:     assembleCreateOperations(ops.Create),
-			Recover:    getOperationReferences(ops.Recover),
-			Deactivate: getOperationReferences(ops.Deactivate),
-		},
+		ProvisionalIndexFileURI: provisionalIndexURI,
+		Operations:              coreOps,
 	}
 }
 

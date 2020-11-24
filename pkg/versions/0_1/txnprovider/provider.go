@@ -173,28 +173,44 @@ func (h *OperationProvider) getProvisionalFiles(provisionalIndexURI string) (*pr
 
 // validateBatchFileCounts validates that operation numbers match in batch files.
 func validateBatchFileCounts(batchFiles *batchFiles) error {
-	coreCreateNum := len(batchFiles.CoreIndex.Operations.Create)
-	coreRecoverNum := len(batchFiles.CoreIndex.Operations.Recover)
-	coreDeactivateNum := len(batchFiles.CoreIndex.Operations.Deactivate)
+	coreCreateNum := 0
+	coreRecoverNum := 0
+	coreDeactivateNum := 0
+
+	if batchFiles.CoreIndex.Operations != nil {
+		coreCreateNum = len(batchFiles.CoreIndex.Operations.Create)
+		coreRecoverNum = len(batchFiles.CoreIndex.Operations.Recover)
+		coreDeactivateNum = len(batchFiles.CoreIndex.Operations.Deactivate)
+	}
 
 	if batchFiles.CoreIndex.CoreProofFileURI != "" {
-		if coreRecoverNum != len(batchFiles.CoreProof.Operations.Recover) {
+		coreProofRecoverNum := len(batchFiles.CoreProof.Operations.Recover)
+		coreProofDeativateNum := len(batchFiles.CoreProof.Operations.Deactivate)
+
+		if coreRecoverNum != coreProofRecoverNum {
 			return fmt.Errorf("number of recover ops[%d] in core index doesn't match number of recover ops[%d] in core proof",
-				coreRecoverNum, len(batchFiles.CoreProof.Operations.Recover))
+				coreRecoverNum, coreProofRecoverNum)
 		}
 
-		if coreDeactivateNum != len(batchFiles.CoreProof.Operations.Deactivate) {
+		if coreDeactivateNum != coreProofDeativateNum {
 			return fmt.Errorf("number of deactivate ops[%d] in core index doesn't match number of deactivate ops[%d] in core proof",
-				coreDeactivateNum, len(batchFiles.CoreProof.Operations.Deactivate))
+				coreDeactivateNum, coreProofDeativateNum)
 		}
 	}
 
-	if batchFiles.CoreIndex.ProvisionalIndexFileURI != "" {
-		provisionalUpdateNum := len(batchFiles.ProvisionalIndex.Operations.Update)
+	if batchFiles.CoreIndex.ProvisionalIndexFileURI != "" { //nolint:nestif
+		provisionalUpdateNum := 0
+		if batchFiles.ProvisionalIndex.Operations != nil {
+			provisionalUpdateNum = len(batchFiles.ProvisionalIndex.Operations.Update)
+		}
 
-		if batchFiles.ProvisionalIndex.ProvisionalProofFileURI != "" && provisionalUpdateNum != len(batchFiles.ProvisionalProof.Operations.Update) {
-			return fmt.Errorf("number of update ops[%d] in provisional index doesn't match number of update ops[%d] in provisional proof",
-				provisionalUpdateNum, len(batchFiles.ProvisionalProof.Operations.Update))
+		if batchFiles.ProvisionalIndex.ProvisionalProofFileURI != "" {
+			provisionalProofUpdateNum := len(batchFiles.ProvisionalProof.Operations.Update)
+
+			if provisionalUpdateNum != provisionalProofUpdateNum {
+				return fmt.Errorf("number of update ops[%d] in provisional index doesn't match number of update ops[%d] in provisional proof",
+					provisionalUpdateNum, provisionalProofUpdateNum)
+			}
 		}
 
 		expectedDeltaCount := coreCreateNum + coreRecoverNum + provisionalUpdateNum
@@ -325,30 +341,46 @@ func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile,
 	return cif, nil
 }
 
-func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) error { //nolint:gocyclo
-	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) > 0 && cif.CoreProofFileURI == "" {
+func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) error {
+	recoverNum := 0
+	deactivateNum := 0
+
+	if cif.Operations != nil {
+		recoverNum = len(cif.Operations.Recover)
+		deactivateNum = len(cif.Operations.Deactivate)
+	}
+
+	if recoverNum+deactivateNum > 0 && cif.CoreProofFileURI == "" {
 		return errors.New("missing core proof file URI")
 	}
 
-	if len(cif.Operations.Recover)+len(cif.Operations.Deactivate) == 0 && len(cif.CoreProofFileURI) > 0 {
+	if recoverNum+deactivateNum == 0 && len(cif.CoreProofFileURI) > 0 {
 		return errors.New("core proof file URI should be empty if there are no recover and/or deactivate operations")
 	}
 
-	for i, op := range cif.Operations.Create {
+	return h.validateCoreIndexOperations(cif.Operations)
+}
+
+func (h *OperationProvider) validateCoreIndexOperations(ops *models.CoreOperations) error {
+	if ops == nil { // nothing to do
+		return nil
+	}
+
+	for i, op := range ops.Create {
 		err := h.parser.ValidateSuffixData(op.SuffixData)
 		if err != nil {
 			return fmt.Errorf("failed to validate suffix data for create[%d]: %s", i, err.Error())
 		}
 	}
 
-	for i, op := range cif.Operations.Recover {
+	for i, op := range ops.Recover {
 		err := validateOperationReference(op)
 		if err != nil {
 			return fmt.Errorf("failed to validate signed operation for recover[%d]: %s", i, err.Error())
 		}
 	}
 
-	for i, op := range cif.Operations.Deactivate {
+	for i, op := range ops.Deactivate {
 		err := validateOperationReference(op)
 		if err != nil {
 			return fmt.Errorf("failed to validate signed operation for deactivate[%d]: %s", i, err.Error())
@@ -466,15 +498,29 @@ func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.Provisi
 }
 
 func (h *OperationProvider) validateProvisionalIndexFile(pif *models.ProvisionalIndexFile) error {
-	if len(pif.Operations.Update) > 0 && pif.ProvisionalProofFileURI == "" {
+	updateNum := 0
+
+	if pif.Operations != nil {
+		updateNum = len(pif.Operations.Update)
+	}
+
+	if updateNum > 0 && pif.ProvisionalProofFileURI == "" {
 		return errors.New("missing provisional proof file URI")
 	}
 
-	if len(pif.Operations.Update) == 0 && len(pif.ProvisionalProofFileURI) > 0 {
+	if updateNum == 0 && len(pif.ProvisionalProofFileURI) > 0 {
 		return errors.New("provisional proof file URI should be empty if there are no update operations")
 	}
 
-	for i, op := range pif.Operations.Update {
+	return h.validateProvisionalIndexOperations(pif.Operations)
+}
+
+func (h *OperationProvider) validateProvisionalIndexOperations(ops *models.ProvisionalOperations) error {
+	if ops == nil { // nothing to do
+		return nil
+	}
+
+	for i, op := range ops.Update {
 		err := validateOperationReference(op)
 		if err != nil {
 			return fmt.Errorf("failed to validate signed operation for update[%d]: %s", i, err.Error())
@@ -544,6 +590,10 @@ type coreOperations struct {
 }
 
 func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*coreOperations, error) {
+	if cif.Operations == nil { // nothing to do
+		return &coreOperations{}, nil
+	}
+
 	logger.Debugf("parsing core index file operations for anchor string: %s", txn.AnchorString)
 
 	var suffixes []string
@@ -608,11 +658,15 @@ type provisionalOperations struct {
 	Suffixes []string
 }
 
-func parseProvisionalIndexOperations(mf *models.ProvisionalIndexFile) *provisionalOperations {
+func parseProvisionalIndexOperations(pif *models.ProvisionalIndexFile) *provisionalOperations {
+	if pif.Operations == nil { // nothing to do
+		return &provisionalOperations{}
+	}
+
 	var suffixes []string
 
 	var updateOps []*model.Operation
-	for _, op := range mf.Operations.Update {
+	for _, op := range pif.Operations.Update {
 		update := &model.Operation{
 			Type:         operation.TypeUpdate,
 			UniqueSuffix: op.DidSuffix,

@@ -190,7 +190,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		err = json.Unmarshal(content, &pif)
 		require.NoError(t, err)
 		require.NotNil(t, pif)
-		require.Equal(t, 0, len(pif.Operations.Update))
+		require.Nil(t, pif.Operations)
 
 		bytes, err = handler.cas.Read(pif.Chunks[0].ChunkFileURI)
 		require.NoError(t, err)

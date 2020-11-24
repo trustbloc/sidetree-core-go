@@ -22,7 +22,7 @@ type ProvisionalIndexFile struct {
 	Chunks []Chunk `json:"chunks"`
 
 	// Operations will contain provisional (update) operations
-	Operations ProvisionalOperations `json:"operations,omitempty"`
+	Operations *ProvisionalOperations `json:"operations,omitempty"`
 }
 
 // ProvisionalOperations contains minimal operation proving data for provisional (update) operations.
@@ -38,12 +38,17 @@ type Chunk struct {
 // CreateProvisionalIndexFile will create provisional index file model from operations and chunk file URI.
 // returns chunk file model.
 func CreateProvisionalIndexFile(chunkURIs []string, provisionalProofURI string, updateOps []*model.Operation) *ProvisionalIndexFile {
+	var provisionalOps *ProvisionalOperations
+	if len(updateOps) > 0 {
+		provisionalOps = &ProvisionalOperations{}
+
+		provisionalOps.Update = getOperationReferences(updateOps)
+	}
+
 	return &ProvisionalIndexFile{
 		Chunks:                  getChunks(chunkURIs),
 		ProvisionalProofFileURI: provisionalProofURI,
-		Operations: ProvisionalOperations{
-			Update: getOperationReferences(updateOps),
-		},
+		Operations:              provisionalOps,
 	}
 }
 

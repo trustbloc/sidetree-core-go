@@ -21,7 +21,7 @@ import (
 type CoreProofFile struct {
 
 	// Operations contain proving data for recover and deactivate operations.
-	Operations CoreProofOperations `json:"operations"`
+	Operations CoreProofOperations `json:"operations,omitempty"`
 }
 
 // CoreProofOperations contains proving data for any recover and deactivate operations to be included in a batch.
