@@ -25,15 +25,15 @@ type CoreIndexFile struct {
 	Operations *CoreOperations `json:"operations,omitempty"`
 }
 
-// CreateOperation contains create operation data.
-type CreateOperation struct {
+// CreateReference contains create operation reference.
+type CreateReference struct {
 	// SuffixData object
 	SuffixData *model.SuffixDataModel `json:"suffixData"`
 }
 
-// CoreOperations contains operation proving data.
+// CoreOperations contains operation references.
 type CoreOperations struct {
-	Create     []CreateOperation    `json:"create,omitempty"`
+	Create     []CreateReference    `json:"create,omitempty"`
 	Recover    []OperationReference `json:"recover,omitempty"`
 	Deactivate []OperationReference `json:"deactivate,omitempty"`
 }
@@ -46,7 +46,7 @@ func CreateCoreIndexFile(coreProofURI, provisionalIndexURI string, ops *SortedOp
 	if len(ops.Create)+len(ops.Recover)+len(ops.Deactivate) > 0 {
 		coreOps = &CoreOperations{}
 
-		coreOps.Create = assembleCreateOperations(ops.Create)
+		coreOps.Create = assembleCreateReferences(ops.Create)
 		coreOps.Recover = getOperationReferences(ops.Recover)
 		coreOps.Deactivate = getOperationReferences(ops.Deactivate)
 	}
@@ -58,10 +58,10 @@ func CreateCoreIndexFile(coreProofURI, provisionalIndexURI string, ops *SortedOp
 	}
 }
 
-func assembleCreateOperations(createOps []*model.Operation) []CreateOperation {
-	var result []CreateOperation
+func assembleCreateReferences(createOps []*model.Operation) []CreateReference {
+	var result []CreateReference
 	for _, op := range createOps {
-		create := CreateOperation{SuffixData: op.SuffixData}
+		create := CreateReference{SuffixData: op.SuffixData}
 		result = append(result, create)
 	}
 

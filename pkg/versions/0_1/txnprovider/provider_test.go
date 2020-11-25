@@ -1128,7 +1128,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		cif := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: "hash",
 			Operations: &models.CoreOperations{
-				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
+				Create: []models.CreateReference{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 				},
@@ -1187,7 +1187,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		cif := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: "hash",
 			Operations: &models.CoreOperations{
-				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
+				Create: []models.CreateReference{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
 					{DidSuffix: "test-suffix", RevealValue: deactivateOp.RevealValue},
 				},
@@ -1240,7 +1240,7 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		cif := &models.CoreIndexFile{
 			ProvisionalIndexFileURI: "hash",
 			Operations: &models.CoreOperations{
-				Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
+				Create: []models.CreateReference{{SuffixData: createOp.SuffixData}},
 				Deactivate: []models.OperationReference{
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
 					{DidSuffix: deactivateOp.UniqueSuffix, RevealValue: deactivateOp.RevealValue},
@@ -1359,7 +1359,7 @@ func generateDefaultBatchFiles() (*batchFiles, error) {
 		ProvisionalIndexFileURI: "provisionalIndexURI",
 		CoreProofFileURI:        "coreProofURI",
 		Operations: &models.CoreOperations{
-			Create: []models.CreateOperation{{SuffixData: createOp.SuffixData}},
+			Create: []models.CreateReference{{SuffixData: createOp.SuffixData}},
 			Recover: []models.OperationReference{
 				{
 					DidSuffix:   recoverOp.UniqueSuffix,
