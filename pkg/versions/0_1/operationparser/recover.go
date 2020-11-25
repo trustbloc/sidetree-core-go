@@ -20,7 +20,7 @@ import (
 )
 
 // ParseRecoverOperation will parse recover operation.
-func (p *Parser) ParseRecoverOperation(request []byte, anchor bool) (*model.Operation, error) {
+func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Operation, error) {
 	schema, err := p.parseRecoverRequest(request)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (p *Parser) ParseRecoverOperation(request []byte, anchor bool) (*model.Oper
 		return nil, err
 	}
 
-	if !anchor {
+	if !batch {
 		err = p.ValidateDelta(schema.Delta)
 		if err != nil {
 			return nil, err
