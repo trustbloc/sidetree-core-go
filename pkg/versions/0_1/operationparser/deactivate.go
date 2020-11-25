@@ -16,7 +16,7 @@ import (
 )
 
 // ParseDeactivateOperation will parse deactivate operation.
-func (p *Parser) ParseDeactivateOperation(request []byte, anchor bool) (*model.Operation, error) {
+func (p *Parser) ParseDeactivateOperation(request []byte, batch bool) (*model.Operation, error) {
 	schema, err := p.parseDeactivateRequest(request)
 	if err != nil {
 		return nil, err

@@ -41,7 +41,7 @@ type OperationProvider struct {
 
 // OperationParser defines the functions for parsing operations.
 type OperationParser interface {
-	ParseOperation(namespace string, operationBuffer []byte) (*model.Operation, error)
+	ParseOperation(namespace string, operationBuffer []byte, batch bool) (*model.Operation, error)
 	ValidateSuffixData(suffixData *model.SuffixDataModel) error
 	ValidateDelta(delta *model.DeltaModel) error
 	ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error)
@@ -185,16 +185,16 @@ func validateBatchFileCounts(batchFiles *batchFiles) error {
 
 	if batchFiles.CoreIndex.CoreProofFileURI != "" {
 		coreProofRecoverNum := len(batchFiles.CoreProof.Operations.Recover)
-		coreProofDeativateNum := len(batchFiles.CoreProof.Operations.Deactivate)
+		coreProofDeactivateNum := len(batchFiles.CoreProof.Operations.Deactivate)
 
 		if coreRecoverNum != coreProofRecoverNum {
 			return fmt.Errorf("number of recover ops[%d] in core index doesn't match number of recover ops[%d] in core proof",
 				coreRecoverNum, coreProofRecoverNum)
 		}
 
-		if coreDeactivateNum != coreProofDeativateNum {
+		if coreDeactivateNum != coreProofDeactivateNum {
 			return fmt.Errorf("number of deactivate ops[%d] in core index doesn't match number of deactivate ops[%d] in core proof",
-				coreDeactivateNum, coreProofDeativateNum)
+				coreDeactivateNum, coreProofDeactivateNum)
 		}
 	}
 

@@ -31,7 +31,7 @@ func New(p protocol.Protocol) *Parser {
 // Parse parses and validates operation.
 func (p *Parser) Parse(namespace string, operationBuffer []byte) (*operation.Operation, error) {
 	// parse and validate operation buffer using this versions model and validation rules
-	internal, err := p.ParseOperation(namespace, operationBuffer)
+	internal, err := p.ParseOperation(namespace, operationBuffer, false)
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +44,9 @@ func (p *Parser) Parse(namespace string, operationBuffer []byte) (*operation.Ope
 	}, nil
 }
 
-// ParseOperation parses and validates operation.
-func (p *Parser) ParseOperation(namespace string, operationBuffer []byte) (*model.Operation, error) {
+// ParseOperation parses and validates operation. Batch mode flag gives hints for the validation of
+// operation object (anticipating future pruning/checkpoint requirements).
+func (p *Parser) ParseOperation(namespace string, operationBuffer []byte, batch bool) (*model.Operation, error) {
 	schema := &operationSchema{}
 	err := json.Unmarshal(operationBuffer, schema)
 	if err != nil {
@@ -56,13 +57,13 @@ func (p *Parser) ParseOperation(namespace string, operationBuffer []byte) (*mode
 	var parseErr error
 	switch schema.Operation {
 	case operation.TypeCreate:
-		op, parseErr = p.ParseCreateOperation(operationBuffer, false)
+		op, parseErr = p.ParseCreateOperation(operationBuffer, batch)
 	case operation.TypeUpdate:
-		op, parseErr = p.ParseUpdateOperation(operationBuffer, false)
+		op, parseErr = p.ParseUpdateOperation(operationBuffer, batch)
 	case operation.TypeDeactivate:
-		op, parseErr = p.ParseDeactivateOperation(operationBuffer, false)
+		op, parseErr = p.ParseDeactivateOperation(operationBuffer, batch)
 	case operation.TypeRecover:
-		op, parseErr = p.ParseRecoverOperation(operationBuffer, false)
+		op, parseErr = p.ParseRecoverOperation(operationBuffer, batch)
 	default:
 		return nil, fmt.Errorf("parse operation: operation type [%s] not supported", schema.Operation)
 	}

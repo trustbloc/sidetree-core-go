@@ -19,7 +19,7 @@ import (
 )
 
 // ParseCreateOperation will parse create operation.
-func (p *Parser) ParseCreateOperation(request []byte, anchor bool) (*model.Operation, error) {
+func (p *Parser) ParseCreateOperation(request []byte, batch bool) (*model.Operation, error) {
 	schema, err := p.parseCreateRequest(request)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (p *Parser) ParseCreateOperation(request []byte, anchor bool) (*model.Opera
 		return nil, err
 	}
 
-	if !anchor {
+	if !batch {
 		err = p.ValidateDelta(schema.Delta)
 		if err != nil {
 			return nil, err

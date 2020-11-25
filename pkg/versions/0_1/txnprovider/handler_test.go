@@ -371,7 +371,7 @@ func generateOperation(num int, opType operation.Type) (*model.Operation, error)
 
 	parser := operationparser.New(cp.Protocol())
 
-	return parser.ParseOperation(defaultNS, op)
+	return parser.ParseOperation(defaultNS, op, false)
 }
 
 func generateOperationBuffer(num int, opType operation.Type) ([]byte, error) {

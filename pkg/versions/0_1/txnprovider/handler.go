@@ -89,7 +89,7 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 
 	result := &models.SortedOperations{}
 	for _, d := range ops {
-		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer)
+		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer, false)
 		if e != nil {
 			return nil, e
 		}
