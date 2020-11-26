@@ -33,6 +33,11 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 		if err != nil {
 			return nil, err
 		}
+
+		err = validateCommitment(signedData.UpdateKey, p.MultihashAlgorithm, schema.Delta.UpdateCommitment)
+		if err != nil {
+			return nil, fmt.Errorf("calculate current commitment: %s", err.Error())
+		}
 	}
 
 	revealValue, err := p.getRevealValueMultihash(signedData.UpdateKey)

@@ -189,8 +189,15 @@ func getSuffixData() *model.SuffixDataModel {
 	}
 }
 
-var testJWK = &jws.JWK{
+var recoverJWK = &jws.JWK{
 	Kty: "kty",
 	Crv: "P-256",
 	X:   "x",
+}
+
+var updateJWK = &jws.JWK{
+	Kty: "kty",
+	Crv: "crv",
+	X:   "x",
+	Y:   "y",
 }

@@ -68,7 +68,7 @@ func assembleCreateReferences(createOps []*model.Operation) []CreateReference {
 	return result
 }
 
-// ParseCoreIndexFile will parse anchor model from content.
+// ParseCoreIndexFile will parse core index file from content.
 func ParseCoreIndexFile(content []byte) (*CoreIndexFile, error) {
 	file := &CoreIndexFile{}
 	err := json.Unmarshal(content, file)

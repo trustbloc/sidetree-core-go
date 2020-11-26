@@ -78,7 +78,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 
 	op, err := s.OperationParser.ParseCreateOperation(anchoredOp.OperationBuffer, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse create operation in anchor mode: %s", err.Error())
+		return nil, fmt.Errorf("failed to parse create operation in batch mode: %s", err.Error())
 	}
 
 	// from this point any error should advance recovery commitment
@@ -128,7 +128,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 
 	op, err := s.OperationParser.ParseUpdateOperation(anchoredOp.OperationBuffer, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse update operation in anchor mode: %s", err.Error())
+		return nil, fmt.Errorf("failed to parse update operation in batch mode: %s", err.Error())
 	}
 
 	signedDataModel, err := s.ParseSignedDataForUpdate(op.SignedData)
@@ -177,7 +177,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 
 	op, err := s.OperationParser.ParseDeactivateOperation(anchoredOp.OperationBuffer, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse deactive operation in anchor mode: %s", err.Error())
+		return nil, fmt.Errorf("failed to parse deactive operation in batch mode: %s", err.Error())
 	}
 
 	signedDataModel, err := s.ParseSignedDataForDeactivate(op.SignedData)
@@ -215,7 +215,7 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 
 	op, err := s.OperationParser.ParseRecoverOperation(anchoredOp.OperationBuffer, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse recover operation in anchor mode: %s", err.Error())
+		return nil, fmt.Errorf("failed to parse recover operation in batch mode: %s", err.Error())
 	}
 
 	signedDataModel, err := s.ParseSignedDataForRecover(op.SignedData)

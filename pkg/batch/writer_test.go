@@ -465,13 +465,25 @@ func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (
 }
 
 func generateOperation(num int) (*operation.QueuedOperation, error) {
-	jwk := &jws.JWK{
+	updateJwk := &jws.JWK{
 		Crv: "crv",
 		Kty: "kty",
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256)
+	recoverJWK := &jws.JWK{
+		Crv: "crv",
+		Kty: "kty",
+		X:   "x",
+		Y:   "y",
+	}
+
+	updateCommitment, err := commitment.Calculate(updateJwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
+	recoverComitment, err := commitment.Calculate(recoverJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -479,8 +491,8 @@ func generateOperation(num int) (*operation.QueuedOperation, error) {
 	doc := fmt.Sprintf(`{"test":%d}`, num)
 	info := &client.CreateRequestInfo{
 		OpaqueDocument:     doc,
-		RecoveryCommitment: c,
-		UpdateCommitment:   c,
+		RecoveryCommitment: recoverComitment,
+		UpdateCommitment:   updateCommitment,
 		MultihashCode:      sha2_256,
 	}
 

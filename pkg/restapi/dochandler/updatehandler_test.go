@@ -139,12 +139,12 @@ func TestUpdateHandler_Update(t *testing.T) {
 }
 
 func getCreateRequestInfo() (*client.CreateRequestInfo, error) {
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *client.UpdateRequestInfo {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -198,7 +198,7 @@ func getDeactivateRequestInfo(uniqueSuffix string) *client.DeactivateRequestInfo
 
 	return &client.DeactivateRequestInfo{
 		DidSuffix:   uniqueSuffix,
-		RecoveryKey: testJWK,
+		RecoveryKey: recoverJWK,
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
 	}
 }
@@ -214,12 +214,12 @@ func getRecoverRequestInfo(uniqueSuffix string) *client.RecoverRequestInfo {
 		panic(err)
 	}
 
-	recoveryCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	recoveryCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}

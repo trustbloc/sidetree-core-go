@@ -14,6 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -145,6 +146,48 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "signed data for recovery: missing signing key")
 		require.Nil(t, op)
 	})
+
+	t.Run("error - update commitment equals recovery commitment", func(t *testing.T) {
+		signedData := getSignedDataForRecovery()
+
+		delta, err := getDelta()
+		require.NoError(t, err)
+
+		delta.UpdateCommitment = signedData.RecoveryCommitment
+		recoverRequest, err := getRecoverRequest(delta, signedData)
+		require.NoError(t, err)
+
+		request, err := json.Marshal(recoverRequest)
+		require.NoError(t, err)
+
+		op, err := parser.ParseRecoverOperation(request, false)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "recovery and update commitments cannot be equal, re-using public keys is not allowed")
+		require.Nil(t, op)
+	})
+
+	t.Run("error - current commitment cannot equal recovery commitment", func(t *testing.T) {
+		signedData := getSignedDataForRecovery()
+
+		recoveryCommitment, err := commitment.Calculate(signedData.RecoveryKey, sha2_256)
+		require.NoError(t, err)
+
+		signedData.RecoveryCommitment = recoveryCommitment
+
+		delta, err := getDelta()
+		require.NoError(t, err)
+
+		recoverRequest, err := getRecoverRequest(delta, signedData)
+		require.NoError(t, err)
+
+		request, err := json.Marshal(recoverRequest)
+		require.NoError(t, err)
+
+		op, err := parser.ParseRecoverOperation(request, false)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "re-using public keys for commitment is not allowed")
+		require.Nil(t, op)
+	})
 }
 
 func TestValidateSignedDataForRecovery(t *testing.T) {
@@ -161,7 +204,7 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 		err := parser.validateSignedDataForRecovery(signed)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"signed data for recovery: missing signing key")
+			"missing signing key")
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
