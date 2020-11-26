@@ -40,17 +40,35 @@ func TestSign(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
-	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
-	require.NoError(t, err)
+	t.Run("success - kid, alg provided", func(t *testing.T) {
+		_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+		require.NoError(t, err)
 
-	signer := New(privateKey, "EdDSA", "key-1")
+		signer := New(privateKey, "EdDSA", "key-1")
 
-	// verify headers
-	kid, ok := signer.Headers().KeyID()
-	require.Equal(t, true, ok)
-	require.Equal(t, "key-1", kid)
+		// verify headers
+		kid, ok := signer.Headers().KeyID()
+		require.Equal(t, true, ok)
+		require.Equal(t, "key-1", kid)
 
-	alg, ok := signer.Headers().Algorithm()
-	require.Equal(t, true, ok)
-	require.Equal(t, "EdDSA", alg)
+		alg, ok := signer.Headers().Algorithm()
+		require.Equal(t, true, ok)
+		require.Equal(t, "EdDSA", alg)
+	})
+
+	t.Run("success - kid, alg not provided", func(t *testing.T) {
+		_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+		require.NoError(t, err)
+
+		signer := New(privateKey, "", "")
+
+		// verify headers
+		kid, ok := signer.Headers().KeyID()
+		require.Equal(t, false, ok)
+		require.Empty(t, kid)
+
+		alg, ok := signer.Headers().Algorithm()
+		require.Equal(t, false, ok)
+		require.Empty(t, alg)
+	})
 }

@@ -185,7 +185,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *client.UpdateRequestInfo {
 		UpdateKey:        pubKey,
 		UpdateCommitment: updateCommitment,
 		MultihashCode:    sha2_256,
-		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
+		Signer:           ecsigner.New(privateKey, "ES256", ""),
 	}
 }
 

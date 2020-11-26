@@ -81,14 +81,29 @@ func TestHeaders(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	signer := New(privateKey, "ES256", "key-1")
+	t.Run("success - kid, alg provided", func(t *testing.T) {
+		signer := New(privateKey, "ES256", "key-1")
 
-	// verify headers
-	kid, ok := signer.Headers().KeyID()
-	require.Equal(t, true, ok)
-	require.Equal(t, "key-1", kid)
+		// verify headers
+		kid, ok := signer.Headers().KeyID()
+		require.Equal(t, true, ok)
+		require.Equal(t, "key-1", kid)
 
-	alg, ok := signer.Headers().Algorithm()
-	require.Equal(t, true, ok)
-	require.Equal(t, "ES256", alg)
+		alg, ok := signer.Headers().Algorithm()
+		require.Equal(t, true, ok)
+		require.Equal(t, "ES256", alg)
+	})
+
+	t.Run("success - kid, alg not provided", func(t *testing.T) {
+		signer := New(privateKey, "", "")
+
+		// verify headers
+		kid, ok := signer.Headers().KeyID()
+		require.Equal(t, false, ok)
+		require.Empty(t, kid)
+
+		alg, ok := signer.Headers().Algorithm()
+		require.Equal(t, false, ok)
+		require.Empty(t, alg)
+	})
 }
