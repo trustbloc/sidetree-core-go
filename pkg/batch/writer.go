@@ -249,7 +249,7 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 		return 0, result.Pending, nil
 	}
 
-	logger.Infof("[%s] processing %d batch operations ...", r.namespace, len(result.Operations))
+	logger.Infof("[%s] processing %d batch operations for protocol genesis time[%d]...", r.namespace, len(result.Operations), result.ProtocolGenesisTime)
 
 	err = r.process(result.Operations, result.ProtocolGenesisTime)
 	if err != nil {

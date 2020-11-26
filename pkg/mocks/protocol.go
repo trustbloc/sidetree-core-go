@@ -133,6 +133,10 @@ func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 	v.OperationParserReturns(&OperationParser{})
 	v.DocumentComposerReturns(&DocumentComposer{})
 	v.DocumentValidatorReturns(&DocumentValidator{})
+	v.OperationHandlerReturns(&OperationHandler{})
+	v.OperationProviderReturns(&OperationProvider{})
+	v.TransactionProcessorReturns(&TxnProcessor{})
+	v.DocumentTransformerReturns(&DocumentTransformer{})
 
 	v.ProtocolReturns(p)
 
