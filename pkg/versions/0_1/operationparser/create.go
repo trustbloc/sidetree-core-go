@@ -40,7 +40,11 @@ func (p *Parser) ParseCreateOperation(request []byte, batch bool) (*model.Operat
 		// verify actual delta hash matches expected delta hash
 		err = hashing.IsValidModelMultihash(schema.Delta, schema.SuffixData.DeltaHash)
 		if err != nil {
-			return nil, fmt.Errorf("parse create operation: delta doesn't match suffix data delta hash: %s", err.Error())
+			return nil, fmt.Errorf("delta doesn't match suffix data delta hash: %s", err.Error())
+		}
+
+		if schema.Delta.UpdateCommitment == schema.SuffixData.RecoveryCommitment {
+			return nil, errors.New("recovery and update commitments cannot be equal, re-using public keys is not allowed")
 		}
 	}
 

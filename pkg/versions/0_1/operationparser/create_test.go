@@ -94,7 +94,7 @@ func TestParseCreateOperation(t *testing.T) {
 		require.Contains(t, err.Error(), "missing delta")
 	})
 
-	t.Run("missing delta is ok in anchor mode", func(t *testing.T) {
+	t.Run("missing delta is ok in batch mode", func(t *testing.T) {
 		create, err := getCreateRequest()
 		require.NoError(t, err)
 		create.Delta = nil
@@ -136,6 +136,21 @@ func TestParseCreateOperation(t *testing.T) {
 		op, err := parser.ParseCreateOperation(request, false)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "delta doesn't match suffix data delta hash")
+		require.Nil(t, op)
+	})
+
+	t.Run("error - update commitment equals recovery commitment", func(t *testing.T) {
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		create.SuffixData.RecoveryCommitment = create.Delta.UpdateCommitment
+
+		request, err := json.Marshal(create)
+		require.NoError(t, err)
+
+		op, err := parser.ParseCreateOperation(request, false)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "recovery and update commitments cannot be equal, re-using public keys is not allowed")
 		require.Nil(t, op)
 	})
 }

@@ -10,11 +10,15 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/trustbloc/edge-core/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
+
+var logger = log.New("sidetree-core-parser")
 
 // Parser is an operation parser.
 type Parser struct {
@@ -69,6 +73,8 @@ func (p *Parser) ParseOperation(namespace string, operationBuffer []byte, batch 
 	}
 
 	if parseErr != nil {
+		logger.Warnf("parse '%s' operation for batch[%t]: %s", schema.Operation, batch, parseErr.Error())
+
 		return nil, parseErr
 	}
 

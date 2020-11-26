@@ -143,6 +143,25 @@ func TestApplier_Apply(t *testing.T) {
 		require.Empty(t, rm.UpdateCommitment)
 	})
 
+	t.Run("error - failed to parse create operation", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		createOp, err := getCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		createOp.SuffixData.RecoveryCommitment = ""
+
+		anchoredOp := getAnchoredOperation(createOp)
+		err = store.Put(anchoredOp)
+		require.Nil(t, err)
+
+		applier := New(p, parser, dc)
+		rm, err := applier.Apply(anchoredOp, &protocol.ResolutionModel{})
+		require.Error(t, err)
+		require.Nil(t, rm)
+		require.Contains(t, err.Error(), "failed to parse create operation in batch mode")
+	})
+
 	t.Run("error - apply patches (document composer) error", func(t *testing.T) {
 		applier := New(p, parser, &mockDocComposer{Err: errors.New("document composer error")})
 
@@ -282,7 +301,7 @@ func TestUpdateDocument(t *testing.T) {
 		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to parse update operation in anchor mode: failed to unmarshal signed data model for update")
+		require.Contains(t, err.Error(), "failed to parse update operation in batch mode: failed to unmarshal signed data model for update")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -446,7 +465,7 @@ func TestDeactivate(t *testing.T) {
 		rm, err = applier.Apply(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to parse deactive operation in anchor mode: failed to unmarshal signed data model for deactivate")
+		require.Contains(t, err.Error(), "failed to parse deactive operation in batch mode: failed to unmarshal signed data model for deactivate")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {
@@ -495,7 +514,7 @@ func TestDeactivate(t *testing.T) {
 		rm, err = applier.Apply(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to parse deactive operation in anchor mode: signed did suffix mismatch for deactivate")
+		require.Contains(t, err.Error(), "failed to parse deactive operation in batch mode: signed did suffix mismatch for deactivate")
 	})
 }
 
@@ -626,7 +645,7 @@ func TestRecover(t *testing.T) {
 		rm, err = applier.Apply(anchoredOp, rm)
 		require.Error(t, err)
 		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "failed to parse recover operation in anchor mode: failed to unmarshal signed data model for recover")
+		require.Contains(t, err.Error(), "failed to parse recover operation in batch mode: failed to unmarshal signed data model for recover")
 	})
 
 	t.Run("invalid signature error", func(t *testing.T) {

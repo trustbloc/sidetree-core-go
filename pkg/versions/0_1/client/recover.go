@@ -8,9 +8,11 @@ package client
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -76,6 +78,11 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		RecoveryCommitment: info.RecoveryCommitment,
 	}
 
+	err = validateCommitment(info.RecoveryKey, info.MultihashCode, info.RecoveryCommitment)
+	if err != nil {
+		return nil, err
+	}
+
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
@@ -117,4 +124,17 @@ func validateRecoveryKey(key *jws.JWK) error {
 	}
 
 	return key.Validate()
+}
+
+func validateCommitment(jwk *jws.JWK, multihashCode uint, nextCommitment string) error {
+	currentCommitment, err := commitment.Calculate(jwk, multihashCode)
+	if err != nil {
+		return fmt.Errorf("calculate current commitment: %s", err.Error())
+	}
+
+	if currentCommitment == nextCommitment {
+		return errors.New("re-using public keys for commitment is not allowed")
+	}
+
+	return nil
 }

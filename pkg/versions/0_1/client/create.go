@@ -108,5 +108,9 @@ func validateCreateRequest(info *CreateRequestInfo) error {
 		return errors.New("next update commitment is not computed with the specified hash algorithm")
 	}
 
+	if info.RecoveryCommitment == info.UpdateCommitment {
+		return errors.New("recovery and update commitments cannot be equal, re-using public keys is not allowed")
+	}
+
 	return nil
 }

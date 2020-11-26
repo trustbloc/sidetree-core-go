@@ -14,6 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -111,6 +112,27 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
 		require.Nil(t, op)
+	})
+
+	t.Run("error - current commitment cannot equal update commitment", func(t *testing.T) {
+		delta, err := getUpdateDelta()
+		require.NoError(t, err)
+
+		currentCommitment, err := commitment.Calculate(testJWK, sha2_256)
+		require.NoError(t, err)
+
+		delta.UpdateCommitment = currentCommitment
+
+		req, err := getUpdateRequest(delta)
+		require.NoError(t, err)
+
+		payload, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		schema, err := parser.ParseUpdateOperation(payload, false)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "re-using public keys for commitment is not allowed")
 	})
 }
 
@@ -220,15 +242,9 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 		return nil, err
 	}
 
-	updateKey := &jws.JWK{
-		Crv: "crv",
-		Kty: "kty",
-		X:   "x",
-	}
-
 	signedModel := model.UpdateSignedDataModel{
 		DeltaHash: deltaHash,
-		UpdateKey: updateKey,
+		UpdateKey: testJWK,
 	}
 
 	compactJWS, err := signutil.SignModel(signedModel, NewMockSigner())

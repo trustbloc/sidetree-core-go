@@ -61,6 +61,11 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 		UpdateKey: info.UpdateKey,
 	}
 
+	err = validateCommitment(info.UpdateKey, info.MultihashCode, info.UpdateCommitment)
+	if err != nil {
+		return nil, err
+	}
+
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err

@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
@@ -109,6 +110,29 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), signerErr)
+	})
+	t.Run("error - re-using public keys for commitment is not allowed", func(t *testing.T) {
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		signer := ecsigner.New(privateKey, "ES256", "key-1")
+
+		currentCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+		require.NoError(t, err)
+
+		info := &UpdateRequestInfo{
+			DidSuffix:        didSuffix,
+			Patches:          patches,
+			MultihashCode:    sha2_256,
+			UpdateKey:        updateJWK,
+			UpdateCommitment: currentCommitment,
+			Signer:           signer,
+		}
+
+		request, err := NewUpdateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "re-using public keys for commitment is not allowed")
 	})
 	t.Run("success", func(t *testing.T) {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

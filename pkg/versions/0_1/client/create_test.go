@@ -29,12 +29,22 @@ const (
 )
 
 func TestNewCreateRequest(t *testing.T) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	recoverPrivateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+	updatePrivateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	recoverJWK, err := pubkey.GetPublicKeyJWK(&recoverPrivateKey.PublicKey)
+	require.NoError(t, err)
+
+	updateJWK, err := pubkey.GetPublicKeyJWK(&updatePrivateKey.PublicKey)
+	require.NoError(t, err)
+
+	recoveryCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	require.NoError(t, err)
+
+	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
 	require.NoError(t, err)
 
 	t.Run("missing opaque document or patches", func(t *testing.T) {
@@ -82,7 +92,7 @@ func TestNewCreateRequest(t *testing.T) {
 		info := &CreateRequestInfo{
 			OpaqueDocument:     `{,}`,
 			RecoveryCommitment: recoveryCommitment,
-			UpdateCommitment:   recoveryCommitment,
+			UpdateCommitment:   updateCommitment,
 			MultihashCode:      sha2_256,
 		}
 
@@ -91,11 +101,26 @@ func TestNewCreateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "invalid character ','")
 	})
-	t.Run("success - opaque document", func(t *testing.T) {
+
+	t.Run("error - update and recover commitment equal", func(t *testing.T) {
 		info := &CreateRequestInfo{
 			OpaqueDocument:     "{}",
 			RecoveryCommitment: recoveryCommitment,
 			UpdateCommitment:   recoveryCommitment,
+			MultihashCode:      sha2_256,
+		}
+
+		request, err := NewCreateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "recovery and update commitments cannot be equal, re-using public keys is not allowed")
+	})
+
+	t.Run("success - opaque document", func(t *testing.T) {
+		info := &CreateRequestInfo{
+			OpaqueDocument:     "{}",
+			RecoveryCommitment: recoveryCommitment,
+			UpdateCommitment:   updateCommitment,
 			MultihashCode:      sha2_256,
 		}
 
@@ -111,7 +136,7 @@ func TestNewCreateRequest(t *testing.T) {
 		info := &CreateRequestInfo{
 			Patches:            []patch.Patch{p},
 			RecoveryCommitment: recoveryCommitment,
-			UpdateCommitment:   recoveryCommitment,
+			UpdateCommitment:   updateCommitment,
 			MultihashCode:      sha2_256,
 		}
 

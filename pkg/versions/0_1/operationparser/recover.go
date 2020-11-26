@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -35,6 +36,10 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 		err = p.ValidateDelta(schema.Delta)
 		if err != nil {
 			return nil, err
+		}
+
+		if schema.Delta.UpdateCommitment == signedData.RecoveryCommitment {
+			return nil, errors.New("recovery and update commitments cannot be equal, re-using public keys is not allowed")
 		}
 	}
 
@@ -81,7 +86,7 @@ func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSig
 	}
 
 	if err := p.validateSignedDataForRecovery(schema); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validate signed data for recovery: %s", err.Error())
 	}
 
 	return schema, nil
@@ -89,7 +94,7 @@ func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSig
 
 func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel) error {
 	if err := p.validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
-		return fmt.Errorf("signed data for recovery: %s", err.Error())
+		return err
 	}
 
 	code := uint64(p.MultihashAlgorithm)
@@ -101,7 +106,7 @@ func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDa
 		return fmt.Errorf("patch data hash is not computed with the required hash algorithm: %d", code)
 	}
 
-	return nil
+	return validateCommitment(signedData.RecoveryKey, p.MultihashAlgorithm, signedData.RecoveryCommitment)
 }
 
 func (p *Parser) parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
@@ -200,4 +205,17 @@ func contains(values []string, value string) bool {
 // getRevealValueMultihash calculates reveal value multihash.
 func (p *Parser) getRevealValueMultihash(value interface{}) (string, error) {
 	return hashing.CalculateModelMultihash(value, p.MultihashAlgorithm)
+}
+
+func validateCommitment(jwk *jws.JWK, multihashCode uint, nextCommitment string) error {
+	currentCommitment, err := commitment.Calculate(jwk, multihashCode)
+	if err != nil {
+		return fmt.Errorf("calculate current commitment: %s", err.Error())
+	}
+
+	if currentCommitment == nextCommitment {
+		return errors.New("re-using public keys for commitment is not allowed")
+	}
+
+	return nil
 }

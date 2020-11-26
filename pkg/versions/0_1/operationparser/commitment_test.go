@@ -181,11 +181,16 @@ func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, commitment string, p 
 		return nil, err
 	}
 
+	_, updateCommitment, err := generateKeyAndCommitment(p)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.RecoverRequestInfo{
 		DidSuffix:          "recover-suffix",
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: commitment,
-		UpdateCommitment:   commitment, // not evaluated in operation getting commitment/reveal value
+		UpdateCommitment:   updateCommitment, // not evaluated in operation getting commitment/reveal value
 		RecoveryKey:        jwk,
 		MultihashCode:      p.MultihashAlgorithm,
 		Signer:             ecsigner.New(recoveryKey, "ES256", ""),

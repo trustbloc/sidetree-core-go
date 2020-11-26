@@ -390,13 +390,25 @@ func generateOperationBuffer(num int, opType operation.Type) ([]byte, error) {
 }
 
 func generateCreateOperation(num int) ([]byte, error) {
-	jwk := &jws.JWK{
+	recoverJWK := &jws.JWK{
 		Crv: "crv",
 		Kty: "kty",
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256)
+	updateJWK := &jws.JWK{
+		Crv: "crv",
+		Kty: "kty",
+		X:   "x",
+		Y:   "y",
+	}
+
+	recoverCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
+	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -404,8 +416,8 @@ func generateCreateOperation(num int) ([]byte, error) {
 	doc := fmt.Sprintf(`{"test":%d}`, num)
 	info := &client.CreateRequestInfo{
 		OpaqueDocument:     doc,
-		RecoveryCommitment: c,
-		UpdateCommitment:   c,
+		RecoveryCommitment: recoverCommitment,
+		UpdateCommitment:   updateCommitment,
 		MultihashCode:      sha2_256,
 	}
 
@@ -423,7 +435,12 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	c, err := commitment.Calculate(testJWK, sha2_256)
+	recoveryCommitment, err := generateUniqueCommitment()
+	if err != nil {
+		return nil, err
+	}
+
+	updateCommitment, err := generateUniqueCommitment()
 	if err != nil {
 		return nil, err
 	}
@@ -431,8 +448,8 @@ func generateRecoverOperation(num int) ([]byte, error) {
 	info := &client.RecoverRequestInfo{
 		DidSuffix:          fmt.Sprintf("recover-%d", num),
 		OpaqueDocument:     `{"test":"value"}`,
-		RecoveryCommitment: c,
-		UpdateCommitment:   c,
+		RecoveryCommitment: recoveryCommitment,
+		UpdateCommitment:   updateCommitment,
 		RecoveryKey:        jwk,
 		MultihashCode:      sha2_256,
 		Signer:             ecsigner.New(privKey, "ES256", ""),
@@ -467,7 +484,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	c, err := commitment.Calculate(testJWK, sha2_256)
+	updateCommitment, err := generateUniqueCommitment()
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +492,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 	info := &client.UpdateRequestInfo{
 		DidSuffix:        fmt.Sprintf("update-%d", num),
 		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
-		UpdateCommitment: c,
+		UpdateCommitment: updateCommitment,
 		UpdateKey:        testJWK,
 		Patches:          []patch.Patch{testPatch},
 		MultihashCode:    sha2_256,
@@ -492,4 +509,23 @@ var testJWK = &jws.JWK{
 	Kty: "kty",
 	Crv: "P-256",
 	X:   "x",
+}
+
+func generateUniqueCommitment() (string, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	pubKey, err := pubkey.GetPublicKeyJWK(&key.PublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	c, err := commitment.Calculate(pubKey, sha2_256)
+	if err != nil {
+		return "", err
+	}
+
+	return c, nil
 }

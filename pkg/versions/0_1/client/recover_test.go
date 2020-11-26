@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
@@ -94,6 +95,21 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "invalid character ','")
 	})
+
+	t.Run("error - re-using public keys for commitment is not allowed", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+
+		currentCommitment, err := commitment.Calculate(info.RecoveryKey, info.MultihashCode)
+		require.NoError(t, err)
+
+		info.RecoveryCommitment = currentCommitment
+
+		request, err := NewRecoverRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "re-using public keys for commitment is not allowed")
+	})
+
 	t.Run("success - opaque document", func(t *testing.T) {
 		info := getRecoverRequestInfo()
 
