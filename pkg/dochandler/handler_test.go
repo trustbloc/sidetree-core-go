@@ -22,6 +22,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/opqueue"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
+	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
@@ -36,6 +37,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider"
 )
 
 const (
@@ -607,11 +609,17 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 		oa := operationapplier.New(v.Protocol(), parser, dc)
 		dv := &mocks.DocumentValidator{}
 		dt := doctransformer.New()
+
+		pc.CasClient = mocks.NewMockCasClient(nil)
+		cp := compression.New(compression.WithDefaultAlgorithms())
+		oh := txnprovider.NewOperationHandler(pc.Protocol, pc.CasClient, cp, parser)
+
 		v.OperationParserReturns(parser)
 		v.OperationApplierReturns(oa)
 		v.DocumentComposerReturns(dc)
 		v.DocumentValidatorReturns(dv)
 		v.DocumentTransformerReturns(dt)
+		v.OperationHandlerReturns(oh)
 	}
 
 	return pc

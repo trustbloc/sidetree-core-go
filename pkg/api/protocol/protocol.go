@@ -22,6 +22,8 @@ import (
 //go:generate counterfeiter -o ../../mocks/documentcomposer.gen.go --fake-name DocumentComposer . DocumentComposer
 //go:generate counterfeiter -o ../../mocks/documentvalidator.gen.go --fake-name DocumentValidator . DocumentValidator
 //go:generate counterfeiter -o ../../mocks/documenttransformer.gen.go --fake-name DocumentTransformer . DocumentTransformer
+//go:generate counterfeiter -o ../../mocks/operationhandler.gen.go --fake-name OperationHandler . OperationHandler
+//go:generate counterfeiter -o ../../mocks/operationprovider.gen.go --fake-name OperationProvider . OperationProvider
 
 // Protocol defines protocol parameters.
 type Protocol struct {
