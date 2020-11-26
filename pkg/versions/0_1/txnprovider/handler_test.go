@@ -491,7 +491,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 
 	info := &client.UpdateRequestInfo{
 		DidSuffix:        fmt.Sprintf("update-%d", num),
-		Signer:           ecsigner.New(privateKey, "ES256", "key-1"),
+		Signer:           ecsigner.New(privateKey, "ES256", ""),
 		UpdateCommitment: updateCommitment,
 		UpdateKey:        testJWK,
 		Patches:          []patch.Patch{testPatch},

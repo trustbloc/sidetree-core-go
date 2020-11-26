@@ -42,8 +42,6 @@ const (
 
 	dummyUniqueSuffix = "dummy"
 
-	updateKeyID = "update-key"
-
 	defaultBlockNumber = 0
 )
 
@@ -829,7 +827,7 @@ func TestOpsWithTxnGreaterThan(t *testing.T) {
 }
 
 func getUpdateOperation(privateKey *ecdsa.PrivateKey, uniqueSuffix string, blockNum uint64) (*model.Operation, *ecdsa.PrivateKey, error) {
-	s := ecsigner.New(privateKey, "ES256", updateKeyID)
+	s := ecsigner.New(privateKey, "ES256", "")
 
 	return getUpdateOperationWithSigner(s, privateKey, uniqueSuffix, blockNum)
 }

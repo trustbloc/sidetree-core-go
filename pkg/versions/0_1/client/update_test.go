@@ -80,7 +80,7 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing update key")
 	})
-	t.Run("kid must be present in the protected header", func(t *testing.T) {
+	t.Run("algorithm must be present in the protected header", func(t *testing.T) {
 		signer = NewMockSigner(nil)
 		signer.MockHeaders = make(jws.Headers)
 
@@ -95,7 +95,7 @@ func TestNewUpdateRequest(t *testing.T) {
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
 		require.Empty(t, request)
-		require.Contains(t, err.Error(), "kid must be present in the protected header")
+		require.Contains(t, err.Error(), "algorithm must be present in the protected header")
 	})
 	t.Run("signing error", func(t *testing.T) {
 		info := &UpdateRequestInfo{

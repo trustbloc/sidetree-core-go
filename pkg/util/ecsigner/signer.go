@@ -33,8 +33,14 @@ func New(privKey *ecdsa.PrivateKey, alg, kid string) *Signer {
 // Headers provides required JWS protected headers. It provides information about signing key and algorithm.
 func (signer *Signer) Headers() jws.Headers {
 	headers := make(jws.Headers)
-	headers[jws.HeaderAlgorithm] = signer.alg
-	headers[jws.HeaderKeyID] = signer.kid
+
+	if signer.alg != "" {
+		headers[jws.HeaderAlgorithm] = signer.alg
+	}
+
+	if signer.kid != "" {
+		headers[jws.HeaderKeyID] = signer.kid
+	}
 
 	return headers
 }

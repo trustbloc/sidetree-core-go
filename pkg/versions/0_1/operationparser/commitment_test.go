@@ -237,7 +237,7 @@ func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p pro
 
 	info := &client.UpdateRequestInfo{
 		DidSuffix:        "update-suffix",
-		Signer:           ecsigner.New(updateKey, "ES256", "key-1"),
+		Signer:           ecsigner.New(updateKey, "ES256", ""),
 		UpdateCommitment: commitment,
 		UpdateKey:        jwk,
 		Patches:          []patch.Patch{testPatch},

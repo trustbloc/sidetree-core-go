@@ -8,6 +8,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
@@ -81,15 +82,6 @@ func validateSigner(signer Signer) error {
 		return errors.New("missing protected headers")
 	}
 
-	// kid MUST be present in the protected header.
-	// alg MUST be present in the protected header, its value MUST NOT be none.
-	// no additional members may be present in the protected header.
-
-	_, ok := signer.Headers().KeyID()
-	if !ok {
-		return errors.New("kid must be present in the protected header")
-	}
-
 	alg, ok := signer.Headers().Algorithm()
 	if !ok {
 		return errors.New("algorithm must be present in the protected header")
@@ -99,9 +91,15 @@ func validateSigner(signer Signer) error {
 		return errors.New("algorithm cannot be empty in the protected header")
 	}
 
-	const allowedHeaders = 2
-	if len(signer.Headers()) != allowedHeaders {
-		return errors.New("protected headers can only contain kid and alg")
+	allowedHeaders := map[string]bool{
+		jws.HeaderAlgorithm: true,
+		jws.HeaderKeyID:     true,
+	}
+
+	for h := range signer.Headers() {
+		if _, ok := allowedHeaders[h]; !ok {
+			return fmt.Errorf("header '%s' is not allowed in the protected headers", h)
+		}
 	}
 
 	return nil

@@ -74,12 +74,10 @@ func TestValidateSigner(t *testing.T) {
 		require.Contains(t, err.Error(), "missing signer")
 	})
 
-	t.Run("err - kid must be present in the protected header", func(t *testing.T) {
-		signer := &MockSigner{MockHeaders: make(jws.Headers)}
-
-		err := validateSigner(signer)
+	t.Run("error - missing protected headers", func(t *testing.T) {
+		err := validateSigner(&MockSigner{})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "kid must be present in the protected header")
+		require.Contains(t, err.Error(), "missing protected headers")
 	})
 
 	t.Run("err - algorithm must be present in the protected header", func(t *testing.T) {
@@ -118,7 +116,7 @@ func TestValidateSigner(t *testing.T) {
 
 		err := validateSigner(signer)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "protected headers can only contain kid and alg")
+		require.Contains(t, err.Error(), "header 'invalid' is not allowed in the protected headers")
 	})
 }
 
@@ -130,19 +128,15 @@ type MockSigner struct {
 
 // New creates new mock signer (default to recovery signer).
 func NewMockSigner(err error) *MockSigner {
-	return &MockSigner{Err: err}
+	headers := make(jws.Headers)
+	headers[jws.HeaderAlgorithm] = "alg"
+	headers[jws.HeaderKeyID] = "kid"
+
+	return &MockSigner{Err: err, MockHeaders: headers}
 }
 
 // Headers provides required JWS protected headers. It provides information about signing key and algorithm.
 func (ms *MockSigner) Headers() jws.Headers {
-	if ms.MockHeaders == nil {
-		headers := make(jws.Headers)
-		headers[jws.HeaderAlgorithm] = "alg"
-		headers[jws.HeaderKeyID] = "kid"
-
-		return headers
-	}
-
 	return ms.MockHeaders
 }
 
