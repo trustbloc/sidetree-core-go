@@ -30,8 +30,7 @@ const (
 	// public keys, services id length.
 	maxIDLength = 50
 
-	maxServiceTypeLength     = 30
-	maxServiceEndpointLength = 100
+	maxServiceTypeLength = 30
 )
 
 var allowedPurposes = map[document.KeyPurpose]bool{
@@ -196,17 +195,31 @@ func validateServiceType(serviceType string) error {
 	return nil
 }
 
-func validateServiceEndpoint(serviceEndpoint string) error {
-	if serviceEndpoint == "" {
+func validateServiceEndpoint(serviceEndpoint interface{}) error {
+	if serviceEndpoint == nil {
 		return errors.New("service endpoint is missing")
 	}
 
-	if len(serviceEndpoint) > maxServiceEndpointLength {
-		return fmt.Errorf("service endpoint exceeds maximum length: %d", maxServiceEndpointLength)
+	uri, ok := serviceEndpoint.(string)
+	if ok {
+		return validateURI(uri)
 	}
 
-	if _, err := url.ParseRequestURI(serviceEndpoint); err != nil {
-		return fmt.Errorf("service endpoint is not valid URI: %s", err.Error())
+	_, ok = serviceEndpoint.([]interface{})
+	if ok {
+		return errors.New("service endpoint cannot be an array of objects")
+	}
+
+	return nil
+}
+
+func validateURI(uri string) error {
+	if uri == "" {
+		return errors.New("service endpoint URI is empty")
+	}
+
+	if _, err := url.ParseRequestURI(uri); err != nil {
+		return fmt.Errorf("service endpoint '%s' is not a valid URI: %s", uri, err.Error())
 	}
 
 	return nil

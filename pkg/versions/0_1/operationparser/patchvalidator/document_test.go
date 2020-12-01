@@ -139,13 +139,34 @@ func TestValidateServices(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service type is missing")
 	})
-	t.Run("error - missing service endpoint", func(t *testing.T) {
-		doc, err := document.DidDocumentFromBytes([]byte(serviceDocNoServiceEndpoint))
+	t.Run("error - service endpoint missing", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointMissing))
 		require.NoError(t, err)
 
 		err = validateServices(doc.Services())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service endpoint is missing")
+	})
+	t.Run("success - service endpoint is an object", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointIsAnObject))
+		require.NoError(t, err)
+		err = validateServices(doc.Services())
+		require.NoError(t, err)
+	})
+	t.Run("error - service endpoint cannot be an array of objects", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointIsAnArrayOfObjects))
+		require.NoError(t, err)
+		err = validateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service endpoint cannot be an array of objects")
+	})
+	t.Run("error - empty service endpoint URI", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocNoServiceEndpointURI))
+		require.NoError(t, err)
+
+		err = validateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service endpoint URI is empty")
 	})
 	t.Run("error - service id too long", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(serviceDocLongID))
@@ -163,21 +184,13 @@ func TestValidateServices(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service type exceeds maximum length")
 	})
-	t.Run("error - service endpoint too long", func(t *testing.T) {
-		doc, err := document.DidDocumentFromBytes([]byte(serviceDocLongServiceEndpoint))
-		require.NoError(t, err)
-
-		err = validateServices(doc.Services())
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "service endpoint exceeds maximum length")
-	})
 	t.Run("error - service endpoint not URI", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointNotURI))
 		require.NoError(t, err)
 
 		err = validateServices(doc.Services())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "service endpoint is not valid URI")
+		require.Contains(t, err.Error(), "service endpoint 'hello' is not a valid URI")
 	})
 	t.Run("success - didcomm service", func(t *testing.T) {
 		doc, err := document.DIDDocumentFromReader(reader(t, "testdata/doc.json"))
@@ -512,11 +525,10 @@ const serviceDocLongType = `{
 	}]
 }`
 
-const serviceDocLongServiceEndpoint = `{
+const serviceDocEndpointMissing = `{
 	"service": [{
-		"id": "sid",
-		"type": "VerifiableCredentialService",
-		"serviceEndpoint": "https://example.com/vc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		"id": "vcs",
+		"type": "type"
 	}]
 }`
 
@@ -528,6 +540,22 @@ const serviceDocEndpointNotURI = `{
 	}]
 }`
 
+const serviceDocEndpointIsAnObject = `{
+	"service": [{
+		"id": "vcs",
+		"type": "type",
+		"serviceEndpoint": {"key":"value"}
+	}]
+}`
+
+const serviceDocEndpointIsAnArrayOfObjects = `{
+	"service": [{
+		"id": "vcs",
+		"type": "type",
+		"serviceEndpoint": ["hello"]
+	}]
+}`
+
 const serviceDocNoType = `{
 	"service": [{
 		"id": "vcs",
@@ -536,7 +564,7 @@ const serviceDocNoType = `{
 	}]
 }`
 
-const serviceDocNoServiceEndpoint = `{
+const serviceDocNoServiceEndpointURI = `{
 	"service": [{
 		"id": "vcs",
 		"type": "VerifiableCredentialService",

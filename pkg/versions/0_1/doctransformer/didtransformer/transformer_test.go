@@ -81,11 +81,23 @@ func TestTransformDocument(t *testing.T) {
 
 		// validate services
 		service := didDoc.Services()[0]
-		require.Contains(t, service.ID(), testID)
-		require.NotEmpty(t, service.ServiceEndpoint())
+		require.Equal(t, service.ID(), testID+"#hub")
+		require.Equal(t, "https://example.com/hub/", service.ServiceEndpoint().(string))
 		require.Equal(t, "recipientKeysValue", service["recipientKeys"])
 		require.Equal(t, "routingKeysValue", service["routingKeys"])
 		require.Equal(t, "IdentityHub", service.Type())
+
+		service = didDoc.Services()[1]
+		require.Equal(t, service.ID(), testID+"#hub-object")
+		require.NotEmpty(t, service.ServiceEndpoint())
+		require.Empty(t, service["recipientKeys"])
+		require.Equal(t, "IdentityHub", service.Type())
+
+		serviceEndpointEntry := service.ServiceEndpoint()
+		serviceEndpoint := serviceEndpointEntry.(map[string]interface{})
+		require.Equal(t, "https://schema.identity.foundation/hub", serviceEndpoint["@context"])
+		require.Equal(t, "UserHubEndpoint", serviceEndpoint["type"])
+		require.Equal(t, []interface{}{"did:example:456", "did:example:789"}, serviceEndpoint["instances"])
 
 		// validate public keys
 		pk := didDoc.VerificationMethods()[0]
