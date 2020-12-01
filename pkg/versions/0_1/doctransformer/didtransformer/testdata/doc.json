@@ -85,6 +85,15 @@
       "routingKeys": "routingKeysValue",
       "recipientKeys": "recipientKeysValue",
       "serviceEndpoint": "https://example.com/hub/"
+    },
+    {
+      "id": "hub-object",
+      "type": "IdentityHub",
+      "serviceEndpoint": {
+        "@context": "https://schema.identity.foundation/hub",
+        "type": "UserHubEndpoint",
+        "instances": ["did:example:456", "did:example:789"]
+      }
     }
   ]
 }

@@ -28,8 +28,8 @@ func (s Service) Type() string {
 }
 
 // ServiceEndpoint is service endpoint.
-func (s Service) ServiceEndpoint() string {
-	return stringEntry(s[ServiceEndpointProperty])
+func (s Service) ServiceEndpoint() interface{} {
+	return s[ServiceEndpointProperty]
 }
 
 // JSONLdObject returns map that represents JSON LD Object.
