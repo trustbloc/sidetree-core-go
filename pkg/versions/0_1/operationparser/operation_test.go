@@ -15,10 +15,19 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 )
 
-const namespace = "did:sidetree"
+const (
+	namespace = "did:sidetree"
+
+	maxOperationSize = 2000
+	maxDeltaSize     = 1000
+	maxProofSize     = 500
+)
 
 func TestGetOperation(t *testing.T) {
 	p := protocol.Protocol{
+		MaxOperationSize:    maxOperationSize,
+		MaxDeltaSize:        maxDeltaSize,
+		MaxProofSize:        maxProofSize,
 		MultihashAlgorithm:  sha2_256,
 		SignatureAlgorithms: []string{"alg"},
 		KeyAlgorithms:       []string{"crv"},
@@ -59,10 +68,12 @@ func TestGetOperation(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, op)
 	})
-	t.Run("operation parsing error", func(t *testing.T) {
+	t.Run("operation parsing error - exceeds max operation size", func(t *testing.T) {
 		// set-up invalid hash algorithm in protocol configuration
 		invalid := protocol.Protocol{
-			SignatureAlgorithms: []string{"not-used"},
+			MaxOperationSize: 20,
+			MaxDeltaSize:     maxDeltaSize,
+			MaxProofSize:     maxProofSize,
 		}
 
 		operation, err := getRecoverRequestBytes()
@@ -70,7 +81,24 @@ func TestGetOperation(t *testing.T) {
 
 		op, err := New(invalid).Parse(namespace, operation)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "recover: failed to parse signed data: algorithm 'alg' is not in the allowed list [not-used]")
+		require.Contains(t, err.Error(), "operation size[698] exceeds maximum operation size[20]")
+		require.Nil(t, op)
+	})
+	t.Run("operation parsing error", func(t *testing.T) {
+		// set-up invalid hash algorithm in protocol configuration
+		invalid := protocol.Protocol{
+			SignatureAlgorithms: []string{"not-used"},
+			MaxOperationSize:    maxOperationSize,
+			MaxDeltaSize:        maxDeltaSize,
+			MaxProofSize:        maxProofSize,
+		}
+
+		operation, err := getRecoverRequestBytes()
+		require.NoError(t, err)
+
+		op, err := New(invalid).Parse(namespace, operation)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to parse signed data: algorithm 'alg' is not in the allowed list [not-used]")
 		require.Nil(t, op)
 	})
 	t.Run("unsupported operation type error", func(t *testing.T) {

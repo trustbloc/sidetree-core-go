@@ -51,6 +51,11 @@ func (p *Parser) Parse(namespace string, operationBuffer []byte) (*operation.Ope
 // ParseOperation parses and validates operation. Batch mode flag gives hints for the validation of
 // operation object (anticipating future pruning/checkpoint requirements).
 func (p *Parser) ParseOperation(namespace string, operationBuffer []byte, batch bool) (*model.Operation, error) {
+	// check maximum operation size against protocol before parsing
+	if len(operationBuffer) > int(p.MaxOperationSize) {
+		return nil, fmt.Errorf("operation size[%d] exceeds maximum operation size[%d]", len(operationBuffer), int(p.MaxOperationSize))
+	}
+
 	schema := &operationSchema{}
 	err := json.Unmarshal(operationBuffer, schema)
 	if err != nil {

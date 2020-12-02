@@ -72,25 +72,6 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	require.NotNil(t, doc)
 }
 
-func TestDocumentHandler_ProcessOperation_MaxOperationSizeError(t *testing.T) {
-	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
-	require.NotNil(t, dochandler)
-	defer cleanup()
-
-	// modify handler protocol client to decrease max operation size
-	pc := newMockProtocolClient()
-	pc.Protocol.MaxOperationSize = 2
-	pc.CurrentVersion.ProtocolReturns(pc.Protocol)
-	dochandler.protocol = pc
-
-	createOp := getCreateOperation()
-
-	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
-	require.Error(t, err)
-	require.Nil(t, doc)
-	require.Contains(t, err.Error(), "operation byte size exceeds protocol max operation byte size")
-}
-
 func TestDocumentHandler_ProcessOperation_ProtocolError(t *testing.T) {
 	pc := newMockProtocolClient()
 	pc.Err = fmt.Errorf("injected protocol error")
@@ -262,34 +243,6 @@ func TestDocumentHandler_ResolveDocument_Interop(t *testing.T) {
 	result, err := dochandler.ResolveDocument(interopResolveDidWithInitialState)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-}
-
-func TestDocumentHandler_ResolveDocument_InitialValue_MaxOperationSizeError(t *testing.T) {
-	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
-	require.NotNil(t, dochandler)
-	defer cleanup()
-
-	// modify handler protocol client to decrease max operation size
-	protocol := newMockProtocolClient()
-	protocol.Protocol.MaxOperationSize = 2
-	protocol.CurrentVersion.ProtocolReturns(protocol.Protocol)
-	dochandler.protocol = protocol
-
-	createOp := getCreateOperation()
-	docID := createOp.ID
-
-	createReq, err := canonicalizer.MarshalCanonical(model.CreateRequest{
-		Delta:      createOp.Delta,
-		SuffixData: createOp.SuffixData,
-	})
-	require.NoError(t, err)
-
-	longFormPart := ":" + encoder.EncodeToString(createReq)
-
-	result, err := dochandler.ResolveDocument(docID + longFormPart)
-	require.Error(t, err)
-	require.Nil(t, result)
-	require.Contains(t, err.Error(), "bad request: operation byte size exceeds protocol max operation byte size")
 }
 
 func TestDocumentHandler_ResolveDocument_InitialDocumentNotValid(t *testing.T) {

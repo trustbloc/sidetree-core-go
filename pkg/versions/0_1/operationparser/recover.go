@@ -76,7 +76,7 @@ func (p *Parser) parseRecoverRequest(payload []byte) (*model.RecoverRequest, err
 func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error) {
 	jws, err := p.parseSignedData(compactJWS)
 	if err != nil {
-		return nil, fmt.Errorf("recover: %s", err.Error())
+		return nil, err
 	}
 
 	schema := &model.RecoverSignedDataModel{}
@@ -112,6 +112,10 @@ func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDa
 func (p *Parser) parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
 	if compactJWS == "" {
 		return nil, errors.New("missing signed data")
+	}
+
+	if len(compactJWS) > int(p.MaxProofSize) {
+		return nil, fmt.Errorf("proof size[%d] exceeds maximum proof size[%d]", len(compactJWS), p.MaxProofSize)
 	}
 
 	jws, err := internal.ParseJWS(compactJWS)

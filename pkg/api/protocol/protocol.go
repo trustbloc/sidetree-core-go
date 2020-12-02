@@ -34,8 +34,13 @@ type Protocol struct {
 	MultihashAlgorithm uint `json:"multihashAlgorithm"`
 	// MaxOperationCount defines maximum number of operations per batch.
 	MaxOperationCount uint `json:"maxOperationCount"`
-	// MaxOperationSize is maximum uncompressed operation size.
+	// MaxOperationSize is maximum operation size in bytes (used to reject operations before parsing them)
+	// It has to be greater than max delta size (big) + max proof size (medium) + other small values (operation type, suffix-data)
 	MaxOperationSize uint `json:"maxOperationSize"`
+	// MaxDeltaSize is maximum size of operation's delta property.
+	MaxDeltaSize uint `json:"maxDeltaSize"`
+	// MaxProofSize is maximum size of operation's proof property.
+	MaxProofSize uint `json:"maxProofSize"`
 	// CompressionAlgorithm is file compression algorithm.
 	CompressionAlgorithm string `json:"compressionAlgorithm"`
 	// MaxCoreIndexFileSize is maximum allowed size (in bytes) of core index file stored in CAS.

@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -100,6 +101,19 @@ func (p *Parser) ValidateDelta(delta *model.DeltaModel) error {
 
 	if !hashing.IsComputedUsingMultihashAlgorithm(delta.UpdateCommitment, uint64(p.MultihashAlgorithm)) {
 		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
+	}
+
+	return p.validateDeltaSize(delta)
+}
+
+func (p *Parser) validateDeltaSize(delta *model.DeltaModel) error {
+	canonicalDelta, err := canonicalizer.MarshalCanonical(delta)
+	if err != nil {
+		return fmt.Errorf("marshal canonical for delta failed: %s", err.Error())
+	}
+
+	if len(canonicalDelta) > int(p.MaxDeltaSize) {
+		return fmt.Errorf("delta size[%d] exceeds maximum delta size[%d]", len(canonicalDelta), p.MaxDeltaSize)
 	}
 
 	return nil

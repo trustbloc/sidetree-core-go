@@ -73,7 +73,7 @@ func (p *Parser) parseUpdateRequest(payload []byte) (*model.UpdateRequest, error
 func (p *Parser) ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error) {
 	jws, err := p.parseSignedData(compactJWS)
 	if err != nil {
-		return nil, fmt.Errorf("update: %s", err.Error())
+		return nil, err
 	}
 
 	schema := &model.UpdateSignedDataModel{}

@@ -24,6 +24,8 @@ import (
 
 func TestParseUpdateOperation(t *testing.T) {
 	p := protocol.Protocol{
+		MaxDeltaSize:        maxDeltaSize,
+		MaxProofSize:        maxProofSize,
 		MultihashAlgorithm:  sha2_256,
 		SignatureAlgorithms: []string{"alg"},
 		KeyAlgorithms:       []string{"crv"},
@@ -138,6 +140,7 @@ func TestParseUpdateOperation(t *testing.T) {
 
 func TestParseSignedDataForUpdate(t *testing.T) {
 	p := protocol.Protocol{
+		MaxProofSize:        maxProofSize,
 		MultihashAlgorithm:  sha2_256,
 		SignatureAlgorithms: []string{"alg"},
 		KeyAlgorithms:       []string{"crv"},
