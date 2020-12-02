@@ -355,7 +355,7 @@ func TestUpdateDocument(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		createResult, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
@@ -363,10 +363,12 @@ func TestUpdateDocument(t *testing.T) {
 
 		applier = New(p, parser, &mockDocComposer{Err: errors.New("document composer error")})
 
-		rm, err = applier.Apply(updateOp, rm)
-		require.Error(t, err)
-		require.Nil(t, rm)
-		require.Contains(t, err.Error(), "document composer error")
+		updateResult, err := applier.Apply(updateOp, createResult)
+		require.NoError(t, err)
+		require.NotNil(t, updateResult)
+		require.Equal(t, createResult.Doc, updateResult.Doc)
+		require.NotEqual(t, createResult.UpdateCommitment, updateResult.UpdateCommitment)
+		require.Equal(t, createResult.RecoveryCommitment, updateResult.RecoveryCommitment)
 	})
 }
 

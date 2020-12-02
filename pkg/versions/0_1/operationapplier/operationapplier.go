@@ -153,19 +153,27 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 		return nil, fmt.Errorf("failed to validate delta: %s", err.Error())
 	}
 
-	doc, err := s.ApplyPatches(rm.Doc, op.Delta.Patches)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protocol.ResolutionModel{
-		Doc:                              doc,
+	// delta is valid so advance update commitment
+	result := &protocol.ResolutionModel{
+		Doc:                              rm.Doc,
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
 		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
 		UpdateCommitment:                 op.Delta.UpdateCommitment,
 		RecoveryCommitment:               rm.RecoveryCommitment,
-	}, nil
+	}
+
+	doc, err := s.ApplyPatches(rm.Doc, op.Delta.Patches)
+	if err != nil {
+		logger.Infof("Apply patches failed; advance update commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+
+		return result, nil
+	}
+
+	// applying patches succeeded so update document
+	result.Doc = doc
+
+	return result, nil
 }
 
 func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
