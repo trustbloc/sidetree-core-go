@@ -38,7 +38,7 @@ func TestTransformDocument(t *testing.T) {
 		require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
 		require.Equal(t, "recovery", result.MethodMetadata[document.RecoveryCommitmentProperty])
 		require.Equal(t, "update", result.MethodMetadata[document.UpdateCommitmentProperty])
-		require.Empty(t, result.MethodMetadata[document.CanonicalIDProperty])
+		require.Empty(t, result.DocumentMetadata)
 	})
 
 	t.Run("success - with canonical ID", func(t *testing.T) {
@@ -53,7 +53,7 @@ func TestTransformDocument(t *testing.T) {
 		require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
 		require.Equal(t, "recovery", result.MethodMetadata[document.RecoveryCommitmentProperty])
 		require.Equal(t, "update", result.MethodMetadata[document.UpdateCommitmentProperty])
-		require.Equal(t, "canonical", result.MethodMetadata[document.CanonicalIDProperty])
+		require.Equal(t, "canonical", result.DocumentMetadata[document.CanonicalIDProperty])
 	})
 
 	t.Run("error - internal document is missing", func(t *testing.T) {
