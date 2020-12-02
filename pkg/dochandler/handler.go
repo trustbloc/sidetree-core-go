@@ -227,11 +227,6 @@ func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string, 
 }
 
 func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
-	// verify size of create request does not exceed the maximum allowed limit
-	if len(initialBytes) > int(pv.Protocol().MaxOperationSize) {
-		return nil, fmt.Errorf("%s: operation byte size exceeds protocol max operation byte size", badRequest)
-	}
-
 	op, err := pv.OperationParser().Parse(r.namespace, initialBytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
@@ -275,11 +270,6 @@ func (r *DocumentHandler) addToBatch(op *operation.Operation, genesisTime uint64
 }
 
 func (r *DocumentHandler) validateOperation(op *operation.Operation, pv protocol.Version) error {
-	// check maximum operation size against protocol
-	if len(op.OperationBuffer) > int(pv.Protocol().MaxOperationSize) {
-		return errors.New("operation byte size exceeds protocol max operation byte size")
-	}
-
 	if op.Type == operation.TypeCreate {
 		return r.validateCreateDocument(op, pv)
 	}

@@ -75,7 +75,7 @@ func (p *Parser) validateDeactivateRequest(req *model.DeactivateRequest) error {
 func (p *Parser) ParseSignedDataForDeactivate(compactJWS string) (*model.DeactivateSignedDataModel, error) {
 	jws, err := p.parseSignedData(compactJWS)
 	if err != nil {
-		return nil, fmt.Errorf("deactivate: %s", err.Error())
+		return nil, err
 	}
 
 	signedData := &model.DeactivateSignedDataModel{}

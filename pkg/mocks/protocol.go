@@ -25,6 +25,12 @@ const (
 	// MaxOperationByteSize is maximum operation size in bytes.
 	MaxOperationByteSize = 2000
 
+	// MaxProofByteSize is maximum proof size in bytes.
+	MaxProofByteSize = 500
+
+	// MaxDeltaByteSize is maximum delta size in bytes.
+	MaxDeltaByteSize = 1000
+
 	// CurrentVersion is the current protocol version.
 	CurrentVersion = "0.1"
 )
@@ -40,21 +46,7 @@ type MockProtocolClient struct {
 
 // NewMockProtocolClient creates mock protocol client.
 func NewMockProtocolClient() *MockProtocolClient {
-	//nolint:gomnd
-	latest := protocol.Protocol{
-		GenesisTime:                 0,
-		MultihashAlgorithm:          sha2_256,
-		MaxOperationCount:           2,
-		MaxOperationSize:            MaxOperationByteSize,
-		CompressionAlgorithm:        "GZIP",
-		MaxChunkFileSize:            MaxBatchFileSize,
-		MaxProvisionalIndexFileSize: MaxBatchFileSize,
-		MaxCoreIndexFileSize:        MaxBatchFileSize,
-		MaxProofFileSize:            MaxBatchFileSize,
-		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
-		KeyAlgorithms:               []string{"Ed25519", "P-256"},
-		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
-	}
+	latest := GetDefaultProtocolParameters()
 
 	latestVersion := GetProtocolVersion(latest)
 
@@ -141,4 +133,25 @@ func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 	v.ProtocolReturns(p)
 
 	return v
+}
+
+// GetDefaultProtocolParameters returns mock protocol parameters.
+func GetDefaultProtocolParameters() protocol.Protocol {
+	//nolint:gomnd
+	return protocol.Protocol{
+		GenesisTime:                 0,
+		MultihashAlgorithm:          sha2_256,
+		MaxOperationCount:           2,
+		MaxOperationSize:            MaxOperationByteSize,
+		MaxDeltaSize:                MaxDeltaByteSize,
+		MaxProofSize:                MaxProofByteSize,
+		CompressionAlgorithm:        "GZIP",
+		MaxChunkFileSize:            MaxBatchFileSize,
+		MaxProvisionalIndexFileSize: MaxBatchFileSize,
+		MaxCoreIndexFileSize:        MaxBatchFileSize,
+		MaxProofFileSize:            MaxBatchFileSize,
+		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
+		KeyAlgorithms:               []string{"Ed25519", "P-256"},
+		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+	}
 }

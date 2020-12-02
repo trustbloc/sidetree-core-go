@@ -29,6 +29,8 @@ const (
 
 func TestParseRecoverOperation(t *testing.T) {
 	p := protocol.Protocol{
+		MaxDeltaSize:        maxDeltaSize,
+		MaxProofSize:        maxProofSize,
 		MultihashAlgorithm:  sha2_256,
 		SignatureAlgorithms: []string{"alg"},
 		KeyAlgorithms:       []string{"crv"},
@@ -226,6 +228,7 @@ func TestParseSignedData(t *testing.T) {
 	mockSigner := NewMockSigner()
 
 	p := protocol.Protocol{
+		MaxProofSize:        maxProofSize,
 		MultihashAlgorithm:  sha2_256,
 		SignatureAlgorithms: []string{"alg"},
 	}
@@ -242,6 +245,24 @@ func TestParseSignedData(t *testing.T) {
 		jws, err := parser.parseSignedData(compactJWS)
 		require.NoError(t, err)
 		require.NotNil(t, jws)
+	})
+	t.Run("error - proof exceeds max proof size", func(t *testing.T) {
+		parserLowProofSize := New(protocol.Protocol{
+			MaxProofSize:        20,
+			MultihashAlgorithm:  sha2_256,
+			SignatureAlgorithms: []string{"alg"},
+		})
+
+		jwsSignature, err := internal.NewJWS(nil, nil, []byte("payload"), mockSigner)
+		require.NoError(t, err)
+
+		compactJWS, err := jwsSignature.SerializeCompact(false)
+		require.NoError(t, err)
+
+		jws, err := parserLowProofSize.parseSignedData(compactJWS)
+		require.Error(t, err)
+		require.Nil(t, jws)
+		require.Contains(t, err.Error(), "proof size[58] exceeds maximum proof size[20]")
 	})
 	t.Run("missing signed data", func(t *testing.T) {
 		jws, err := parser.parseSignedData("")
@@ -280,7 +301,10 @@ func TestParseSignedData(t *testing.T) {
 		compactJWS, err := jwsSignature.SerializeCompact(false)
 		require.NoError(t, err)
 
-		parser := New(protocol.Protocol{SignatureAlgorithms: []string{"other"}})
+		parser := New(protocol.Protocol{
+			SignatureAlgorithms: []string{"other"},
+			MaxProofSize:        maxProofSize,
+		})
 
 		jws, err := parser.parseSignedData(compactJWS)
 		require.Error(t, err)

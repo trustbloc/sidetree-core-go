@@ -26,6 +26,7 @@ const invalid = "invalid"
 
 func TestParseCreateOperation(t *testing.T) {
 	p := protocol.Protocol{
+		MaxDeltaSize:       maxDeltaSize,
 		MultihashAlgorithm: sha2_256,
 		Patches:            []string{"replace", "add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
@@ -183,12 +184,38 @@ func TestValidateSuffixData(t *testing.T) {
 }
 
 func TestValidateDelta(t *testing.T) {
+	patches := []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"}
+
 	p := protocol.Protocol{
+		MaxDeltaSize:       maxDeltaSize,
 		MultihashAlgorithm: sha2_256,
-		Patches:            []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		Patches:            patches,
 	}
 
 	parser := New(p)
+
+	t.Run("success", func(t *testing.T) {
+		delta, err := getDelta()
+		require.NoError(t, err)
+
+		err = parser.ValidateDelta(delta)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - delta exceeds max delta size ", func(t *testing.T) {
+		parserWithLowMaxDeltaSize := New(protocol.Protocol{
+			MaxDeltaSize:       50,
+			MultihashAlgorithm: sha2_256,
+			Patches:            patches,
+		})
+
+		delta, err := getDelta()
+		require.NoError(t, err)
+
+		err = parserWithLowMaxDeltaSize.ValidateDelta(delta)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "delta size[336] exceeds maximum delta size[50]")
+	})
 
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		delta, err := getDelta()
@@ -209,6 +236,12 @@ func TestValidateDelta(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
 			"missing patches")
+	})
+
+	t.Run("error - invalid delta", func(t *testing.T) {
+		err := parser.validateDeltaSize(nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "marshal canonical for delta failed")
 	})
 }
 
