@@ -8,13 +8,14 @@ package document
 
 // ResolutionResult describes resolution result.
 type ResolutionResult struct {
-	Context        string         `json:"@context"`
-	Document       Document       `json:"didDocument"`
-	MethodMetadata MethodMetadata `json:"methodMetadata"`
+	Context          string   `json:"@context"`
+	Document         Document `json:"didDocument"`
+	MethodMetadata   Metadata `json:"methodMetadata"`
+	DocumentMetadata Metadata `json:"didDocumentMetadata,omitempty"`
 }
 
-// MethodMetadata contains document metadata.
-type MethodMetadata map[string]interface{}
+// Metadata can contains various metadata such as document metadata and method metadata..
+type Metadata map[string]interface{}
 
 const (
 	// UpdateCommitmentProperty is update commitment key.
@@ -27,5 +28,5 @@ const (
 	PublishedProperty = "published"
 
 	// CanonicalIDProperty is canonical ID key.
-	CanonicalIDProperty = "canonicalID"
+	CanonicalIDProperty = "canonicalId"
 )

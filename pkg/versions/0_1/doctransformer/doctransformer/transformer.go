@@ -45,18 +45,26 @@ func (v *Transformer) TransformDocument(rm *protocol.ResolutionModel, info proto
 
 	rm.Doc[document.IDProperty] = id
 
-	metadata := make(document.MethodMetadata)
-	metadata[document.PublishedProperty] = published
-	metadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
-	metadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
+	methodMetadata := make(document.Metadata)
+	methodMetadata[document.PublishedProperty] = published
+	methodMetadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
+	methodMetadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
+
+	result := &document.ResolutionResult{
+		Document:       rm.Doc,
+		MethodMetadata: methodMetadata,
+	}
+
+	docMetadata := make(document.Metadata)
 
 	canonicalID, ok := info[document.CanonicalIDProperty]
 	if ok {
-		metadata[document.CanonicalIDProperty] = canonicalID
+		docMetadata[document.CanonicalIDProperty] = canonicalID
 	}
 
-	return &document.ResolutionResult{
-		Document:       rm.Doc,
-		MethodMetadata: metadata,
-	}, nil
+	if len(docMetadata) > 0 {
+		result.DocumentMetadata = docMetadata
+	}
+
+	return result, nil
 }

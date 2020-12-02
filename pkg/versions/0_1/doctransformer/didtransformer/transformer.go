@@ -64,7 +64,7 @@ func New(opts ...Option) *Transformer {
 
 // TransformDocument takes internal resolution model and transformation info and creates
 // external representation of document (resolution result).
-func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) { //nolint:funlen
+func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) { //nolint:funlen,gocyclo
 	if rm == nil || rm.Doc == nil {
 		return nil, errors.New("resolution model is required for document transformation")
 	}
@@ -103,20 +103,26 @@ func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info proto
 	external[document.ContextProperty] = ctx
 	external[document.IDProperty] = id
 
-	metadata := make(document.MethodMetadata)
-	metadata[document.PublishedProperty] = published
-	metadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
-	metadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
-
-	_, ok = info[document.CanonicalIDProperty]
-	if ok {
-		metadata[document.CanonicalIDProperty] = info[document.CanonicalIDProperty]
-	}
+	methodMetadata := make(document.Metadata)
+	methodMetadata[document.PublishedProperty] = published
+	methodMetadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
+	methodMetadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
 
 	result := &document.ResolutionResult{
 		Context:        didResolutionContext,
 		Document:       external.JSONLdObject(),
-		MethodMetadata: metadata,
+		MethodMetadata: methodMetadata,
+	}
+
+	docMetadata := make(document.Metadata)
+
+	canonicalID, ok := info[document.CanonicalIDProperty]
+	if ok {
+		docMetadata[document.CanonicalIDProperty] = canonicalID
+	}
+
+	if len(docMetadata) > 0 {
+		result.DocumentMetadata = docMetadata
 	}
 
 	// add keys

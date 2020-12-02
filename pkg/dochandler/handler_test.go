@@ -117,7 +117,7 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
-	require.Equal(t, result.MethodMetadata[document.CanonicalIDProperty], docID)
+	require.Equal(t, result.DocumentMetadata[document.CanonicalIDProperty], docID)
 	require.Equal(t, result.Document[keyID], aliasID)
 
 	// scenario: invalid namespace
