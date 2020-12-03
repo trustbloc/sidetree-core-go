@@ -114,7 +114,15 @@ func TestValidateServices(t *testing.T) {
 		require.NoError(t, err)
 
 		err = validateServices(doc.Services())
-		require.Nil(t, err)
+		require.NoError(t, err)
+	})
+	t.Run("error - duplicate service id", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocWithDuplicateServices))
+		require.NoError(t, err)
+
+		err = validateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate service id: sid-123_ABC")
 	})
 	t.Run("success - service can have allowed optional property", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(serviceDocOptionalProperty))
@@ -495,6 +503,19 @@ const duplicateID = `{
 
 const serviceDoc = `{
 	"service": [{
+		"id": "sid-123_ABC",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	}]
+}`
+
+const serviceDocWithDuplicateServices = `{
+	"service": [{
+		"id": "sid-123_ABC",
+		"type": "VerifiableCredentialService",
+		"serviceEndpoint": "https://example.com/vc/"
+	},
+	{
 		"id": "sid-123_ABC",
 		"type": "VerifiableCredentialService",
 		"serviceEndpoint": "https://example.com/vc/"
