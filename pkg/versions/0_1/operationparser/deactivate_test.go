@@ -124,7 +124,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 
 		op, err := parser.ParseDeactivateOperation(request, false)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed data for deactivate: key algorithm 'crv' is not in the allowed list [other]")
+		require.Contains(t, err.Error(), "validate signed data for deactivate: key algorithm 'crv' is not in the allowed list [other]")
 		require.Nil(t, op)
 	})
 }

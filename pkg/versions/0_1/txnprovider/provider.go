@@ -391,29 +391,37 @@ func (h *OperationProvider) validateCoreIndexOperations(ops *models.CoreOperatio
 	}
 
 	for i, op := range ops.Recover {
-		err := validateOperationReference(op)
+		err := h.validateOperationReference(op)
 		if err != nil {
-			return fmt.Errorf("failed to validate signed operation for recover[%d]: %s", i, err.Error())
+			return fmt.Errorf("failed to validate operation reference for recover[%d]: %s", i, err.Error())
 		}
 	}
 
 	for i, op := range ops.Deactivate {
-		err := validateOperationReference(op)
+		err := h.validateOperationReference(op)
 		if err != nil {
-			return fmt.Errorf("failed to validate signed operation for deactivate[%d]: %s", i, err.Error())
+			return fmt.Errorf("failed to validate operation reference for deactivate[%d]: %s", i, err.Error())
 		}
 	}
 
 	return nil
 }
 
-func validateOperationReference(op models.OperationReference) error {
-	if op.DidSuffix == "" {
-		return errors.New("missing did suffix")
+func (h *OperationProvider) validateOperationReference(op models.OperationReference) error {
+	if err := h.validateRequiredMultihash(op.DidSuffix, "did suffix"); err != nil {
+		return err
 	}
 
-	if op.RevealValue == "" {
-		return errors.New("missing reveal value")
+	return h.validateRequiredMultihash(op.RevealValue, "reveal value")
+}
+
+func (h *OperationProvider) validateRequiredMultihash(mh, alias string) error {
+	if mh == "" {
+		return fmt.Errorf("missing %s", alias)
+	}
+
+	if len(mh) > int(h.MaxOperationHashLength) {
+		return fmt.Errorf("%s length[%d] exceeds maximum hash length[%d]", alias, len(mh), h.MaxOperationHashLength)
 	}
 
 	return nil
@@ -557,9 +565,9 @@ func (h *OperationProvider) validateProvisionalIndexOperations(ops *models.Provi
 	}
 
 	for i, op := range ops.Update {
-		err := validateOperationReference(op)
+		err := h.validateOperationReference(op)
 		if err != nil {
-			return fmt.Errorf("failed to validate signed operation for update[%d]: %s", i, err.Error())
+			return fmt.Errorf("failed to validate operation reference for update[%d]: %s", i, err.Error())
 		}
 	}
 

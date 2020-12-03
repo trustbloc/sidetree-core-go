@@ -37,6 +37,8 @@ type Protocol struct {
 	// MaxOperationSize is maximum operation size in bytes (used to reject operations before parsing them)
 	// It has to be greater than max delta size (big) + max proof size (medium) + other small values (operation type, suffix-data)
 	MaxOperationSize uint `json:"maxOperationSize"`
+	// MaxOperationHashLength is maximum operation hash length
+	MaxOperationHashLength uint `json:"maxOperationHashLength"`
 	// MaxDeltaSize is maximum size of operation's delta property.
 	MaxDeltaSize uint `json:"maxDeltaSize"`
 	// MaxProofSize is maximum size of operation's proof property.

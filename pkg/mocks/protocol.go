@@ -143,6 +143,7 @@ func GetDefaultProtocolParameters() protocol.Protocol {
 		MultihashAlgorithm:          sha2_256,
 		MaxOperationCount:           2,
 		MaxOperationSize:            MaxOperationByteSize,
+		MaxOperationHashLength:      100,
 		MaxDeltaSize:                MaxDeltaByteSize,
 		MaxProofSize:                MaxProofByteSize,
 		MaxCasURILength:             100,

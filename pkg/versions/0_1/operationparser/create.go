@@ -99,11 +99,23 @@ func (p *Parser) ValidateDelta(delta *model.DeltaModel) error {
 		}
 	}
 
-	if !hashing.IsComputedUsingMultihashAlgorithm(delta.UpdateCommitment, uint64(p.MultihashAlgorithm)) {
-		return fmt.Errorf("next update commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
+	if err := p.validateMultihash(delta.UpdateCommitment, "update commitment"); err != nil {
+		return err
 	}
 
 	return p.validateDeltaSize(delta)
+}
+
+func (p *Parser) validateMultihash(mh, alias string) error {
+	if len(mh) > int(p.MaxOperationHashLength) {
+		return fmt.Errorf("%s length[%d] exceeds maximum hash length[%d]", alias, len(mh), p.MaxOperationHashLength)
+	}
+
+	if !hashing.IsComputedUsingMultihashAlgorithm(mh, uint64(p.MultihashAlgorithm)) {
+		return fmt.Errorf("%s is not computed with the required hash algorithm: %d", alias, p.MultihashAlgorithm)
+	}
+
+	return nil
 }
 
 func (p *Parser) validateDeltaSize(delta *model.DeltaModel) error {
@@ -135,15 +147,11 @@ func (p *Parser) ValidateSuffixData(suffixData *model.SuffixDataModel) error {
 		return errors.New("missing suffix data")
 	}
 
-	if !hashing.IsComputedUsingMultihashAlgorithm(suffixData.RecoveryCommitment, uint64(p.MultihashAlgorithm)) {
-		return fmt.Errorf("next recovery commitment hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
+	if err := p.validateMultihash(suffixData.RecoveryCommitment, "recovery commitment"); err != nil {
+		return err
 	}
 
-	if !hashing.IsComputedUsingMultihashAlgorithm(suffixData.DeltaHash, uint64(p.MultihashAlgorithm)) {
-		return fmt.Errorf("patch data hash is not computed with the required supported hash algorithm: %d", p.MultihashAlgorithm)
-	}
-
-	return nil
+	return p.validateMultihash(suffixData.DeltaHash, "delta hash")
 }
 
 func (p *Parser) validateCreateRequest(create *model.CreateRequest) error {

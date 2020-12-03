@@ -85,7 +85,7 @@ func (p *Parser) ParseSignedDataForDeactivate(compactJWS string) (*model.Deactiv
 	}
 
 	if err := p.validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
-		return nil, fmt.Errorf("signed data for deactivate: %s", err.Error())
+		return nil, fmt.Errorf("validate signed data for deactivate: %s", err.Error())
 	}
 
 	return signedData, nil

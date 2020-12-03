@@ -19,19 +19,21 @@ const (
 	namespace = "did:sidetree"
 
 	maxOperationSize = 2000
+	maxHashLength    = 100
 	maxDeltaSize     = 1000
 	maxProofSize     = 500
 )
 
 func TestGetOperation(t *testing.T) {
 	p := protocol.Protocol{
-		MaxOperationSize:    maxOperationSize,
-		MaxDeltaSize:        maxDeltaSize,
-		MaxProofSize:        maxProofSize,
-		MultihashAlgorithm:  sha2_256,
-		SignatureAlgorithms: []string{"alg"},
-		KeyAlgorithms:       []string{"crv"},
-		Patches:             []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MaxOperationSize:       maxOperationSize,
+		MaxOperationHashLength: maxHashLength,
+		MaxDeltaSize:           maxDeltaSize,
+		MaxProofSize:           maxProofSize,
+		MultihashAlgorithm:     sha2_256,
+		SignatureAlgorithms:    []string{"alg"},
+		KeyAlgorithms:          []string{"crv"},
+		Patches:                []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
