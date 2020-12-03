@@ -76,7 +76,7 @@ var allowedKeyTypes = map[string]existenceMap{
 
 // validatePublicKeys validates public keys.
 func validatePublicKeys(pubKeys []document.PublicKey) error {
-	ids := make(map[string]string)
+	ids := make(map[string]bool)
 
 	for _, pubKey := range pubKeys {
 		if err := validatePublicKeyProperties(pubKey); err != nil {
@@ -91,7 +91,7 @@ func validatePublicKeys(pubKeys []document.PublicKey) error {
 		if _, ok := ids[kid]; ok {
 			return fmt.Errorf("duplicate public key id: %s", kid)
 		}
-		ids[kid] = kid
+		ids[kid] = true
 
 		if err := validateKeyPurposes(pubKey); err != nil {
 			return err
@@ -144,10 +144,17 @@ func validateID(id string) error {
 
 // validateServices validates services.
 func validateServices(services []document.Service) error {
+	ids := make(map[string]bool)
 	for _, service := range services {
 		if err := validateService(service); err != nil {
 			return err
 		}
+
+		if _, ok := ids[service.ID()]; ok {
+			return fmt.Errorf("duplicate service id: %s", service.ID())
+		}
+
+		ids[service.ID()] = true
 	}
 
 	return nil
