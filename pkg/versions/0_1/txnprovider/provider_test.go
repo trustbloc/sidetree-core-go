@@ -31,7 +31,7 @@ const (
 	maxFileSize          = 2000 // in bytes
 
 	sampleCasURI = "bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4"
-	longCasURI   = "bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4"
+	longValue    = "bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4"
 )
 
 func TestNewOperationProvider(t *testing.T) {
@@ -505,7 +505,7 @@ func TestHandler_ValidateCoreIndexFile(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to validate signed operation for recover[0]: missing did suffix")
+		require.Contains(t, err.Error(), "failed to validate operation reference for recover[0]: missing did suffix")
 	})
 
 	t.Run("error - invalid reveal value for deactivate", func(t *testing.T) {
@@ -518,7 +518,46 @@ func TestHandler_ValidateCoreIndexFile(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to validate signed operation for deactivate[0]: missing reveal value")
+		require.Contains(t, err.Error(), "failed to validate operation reference for deactivate[0]: missing reveal value")
+	})
+
+	t.Run("error - reveal value exceeds maximum hash length", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate reveal value for first deactivate
+		batchFiles.CoreIndex.Operations.Deactivate[0].RevealValue = longValue
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate operation reference for deactivate[0]: reveal value length[118] exceeds maximum hash length[100]")
+	})
+
+	t.Run("error - did suffix exceeds maximum hash length", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// invalidate reveal value for first deactivate
+		batchFiles.CoreIndex.Operations.Recover[0].DidSuffix = longValue
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate operation reference for recover[0]: did suffix length[118] exceeds maximum hash length[100]")
+	})
+
+	t.Run("error - recovery commitment length exceeds max hash length", func(t *testing.T) {
+		lowMaxHashLength := mocks.GetDefaultProtocolParameters()
+		lowMaxHashLength.MaxOperationHashLength = 10
+
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		provider := NewOperationProvider(lowMaxHashLength, operationparser.New(lowMaxHashLength), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to validate suffix data for create[0]: recovery commitment length[46] exceeds maximum hash length[10]")
 	})
 }
 
@@ -614,7 +653,7 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to validate signed operation for update[0]: missing did suffix")
+		require.Contains(t, err.Error(), "failed to validate operation reference for update[0]: missing did suffix")
 	})
 
 	t.Run("error - missing reveal value", func(t *testing.T) {
@@ -627,7 +666,7 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to validate signed operation for update[0]: missing reveal value")
+		require.Contains(t, err.Error(), "failed to validate operation reference for update[0]: missing reveal value")
 	})
 
 	t.Run("success - validate IPFS CID", func(t *testing.T) {
@@ -646,7 +685,7 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		batchFiles, err := generateDefaultBatchFiles()
 		require.NoError(t, err)
 
-		batchFiles.ProvisionalIndex.ProvisionalProofFileURI = longCasURI
+		batchFiles.ProvisionalIndex.ProvisionalProofFileURI = longValue
 
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
@@ -658,7 +697,7 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		batchFiles, err := generateDefaultBatchFiles()
 		require.NoError(t, err)
 
-		batchFiles.ProvisionalIndex.Chunks[0].ChunkFileURI = longCasURI
+		batchFiles.ProvisionalIndex.Chunks[0].ChunkFileURI = longValue
 
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
@@ -919,7 +958,7 @@ func TestHandler_ValidateCorePoofFile(t *testing.T) {
 		batchFiles, err := generateDefaultBatchFiles()
 		require.NoError(t, err)
 
-		batchFiles.CoreIndex.CoreProofFileURI = longCasURI
+		batchFiles.CoreIndex.CoreProofFileURI = longValue
 
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
@@ -931,7 +970,7 @@ func TestHandler_ValidateCorePoofFile(t *testing.T) {
 		batchFiles, err := generateDefaultBatchFiles()
 		require.NoError(t, err)
 
-		batchFiles.CoreIndex.ProvisionalIndexFileURI = longCasURI
+		batchFiles.CoreIndex.ProvisionalIndexFileURI = longValue
 
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)

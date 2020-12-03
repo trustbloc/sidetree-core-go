@@ -24,12 +24,13 @@ import (
 
 func TestParseUpdateOperation(t *testing.T) {
 	p := protocol.Protocol{
-		MaxDeltaSize:        maxDeltaSize,
-		MaxProofSize:        maxProofSize,
-		MultihashAlgorithm:  sha2_256,
-		SignatureAlgorithms: []string{"alg"},
-		KeyAlgorithms:       []string{"crv"},
-		Patches:             []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MaxOperationHashLength: maxHashLength,
+		MaxDeltaSize:           maxDeltaSize,
+		MaxProofSize:           maxProofSize,
+		MultihashAlgorithm:     sha2_256,
+		SignatureAlgorithms:    []string{"alg"},
+		KeyAlgorithms:          []string{"crv"},
+		Patches:                []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -81,7 +82,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(),
-			"next update commitment hash is not computed with the required supported hash algorithm")
+			"update commitment is not computed with the required hash algorithm: 18")
 	})
 	t.Run("invalid signed data", func(t *testing.T) {
 		delta, err := getUpdateDelta()
@@ -140,10 +141,11 @@ func TestParseUpdateOperation(t *testing.T) {
 
 func TestParseSignedDataForUpdate(t *testing.T) {
 	p := protocol.Protocol{
-		MaxProofSize:        maxProofSize,
-		MultihashAlgorithm:  sha2_256,
-		SignatureAlgorithms: []string{"alg"},
-		KeyAlgorithms:       []string{"crv"},
+		MaxOperationHashLength: maxHashLength,
+		MaxProofSize:           maxProofSize,
+		MultihashAlgorithm:     sha2_256,
+		SignatureAlgorithms:    []string{"alg"},
+		KeyAlgorithms:          []string{"crv"},
 	}
 
 	parser := New(p)
@@ -176,7 +178,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		schema, err := parser.ParseSignedDataForUpdate(compactJWS)
 		require.Error(t, err)
 		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "delta hash is not computed with the required multihash algorithm: 18")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
 	})
 	t.Run("payload not JSON object", func(t *testing.T) {
 		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())
@@ -205,7 +207,7 @@ func TestValidateUpdateDelta(t *testing.T) {
 		err = parser.ValidateDelta(delta)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"next update commitment hash is not computed with the required supported hash algorithm")
+			"update commitment is not computed with the required hash algorithm")
 	})
 }
 

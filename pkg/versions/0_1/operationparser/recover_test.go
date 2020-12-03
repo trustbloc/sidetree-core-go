@@ -29,12 +29,13 @@ const (
 
 func TestParseRecoverOperation(t *testing.T) {
 	p := protocol.Protocol{
-		MaxDeltaSize:        maxDeltaSize,
-		MaxProofSize:        maxProofSize,
-		MultihashAlgorithm:  sha2_256,
-		SignatureAlgorithms: []string{"alg"},
-		KeyAlgorithms:       []string{"crv"},
-		Patches:             []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MaxOperationHashLength: maxHashLength,
+		MaxDeltaSize:           maxDeltaSize,
+		MaxProofSize:           maxProofSize,
+		MultihashAlgorithm:     sha2_256,
+		SignatureAlgorithms:    []string{"alg"},
+		KeyAlgorithms:          []string{"crv"},
+		Patches:                []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
 	parser := New(p)
@@ -145,7 +146,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "signed data for recovery: missing signing key")
+		require.Contains(t, err.Error(), "validate signed data for recovery: missing signing key")
 		require.Nil(t, op)
 	})
 
@@ -194,8 +195,9 @@ func TestParseRecoverOperation(t *testing.T) {
 
 func TestValidateSignedDataForRecovery(t *testing.T) {
 	p := protocol.Protocol{
-		MultihashAlgorithm: sha2_256,
-		KeyAlgorithms:      []string{"crv"},
+		MaxOperationHashLength: maxHashLength,
+		MultihashAlgorithm:     sha2_256,
+		KeyAlgorithms:          []string{"crv"},
 	}
 
 	parser := New(p)
@@ -213,14 +215,27 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 		signed.DeltaHash = ""
 		err := parser.validateSignedDataForRecovery(signed)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "patch data hash is not computed with the required hash algorithm")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.RecoveryCommitment = ""
 		err := parser.validateSignedDataForRecovery(signed)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "next recovery commitment hash is not computed with the required hash algorithm")
+		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithm: 18")
+	})
+	t.Run("recovery commitment exceeds maximum hash length", func(t *testing.T) {
+		lowMaxHashLength := protocol.Protocol{
+			MaxOperationHashLength: 10,
+			MultihashAlgorithm:     sha2_256,
+			KeyAlgorithms:          []string{"crv"},
+		}
+
+		signed := getSignedDataForRecovery()
+
+		err := New(lowMaxHashLength).validateSignedDataForRecovery(signed)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "recovery commitment length[46] exceeds maximum hash length[10]")
 	})
 }
 

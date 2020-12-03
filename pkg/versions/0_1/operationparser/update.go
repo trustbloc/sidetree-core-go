@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -83,7 +82,7 @@ func (p *Parser) ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSigne
 	}
 
 	if err := p.validateSignedDataForUpdate(schema); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validate signed data for update: %s", err.Error())
 	}
 
 	return schema, nil
@@ -103,13 +102,8 @@ func (p *Parser) validateUpdateRequest(update *model.UpdateRequest) error {
 
 func (p *Parser) validateSignedDataForUpdate(signedData *model.UpdateSignedDataModel) error {
 	if err := p.validateSigningKey(signedData.UpdateKey, p.KeyAlgorithms); err != nil {
-		return fmt.Errorf("signed data for update: %s", err.Error())
+		return err
 	}
 
-	code := uint64(p.MultihashAlgorithm)
-	if !hashing.IsComputedUsingMultihashAlgorithm(signedData.DeltaHash, code) {
-		return fmt.Errorf("delta hash is not computed with the required multihash algorithm: %d", code)
-	}
-
-	return nil
+	return p.validateMultihash(signedData.DeltaHash, "delta hash")
 }
