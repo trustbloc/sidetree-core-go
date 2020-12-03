@@ -41,6 +41,8 @@ type Protocol struct {
 	MaxDeltaSize uint `json:"maxDeltaSize"`
 	// MaxProofSize is maximum size of operation's proof property.
 	MaxProofSize uint `json:"maxProofSize"`
+	// MaxCasUriLength is maximum length of CAS URI in batch files.
+	MaxCasURILength uint `json:"maxCasUriLength"`
 	// CompressionAlgorithm is file compression algorithm.
 	CompressionAlgorithm string `json:"compressionAlgorithm"`
 	// MaxCoreIndexFileSize is maximum allowed size (in bytes) of core index file stored in CAS.

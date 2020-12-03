@@ -29,6 +29,9 @@ import (
 const (
 	compressionAlgorithm = "GZIP"
 	maxFileSize          = 2000 // in bytes
+
+	sampleCasURI = "bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4"
+	longCasURI   = "bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4bafkreih6ot2yfqcerzp5l2qupc77it2vdmepfhszitmswnpdtk34m4ura4"
 )
 
 func TestNewOperationProvider(t *testing.T) {
@@ -357,7 +360,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 func TestHandler_GetCoreIndexFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxCoreIndexFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{
+		MaxCoreIndexFileSize: maxFileSize,
+		CompressionAlgorithm: compressionAlgorithm,
+		MaxCasURILength:      100,
+	}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -575,7 +582,7 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		batchFiles, err := generateDefaultBatchFiles()
 		require.NoError(t, err)
 
-		// invalidate signed data for first recover
+		// invalidate provisional proof URI
 		batchFiles.ProvisionalIndex.ProvisionalProofFileURI = ""
 
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
@@ -621,6 +628,42 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to validate signed operation for update[0]: missing reveal value")
+	})
+
+	t.Run("success - validate IPFS CID", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// set valid IPFS CID
+		batchFiles.ProvisionalIndex.ProvisionalProofFileURI = sampleCasURI
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - provisional proof URI too long", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.ProvisionalIndex.ProvisionalProofFileURI = longCasURI
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "provisional proof URI: CAS URI length[118] exceeds maximum CAS URI length[100]")
+	})
+
+	t.Run("error - chunk URI too long", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.ProvisionalIndex.Chunks[0].ChunkFileURI = longCasURI
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateProvisionalIndexFile(batchFiles.ProvisionalIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "chunk URI: CAS URI length[118] exceeds maximum CAS URI length[100]")
 	})
 }
 
@@ -858,6 +901,42 @@ func TestHandler_ValidateCorePoofFile(t *testing.T) {
 		err = provider.validateCoreProofFile(batchFiles.CoreProof)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to validate signed data for deactivate[0]")
+	})
+
+	t.Run("success - validate IPFS CID", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		// set valid IPFS CID
+		batchFiles.CoreIndex.CoreProofFileURI = sampleCasURI
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - core proof URI too long", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.CoreIndex.CoreProofFileURI = longCasURI
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "core proof URI: CAS URI length[118] exceeds maximum CAS URI length[100]")
+	})
+
+	t.Run("error - provisional index URI too long", func(t *testing.T) {
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.CoreIndex.ProvisionalIndexFileURI = longCasURI
+
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+		err = provider.validateCoreIndexFile(batchFiles.CoreIndex)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "provisional index URI: CAS URI length[118] exceeds maximum CAS URI length[100]")
 	})
 }
 

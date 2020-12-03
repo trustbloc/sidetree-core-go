@@ -358,7 +358,24 @@ func (h *OperationProvider) validateCoreIndexFile(cif *models.CoreIndexFile) err
 		return errors.New("core proof file URI should be empty if there are no recover and/or deactivate operations")
 	}
 
+	err := h.validateCoreIndexCASReferences(cif)
+	if err != nil {
+		return err
+	}
+
 	return h.validateCoreIndexOperations(cif.Operations)
+}
+
+func (h *OperationProvider) validateCoreIndexCASReferences(cif *models.CoreIndexFile) error {
+	if err := h.validateURI(cif.CoreProofFileURI); err != nil {
+		return errors.Wrapf(err, "core proof URI")
+	}
+
+	if err := h.validateURI(cif.ProvisionalIndexFileURI); err != nil {
+		return errors.Wrapf(err, "provisional index URI")
+	}
+
+	return nil
 }
 
 func (h *OperationProvider) validateCoreIndexOperations(ops *models.CoreOperations) error {
@@ -512,7 +529,26 @@ func (h *OperationProvider) validateProvisionalIndexFile(pif *models.Provisional
 		return errors.New("provisional proof file URI should be empty if there are no update operations")
 	}
 
+	err := h.validateProvisionalIndexCASReferences(pif)
+	if err != nil {
+		return err
+	}
+
 	return h.validateProvisionalIndexOperations(pif.Operations)
+}
+
+func (h *OperationProvider) validateProvisionalIndexCASReferences(pif *models.ProvisionalIndexFile) error {
+	if err := h.validateURI(pif.ProvisionalProofFileURI); err != nil {
+		return errors.Wrapf(err, "provisional proof URI")
+	}
+
+	if len(pif.Chunks) > 0 {
+		if err := h.validateURI(pif.Chunks[0].ChunkFileURI); err != nil {
+			return errors.Wrapf(err, "chunk URI")
+		}
+	}
+
+	return nil
 }
 
 func (h *OperationProvider) validateProvisionalIndexOperations(ops *models.ProvisionalOperations) error {
@@ -678,4 +714,12 @@ func parseProvisionalIndexOperations(pif *models.ProvisionalIndexFile) *provisio
 	}
 
 	return &provisionalOperations{Update: updateOps, Suffixes: suffixes}
+}
+
+func (h *OperationProvider) validateURI(uri string) error {
+	if len(uri) > int(h.Protocol.MaxCasURILength) {
+		return fmt.Errorf("CAS URI length[%d] exceeds maximum CAS URI length[%d]", len(uri), h.Protocol.MaxCasURILength)
+	}
+
+	return nil
 }
