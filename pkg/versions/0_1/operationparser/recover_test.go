@@ -49,7 +49,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Equal(t, operation.TypeRecover, op.Type)
 
 		signedData, err := parser.ParseSignedDataForRecover(op.SignedData)
-		expectedRevealValue, err := parser.getRevealValueMultihash(signedData.RecoveryKey)
+		expectedRevealValue, err := commitment.GetRevealValue(signedData.RecoveryKey, sha2_256)
 		require.NoError(t, err)
 
 		require.Equal(t, expectedRevealValue, op.RevealValue)
@@ -133,7 +133,7 @@ func TestParseRecoverOperation(t *testing.T) {
 	})
 	t.Run("validate signed data error", func(t *testing.T) {
 		signedData := getSignedDataForRecovery()
-		signedData.RecoveryKey = nil
+		signedData.RecoveryKey = &jws.JWK{}
 
 		delta, err := getDelta()
 		require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestParseRecoverOperation(t *testing.T) {
 
 		op, err := parser.ParseRecoverOperation(request, false)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "validate signed data for recovery: missing signing key")
+		require.Contains(t, err.Error(), "validate signed data for recovery: signing key validation failed: JWK crv is missing")
 		require.Nil(t, op)
 	})
 
@@ -172,7 +172,7 @@ func TestParseRecoverOperation(t *testing.T) {
 	t.Run("error - current commitment cannot equal recovery commitment", func(t *testing.T) {
 		signedData := getSignedDataForRecovery()
 
-		recoveryCommitment, err := commitment.Calculate(signedData.RecoveryKey, sha2_256)
+		recoveryCommitment, err := commitment.GetCommitment(signedData.RecoveryKey, sha2_256)
 		require.NoError(t, err)
 
 		signedData.RecoveryCommitment = recoveryCommitment
@@ -361,7 +361,7 @@ func TestValidateSigningKey(t *testing.T) {
 }
 
 func TestValidateRecoverRequest(t *testing.T) {
-	parser := New(protocol.Protocol{})
+	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithm: 18})
 
 	t.Run("success", func(t *testing.T) {
 		recover, err := getDefaultRecoverRequest()
@@ -450,47 +450,6 @@ func TestValidateProtectedHeader(t *testing.T) {
 	})
 }
 
-func TestGetRevealValueMultihash(t *testing.T) {
-	jwk := &jws.JWK{
-		Kty: "kty",
-		Crv: "crv",
-		X:   "x",
-	}
-
-	t.Run("success", func(t *testing.T) {
-		parser := New(protocol.Protocol{
-			MultihashAlgorithm: sha2_256,
-		})
-
-		rv, err := parser.getRevealValueMultihash(jwk)
-		require.Nil(t, err)
-		require.NotEmpty(t, rv)
-	})
-
-	t.Run("error - multihash algorithm not supported", func(t *testing.T) {
-		parser := New(protocol.Protocol{
-			MultihashAlgorithm: 55,
-		})
-
-		rv, err := parser.getRevealValueMultihash(jwk)
-		require.Error(t, err)
-		require.Empty(t, rv)
-		require.Contains(t, err.Error(), "algorithm not supported, unable to compute hash")
-	})
-
-	t.Run("error - marshal canonical", func(t *testing.T) {
-		parser := New(protocol.Protocol{
-			MultihashAlgorithm: sha2_256,
-		})
-
-		var c chan int
-		rv, err := parser.getRevealValueMultihash(c)
-		require.Error(t, err)
-		require.Empty(t, rv)
-		require.Contains(t, err.Error(), "json: unsupported type: chan int")
-	})
-}
-
 func getHeaders(alg, kid string) jws.Headers {
 	header := make(jws.Headers)
 	header[algKey] = alg
@@ -505,11 +464,17 @@ func getRecoverRequest(delta *model.DeltaModel, signedData *model.RecoverSignedD
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(signedData.RecoveryKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.RecoverRequest{
-		Operation:  operation.TypeRecover,
-		DidSuffix:  "suffix",
-		Delta:      delta,
-		SignedData: compactJWS,
+		Operation:   operation.TypeRecover,
+		DidSuffix:   "suffix",
+		Delta:       delta,
+		SignedData:  compactJWS,
+		RevealValue: rv,
 	}, nil
 }
 

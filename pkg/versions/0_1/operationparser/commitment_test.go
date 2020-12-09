@@ -119,42 +119,51 @@ func TestParser_GetRevealValue(t *testing.T) {
 		recover, err := generateRecoverRequest(recoveryKey, recoveryCommitment, parser.Protocol)
 		require.NoError(t, err)
 
-		revealJWK, err := parser.GetRevealValue(recover)
+		rv, err := parser.GetRevealValue(recover)
 		require.NoError(t, err)
-		require.NotNil(t, revealJWK)
+		require.NotEmpty(t, rv)
 
 		pubJWK, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 		require.NoError(t, err)
 
-		require.Equal(t, revealJWK, pubJWK)
+		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithm)
+		require.NoError(t, err)
+
+		require.Equal(t, rv, expected)
 	})
 
 	t.Run("success - deactivate", func(t *testing.T) {
 		deactivate, err := generateDeactivateRequest(recoveryKey)
 		require.NoError(t, err)
 
-		revealJWK, err := parser.GetRevealValue(deactivate)
+		rv, err := parser.GetRevealValue(deactivate)
 		require.NoError(t, err)
-		require.NotNil(t, revealJWK)
+		require.NotEmpty(t, rv)
 
 		pubJWK, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 		require.NoError(t, err)
 
-		require.Equal(t, revealJWK, pubJWK)
+		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithm)
+		require.NoError(t, err)
+
+		require.Equal(t, rv, expected)
 	})
 
 	t.Run("success - update", func(t *testing.T) {
 		update, err := generateUpdateRequest(updateKey, updateCommitment, parser.Protocol)
 		require.NoError(t, err)
 
-		revealJWK, err := parser.GetRevealValue(update)
+		rv, err := parser.GetRevealValue(update)
 		require.NoError(t, err)
-		require.NotNil(t, revealJWK)
+		require.NotEmpty(t, rv)
 
 		pubJWK, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
 		require.NoError(t, err)
 
-		require.Equal(t, revealJWK, pubJWK)
+		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithm)
+		require.NoError(t, err)
+
+		require.Equal(t, rv, expected)
 	})
 
 	t.Run("error - create", func(t *testing.T) {
@@ -175,7 +184,7 @@ func TestParser_GetRevealValue(t *testing.T) {
 	})
 }
 
-func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, commitment string, p protocol.Protocol) ([]byte, error) {
+func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, recoveryCommitment string, p protocol.Protocol) ([]byte, error) {
 	jwk, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 	if err != nil {
 		return nil, err
@@ -186,14 +195,20 @@ func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, commitment string, p 
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.RecoverRequestInfo{
 		DidSuffix:          "recover-suffix",
 		OpaqueDocument:     `{"test":"value"}`,
-		RecoveryCommitment: commitment,
+		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment, // not evaluated in operation getting commitment/reveal value
 		RecoveryKey:        jwk,
 		MultihashCode:      p.MultihashAlgorithm,
 		Signer:             ecsigner.New(recoveryKey, "ES256", ""),
+		RevealValue:        rv,
 	}
 
 	return client.NewRecoverRequest(info)
@@ -215,16 +230,23 @@ func generateDeactivateRequest(recoveryKey *ecdsa.PrivateKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	rv, err := commitment.GetRevealValue(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.DeactivateRequestInfo{
 		DidSuffix:   "deactivate-suffix",
 		Signer:      ecsigner.New(recoveryKey, "ES256", ""),
 		RecoveryKey: jwk,
+		RevealValue: rv,
 	}
 
 	return client.NewDeactivateRequest(info)
 }
 
-func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p protocol.Protocol) ([]byte, error) {
+func generateUpdateRequest(updateKey *ecdsa.PrivateKey, updateCommitment string, p protocol.Protocol) ([]byte, error) {
 	jwk, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
 	if err != nil {
 		return nil, err
@@ -235,13 +257,19 @@ func generateUpdateRequest(updateKey *ecdsa.PrivateKey, commitment string, p pro
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.UpdateRequestInfo{
 		DidSuffix:        "update-suffix",
 		Signer:           ecsigner.New(updateKey, "ES256", ""),
-		UpdateCommitment: commitment,
+		UpdateCommitment: updateCommitment,
 		UpdateKey:        jwk,
 		Patches:          []patch.Patch{testPatch},
 		MultihashCode:    p.MultihashAlgorithm,
+		RevealValue:      rv,
 	}
 
 	return client.NewUpdateRequest(info)
@@ -258,7 +286,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm)
+	c, err := commitment.GetCommitment(pubKey, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, "", err
 	}

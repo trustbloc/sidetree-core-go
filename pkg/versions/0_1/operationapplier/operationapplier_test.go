@@ -777,6 +777,11 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(updatePubKey, sha2_256)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	op := &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
@@ -784,6 +789,7 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		Delta:        delta,
 		Type:         operation.TypeUpdate,
 		SignedData:   jws,
+		RevealValue:  rv,
 	}
 
 	return op, nextUpdateKey, nil
@@ -800,7 +806,7 @@ func generateKeyAndCommitment() (*ecdsa.PrivateKey, string, error) {
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, sha2_256)
+	c, err := commitment.GetCommitment(pubKey, sha2_256)
 	if err != nil {
 		return nil, "", err
 	}
@@ -829,6 +835,11 @@ func getDeactivateOperationWithSigner(singer client.Signer, privateKey *ecdsa.Pr
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(recoverPubKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	signedDataModel := model.DeactivateSignedDataModel{
 		DidSuffix:   uniqueSuffix,
 		RecoveryKey: recoverPubKey,
@@ -845,6 +856,7 @@ func getDeactivateOperationWithSigner(singer client.Signer, privateKey *ecdsa.Pr
 		UniqueSuffix: uniqueSuffix,
 		Type:         operation.TypeDeactivate,
 		SignedData:   jws,
+		RevealValue:  rv,
 	}, nil
 }
 
@@ -881,6 +893,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 		OperationBuffer: operationBuffer,
 		Delta:           recoverRequest.Delta,
 		SignedData:      recoverRequest.SignedData,
+		RevealValue:     recoverRequest.RevealValue,
 	}, nextRecoveryKey, nil
 }
 
@@ -897,11 +910,17 @@ func getRecoverRequest(signer client.Signer, delta *model.DeltaModel, signedData
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(signedDataModel.RecoveryKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.RecoverRequest{
-		Operation:  operation.TypeRecover,
-		DidSuffix:  "suffix",
-		Delta:      delta,
-		SignedData: jws,
+		Operation:   operation.TypeRecover,
+		DidSuffix:   "suffix",
+		Delta:       delta,
+		SignedData:  jws,
+		RevealValue: rv,
 	}, nil
 }
 
@@ -1074,7 +1093,7 @@ func getCommitment(key *ecdsa.PrivateKey) (string, error) {
 		return "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, sha2_256)
+	c, err := commitment.GetCommitment(pubKey, sha2_256)
 	if err != nil {
 		return "", err
 	}

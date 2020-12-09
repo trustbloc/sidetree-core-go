@@ -163,11 +163,21 @@ func TestUpdateDocument(t *testing.T) {
 	t.Run("success - protocol version changed between create/update", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		// protocol value for hashing algorithm changed at block 100
-		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 200)
-		require.Nil(t, err)
+		pubJWK, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
+		require.NoError(t, err)
 
-		err = store.Put(updateOp)
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(1).MultihashAlgorithm)
+		require.NoError(t, err)
+
+		// protocol value for hashing algorithm changed at block 100
+		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 200)
+		require.NoError(t, err)
+
+		updateOp.RevealValue = rv
+
+		anchoredOp := getAnchoredOperation(updateOp, 200)
+
+		err = store.Put(anchoredOp)
 		require.Nil(t, err)
 
 		p := New("test", store, pc)
@@ -196,9 +206,20 @@ func TestUpdateDocument(t *testing.T) {
 		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
 		require.Equal(t, "special50", didDoc["test"])
 
+		pubJWK, err := pubkey.GetPublicKeyJWK(&nextUpdateKey.PublicKey)
+		require.NoError(t, err)
+
+		// previous operation commit value was calculated with protocol value at block 50
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(50).MultihashAlgorithm)
+		require.NoError(t, err)
+
 		// protocol value for hashing algorithm changed at block 100
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 500)
-		require.Nil(t, err)
+		op, nextUpdateKey, err := getUpdateOperation(nextUpdateKey, uniqueSuffix, 500)
+		require.NoError(t, err)
+
+		op.RevealValue = rv
+
+		updateOp = getAnchoredOperation(op, 500)
 		err = store.Put(updateOp)
 		require.Nil(t, err)
 
@@ -453,9 +474,20 @@ func TestRecover(t *testing.T) {
 	t.Run("success - protocol version changed between create and recover", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
-		// hashing algorithm changed at block 100
-		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 200)
+		// hashing algorithm changed at block 100 - calculate reveal based on the hashing protocol of previous operation (block 1)
+		pubJWK, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 		require.NoError(t, err)
+
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(1).MultihashAlgorithm)
+		require.NoError(t, err)
+
+		// hashing algorithm changed at block 100
+		op, nextRecoveryKey, err := getRecoverOperationWithBlockNum(recoveryKey, updateKey, uniqueSuffix, 200)
+		require.NoError(t, err)
+
+		op.RevealValue = rv
+
+		recoverOp := getAnchoredOperation(op, 200)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
 
@@ -502,8 +534,20 @@ func TestRecover(t *testing.T) {
 		require.Contains(t, string(docBytes), "recovered50")
 
 		// apply recover again - there was a protocol change at 100 (new hashing algorithm)
-		recoverOp, _, err = getAnchoredRecoverOperation(nextRecoveryKey, updateKey, uniqueSuffix, 200)
+		// hashing algorithm changed at block 100 - calculate reveal based on the hashing protocol of previous operation (block 1)
+		pubJWK, err := pubkey.GetPublicKeyJWK(&nextRecoveryKey.PublicKey)
 		require.NoError(t, err)
+
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(50).MultihashAlgorithm)
+		require.NoError(t, err)
+
+		// hashing algorithm changed at block 100
+		op, nextRecoveryKey, err := getRecoverOperationWithBlockNum(nextRecoveryKey, updateKey, uniqueSuffix, 200)
+		require.NoError(t, err)
+
+		op.RevealValue = rv
+
+		recoverOp = getAnchoredOperation(op, 200)
 		err = store.Put(recoverOp)
 		require.Nil(t, err)
 
@@ -534,49 +578,48 @@ func TestGetOperationCommitment(t *testing.T) {
 		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		reveal, p, err := p.getRevealValue(recoverOp)
+		rv, err := p.getRevealValue(recoverOp)
 		require.NoError(t, err)
-		require.NotNil(t, reveal)
-		require.NotEmpty(t, p)
+		require.NotEmpty(t, rv)
 
-		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm)
+		expected, err := commitment.GetCommitmentFromRevealValue(rv)
 		require.NoError(t, err)
 
 		c, err := getCommitment(recoveryKey, getProtocol(1))
 		require.NoError(t, err)
-		require.Equal(t, c, value)
+		require.Equal(t, c, expected)
 	})
 
 	t.Run("success - update", func(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		reveal, p, err := p.getRevealValue(updateOp)
+		rv, err := p.getRevealValue(updateOp)
 		require.NoError(t, err)
-		require.NotNil(t, reveal)
+		require.NotEmpty(t, rv)
 
-		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm)
+		expected, err := commitment.GetCommitmentFromRevealValue(rv)
 		require.NoError(t, err)
 
 		c, err := getCommitment(updateKey, getProtocol(1))
 		require.NoError(t, err)
-		require.Equal(t, c, value)
+		require.Equal(t, c, expected)
 	})
 
 	t.Run("success - deactivate", func(t *testing.T) {
 		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		reveal, p, err := p.getRevealValue(deactivateOp)
+		rv, err := p.getRevealValue(deactivateOp)
 		require.NoError(t, err)
-		require.NotNil(t, reveal)
+		require.NotEmpty(t, rv)
 
-		value, err := commitment.Calculate(reveal, p.MultihashAlgorithm)
+		expected, err := commitment.GetCommitmentFromRevealValue(rv)
 		require.NoError(t, err)
 
 		c, err := getCommitment(recoveryKey, getProtocol(1))
 		require.NoError(t, err)
-		require.Equal(t, c, value)
+		require.Equal(t, c, expected)
 	})
 
 	t.Run("error - protocol error", func(t *testing.T) {
@@ -587,7 +630,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		value, _, err := New("test", store, pcWithoutProtocols).getRevealValue(updateOp)
+		value, err := New("test", store, pcWithoutProtocols).getRevealValue(updateOp)
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
@@ -597,10 +640,9 @@ func TestGetOperationCommitment(t *testing.T) {
 		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
 		require.NoError(t, err)
 
-		value, p, err := p.getRevealValue(createOp)
+		value, err := p.getRevealValue(createOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Equal(t, p, protocol.Protocol{})
 		require.Contains(t, err.Error(), "create operation doesn't have reveal value")
 	})
 
@@ -612,10 +654,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp := getAnchoredOperation(recoverOp, 1)
 
-		value, p, err := p.getRevealValue(anchoredOp)
+		value, err := p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Equal(t, p, protocol.Protocol{})
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 
@@ -632,10 +673,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp := getAnchoredOperation(recoverOp, 1)
 
-		value, pv, err := p.getRevealValue(anchoredOp)
+		value, err := p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Equal(t, pv, protocol.Protocol{})
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for recover")
 
 		// test deactivate signed model
@@ -646,10 +686,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp = getAnchoredOperation(deactivateOp, 1)
 
-		value, pv, err = p.getRevealValue(anchoredOp)
+		value, err = p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Equal(t, pv, protocol.Protocol{})
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for deactivate")
 
 		// test deactivate signed model
@@ -664,10 +703,9 @@ func TestGetOperationCommitment(t *testing.T) {
 
 		anchoredOp = getAnchoredOperation(updateOp, 1)
 
-		value, pv, err = p.getRevealValue(anchoredOp)
+		value, err = p.getRevealValue(anchoredOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Equal(t, pv, protocol.Protocol{})
 		require.Contains(t, err.Error(), "failed to unmarshal signed data model for update")
 	})
 }
@@ -888,6 +926,11 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(updatePubKey, getProtocol(blockNumber).MultihashAlgorithm)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	op := &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
@@ -895,6 +938,7 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		Delta:        delta,
 		Type:         operation.TypeUpdate,
 		SignedData:   jws,
+		RevealValue:  rv,
 	}
 
 	return op, nextUpdateKey, nil
@@ -911,7 +955,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, p.MultihashAlgorithm)
+	c, err := commitment.GetCommitment(pubKey, p.MultihashAlgorithm)
 	if err != nil {
 		return nil, "", err
 	}
@@ -950,12 +994,18 @@ func getDeactivateOperationWithSigner(singer client.Signer, privateKey *ecdsa.Pr
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(signedDataModel.RecoveryKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.Operation{
 		Namespace:    mocks.DefaultNS,
 		ID:           "did:sidetree:" + uniqueSuffix,
 		UniqueSuffix: uniqueSuffix,
 		Type:         operation.TypeDeactivate,
 		SignedData:   jws,
+		RevealValue:  rv,
 	}, nil
 }
 
@@ -991,6 +1041,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 		OperationBuffer: []byte(recoverRequest.Operation),
 		Delta:           recoverRequest.Delta,
 		SignedData:      recoverRequest.SignedData,
+		RevealValue:     recoverRequest.RevealValue,
 	}, nextRecoveryKey, nil
 }
 
@@ -1007,11 +1058,17 @@ func getRecoverRequest(signer client.Signer, deltaModel *model.DeltaModel, signe
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(signedDataModel.RecoveryKey, getProtocol(blockNum).MultihashAlgorithm)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.RecoverRequest{
-		Operation:  operation.TypeRecover,
-		DidSuffix:  "suffix",
-		Delta:      deltaModel,
-		SignedData: jws,
+		Operation:   operation.TypeRecover,
+		DidSuffix:   "suffix",
+		Delta:       deltaModel,
+		SignedData:  jws,
+		RevealValue: rv,
 	}, nil
 }
 
@@ -1196,7 +1253,7 @@ func getCommitment(key *ecdsa.PrivateKey, p protocol.Protocol) (string, error) {
 		return "", err
 	}
 
-	return commitment.Calculate(pubKey, p.MultihashAlgorithm)
+	return commitment.GetCommitment(pubKey, p.MultihashAlgorithm)
 }
 
 func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p protocol.Protocol) (*model.SuffixDataModel, error) {

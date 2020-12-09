@@ -16,7 +16,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
-	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
 var logger = log.New("sidetree-core-processor")
@@ -87,36 +86,25 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionM
 	return rm, nil
 }
 
-func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation, multihashAlg uint) map[string][]*operation.AnchoredOperation {
+func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation) map[string][]*operation.AnchoredOperation {
 	opMap := make(map[string][]*operation.AnchoredOperation)
 
-	previousVersions := make(map[uint]bool)
-	if multihashAlg != 0 {
-		previousVersions[multihashAlg] = true
-	}
-
 	for _, op := range ops {
-		r, p, err := s.getRevealValue(op)
+		rv, err := s.getRevealValue(op)
 		if err != nil {
 			logger.Infof("[%s] Skipped bad operation while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
 
 			continue
 		}
 
-		if _, ok := previousVersions[p.MultihashAlgorithm]; !ok {
-			previousVersions[p.MultihashAlgorithm] = true
+		c, err := commitment.GetCommitmentFromRevealValue(rv)
+		if err != nil {
+			logger.Infof("[%s] Skipped calculating commitment while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
+
+			continue
 		}
 
-		for key := range previousVersions {
-			c, err := commitment.Calculate(r, key)
-			if err != nil {
-				logger.Infof("[%s] Skipped calculating commitment while creating operation hash map {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", s.name, op.UniqueSuffix, op.Type, op.TransactionTime, op.TransactionNumber, err)
-
-				continue
-			}
-
-			opMap[c] = append(opMap[c], op)
-		}
+		opMap[c] = append(opMap[c], op)
 	}
 
 	return opMap
@@ -164,14 +152,7 @@ func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation,
 
 	state := rm
 
-	p, err := s.pc.Get(rm.LastOperationProtocolGenesisTime)
-	if err != nil {
-		logger.Infof("[%s] Unable to apply operations due to protocol error '%s' {UniqueSuffix: %s}", s.name, uniqueSuffix)
-
-		return state
-	}
-
-	opMap := s.createOperationHashMap(ops, p.Protocol().MultihashAlgorithm)
+	opMap := s.createOperationHashMap(ops)
 
 	// holds applied commitments
 	commitmentMap := make(map[string]bool)
@@ -309,22 +290,22 @@ func sortOperations(ops []*operation.AnchoredOperation) {
 	})
 }
 
-func (s *OperationProcessor) getRevealValue(op *operation.AnchoredOperation) (*jws.JWK, protocol.Protocol, error) {
+func (s *OperationProcessor) getRevealValue(op *operation.AnchoredOperation) (string, error) {
 	if op.Type == operation.TypeCreate {
-		return nil, protocol.Protocol{}, errors.New("create operation doesn't have reveal value")
+		return "", errors.New("create operation doesn't have reveal value")
 	}
 
 	p, err := s.pc.Get(op.ProtocolGenesisTime)
 	if err != nil {
-		return nil, protocol.Protocol{}, fmt.Errorf("get operation reveal value - retrieve protocol: %s", err.Error())
+		return "", fmt.Errorf("get operation reveal value - retrieve protocol: %s", err.Error())
 	}
 
-	commitmentKey, err := p.OperationParser().GetRevealValue(op.OperationBuffer)
+	rv, err := p.OperationParser().GetRevealValue(op.OperationBuffer)
 	if err != nil {
-		return nil, protocol.Protocol{}, fmt.Errorf("get operation reveal value from operation parser: %s", err.Error())
+		return "", fmt.Errorf("get operation reveal value from operation parser: %s", err.Error())
 	}
 
-	return commitmentKey, p.Protocol(), nil
+	return rv, nil
 }
 
 func (s *OperationProcessor) getCommitment(op *operation.AnchoredOperation) (string, error) {

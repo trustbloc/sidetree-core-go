@@ -478,12 +478,12 @@ func generateOperation(num int) (*operation.QueuedOperation, error) {
 		Y:   "y",
 	}
 
-	updateCommitment, err := commitment.Calculate(updateJwk, sha2_256)
+	updateCommitment, err := commitment.GetCommitment(updateJwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	recoverComitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	recoverComitment, err := commitment.GetCommitment(recoverJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}

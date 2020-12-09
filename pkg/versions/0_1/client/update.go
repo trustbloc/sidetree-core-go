@@ -38,6 +38,9 @@ type UpdateRequestInfo struct {
 
 	// Signer that will be used for signing request specific subset of data
 	Signer Signer
+
+	// RevealValue is reveal value
+	RevealValue string
 }
 
 // NewUpdateRequest is utility function to create payload for 'update' request.
@@ -72,10 +75,11 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.UpdateRequest{
-		Operation:  operation.TypeUpdate,
-		DidSuffix:  info.DidSuffix,
-		Delta:      delta,
-		SignedData: jws,
+		Operation:   operation.TypeUpdate,
+		DidSuffix:   info.DidSuffix,
+		RevealValue: info.RevealValue,
+		Delta:       delta,
+		SignedData:  jws,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)
@@ -84,6 +88,10 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 func validateUpdateRequest(info *UpdateRequestInfo) error {
 	if info.DidSuffix == "" {
 		return errors.New("missing did unique suffix")
+	}
+
+	if info.RevealValue == "" {
+		return errors.New("missing reveal value")
 	}
 
 	if len(info.Patches) == 0 {

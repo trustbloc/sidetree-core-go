@@ -499,7 +499,7 @@ func getSuffixData(delta *model.DeltaModel) (*model.SuffixDataModel, error) {
 		X:   "x",
 	}
 
-	c, err := commitment.Calculate(jwk, sha2_256)
+	c, err := commitment.GetCommitment(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}

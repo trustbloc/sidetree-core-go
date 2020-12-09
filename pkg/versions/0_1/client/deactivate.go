@@ -38,6 +38,9 @@ type DeactivateRequestInfo struct {
 	// Signer that will be used for signing specific subset of request data
 	// Signer for recover operation must be recovery key
 	Signer Signer
+
+	// RevealValue is reveal value
+	RevealValue string
 }
 
 // NewDeactivateRequest is utility function to create payload for 'deactivate' request.
@@ -57,9 +60,10 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.DeactivateRequest{
-		Operation:  operation.TypeDeactivate,
-		DidSuffix:  info.DidSuffix,
-		SignedData: jws,
+		Operation:   operation.TypeDeactivate,
+		DidSuffix:   info.DidSuffix,
+		RevealValue: info.RevealValue,
+		SignedData:  jws,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)
@@ -68,6 +72,10 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 func validateDeactivateRequest(info *DeactivateRequestInfo) error {
 	if info.DidSuffix == "" {
 		return errors.New("missing did unique suffix")
+	}
+
+	if info.RevealValue == "" {
+		return errors.New("missing reveal value")
 	}
 
 	return validateSigner(info.Signer)

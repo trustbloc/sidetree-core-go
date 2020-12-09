@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -31,9 +32,9 @@ func (p *Parser) ParseDeactivateOperation(request []byte, batch bool) (*model.Op
 		return nil, errors.New("signed did suffix mismatch for deactivate")
 	}
 
-	revealValue, err := p.getRevealValueMultihash(signedData.RecoveryKey)
+	err = hashing.IsValidModelMultihash(signedData.RecoveryKey, schema.RevealValue)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get reveal value multihash for deactivate: %s", err.Error())
+		return nil, fmt.Errorf("canonicalized recovery public key hash doesn't match reveal value: %s", err.Error())
 	}
 
 	return &model.Operation{
@@ -41,7 +42,7 @@ func (p *Parser) ParseDeactivateOperation(request []byte, batch bool) (*model.Op
 		OperationBuffer: request,
 		UniqueSuffix:    schema.DidSuffix,
 		SignedData:      schema.SignedData,
-		RevealValue:     revealValue,
+		RevealValue:     schema.RevealValue,
 	}, nil
 }
 

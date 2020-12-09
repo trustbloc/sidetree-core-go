@@ -6,7 +6,6 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 
 type OperationParser struct {
@@ -23,17 +22,17 @@ type OperationParser struct {
 		result1 string
 		result2 error
 	}
-	GetRevealValueStub        func([]byte) (*jws.JWK, error)
+	GetRevealValueStub        func([]byte) (string, error)
 	getRevealValueMutex       sync.RWMutex
 	getRevealValueArgsForCall []struct {
 		arg1 []byte
 	}
 	getRevealValueReturns struct {
-		result1 *jws.JWK
+		result1 string
 		result2 error
 	}
 	getRevealValueReturnsOnCall map[int]struct {
-		result1 *jws.JWK
+		result1 string
 		result2 error
 	}
 	ParseStub        func(string, []byte) (*operation.Operation, error)
@@ -138,7 +137,7 @@ func (fake *OperationParser) GetCommitmentReturnsOnCall(i int, result1 string, r
 	}{result1, result2}
 }
 
-func (fake *OperationParser) GetRevealValue(arg1 []byte) (*jws.JWK, error) {
+func (fake *OperationParser) GetRevealValue(arg1 []byte) (string, error) {
 	var arg1Copy []byte
 	if arg1 != nil {
 		arg1Copy = make([]byte, len(arg1))
@@ -167,7 +166,7 @@ func (fake *OperationParser) GetRevealValueCallCount() int {
 	return len(fake.getRevealValueArgsForCall)
 }
 
-func (fake *OperationParser) GetRevealValueCalls(stub func([]byte) (*jws.JWK, error)) {
+func (fake *OperationParser) GetRevealValueCalls(stub func([]byte) (string, error)) {
 	fake.getRevealValueMutex.Lock()
 	defer fake.getRevealValueMutex.Unlock()
 	fake.GetRevealValueStub = stub
@@ -180,28 +179,28 @@ func (fake *OperationParser) GetRevealValueArgsForCall(i int) []byte {
 	return argsForCall.arg1
 }
 
-func (fake *OperationParser) GetRevealValueReturns(result1 *jws.JWK, result2 error) {
+func (fake *OperationParser) GetRevealValueReturns(result1 string, result2 error) {
 	fake.getRevealValueMutex.Lock()
 	defer fake.getRevealValueMutex.Unlock()
 	fake.GetRevealValueStub = nil
 	fake.getRevealValueReturns = struct {
-		result1 *jws.JWK
+		result1 string
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *OperationParser) GetRevealValueReturnsOnCall(i int, result1 *jws.JWK, result2 error) {
+func (fake *OperationParser) GetRevealValueReturnsOnCall(i int, result1 string, result2 error) {
 	fake.getRevealValueMutex.Lock()
 	defer fake.getRevealValueMutex.Unlock()
 	fake.GetRevealValueStub = nil
 	if fake.getRevealValueReturnsOnCall == nil {
 		fake.getRevealValueReturnsOnCall = make(map[int]struct {
-			result1 *jws.JWK
+			result1 string
 			result2 error
 		})
 	}
 	fake.getRevealValueReturnsOnCall[i] = struct {
-		result1 *jws.JWK
+		result1 string
 		result2 error
 	}{result1, result2}
 }

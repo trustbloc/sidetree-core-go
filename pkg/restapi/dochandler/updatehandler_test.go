@@ -139,12 +139,12 @@ func TestUpdateHandler_Update(t *testing.T) {
 }
 
 func getCreateRequestInfo() (*client.CreateRequestInfo, error) {
-	recoveryCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	recoveryCommitment, err := commitment.GetCommitment(recoverJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+	updateCommitment, err := commitment.GetCommitment(updateJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,12 @@ func getUpdateRequestInfo(uniqueSuffix string) *client.UpdateRequestInfo {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+	rv, err := commitment.GetRevealValue(pubKey, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
+	updateCommitment, err := commitment.GetCommitment(updateJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -186,6 +191,7 @@ func getUpdateRequestInfo(uniqueSuffix string) *client.UpdateRequestInfo {
 		UpdateCommitment: updateCommitment,
 		MultihashCode:    sha2_256,
 		Signer:           ecsigner.New(privateKey, "ES256", ""),
+		RevealValue:      rv,
 	}
 }
 
@@ -196,10 +202,21 @@ func getDeactivateRequestInfo(uniqueSuffix string) *client.DeactivateRequestInfo
 		panic(err)
 	}
 
+	jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+
+	rv, err := commitment.GetRevealValue(jwk, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
 	return &client.DeactivateRequestInfo{
 		DidSuffix:   uniqueSuffix,
-		RecoveryKey: recoverJWK,
+		RecoveryKey: jwk,
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
+		RevealValue: rv,
 	}
 }
 
@@ -214,12 +231,17 @@ func getRecoverRequestInfo(uniqueSuffix string) *client.RecoverRequestInfo {
 		panic(err)
 	}
 
-	recoveryCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	recoveryCommitment, err := commitment.GetCommitment(recoverJWK, sha2_256)
 	if err != nil {
 		panic(err)
 	}
 
-	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+	updateCommitment, err := commitment.GetCommitment(updateJWK, sha2_256)
+	if err != nil {
+		panic(err)
+	}
+
+	rv, err := commitment.GetRevealValue(recoveryKey, sha2_256)
 	if err != nil {
 		panic(err)
 	}
@@ -232,6 +254,7 @@ func getRecoverRequestInfo(uniqueSuffix string) *client.RecoverRequestInfo {
 		UpdateCommitment:   updateCommitment,
 		MultihashCode:      sha2_256,
 		Signer:             ecsigner.New(privateKey, "ES256", ""),
+		RevealValue:        rv,
 	}
 }
 

@@ -43,8 +43,16 @@ func TestNewUpdateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
-	t.Run("missing json patch", func(t *testing.T) {
+	t.Run("missing reveal value", func(t *testing.T) {
 		info := &UpdateRequestInfo{DidSuffix: didSuffix}
+
+		request, err := NewUpdateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing reveal value")
+	})
+	t.Run("missing json patch", func(t *testing.T) {
+		info := &UpdateRequestInfo{DidSuffix: didSuffix, RevealValue: "reveal"}
 
 		request, err := NewUpdateRequest(info)
 		require.Error(t, err)
@@ -53,10 +61,11 @@ func TestNewUpdateRequest(t *testing.T) {
 	})
 	t.Run("multihash not supported", func(t *testing.T) {
 		info := &UpdateRequestInfo{
-			DidSuffix: didSuffix,
-			Patches:   patches,
-			UpdateKey: updateJWK,
-			Signer:    signer,
+			DidSuffix:   didSuffix,
+			Patches:     patches,
+			UpdateKey:   updateJWK,
+			Signer:      signer,
+			RevealValue: "reveal",
 		}
 
 		request, err := NewUpdateRequest(info)
@@ -73,6 +82,7 @@ func TestNewUpdateRequest(t *testing.T) {
 			Patches:       patches,
 			MultihashCode: sha2_256,
 			Signer:        signer,
+			RevealValue:   "reveal",
 		}
 
 		request, err := NewUpdateRequest(info)
@@ -90,6 +100,7 @@ func TestNewUpdateRequest(t *testing.T) {
 			MultihashCode: sha2_256,
 			UpdateKey:     updateJWK,
 			Signer:        signer,
+			RevealValue:   "reveal",
 		}
 
 		request, err := NewUpdateRequest(info)
@@ -104,6 +115,7 @@ func TestNewUpdateRequest(t *testing.T) {
 			MultihashCode: sha2_256,
 			UpdateKey:     updateJWK,
 			Signer:        NewMockSigner(errors.New(signerErr)),
+			RevealValue:   "reveal",
 		}
 
 		request, err := NewUpdateRequest(info)
@@ -117,7 +129,7 @@ func TestNewUpdateRequest(t *testing.T) {
 
 		signer := ecsigner.New(privateKey, "ES256", "key-1")
 
-		currentCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+		currentCommitment, err := commitment.GetCommitment(updateJWK, sha2_256)
 		require.NoError(t, err)
 
 		info := &UpdateRequestInfo{
@@ -127,6 +139,7 @@ func TestNewUpdateRequest(t *testing.T) {
 			UpdateKey:        updateJWK,
 			UpdateCommitment: currentCommitment,
 			Signer:           signer,
+			RevealValue:      "reveal",
 		}
 
 		request, err := NewUpdateRequest(info)
@@ -146,6 +159,7 @@ func TestNewUpdateRequest(t *testing.T) {
 			MultihashCode: sha2_256,
 			UpdateKey:     updateJWK,
 			Signer:        signer,
+			RevealValue:   "reveal",
 		}
 
 		request, err := NewUpdateRequest(info)

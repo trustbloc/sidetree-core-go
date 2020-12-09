@@ -68,17 +68,22 @@ func IsComputedUsingMultihashAlgorithm(encodedMultihash string, code uint64) boo
 
 // GetMultihashCode returns multihash code from encoded multihash.
 func GetMultihashCode(encodedMultihash string) (uint64, error) {
-	multihashBytes, err := encoder.DecodeString(encodedMultihash)
+	mh, err := GetMultihash(encodedMultihash)
 	if err != nil {
-		return 0, err
-	}
-
-	mh, err := multihash.Decode(multihashBytes)
-	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to get decoded multihash: %s", err.Error())
 	}
 
 	return mh.Code, nil
+}
+
+// GetMultihash returns decoded multihash from encoded multihash.
+func GetMultihash(encodedMultihash string) (*multihash.DecodedMultihash, error) {
+	multihashBytes, err := encoder.DecodeString(encodedMultihash)
+	if err != nil {
+		return nil, err
+	}
+
+	return multihash.Decode(multihashBytes)
 }
 
 // IsValidModelMultihash compares model with provided model multihash.
