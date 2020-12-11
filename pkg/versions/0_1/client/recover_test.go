@@ -32,6 +32,15 @@ func TestNewRecoverRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
+	t.Run("missing reveal value", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+		info.RevealValue = ""
+
+		request, err := NewRecoverRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing reveal value")
+	})
 	t.Run("missing opaque document", func(t *testing.T) {
 		info := getRecoverRequestInfo()
 		info.OpaqueDocument = ""
@@ -99,7 +108,7 @@ func TestNewRecoverRequest(t *testing.T) {
 	t.Run("error - re-using public keys for commitment is not allowed", func(t *testing.T) {
 		info := getRecoverRequestInfo()
 
-		currentCommitment, err := commitment.Calculate(info.RecoveryKey, info.MultihashCode)
+		currentCommitment, err := commitment.GetCommitment(info.RecoveryKey, info.MultihashCode)
 		require.NoError(t, err)
 
 		info.RecoveryCommitment = currentCommitment
@@ -164,5 +173,6 @@ func getRecoverRequestInfo() *RecoverRequestInfo {
 		RecoveryKey:    jwk,
 		MultihashCode:  sha2_256,
 		Signer:         ecsigner.New(privKey, "ES256", ""),
+		RevealValue:    "reveal",
 	}
 }

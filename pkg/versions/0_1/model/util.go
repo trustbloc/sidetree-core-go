@@ -26,25 +26,28 @@ func GetAnchoredOperation(op *Operation) (*operation.AnchoredOperation, error) {
 
 	case operation.TypeUpdate:
 		request = UpdateRequest{
-			Operation:  op.Type,
-			DidSuffix:  op.UniqueSuffix,
-			Delta:      op.Delta,
-			SignedData: op.SignedData,
+			Operation:   op.Type,
+			DidSuffix:   op.UniqueSuffix,
+			Delta:       op.Delta,
+			SignedData:  op.SignedData,
+			RevealValue: op.RevealValue,
 		}
 
 	case operation.TypeDeactivate:
 		request = DeactivateRequest{
-			Operation:  op.Type,
-			DidSuffix:  op.UniqueSuffix,
-			SignedData: op.SignedData,
+			Operation:   op.Type,
+			DidSuffix:   op.UniqueSuffix,
+			SignedData:  op.SignedData,
+			RevealValue: op.RevealValue,
 		}
 
 	case operation.TypeRecover:
 		request = RecoverRequest{
-			Operation:  op.Type,
-			DidSuffix:  op.UniqueSuffix,
-			Delta:      op.Delta,
-			SignedData: op.SignedData,
+			Operation:   op.Type,
+			DidSuffix:   op.UniqueSuffix,
+			Delta:       op.Delta,
+			SignedData:  op.SignedData,
+			RevealValue: op.RevealValue,
 		}
 
 	default:

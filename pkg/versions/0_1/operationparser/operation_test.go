@@ -83,16 +83,18 @@ func TestGetOperation(t *testing.T) {
 
 		op, err := New(invalid).Parse(namespace, operation)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "operation size[698] exceeds maximum operation size[20]")
+		require.Contains(t, err.Error(), "operation size[761] exceeds maximum operation size[20]")
 		require.Nil(t, op)
 	})
 	t.Run("operation parsing error", func(t *testing.T) {
 		// set-up invalid hash algorithm in protocol configuration
 		invalid := protocol.Protocol{
-			SignatureAlgorithms: []string{"not-used"},
-			MaxOperationSize:    maxOperationSize,
-			MaxDeltaSize:        maxDeltaSize,
-			MaxProofSize:        maxProofSize,
+			SignatureAlgorithms:    []string{"not-used"},
+			MaxOperationSize:       maxOperationSize,
+			MaxDeltaSize:           maxDeltaSize,
+			MaxProofSize:           maxProofSize,
+			MaxOperationHashLength: maxHashLength,
+			MultihashAlgorithm:     18,
 		}
 
 		operation, err := getRecoverRequestBytes()

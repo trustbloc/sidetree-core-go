@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package commitment
 
 import (
+	"fmt"
+
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
@@ -17,8 +19,8 @@ import (
 
 var logger = log.New("sidetree-core-commitment")
 
-// Calculate will calculate commitment hash from JWK.
-func Calculate(jwk *jws.JWK, multihashCode uint) (string, error) {
+// GetCommitment will calculate commitment from JWK.
+func GetCommitment(jwk *jws.JWK, multihashCode uint) (string, error) {
 	data, err := canonicalizer.MarshalCanonical(jwk)
 	if err != nil {
 		return "", err
@@ -39,6 +41,31 @@ func Calculate(jwk *jws.JWK, multihashCode uint) (string, error) {
 	multiHash, err := hashing.ComputeMultihash(multihashCode, dataHash)
 	if err != nil {
 		return "", err
+	}
+
+	return encoder.EncodeToString(multiHash), nil
+}
+
+// GetRevealValue will calculate reveal value from JWK.
+func GetRevealValue(jwk *jws.JWK, multihashCode uint) (string, error) {
+	rv, err := hashing.CalculateModelMultihash(jwk, multihashCode)
+	if err != nil {
+		return "", fmt.Errorf("failed to get reveal value: %s", err.Error())
+	}
+
+	return rv, nil
+}
+
+// GetCommitmentFromRevealValue will calculate commitment from reveal value.
+func GetCommitmentFromRevealValue(rv string) (string, error) {
+	mh, err := hashing.GetMultihash(rv)
+	if err != nil {
+		return "", fmt.Errorf("failed to get commitment from reveal value (get multihash): %s", err.Error())
+	}
+
+	multiHash, err := hashing.ComputeMultihash(uint(mh.Code), mh.Digest)
+	if err != nil {
+		return "", fmt.Errorf("failed to get commitment from reveal value (compute multihash): %s", err.Error())
 	}
 
 	return encoder.EncodeToString(multiHash), nil

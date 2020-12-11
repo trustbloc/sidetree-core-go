@@ -44,7 +44,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Equal(t, operation.TypeUpdate, op.Type)
 
 		signedData, err := parser.ParseSignedDataForUpdate(op.SignedData)
-		expectedRevealValue, err := parser.getRevealValueMultihash(signedData.UpdateKey)
+		expectedRevealValue, err := commitment.GetRevealValue(signedData.UpdateKey, sha2_256)
 		require.NoError(t, err)
 
 		require.Equal(t, expectedRevealValue, op.RevealValue)
@@ -121,7 +121,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		delta, err := getUpdateDelta()
 		require.NoError(t, err)
 
-		currentCommitment, err := commitment.Calculate(testJWK, sha2_256)
+		currentCommitment, err := commitment.GetCommitment(testJWK, sha2_256)
 		require.NoError(t, err)
 
 		delta.UpdateCommitment = currentCommitment
@@ -212,7 +212,7 @@ func TestValidateUpdateDelta(t *testing.T) {
 }
 
 func TestValidateUpdateRequest(t *testing.T) {
-	parser := New(protocol.Protocol{})
+	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithm: 18})
 
 	t.Run("success", func(t *testing.T) {
 		update, err := getDefaultUpdateRequest()
@@ -252,16 +252,22 @@ func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {
 		UpdateKey: testJWK,
 	}
 
+	rv, err := commitment.GetRevealValue(testJWK, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	compactJWS, err := signutil.SignModel(signedModel, NewMockSigner())
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.UpdateRequest{
-		DidSuffix:  "suffix",
-		SignedData: compactJWS,
-		Operation:  operation.TypeUpdate,
-		Delta:      delta,
+		DidSuffix:   "suffix",
+		SignedData:  compactJWS,
+		Operation:   operation.TypeUpdate,
+		Delta:       delta,
+		RevealValue: rv,
 	}, nil
 }
 

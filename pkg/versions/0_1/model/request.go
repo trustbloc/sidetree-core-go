@@ -55,6 +55,9 @@ type UpdateRequest struct {
 	// DidSuffix is the suffix of the DID
 	DidSuffix string `json:"didSuffix"`
 
+	// RevealValue is the reveal value
+	RevealValue string `json:"revealValue"`
+
 	// SignedData is compact JWS - signature information
 	SignedData string `json:"signedData"`
 
@@ -71,6 +74,9 @@ type DeactivateRequest struct {
 	// DidSuffix of the DID
 	// Required: true
 	DidSuffix string `json:"didSuffix"`
+
+	// RevealValue is the reveal value
+	RevealValue string `json:"revealValue"`
 
 	// Compact JWS - signature information
 	SignedData string `json:"signedData"`
@@ -105,6 +111,9 @@ type DeactivateSignedDataModel struct {
 	// Required: true
 	DidSuffix string `json:"didSuffix"`
 
+	// RevealValue is the reveal value
+	RevealValue string `json:"revealValue"`
+
 	// RecoveryKey is the current recovery key
 	RecoveryKey *jws.JWK `json:"recoveryKey"`
 }
@@ -118,6 +127,9 @@ type RecoverRequest struct {
 	// DidSuffix is the suffix of the DID
 	// Required: true
 	DidSuffix string `json:"didSuffix"`
+
+	// RevealValue is the reveal value
+	RevealValue string `json:"revealValue"`
 
 	// Compact JWS - signature information
 	SignedData string `json:"signedData"`

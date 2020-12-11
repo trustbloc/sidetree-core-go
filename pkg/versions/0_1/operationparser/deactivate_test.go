@@ -14,6 +14,8 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
+	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
@@ -23,10 +25,11 @@ const sha2_256 = 18
 
 func TestParseDeactivateOperation(t *testing.T) {
 	p := protocol.Protocol{
-		MaxProofSize:        maxProofSize,
-		MultihashAlgorithm:  sha2_256,
-		SignatureAlgorithms: []string{"alg"},
-		KeyAlgorithms:       []string{"crv"},
+		MaxProofSize:           maxProofSize,
+		MultihashAlgorithm:     sha2_256,
+		MaxOperationHashLength: maxHashLength,
+		SignatureAlgorithms:    []string{"alg"},
+		KeyAlgorithms:          []string{"crv"},
 	}
 
 	parser := New(p)
@@ -40,7 +43,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Equal(t, operation.TypeDeactivate, op.Type)
 
 		signedData, err := parser.ParseSignedDataForDeactivate(op.SignedData)
-		expectedRevealValue, err := parser.getRevealValueMultihash(signedData.RecoveryKey)
+		expectedRevealValue, err := commitment.GetRevealValue(signedData.RecoveryKey, sha2_256)
 		require.NoError(t, err)
 
 		require.Equal(t, expectedRevealValue, op.RevealValue)
@@ -112,10 +115,11 @@ func TestParseDeactivateOperation(t *testing.T) {
 	})
 	t.Run("error - key algorithm not supported", func(t *testing.T) {
 		p := protocol.Protocol{
-			MaxProofSize:        maxProofSize,
-			MultihashAlgorithm:  sha2_256,
-			SignatureAlgorithms: []string{"alg"},
-			KeyAlgorithms:       []string{"other"},
+			MaxProofSize:           maxProofSize,
+			MultihashAlgorithm:     sha2_256,
+			MaxOperationHashLength: maxHashLength,
+			SignatureAlgorithms:    []string{"alg"},
+			KeyAlgorithms:          []string{"other"},
 		}
 		parser := New(p)
 
@@ -135,10 +139,16 @@ func getDeactivateRequest(signedData *model.DeactivateSignedDataModel) (*model.D
 		return nil, err
 	}
 
+	revealValue, err := hashing.CalculateModelMultihash(signedData.RecoveryKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.DeactivateRequest{
-		Operation:  operation.TypeDeactivate,
-		DidSuffix:  "did",
-		SignedData: compactJWS,
+		Operation:   operation.TypeDeactivate,
+		DidSuffix:   "did",
+		SignedData:  compactJWS,
+		RevealValue: revealValue,
 	}, nil
 }
 

@@ -43,9 +43,9 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 		}
 	}
 
-	revealValue, err := p.getRevealValueMultihash(signedData.RecoveryKey)
+	err = hashing.IsValidModelMultihash(signedData.RecoveryKey, schema.RevealValue)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get reveal value multihash for recover: %s", err.Error())
+		return nil, fmt.Errorf("canonicalized recovery public key hash doesn't match reveal value: %s", err.Error())
 	}
 
 	return &model.Operation{
@@ -54,7 +54,7 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 		UniqueSuffix:    schema.DidSuffix,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
-		RevealValue:     revealValue,
+		RevealValue:     schema.RevealValue,
 	}, nil
 }
 
@@ -205,13 +205,8 @@ func contains(values []string, value string) bool {
 	return false
 }
 
-// getRevealValueMultihash calculates reveal value multihash.
-func (p *Parser) getRevealValueMultihash(value interface{}) (string, error) {
-	return hashing.CalculateModelMultihash(value, p.MultihashAlgorithm)
-}
-
 func validateCommitment(jwk *jws.JWK, multihashCode uint, nextCommitment string) error {
-	currentCommitment, err := commitment.Calculate(jwk, multihashCode)
+	currentCommitment, err := commitment.GetCommitment(jwk, multihashCode)
 	if err != nil {
 		return fmt.Errorf("calculate current commitment: %s", err.Error())
 	}

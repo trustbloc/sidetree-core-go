@@ -10,7 +10,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 
@@ -72,7 +71,7 @@ type TxnProcessor interface {
 type OperationParser interface {
 	Parse(namespace string, operation []byte) (*operation.Operation, error)
 	ParseDID(namespace, shortOrLongFormDID string) (string, []byte, error)
-	GetRevealValue(operation []byte) (*jws.JWK, error)
+	GetRevealValue(operation []byte) (string, error)
 	GetCommitment(operation []byte) (string, error)
 }
 

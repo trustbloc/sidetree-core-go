@@ -130,7 +130,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		require.Error(t, err)
 		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "failed to validate signed data for update[0]: proof size[264] exceeds maximum proof size[10]")
+		require.Contains(t, err.Error(), "failed to validate signed data for update[0]: proof size[376] exceeds maximum proof size[10]")
 	})
 
 	t.Run("error - delta exceeds maximum delta size in chunk file", func(t *testing.T) {

@@ -403,12 +403,12 @@ func generateCreateOperation(num int) ([]byte, error) {
 		Y:   "y",
 	}
 
-	recoverCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	recoverCommitment, err := commitment.GetCommitment(recoverJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
 
-	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+	updateCommitment, err := commitment.GetCommitment(updateJWK, sha2_256)
 	if err != nil {
 		return nil, err
 	}
@@ -445,6 +445,11 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
+	rv, err := commitment.GetRevealValue(jwk, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.RecoverRequestInfo{
 		DidSuffix:          fmt.Sprintf("recover-%d", num),
 		OpaqueDocument:     `{"test":"value"}`,
@@ -453,6 +458,7 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		RecoveryKey:        jwk,
 		MultihashCode:      sha2_256,
 		Signer:             ecsigner.New(privKey, "ES256", ""),
+		RevealValue:        rv,
 	}
 
 	return client.NewRecoverRequest(info)
@@ -464,10 +470,21 @@ func generateDeactivateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
+	recoveryPubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	rv, err := commitment.GetRevealValue(recoveryPubKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.DeactivateRequestInfo{
 		DidSuffix:   fmt.Sprintf("deactivate-%d", num),
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
-		RecoveryKey: testJWK,
+		RecoveryKey: recoveryPubKey,
+		RevealValue: rv,
 	}
 
 	return client.NewDeactivateRequest(info)
@@ -489,13 +506,24 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
+	updatePubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	rv, err := commitment.GetRevealValue(updatePubKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &client.UpdateRequestInfo{
 		DidSuffix:        fmt.Sprintf("update-%d", num),
 		Signer:           ecsigner.New(privateKey, "ES256", ""),
 		UpdateCommitment: updateCommitment,
-		UpdateKey:        testJWK,
+		UpdateKey:        updatePubKey,
 		Patches:          []patch.Patch{testPatch},
 		MultihashCode:    sha2_256,
+		RevealValue:      rv,
 	}
 
 	return client.NewUpdateRequest(info)
@@ -503,12 +531,6 @@ func generateUpdateOperation(num int) ([]byte, error) {
 
 func getTestPatch() (patch.Patch, error) {
 	return patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "Jane"}]`)
-}
-
-var testJWK = &jws.JWK{
-	Kty: "kty",
-	Crv: "P-256",
-	X:   "x",
 }
 
 func generateUniqueCommitment() (string, error) {
@@ -522,7 +544,7 @@ func generateUniqueCommitment() (string, error) {
 		return "", err
 	}
 
-	c, err := commitment.Calculate(pubKey, sha2_256)
+	c, err := commitment.GetCommitment(pubKey, sha2_256)
 	if err != nil {
 		return "", err
 	}

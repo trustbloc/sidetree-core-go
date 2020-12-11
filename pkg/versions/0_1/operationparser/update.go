@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
@@ -39,9 +40,9 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 		}
 	}
 
-	revealValue, err := p.getRevealValueMultihash(signedData.UpdateKey)
+	err = hashing.IsValidModelMultihash(signedData.UpdateKey, schema.RevealValue)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get reveal value multihash for update: %s", err.Error())
+		return nil, fmt.Errorf("canonicalized update public key hash doesn't match reveal value: %s", err.Error())
 	}
 
 	return &model.Operation{
@@ -50,7 +51,7 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 		UniqueSuffix:    schema.DidSuffix,
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
-		RevealValue:     revealValue,
+		RevealValue:     schema.RevealValue,
 	}, nil
 }
 

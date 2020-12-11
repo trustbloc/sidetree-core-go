@@ -17,6 +17,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
 )
 
 func TestNewDeactivateRequest(t *testing.T) {
@@ -28,8 +29,20 @@ func TestNewDeactivateRequest(t *testing.T) {
 		require.Empty(t, request)
 		require.Contains(t, err.Error(), "missing did unique suffix")
 	})
+	t.Run("missing reveal value", func(t *testing.T) {
+		info := &DeactivateRequestInfo{DidSuffix: "suffix"}
+
+		request, err := NewDeactivateRequest(info)
+		require.Error(t, err)
+		require.Empty(t, request)
+		require.Contains(t, err.Error(), "missing reveal value")
+	})
 	t.Run("signing error", func(t *testing.T) {
-		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: NewMockSigner(errors.New(signerErr))}
+		info := &DeactivateRequestInfo{
+			DidSuffix:   "whatever",
+			Signer:      NewMockSigner(errors.New(signerErr)),
+			RevealValue: "reveal",
+		}
 
 		request, err := NewDeactivateRequest(info)
 		require.Error(t, err)
@@ -40,9 +53,17 @@ func TestNewDeactivateRequest(t *testing.T) {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err)
 
+		jwk, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+		require.NoError(t, err)
+
 		signer := ecsigner.New(privateKey, "ES256", "")
 
-		info := &DeactivateRequestInfo{DidSuffix: "whatever", Signer: signer}
+		info := &DeactivateRequestInfo{
+			DidSuffix:   "whatever",
+			Signer:      signer,
+			RecoveryKey: jwk,
+			RevealValue: "reveal",
+		}
 
 		request, err := NewDeactivateRequest(info)
 		require.NoError(t, err)

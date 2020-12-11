@@ -352,7 +352,7 @@ func getSuffixData() (*model.SuffixDataModel, error) {
 		X:   "x",
 	}
 
-	recoveryCommitment, err := commitment.Calculate(jwk, sha2_256)
+	recoveryCommitment, err := commitment.GetCommitment(jwk, sha2_256)
 	if err != nil {
 		return nil, err
 	}

@@ -41,10 +41,10 @@ func TestNewCreateRequest(t *testing.T) {
 	updateJWK, err := pubkey.GetPublicKeyJWK(&updatePrivateKey.PublicKey)
 	require.NoError(t, err)
 
-	recoveryCommitment, err := commitment.Calculate(recoverJWK, sha2_256)
+	recoveryCommitment, err := commitment.GetCommitment(recoverJWK, sha2_256)
 	require.NoError(t, err)
 
-	updateCommitment, err := commitment.Calculate(updateJWK, sha2_256)
+	updateCommitment, err := commitment.GetCommitment(updateJWK, sha2_256)
 	require.NoError(t, err)
 
 	t.Run("missing opaque document or patches", func(t *testing.T) {

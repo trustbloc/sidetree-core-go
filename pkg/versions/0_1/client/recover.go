@@ -48,6 +48,9 @@ type RecoverRequestInfo struct {
 	// Signer will be used for signing specific subset of request data
 	// Signer for recover operation must be recovery key
 	Signer Signer
+
+	// RevealValue is reveal value
+	RevealValue string
 }
 
 // NewRecoverRequest is utility function to create payload for 'recovery' request.
@@ -89,10 +92,11 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 	}
 
 	schema := &model.RecoverRequest{
-		Operation:  operation.TypeRecover,
-		DidSuffix:  info.DidSuffix,
-		Delta:      delta,
-		SignedData: jws,
+		Operation:   operation.TypeRecover,
+		DidSuffix:   info.DidSuffix,
+		RevealValue: info.RevealValue,
+		Delta:       delta,
+		SignedData:  jws,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)
@@ -101,6 +105,10 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 func validateRecoverRequest(info *RecoverRequestInfo) error {
 	if info.DidSuffix == "" {
 		return errors.New("missing did unique suffix")
+	}
+
+	if info.RevealValue == "" {
+		return errors.New("missing reveal value")
 	}
 
 	if info.OpaqueDocument == "" && len(info.Patches) == 0 {
@@ -127,7 +135,7 @@ func validateRecoveryKey(key *jws.JWK) error {
 }
 
 func validateCommitment(jwk *jws.JWK, multihashCode uint, nextCommitment string) error {
-	currentCommitment, err := commitment.Calculate(jwk, multihashCode)
+	currentCommitment, err := commitment.GetCommitment(jwk, multihashCode)
 	if err != nil {
 		return fmt.Errorf("calculate current commitment: %s", err.Error())
 	}
