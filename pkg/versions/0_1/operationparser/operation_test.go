@@ -30,7 +30,7 @@ func TestGetOperation(t *testing.T) {
 		MaxOperationHashLength: maxHashLength,
 		MaxDeltaSize:           maxDeltaSize,
 		MaxProofSize:           maxProofSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
 		Patches:                []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
@@ -94,7 +94,7 @@ func TestGetOperation(t *testing.T) {
 			MaxDeltaSize:           maxDeltaSize,
 			MaxProofSize:           maxProofSize,
 			MaxOperationHashLength: maxHashLength,
-			MultihashAlgorithm:     18,
+			MultihashAlgorithms:    []uint{sha2_256},
 		}
 
 		operation, err := getRecoverRequestBytes()

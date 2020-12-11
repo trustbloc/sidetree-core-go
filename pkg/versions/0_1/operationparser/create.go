@@ -49,7 +49,7 @@ func (p *Parser) ParseCreateOperation(request []byte, batch bool) (*model.Operat
 		}
 	}
 
-	uniqueSuffix, err := hashing.CalculateModelMultihash(schema.SuffixData, p.MultihashAlgorithm)
+	uniqueSuffix, err := model.GetUniqueSuffix(schema.SuffixData, p.MultihashAlgorithms)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +111,8 @@ func (p *Parser) validateMultihash(mh, alias string) error {
 		return fmt.Errorf("%s length[%d] exceeds maximum hash length[%d]", alias, len(mh), p.MaxOperationHashLength)
 	}
 
-	if !hashing.IsComputedUsingMultihashAlgorithm(mh, uint64(p.MultihashAlgorithm)) {
-		return fmt.Errorf("%s is not computed with the required hash algorithm: %d", alias, p.MultihashAlgorithm)
+	if !hashing.IsComputedUsingMultihashAlgorithms(mh, p.MultihashAlgorithms) {
+		return fmt.Errorf("%s is not computed with the required hash algorithms: %d", alias, p.MultihashAlgorithms)
 	}
 
 	return nil

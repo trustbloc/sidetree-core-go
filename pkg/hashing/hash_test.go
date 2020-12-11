@@ -72,14 +72,14 @@ func TestIsComputedUsingHashAlgorithm(t *testing.T) {
 	require.NotNil(t, hash)
 
 	key := encoder.EncodeToString(hash)
-	ok := IsComputedUsingMultihashAlgorithm(key, sha2_256)
+	ok := IsComputedUsingMultihashAlgorithms(key, []uint{sha2_256})
 	require.True(t, ok)
 
 	// use random code to fail
-	ok = IsComputedUsingMultihashAlgorithm(key, 55)
+	ok = IsComputedUsingMultihashAlgorithms(key, []uint{55})
 	require.False(t, ok)
 
-	ok = IsComputedUsingMultihashAlgorithm("invalid", sha2_256)
+	ok = IsComputedUsingMultihashAlgorithms("invalid", []uint{sha2_256})
 	require.False(t, ok)
 }
 

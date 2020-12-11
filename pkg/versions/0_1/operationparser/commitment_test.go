@@ -126,7 +126,7 @@ func TestParser_GetRevealValue(t *testing.T) {
 		pubJWK, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 		require.NoError(t, err)
 
-		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithm)
+		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		require.Equal(t, rv, expected)
@@ -143,7 +143,7 @@ func TestParser_GetRevealValue(t *testing.T) {
 		pubJWK, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 		require.NoError(t, err)
 
-		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithm)
+		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		require.Equal(t, rv, expected)
@@ -160,7 +160,7 @@ func TestParser_GetRevealValue(t *testing.T) {
 		pubJWK, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
 		require.NoError(t, err)
 
-		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithm)
+		expected, err := commitment.GetRevealValue(pubJWK, parser.Protocol.MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		require.Equal(t, rv, expected)
@@ -206,7 +206,7 @@ func generateRecoverRequest(recoveryKey *ecdsa.PrivateKey, recoveryCommitment st
 		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment, // not evaluated in operation getting commitment/reveal value
 		RecoveryKey:        jwk,
-		MultihashCode:      p.MultihashAlgorithm,
+		MultihashCode:      p.MultihashAlgorithms[0],
 		Signer:             ecsigner.New(recoveryKey, "ES256", ""),
 		RevealValue:        rv,
 	}
@@ -219,7 +219,7 @@ func generateCreateRequest(recoveryCommitment, updateCommitment string, p protoc
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment,
-		MultihashCode:      p.MultihashAlgorithm,
+		MultihashCode:      p.MultihashAlgorithms[0],
 	}
 
 	return client.NewCreateRequest(info)
@@ -268,7 +268,7 @@ func generateUpdateRequest(updateKey *ecdsa.PrivateKey, updateCommitment string,
 		UpdateCommitment: updateCommitment,
 		UpdateKey:        jwk,
 		Patches:          []patch.Patch{testPatch},
-		MultihashCode:    p.MultihashAlgorithm,
+		MultihashCode:    p.MultihashAlgorithms[0],
 		RevealValue:      rv,
 	}
 
@@ -286,7 +286,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.GetCommitment(pubKey, p.MultihashAlgorithm)
+	c, err := commitment.GetCommitment(pubKey, p.MultihashAlgorithms[0])
 	if err != nil {
 		return nil, "", err
 	}

@@ -166,7 +166,7 @@ func TestUpdateDocument(t *testing.T) {
 		pubJWK, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
 		require.NoError(t, err)
 
-		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(1).MultihashAlgorithm)
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(1).MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		// protocol value for hashing algorithm changed at block 100
@@ -210,7 +210,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.NoError(t, err)
 
 		// previous operation commit value was calculated with protocol value at block 50
-		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(50).MultihashAlgorithm)
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(50).MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		// protocol value for hashing algorithm changed at block 100
@@ -478,7 +478,7 @@ func TestRecover(t *testing.T) {
 		pubJWK, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
 		require.NoError(t, err)
 
-		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(1).MultihashAlgorithm)
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(1).MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		// hashing algorithm changed at block 100
@@ -538,7 +538,7 @@ func TestRecover(t *testing.T) {
 		pubJWK, err := pubkey.GetPublicKeyJWK(&nextRecoveryKey.PublicKey)
 		require.NoError(t, err)
 
-		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(50).MultihashAlgorithm)
+		rv, err := commitment.GetRevealValue(pubJWK, getProtocol(50).MultihashAlgorithms[0])
 		require.NoError(t, err)
 
 		// hashing algorithm changed at block 100
@@ -906,7 +906,7 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		Patches:          []patch.Patch{jsonPatch},
 	}
 
-	deltaHash, err := hashing.CalculateModelMultihash(delta, getProtocol(blockNumber).MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, getProtocol(blockNumber).MultihashAlgorithms[0])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -926,7 +926,7 @@ func getUpdateOperationWithSigner(s client.Signer, privateKey *ecdsa.PrivateKey,
 		return nil, nil, err
 	}
 
-	rv, err := commitment.GetRevealValue(updatePubKey, getProtocol(blockNumber).MultihashAlgorithm)
+	rv, err := commitment.GetRevealValue(updatePubKey, getProtocol(blockNumber).MultihashAlgorithms[0])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -955,7 +955,7 @@ func generateKeyAndCommitment(p protocol.Protocol) (*ecdsa.PrivateKey, string, e
 		return nil, "", err
 	}
 
-	c, err := commitment.GetCommitment(pubKey, p.MultihashAlgorithm)
+	c, err := commitment.GetCommitment(pubKey, p.MultihashAlgorithms[0])
 	if err != nil {
 		return nil, "", err
 	}
@@ -1046,7 +1046,7 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 }
 
 func getRecoverRequest(signer client.Signer, deltaModel *model.DeltaModel, signedDataModel *model.RecoverSignedDataModel, blockNum uint64) (*model.RecoverRequest, error) {
-	deltaHash, err := hashing.CalculateModelMultihash(deltaModel, getProtocol(blockNum).MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(deltaModel, getProtocol(blockNum).MultihashAlgorithms[0])
 	if err != nil {
 		return nil, err
 	}
@@ -1058,7 +1058,7 @@ func getRecoverRequest(signer client.Signer, deltaModel *model.DeltaModel, signe
 		return nil, err
 	}
 
-	rv, err := commitment.GetRevealValue(signedDataModel.RecoveryKey, getProtocol(blockNum).MultihashAlgorithm)
+	rv, err := commitment.GetRevealValue(signedDataModel.RecoveryKey, getProtocol(blockNum).MultihashAlgorithms[0])
 	if err != nil {
 		return nil, err
 	}
@@ -1087,7 +1087,7 @@ func getDefaultRecoverRequest(signer client.Signer, recoveryKey, updateKey *ecds
 		return nil, nil, err
 	}
 
-	deltaHash, err := hashing.CalculateModelMultihash(delta, p.MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, p.MultihashAlgorithms[0])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1253,7 +1253,7 @@ func getCommitment(key *ecdsa.PrivateKey, p protocol.Protocol) (string, error) {
 		return "", err
 	}
 
-	return commitment.GetCommitment(pubKey, p.MultihashAlgorithm)
+	return commitment.GetCommitment(pubKey, p.MultihashAlgorithms[0])
 }
 
 func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p protocol.Protocol) (*model.SuffixDataModel, error) {
@@ -1262,7 +1262,7 @@ func getSuffixData(privateKey *ecdsa.PrivateKey, delta *model.DeltaModel, p prot
 		return nil, err
 	}
 
-	deltaHash, err := hashing.CalculateModelMultihash(delta, p.MultihashAlgorithm)
+	deltaHash, err := hashing.CalculateModelMultihash(delta, p.MultihashAlgorithms[0])
 	if err != nil {
 		return nil, err
 	}
@@ -1319,7 +1319,7 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 	//nolint:gomnd
 	latest := protocol.Protocol{
 		GenesisTime:                 100,
-		MultihashAlgorithm:          sha2_512,
+		MultihashAlgorithms:         []uint{sha2_512, sha2_256},
 		MaxOperationCount:           2,
 		MaxOperationSize:            mocks.MaxOperationByteSize,
 		MaxOperationHashLength:      100,
