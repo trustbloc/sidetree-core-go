@@ -48,7 +48,6 @@ var (
 		MaxOperationCount:           2,
 		MaxOperationSize:            2000,
 		MaxOperationHashLength:      100,
-		MaxProofSize:                500,
 		MaxDeltaSize:                1000,
 		MaxCasURILength:             100,
 		CompressionAlgorithm:        "GZIP",

@@ -26,7 +26,6 @@ func TestParseUpdateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: maxHashLength,
 		MaxDeltaSize:           maxDeltaSize,
-		MaxProofSize:           maxProofSize,
 		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
@@ -142,7 +141,6 @@ func TestParseUpdateOperation(t *testing.T) {
 func TestParseSignedDataForUpdate(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: maxHashLength,
-		MaxProofSize:           maxProofSize,
 		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},

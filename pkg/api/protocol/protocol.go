@@ -40,8 +40,6 @@ type Protocol struct {
 	MaxOperationHashLength uint `json:"maxOperationHashLength"`
 	// MaxDeltaSize is maximum size of operation's delta property.
 	MaxDeltaSize uint `json:"maxDeltaSize"`
-	// MaxProofSize is maximum size of operation's proof property.
-	MaxProofSize uint `json:"maxProofSize"`
 	// MaxCasUriLength is maximum length of CAS URI in batch files.
 	MaxCasURILength uint `json:"maxCasUriLength"`
 	// CompressionAlgorithm is file compression algorithm.
