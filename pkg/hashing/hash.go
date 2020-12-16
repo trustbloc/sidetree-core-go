@@ -56,14 +56,20 @@ func IsSupportedMultihash(encodedMultihash string) bool {
 	return multihash.ValidCode(code)
 }
 
-// IsComputedUsingMultihashAlgorithm checks to see if the given encoded hash has been hashed using multihash code.
-func IsComputedUsingMultihashAlgorithm(encodedMultihash string, code uint64) bool {
+// IsComputedUsingMultihashAlgorithms checks to see if the given encoded hash has been hashed using one of supplied code.
+func IsComputedUsingMultihashAlgorithms(encodedMultihash string, codes []uint) bool {
 	mhCode, err := GetMultihashCode(encodedMultihash)
 	if err != nil {
 		return false
 	}
 
-	return mhCode == code
+	for _, supported := range codes {
+		if mhCode == uint64(supported) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetMultihashCode returns multihash code from encoded multihash.

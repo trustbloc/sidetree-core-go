@@ -30,7 +30,7 @@ func TestParseCreateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: 100,
 		MaxDeltaSize:           maxDeltaSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		Patches:                []string{"replace", "add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 	}
 
@@ -81,7 +81,7 @@ func TestParseCreateOperation(t *testing.T) {
 
 		op, err := parser.ParseCreateOperation(request, true)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithms: [18]")
 		require.Nil(t, op)
 	})
 	t.Run("missing delta", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestParseCreateOperation(t *testing.T) {
 func TestValidateSuffixData(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: maxHashLength,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 	}
 
 	parser := New(p)
@@ -174,7 +174,7 @@ func TestValidateSuffixData(t *testing.T) {
 		suffixData.DeltaHash = ""
 		err = parser.ValidateSuffixData(suffixData)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithms: [18]")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		suffixData, err := getSuffixData()
@@ -183,12 +183,12 @@ func TestValidateSuffixData(t *testing.T) {
 		suffixData.RecoveryCommitment = ""
 		err = parser.ValidateSuffixData(suffixData)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithms: [18]")
 	})
 	t.Run("recovery commitment exceeds maximum hash length", func(t *testing.T) {
 		lowHashLength := protocol.Protocol{
 			MaxOperationHashLength: 10,
-			MultihashAlgorithm:     sha2_256,
+			MultihashAlgorithms:    []uint{sha2_256},
 		}
 
 		suffixData, err := getSuffixData()
@@ -206,7 +206,7 @@ func TestValidateDelta(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: maxHashLength,
 		MaxDeltaSize:           maxDeltaSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		Patches:                patches,
 	}
 
@@ -224,7 +224,7 @@ func TestValidateDelta(t *testing.T) {
 		parserWithLowMaxDeltaSize := New(protocol.Protocol{
 			MaxOperationHashLength: maxHashLength,
 			MaxDeltaSize:           50,
-			MultihashAlgorithm:     sha2_256,
+			MultihashAlgorithms:    []uint{sha2_256},
 			Patches:                patches,
 		})
 
@@ -244,14 +244,14 @@ func TestValidateDelta(t *testing.T) {
 		err = parser.ValidateDelta(delta)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"update commitment is not computed with the required hash algorithm: 18")
+			"update commitment is not computed with the required hash algorithms: [18]")
 	})
 
 	t.Run("update commitment exceeds maximum hash length", func(t *testing.T) {
 		lowMaxHashLength := protocol.Protocol{
 			MaxOperationHashLength: 10,
 			MaxDeltaSize:           50,
-			MultihashAlgorithm:     sha2_256,
+			MultihashAlgorithms:    []uint{sha2_256},
 			Patches:                patches,
 		}
 

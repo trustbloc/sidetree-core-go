@@ -100,11 +100,11 @@ func validateCreateRequest(info *CreateRequestInfo) error {
 		return fmt.Errorf("multihash[%d] not supported", info.MultihashCode)
 	}
 
-	if !hashing.IsComputedUsingMultihashAlgorithm(info.RecoveryCommitment, uint64(info.MultihashCode)) {
+	if !hashing.IsComputedUsingMultihashAlgorithms(info.RecoveryCommitment, []uint{info.MultihashCode}) {
 		return errors.New("next recovery commitment is not computed with the specified hash algorithm")
 	}
 
-	if !hashing.IsComputedUsingMultihashAlgorithm(info.UpdateCommitment, uint64(info.MultihashCode)) {
+	if !hashing.IsComputedUsingMultihashAlgorithms(info.UpdateCommitment, []uint{info.MultihashCode}) {
 		return errors.New("next update commitment is not computed with the specified hash algorithm")
 	}
 

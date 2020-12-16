@@ -44,7 +44,7 @@ const (
 var (
 	p = protocol.Protocol{
 		GenesisTime:                 0,
-		MultihashAlgorithm:          sha2_256,
+		MultihashAlgorithms:         []uint{sha2_256},
 		MaxOperationCount:           2,
 		MaxOperationSize:            2000,
 		MaxOperationHashLength:      100,

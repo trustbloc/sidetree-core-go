@@ -105,7 +105,7 @@ func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDa
 		return err
 	}
 
-	return validateCommitment(signedData.RecoveryKey, p.MultihashAlgorithm, signedData.RecoveryCommitment)
+	return p.validateCommitment(signedData.RecoveryKey, signedData.RecoveryCommitment)
 }
 
 func (p *Parser) parseSignedData(compactJWS string) (*internal.JSONWebSignature, error) {
@@ -205,8 +205,13 @@ func contains(values []string, value string) bool {
 	return false
 }
 
-func validateCommitment(jwk *jws.JWK, multihashCode uint, nextCommitment string) error {
-	currentCommitment, err := commitment.GetCommitment(jwk, multihashCode)
+func (p *Parser) validateCommitment(jwk *jws.JWK, nextCommitment string) error {
+	code, err := hashing.GetMultihashCode(nextCommitment)
+	if err != nil {
+		return err
+	}
+
+	currentCommitment, err := commitment.GetCommitment(jwk, uint(code))
 	if err != nil {
 		return fmt.Errorf("calculate current commitment: %s", err.Error())
 	}

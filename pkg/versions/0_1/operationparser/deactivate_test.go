@@ -26,7 +26,7 @@ const sha2_256 = 18
 func TestParseDeactivateOperation(t *testing.T) {
 	p := protocol.Protocol{
 		MaxProofSize:           maxProofSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		MaxOperationHashLength: maxHashLength,
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
@@ -116,7 +116,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 	t.Run("error - key algorithm not supported", func(t *testing.T) {
 		p := protocol.Protocol{
 			MaxProofSize:           maxProofSize,
-			MultihashAlgorithm:     sha2_256,
+			MultihashAlgorithms:    []uint{sha2_256},
 			MaxOperationHashLength: maxHashLength,
 			SignatureAlgorithms:    []string{"alg"},
 			KeyAlgorithms:          []string{"other"},

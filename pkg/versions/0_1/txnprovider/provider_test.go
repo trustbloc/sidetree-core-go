@@ -218,7 +218,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.NotEmpty(t, anchorString)
 
 		invalid := mocks.NewMockProtocolClient().Protocol
-		invalid.MultihashAlgorithm = 55
+		invalid.MultihashAlgorithms = []uint{55}
 
 		provider := NewOperationProvider(invalid, operationparser.New(invalid), cas, cp)
 
@@ -364,6 +364,7 @@ func TestHandler_GetCoreIndexFile(t *testing.T) {
 		MaxCoreIndexFileSize: maxFileSize,
 		CompressionAlgorithm: compressionAlgorithm,
 		MaxCasURILength:      100,
+		MultihashAlgorithms:  []uint{sha2_256},
 	}
 
 	cas := mocks.NewMockCasClient(nil)

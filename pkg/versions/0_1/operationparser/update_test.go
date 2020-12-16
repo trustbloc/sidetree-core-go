@@ -27,7 +27,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		MaxOperationHashLength: maxHashLength,
 		MaxDeltaSize:           maxDeltaSize,
 		MaxProofSize:           maxProofSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
 		Patches:                []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
@@ -82,7 +82,7 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.Contains(t, err.Error(),
-			"update commitment is not computed with the required hash algorithm: 18")
+			"update commitment is not computed with the required hash algorithms: [18]")
 	})
 	t.Run("invalid signed data", func(t *testing.T) {
 		delta, err := getUpdateDelta()
@@ -143,7 +143,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: maxHashLength,
 		MaxProofSize:           maxProofSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
 	}
@@ -178,7 +178,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		schema, err := parser.ParseSignedDataForUpdate(compactJWS)
 		require.Error(t, err)
 		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithms: [18]")
 	})
 	t.Run("payload not JSON object", func(t *testing.T) {
 		compactJWS, err := signutil.SignPayload([]byte("test"), NewMockSigner())
@@ -194,8 +194,8 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 func TestValidateUpdateDelta(t *testing.T) {
 	t.Run("invalid next update commitment hash", func(t *testing.T) {
 		p := protocol.Protocol{
-			MultihashAlgorithm: sha2_256,
-			Patches:            []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+			MultihashAlgorithms: []uint{sha2_256},
+			Patches:             []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 		}
 
 		parser := New(p)
@@ -207,12 +207,12 @@ func TestValidateUpdateDelta(t *testing.T) {
 		err = parser.ValidateDelta(delta)
 		require.Error(t, err)
 		require.Contains(t, err.Error(),
-			"update commitment is not computed with the required hash algorithm")
+			"update commitment is not computed with the required hash algorithms")
 	})
 }
 
 func TestValidateUpdateRequest(t *testing.T) {
-	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithm: 18})
+	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithms: []uint{sha2_256}})
 
 	t.Run("success", func(t *testing.T) {
 		update, err := getDefaultUpdateRequest()

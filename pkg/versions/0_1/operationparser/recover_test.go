@@ -32,7 +32,7 @@ func TestParseRecoverOperation(t *testing.T) {
 		MaxOperationHashLength: maxHashLength,
 		MaxDeltaSize:           maxDeltaSize,
 		MaxProofSize:           maxProofSize,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
 		Patches:                []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
@@ -196,7 +196,7 @@ func TestParseRecoverOperation(t *testing.T) {
 func TestValidateSignedDataForRecovery(t *testing.T) {
 	p := protocol.Protocol{
 		MaxOperationHashLength: maxHashLength,
-		MultihashAlgorithm:     sha2_256,
+		MultihashAlgorithms:    []uint{sha2_256},
 		KeyAlgorithms:          []string{"crv"},
 	}
 
@@ -215,19 +215,19 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 		signed.DeltaHash = ""
 		err := parser.validateSignedDataForRecovery(signed)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "delta hash is not computed with the required hash algorithms: [18]")
 	})
 	t.Run("invalid next recovery commitment hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
 		signed.RecoveryCommitment = ""
 		err := parser.validateSignedDataForRecovery(signed)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithm: 18")
+		require.Contains(t, err.Error(), "recovery commitment is not computed with the required hash algorithms: [18]")
 	})
 	t.Run("recovery commitment exceeds maximum hash length", func(t *testing.T) {
 		lowMaxHashLength := protocol.Protocol{
 			MaxOperationHashLength: 10,
-			MultihashAlgorithm:     sha2_256,
+			MultihashAlgorithms:    []uint{sha2_256},
 			KeyAlgorithms:          []string{"crv"},
 		}
 
@@ -244,7 +244,7 @@ func TestParseSignedData(t *testing.T) {
 
 	p := protocol.Protocol{
 		MaxProofSize:        maxProofSize,
-		MultihashAlgorithm:  sha2_256,
+		MultihashAlgorithms: []uint{sha2_256},
 		SignatureAlgorithms: []string{"alg"},
 	}
 
@@ -264,7 +264,7 @@ func TestParseSignedData(t *testing.T) {
 	t.Run("error - proof exceeds max proof size", func(t *testing.T) {
 		parserLowProofSize := New(protocol.Protocol{
 			MaxProofSize:        20,
-			MultihashAlgorithm:  sha2_256,
+			MultihashAlgorithms: []uint{sha2_256},
 			SignatureAlgorithms: []string{"alg"},
 		})
 
@@ -361,7 +361,7 @@ func TestValidateSigningKey(t *testing.T) {
 }
 
 func TestValidateRecoverRequest(t *testing.T) {
-	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithm: 18})
+	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithms: []uint{sha2_256}})
 
 	t.Run("success", func(t *testing.T) {
 		recover, err := getDefaultRecoverRequest()

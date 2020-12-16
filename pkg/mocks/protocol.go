@@ -140,7 +140,7 @@ func GetDefaultProtocolParameters() protocol.Protocol {
 	//nolint:gomnd
 	return protocol.Protocol{
 		GenesisTime:                 0,
-		MultihashAlgorithm:          sha2_256,
+		MultihashAlgorithms:         []uint{sha2_256},
 		MaxOperationCount:           2,
 		MaxOperationSize:            MaxOperationByteSize,
 		MaxOperationHashLength:      100,

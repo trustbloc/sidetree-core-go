@@ -34,7 +34,7 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 			return nil, err
 		}
 
-		err = validateCommitment(signedData.UpdateKey, p.MultihashAlgorithm, schema.Delta.UpdateCommitment)
+		err = p.validateCommitment(signedData.UpdateKey, schema.Delta.UpdateCommitment)
 		if err != nil {
 			return nil, fmt.Errorf("calculate current commitment: %s", err.Error())
 		}

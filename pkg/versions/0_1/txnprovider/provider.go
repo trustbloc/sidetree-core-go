@@ -15,7 +15,6 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
-	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
@@ -633,7 +632,7 @@ type coreOperations struct {
 	Suffixes   []string
 }
 
-func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*coreOperations, error) {
+func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*coreOperations, error) { //nolint:funlen
 	if cif.Operations == nil { // nothing to do
 		return &coreOperations{}, nil
 	}
@@ -644,7 +643,7 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 
 	var createOps []*model.Operation
 	for _, op := range cif.Operations.Create {
-		suffix, err := hashing.CalculateModelMultihash(op.SuffixData, h.MultihashAlgorithm)
+		suffix, err := model.GetUniqueSuffix(op.SuffixData, h.MultihashAlgorithms)
 		if err != nil {
 			return nil, err
 		}
