@@ -125,6 +125,11 @@ func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.V
 		return nil, err
 	}
 
+	// if returned document is empty (e.g. applying patches failed) we can reject this request at API level
+	if len(rm.Doc.JSONLdObject()) == 0 {
+		return nil, errors.New("applying delta resulted in an empty document (most likely due to an invalid patch)")
+	}
+
 	return rm, nil
 }
 
