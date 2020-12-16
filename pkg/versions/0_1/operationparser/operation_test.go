@@ -21,7 +21,6 @@ const (
 	maxOperationSize = 2000
 	maxHashLength    = 100
 	maxDeltaSize     = 1000
-	maxProofSize     = 500
 )
 
 func TestGetOperation(t *testing.T) {
@@ -29,7 +28,6 @@ func TestGetOperation(t *testing.T) {
 		MaxOperationSize:       maxOperationSize,
 		MaxOperationHashLength: maxHashLength,
 		MaxDeltaSize:           maxDeltaSize,
-		MaxProofSize:           maxProofSize,
 		MultihashAlgorithms:    []uint{sha2_256},
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
@@ -75,7 +73,6 @@ func TestGetOperation(t *testing.T) {
 		invalid := protocol.Protocol{
 			MaxOperationSize: 20,
 			MaxDeltaSize:     maxDeltaSize,
-			MaxProofSize:     maxProofSize,
 		}
 
 		operation, err := getRecoverRequestBytes()
@@ -92,7 +89,6 @@ func TestGetOperation(t *testing.T) {
 			SignatureAlgorithms:    []string{"not-used"},
 			MaxOperationSize:       maxOperationSize,
 			MaxDeltaSize:           maxDeltaSize,
-			MaxProofSize:           maxProofSize,
 			MaxOperationHashLength: maxHashLength,
 			MultihashAlgorithms:    []uint{sha2_256},
 		}

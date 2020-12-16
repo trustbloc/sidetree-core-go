@@ -113,10 +113,6 @@ func (p *Parser) parseSignedData(compactJWS string) (*internal.JSONWebSignature,
 		return nil, errors.New("missing signed data")
 	}
 
-	if len(compactJWS) > int(p.MaxProofSize) {
-		return nil, fmt.Errorf("proof size[%d] exceeds maximum proof size[%d]", len(compactJWS), p.MaxProofSize)
-	}
-
 	jws, err := internal.ParseJWS(compactJWS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())

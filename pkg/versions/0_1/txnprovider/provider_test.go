@@ -79,60 +79,6 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		require.Equal(t, createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum, len(txnOps))
 	})
 
-	t.Run("error - proof exceeds maximum proof size for recovery in core proof file", func(t *testing.T) {
-		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
-
-		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
-
-		anchorString, err := handler.PrepareTxnFiles(ops)
-		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-
-		smallMaxProofSize := mocks.GetDefaultProtocolParameters()
-		smallMaxProofSize.MaxProofSize = 10
-
-		provider := NewOperationProvider(smallMaxProofSize, operationparser.New(smallMaxProofSize), cas, cp)
-
-		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			Namespace:         defaultNS,
-			AnchorString:      anchorString,
-			TransactionNumber: 1,
-			TransactionTime:   1,
-		})
-
-		require.Error(t, err)
-		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "failed to validate signed data for recover[0]: proof size[472] exceeds maximum proof size[10]")
-	})
-
-	t.Run("error - proof exceeds maximum proof size for update in provisional proof file", func(t *testing.T) {
-		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
-
-		ops := getTestOperations(0, updateOpsNum, 0, 0)
-
-		anchorString, err := handler.PrepareTxnFiles(ops)
-		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-
-		smallMaxProofSize := mocks.GetDefaultProtocolParameters()
-		smallMaxProofSize.MaxProofSize = 10
-
-		provider := NewOperationProvider(smallMaxProofSize, operationparser.New(smallMaxProofSize), cas, cp)
-
-		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
-			Namespace:         defaultNS,
-			AnchorString:      anchorString,
-			TransactionNumber: 1,
-			TransactionTime:   1,
-		})
-
-		require.Error(t, err)
-		require.Nil(t, txnOps)
-		require.Contains(t, err.Error(), "failed to validate signed data for update[0]: proof size[376] exceeds maximum proof size[10]")
-	})
-
 	t.Run("error - delta exceeds maximum delta size in chunk file", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
