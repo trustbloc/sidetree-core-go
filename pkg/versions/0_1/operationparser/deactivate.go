@@ -62,14 +62,14 @@ func (p *Parser) parseDeactivateRequest(payload []byte) (*model.DeactivateReques
 
 func (p *Parser) validateDeactivateRequest(req *model.DeactivateRequest) error {
 	if req.DidSuffix == "" {
-		return errors.New("missing unique suffix")
+		return errors.New("missing did suffix")
 	}
 
 	if req.SignedData == "" {
 		return errors.New("missing signed data")
 	}
 
-	return nil
+	return p.validateMultihash(req.RevealValue, "reveal value")
 }
 
 // ParseSignedDataForDeactivate will parse and validate signed data for deactivate.

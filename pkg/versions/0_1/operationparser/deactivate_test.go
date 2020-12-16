@@ -51,7 +51,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 		schema, err := parser.ParseDeactivateOperation([]byte("{}"), false)
 		require.Error(t, err)
 		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "missing unique suffix")
+		require.Contains(t, err.Error(), "missing did suffix")
 	})
 	t.Run("missing signed data", func(t *testing.T) {
 		op, err := parser.ParseDeactivateOperation([]byte(`{"didSuffix":"abc"}`), false)
@@ -128,6 +128,46 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "validate signed data for deactivate: key algorithm 'crv' is not in the allowed list [other]")
 		require.Nil(t, op)
+	})
+}
+
+func TestValidateDeactivateRequest(t *testing.T) {
+	parser := New(protocol.Protocol{MaxOperationHashLength: maxHashLength, MultihashAlgorithms: []uint{sha2_256}})
+
+	t.Run("success", func(t *testing.T) {
+		deactivate, err := getDefaultDeactivateRequest()
+		require.NoError(t, err)
+
+		err = parser.validateDeactivateRequest(deactivate)
+		require.NoError(t, err)
+	})
+	t.Run("missing signed data", func(t *testing.T) {
+		deactivate, err := getDefaultDeactivateRequest()
+		require.NoError(t, err)
+		deactivate.SignedData = ""
+
+		err = parser.validateDeactivateRequest(deactivate)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing signed data")
+	})
+	t.Run("missing did suffix", func(t *testing.T) {
+		deactivate, err := getDefaultDeactivateRequest()
+		require.NoError(t, err)
+		deactivate.DidSuffix = ""
+
+		err = parser.validateDeactivateRequest(deactivate)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing did suffix")
+	})
+
+	t.Run("invalid reveal value", func(t *testing.T) {
+		deactivate, err := getDefaultDeactivateRequest()
+		require.NoError(t, err)
+		deactivate.RevealValue = "invalid"
+
+		err = parser.validateDeactivateRequest(deactivate)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "reveal value is not computed with the required hash algorithms: [18]")
 	})
 }
 
