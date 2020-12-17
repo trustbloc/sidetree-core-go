@@ -98,7 +98,7 @@ func (p *Parser) validateUpdateRequest(update *model.UpdateRequest) error {
 		return errors.New("missing signed data")
 	}
 
-	return nil
+	return p.validateMultihash(update.RevealValue, "reveal value")
 }
 
 func (p *Parser) validateSignedDataForUpdate(signedData *model.UpdateSignedDataModel) error {

@@ -237,6 +237,15 @@ func TestValidateUpdateRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing did suffix")
 	})
+	t.Run("invalid reveal value", func(t *testing.T) {
+		update, err := getDefaultUpdateRequest()
+		require.NoError(t, err)
+		update.RevealValue = "reveal"
+
+		err = parser.validateUpdateRequest(update)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "reveal value is not computed with the required hash algorithms: [18]")
+	})
 }
 
 func getUpdateRequest(delta *model.DeltaModel) (*model.UpdateRequest, error) {

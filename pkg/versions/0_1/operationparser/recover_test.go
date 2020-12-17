@@ -367,6 +367,16 @@ func TestValidateRecoverRequest(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing did suffix")
 	})
+
+	t.Run("invalid reveal value", func(t *testing.T) {
+		recover, err := getDefaultRecoverRequest()
+		require.NoError(t, err)
+		recover.RevealValue = "reveal"
+
+		err = parser.validateRecoverRequest(recover)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "reveal value is not computed with the required hash algorithms: [18]")
+	})
 }
 
 func TestValidateProtectedHeader(t *testing.T) {

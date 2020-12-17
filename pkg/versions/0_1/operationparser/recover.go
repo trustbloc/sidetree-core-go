@@ -171,7 +171,7 @@ func (p *Parser) validateRecoverRequest(recover *model.RecoverRequest) error {
 		return errors.New("missing signed data")
 	}
 
-	return nil
+	return p.validateMultihash(recover.RevealValue, "reveal value")
 }
 
 func (p *Parser) validateSigningKey(key *jws.JWK, allowedAlgorithms []string) error {
