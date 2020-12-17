@@ -72,6 +72,31 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	require.NotNil(t, doc)
 }
 
+func TestDocumentHandler_ProcessOperation_Create_ApplyDeltaError(t *testing.T) {
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	require.NotNil(t, dochandler)
+	defer cleanup()
+
+	p, err := patch.NewJSONPatch(errorPatch)
+	require.NoError(t, err)
+
+	delta := &model.DeltaModel{
+		UpdateCommitment: encodedMultihash([]byte("updateReveal")),
+		Patches:          []patch.Patch{p},
+	}
+
+	suffixData, err := getSuffixData(delta)
+	require.NoError(t, err)
+
+	createOp, err := getCreateOperationWithInitialState(suffixData, delta)
+	require.NoError(t, err)
+
+	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
+	require.Error(t, err)
+	require.Nil(t, doc)
+	require.Contains(t, err.Error(), "applying delta resulted in an empty document (most likely due to an invalid patch)")
+}
+
 func TestDocumentHandler_ProcessOperation_ProtocolError(t *testing.T) {
 	pc := newMockProtocolClient()
 	pc.Err = fmt.Errorf("injected protocol error")
@@ -443,6 +468,14 @@ const invalidDocNoKeyType = `{
 		  }
 	}]
 }`
+
+const errorPatch = `[
+{
+	"op": "move",
+	"path": "/test",
+	"value": "new value"
+}
+]`
 
 func getCreateRequest() (*model.CreateRequest, error) {
 	return getCreateRequestWithDoc(validDoc)
