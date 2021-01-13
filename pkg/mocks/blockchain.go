@@ -9,6 +9,7 @@ package mocks
 import (
 	"sync"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
 
@@ -26,7 +27,7 @@ func NewMockBlockchainClient(err error) *MockBlockchainClient {
 }
 
 // WriteAnchor writes the anchor string as a transaction to blockchain.
-func (m *MockBlockchainClient) WriteAnchor(anchor string, _ uint64) error {
+func (m *MockBlockchainClient) WriteAnchor(anchor string, _ []*operation.Reference, _ uint64) error {
 	if m.err != nil {
 		return m.err
 	}

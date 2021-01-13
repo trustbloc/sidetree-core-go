@@ -22,6 +22,16 @@ type Operation struct {
 	OperationBuffer []byte
 }
 
+// Reference holds minimum information about did operation (suffix and type).
+type Reference struct {
+
+	// UniqueSuffix defines document unique suffix.
+	UniqueSuffix string
+
+	// Type defines operation type.
+	Type Type
+}
+
 // AnchoredOperation defines an anchored operation (stored in document operation store).
 type AnchoredOperation struct {
 

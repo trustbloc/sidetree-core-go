@@ -37,10 +37,10 @@ func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProv
 
 // PrepareTxnFiles will create batch files(chunk, map, anchor) from batch operations,
 // store those files in CAS and return anchor string.
-func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (string, error) {
-	parsedOps, err := h.parseOperations(ops)
+func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*operation.Reference, error) {
+	parsedOps, dids, err := h.parseOperations(ops)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// special case: if all ops are deactivate don't create chunk and provisional files
@@ -48,28 +48,28 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 	if len(parsedOps.Deactivate) != len(ops) {
 		chunkURI, innerErr := h.createChunkFile(parsedOps)
 		if innerErr != nil {
-			return "", innerErr
+			return "", nil, innerErr
 		}
 
 		provisionalProofURI, innerErr := h.createProvisionalProofFile(parsedOps.Update)
 		if innerErr != nil {
-			return "", innerErr
+			return "", nil, innerErr
 		}
 
 		provisionalIndexURI, innerErr = h.createProvisionalIndexFile([]string{chunkURI}, provisionalProofURI, parsedOps.Update)
 		if innerErr != nil {
-			return "", innerErr
+			return "", nil, innerErr
 		}
 	}
 
 	coreProofURI, err := h.createCoreProofFile(parsedOps.Recover, parsedOps.Deactivate)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	coreIndexURI, err := h.createCoreIndexFile(coreProofURI, provisionalIndexURI, parsedOps)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	ad := AnchorData{
@@ -77,21 +77,21 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 		CoreIndexFileURI:   coreIndexURI,
 	}
 
-	return ad.GetAnchorString(), nil
+	return ad.GetAnchorString(), dids, nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, error) {
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) {
 	if len(ops) == 0 {
-		return nil, errors.New("prepare txn operations called without operations, should not happen")
+		return nil, nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
 
-	batchSuffixes := make(map[string]bool)
+	batchSuffixes := make(map[string]operation.Type)
 
 	result := &models.SortedOperations{}
 	for _, d := range ops {
 		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer, false)
 		if e != nil {
-			return nil, e
+			return nil, nil, e
 		}
 
 		_, ok := batchSuffixes[op.UniqueSuffix]
@@ -112,10 +112,15 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 			result.Deactivate = append(result.Deactivate, op)
 		}
 
-		batchSuffixes[op.UniqueSuffix] = true
+		batchSuffixes[op.UniqueSuffix] = op.Type
 	}
 
-	return result, nil
+	dids := make([]*operation.Reference, 0, len(batchSuffixes))
+	for did, op := range batchSuffixes {
+		dids = append(dids, &operation.Reference{UniqueSuffix: did, Type: op})
+	}
+
+	return result, dids, nil
 }
 
 // createCoreIndexFile will create core index file from operations, proof files and provisional index file and write it to CAS

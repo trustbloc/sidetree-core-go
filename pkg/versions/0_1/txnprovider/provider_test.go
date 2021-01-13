@@ -62,9 +62,10 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
 
 		provider := NewOperationProvider(pc.Protocol, parser, cas, cp)
 
@@ -85,9 +86,10 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
 
 		smallDeltaProofSize := mocks.GetDefaultProtocolParameters()
 		smallDeltaProofSize.MaxDeltaSize = 50
@@ -113,7 +115,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
 		// anchor string has 9 operations "9.coreIndexURI"
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, _, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
@@ -159,7 +161,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, _, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
@@ -204,9 +206,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), deactivateOpsNum)
+		require.Equal(t, refs[0].Type, operation.TypeDeactivate)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
@@ -231,9 +235,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), updateOpsNum)
+		require.Equal(t, refs[0].Type, operation.TypeUpdate)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
@@ -258,9 +264,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), createOpsNum)
+		require.Equal(t, refs[0].Type, operation.TypeCreate)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
@@ -285,9 +293,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), recoverOpsNum)
+		require.Equal(t, refs[0].Type, operation.TypeRecover)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
