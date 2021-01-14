@@ -21,6 +21,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
+const deleted = "_deleted"
+
 // NewMockDocumentHandler returns a new mock document handler.
 func NewMockDocumentHandler() *MockDocumentHandler {
 	return &MockDocumentHandler{
@@ -111,9 +113,13 @@ func (m *MockDocumentHandler) ProcessOperation(operationBuffer []byte, _ uint64)
 	id := m.namespace + docutil.NamespaceDelimiter + suffix
 
 	if op.Operation == operation.TypeDeactivate {
-		m.store[id] = nil
+		empty := applyID(make(document.Document), id)
+		empty[deleted] = true
+		m.store[id] = empty
 
-		return nil, nil
+		return &document.ResolutionResult{
+			Document: empty,
+		}, nil
 	}
 
 	doc, ok := m.store[id]
@@ -164,13 +170,26 @@ func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.R
 		return nil, errors.New("not found")
 	}
 
-	if m.store[didOrDocument] == nil {
-		return nil, errors.New("was deactivated")
+	doc := m.store[didOrDocument]
+
+	docMetadata := make(document.Metadata)
+	if isDeactivated(doc) {
+		docMetadata[document.DeactivatedProperty] = true
 	}
 
 	return &document.ResolutionResult{
-		Document: m.store[didOrDocument],
+		Document:         doc,
+		DocumentMetadata: docMetadata,
 	}, nil
+}
+
+func isDeactivated(doc document.Document) bool {
+	deactivated, ok := doc[deleted]
+	if !ok {
+		return false
+	}
+
+	return deactivated.(bool)
 }
 
 // helper function to insert ID into document.

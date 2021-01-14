@@ -10,7 +10,6 @@ package document
 type ResolutionResult struct {
 	Context          string   `json:"@context"`
 	Document         Document `json:"didDocument"`
-	MethodMetadata   Metadata `json:"methodMetadata"`
 	DocumentMetadata Metadata `json:"didDocumentMetadata,omitempty"`
 }
 
@@ -27,6 +26,15 @@ const (
 	// PublishedProperty is published key.
 	PublishedProperty = "published"
 
+	// DeactivatedProperty is deactivated flag key.
+	DeactivatedProperty = "deactivated"
+
 	// CanonicalIDProperty is canonical ID key.
 	CanonicalIDProperty = "canonicalId"
+
+	// EquivalentIDProperty is equivalent ID array.
+	EquivalentIDProperty = "equivalentId"
+
+	// MethodProperty is used for method metadata within did document metadata.
+	MethodProperty = "method"
 )

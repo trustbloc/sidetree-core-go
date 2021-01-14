@@ -47,12 +47,22 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 
 		return
 	}
+
+	// TODO: (issue-535) Posted question on Sidetree slack if we should be returning 410 here considering that
+	// we are returning proper response with empty document and 'deactivated' flag
+	if isDeactivated(response) {
+		logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Document)
+		common.WriteResponse(rw, http.StatusGone, response)
+
+		return
+	}
+
 	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Document)
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
 func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error) {
-	doc, err := o.resolver.ResolveDocument(id)
+	resolutionResult, err := o.resolver.ResolveDocument(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "bad request") {
 			return nil, common.NewHTTPError(http.StatusBadRequest, err)
@@ -60,16 +70,22 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 		if strings.Contains(err.Error(), "not found") {
 			return nil, common.NewHTTPError(http.StatusNotFound, errors.New("document not found"))
 		}
-		if strings.Contains(err.Error(), "was deactivated") {
-			return nil, common.NewHTTPError(http.StatusGone, errors.New("document is no longer available"))
-		}
 
 		logger.Errorf("internal server error:  %s", err.Error())
 
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return doc, nil
+	return resolutionResult, nil
+}
+
+func isDeactivated(resolutionResult *document.ResolutionResult) bool {
+	deactivated, ok := resolutionResult.DocumentMetadata[document.DeactivatedProperty]
+	if !ok {
+		return false
+	}
+
+	return deactivated.(bool)
 }
 
 var getID = func(req *http.Request) string {

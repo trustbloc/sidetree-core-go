@@ -424,9 +424,10 @@ func TestDeactivate(t *testing.T) {
 
 		p := New("test", store, pc)
 		doc, err := p.Resolve(uniqueSuffix)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "document was deactivated")
-		require.Nil(t, doc)
+		require.NoError(t, err)
+		require.Equal(t, doc.Deactivated, true)
+		require.Empty(t, doc.UpdateCommitment)
+		require.Empty(t, doc.RecoveryCommitment)
 	})
 }
 

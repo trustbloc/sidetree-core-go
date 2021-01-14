@@ -16,12 +16,13 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doctransformer"
 )
 
 const (
 	didContext = "https://www.w3.org/ns/did/v1"
 
-	didResolutionContext = "https://www.w3.org/ns/did-resolution/v1"
+	didResolutionContext = "https://w3id.org/did-resolution/v1"
 
 	// ed25519VerificationKey2018 requires special handling (convert to base58).
 	ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
@@ -65,22 +66,14 @@ func New(opts ...Option) *Transformer {
 // TransformDocument takes internal resolution model and transformation info and creates
 // external representation of document (resolution result).
 func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) { //nolint:funlen,gocyclo
-	if rm == nil || rm.Doc == nil {
-		return nil, errors.New("resolution model is required for document transformation")
-	}
-
-	if info == nil {
-		return nil, errors.New("transformation info is required for document transformation")
+	docMetadata, err := doctransformer.CreateDocumentMetadata(rm, info)
+	if err != nil {
+		return nil, err
 	}
 
 	id, ok := info[document.IDProperty]
 	if !ok {
 		return nil, errors.New("id is required for document transformation")
-	}
-
-	published, ok := info[document.PublishedProperty]
-	if !ok {
-		return nil, errors.New("published is required for document transformation")
 	}
 
 	internal := document.DidDocumentFromJSONLDObject(rm.Doc.JSONLdObject())
@@ -103,30 +96,14 @@ func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info proto
 	external[document.ContextProperty] = ctx
 	external[document.IDProperty] = id
 
-	methodMetadata := make(document.Metadata)
-	methodMetadata[document.PublishedProperty] = published
-	methodMetadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
-	methodMetadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
-
 	result := &document.ResolutionResult{
-		Context:        didResolutionContext,
-		Document:       external.JSONLdObject(),
-		MethodMetadata: methodMetadata,
-	}
-
-	docMetadata := make(document.Metadata)
-
-	canonicalID, ok := info[document.CanonicalIDProperty]
-	if ok {
-		docMetadata[document.CanonicalIDProperty] = canonicalID
-	}
-
-	if len(docMetadata) > 0 {
-		result.DocumentMetadata = docMetadata
+		Context:          didResolutionContext,
+		Document:         external.JSONLdObject(),
+		DocumentMetadata: docMetadata,
 	}
 
 	// add keys
-	err := t.processKeys(internal, result)
+	err = t.processKeys(internal, result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform public keys for did document: %s", err.Error())
 	}
@@ -195,13 +172,14 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 	var publicKeys []document.PublicKey
 
 	for _, pk := range internal.PublicKeys() {
-		// construct full DID URL for inclusion in purpose sections
-		id := did + "#" + pk.ID()
+		id := t.getObjectID(did, pk.ID())
 
 		externalPK := make(document.PublicKey)
-		externalPK[document.IDProperty] = t.getObjectID(did, pk.ID())
+		externalPK[document.IDProperty] = id
 		externalPK[document.TypeProperty] = pk.Type()
-		externalPK[document.ControllerProperty] = did
+		// TODO: (issue-535) Setting controller to empty seems to violate did core spec
+		// Asked question to Sidetree group
+		externalPK[document.ControllerProperty] = t.getController(did)
 
 		if pk.Type() == ed25519VerificationKey2018 {
 			ed25519PubKey, err := getED2519PublicKey(pk.PublicKeyJwk())
@@ -251,6 +229,14 @@ func (t *Transformer) getObjectID(docID string, objectID string) interface{} {
 	}
 
 	return docID + relativeID
+}
+
+func (t *Transformer) getController(docID string) interface{} {
+	if t.includeBase {
+		return ""
+	}
+
+	return docID
 }
 
 func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {

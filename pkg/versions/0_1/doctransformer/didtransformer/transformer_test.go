@@ -66,10 +66,15 @@ func TestTransformDocument(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.Equal(t, testID, result.Document[document.IDProperty])
-		require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
-		require.Equal(t, "recovery", result.MethodMetadata[document.RecoveryCommitmentProperty])
-		require.Equal(t, "update", result.MethodMetadata[document.UpdateCommitmentProperty])
-		require.Empty(t, result.DocumentMetadata)
+
+		methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+		require.True(t, ok)
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, true, methodMetadata[document.PublishedProperty])
+		require.Equal(t, "recovery", methodMetadata[document.RecoveryCommitmentProperty])
+		require.Equal(t, "update", methodMetadata[document.UpdateCommitmentProperty])
 
 		jsonTransformed, err := json.Marshal(result.Document)
 		require.NoError(t, err)
@@ -125,19 +130,28 @@ func TestTransformDocument(t *testing.T) {
 		require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKeys()))
 	})
 
-	t.Run("success - with canonical ID", func(t *testing.T) {
+	t.Run("success - with canonical, equivalent ID", func(t *testing.T) {
 		info := make(protocol.TransformationInfo)
 		info[document.IDProperty] = "did:abc:123"
 		info[document.PublishedProperty] = true
 		info[document.CanonicalIDProperty] = "canonical"
+		info[document.EquivalentIDProperty] = []string{"equivalent"}
 
 		result, err := transformer.TransformDocument(internal, info)
 		require.NoError(t, err)
 		require.Equal(t, "did:abc:123", result.Document[document.IDProperty])
-		require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
-		require.Equal(t, "recovery", result.MethodMetadata[document.RecoveryCommitmentProperty])
-		require.Equal(t, "update", result.MethodMetadata[document.UpdateCommitmentProperty])
+
+		methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+		require.True(t, ok)
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, true, methodMetadata[document.PublishedProperty])
+		require.Equal(t, "recovery", methodMetadata[document.RecoveryCommitmentProperty])
+		require.Equal(t, "update", methodMetadata[document.UpdateCommitmentProperty])
+
 		require.Equal(t, "canonical", result.DocumentMetadata[document.CanonicalIDProperty])
+		require.NotEmpty(t, result.DocumentMetadata[document.EquivalentIDProperty])
 	})
 
 	t.Run("error - internal document is missing", func(t *testing.T) {
@@ -148,14 +162,14 @@ func TestTransformDocument(t *testing.T) {
 		result, err := transformer.TransformDocument(nil, info)
 		require.Error(t, err)
 		require.Nil(t, result)
-		require.Contains(t, err.Error(), "resolution model is required for document transformation")
+		require.Contains(t, err.Error(), "resolution model is required for creating document metadata")
 	})
 
 	t.Run("error - transformation info is missing", func(t *testing.T) {
 		result, err := transformer.TransformDocument(internal, nil)
 		require.Error(t, err)
 		require.Nil(t, result)
-		require.Contains(t, err.Error(), "transformation info is required for document transformation")
+		require.Contains(t, err.Error(), "transformation info is required for creating document metadata")
 	})
 
 	t.Run("error - transformation info is missing id", func(t *testing.T) {
@@ -166,16 +180,6 @@ func TestTransformDocument(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, result)
 		require.Contains(t, err.Error(), "id is required for document transformation")
-	})
-
-	t.Run("error - transformation info is missing published", func(t *testing.T) {
-		info := make(protocol.TransformationInfo)
-		info[document.IDProperty] = testID
-
-		result, err := transformer.TransformDocument(internal, info)
-		require.Error(t, err)
-		require.Nil(t, result)
-		require.Contains(t, err.Error(), "published is required for document transformation")
 	})
 }
 
