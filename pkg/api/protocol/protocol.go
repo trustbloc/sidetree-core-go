@@ -81,6 +81,7 @@ type ResolutionModel struct {
 	LastOperationProtocolGenesisTime uint64
 	UpdateCommitment                 string
 	RecoveryCommitment               string
+	Deactivated                      bool
 }
 
 // OperationApplier applies the given operation to the document.

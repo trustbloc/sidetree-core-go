@@ -134,14 +134,20 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	result, err = dochandler.ResolveDocument(docID)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
+
+	methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+	require.True(t, ok)
+	methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+	require.True(t, ok)
+
+	require.Equal(t, true, methodMetadata[document.PublishedProperty])
 
 	// scenario: resolve document with alias namespace (success)
 	aliasID := alias + ":" + uniqueSuffix
 	result, err = dochandler.ResolveDocument(aliasID)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Equal(t, true, result.MethodMetadata[document.PublishedProperty])
+	require.Equal(t, true, methodMetadata[document.PublishedProperty])
 	require.Equal(t, result.DocumentMetadata[document.CanonicalIDProperty], docID)
 	require.Equal(t, result.Document[keyID], aliasID)
 
@@ -179,7 +185,14 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		result, err := dochandler.ResolveDocument(docID + longFormPart)
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.Equal(t, false, result.MethodMetadata[document.PublishedProperty])
+
+		methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+		require.True(t, ok)
+
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, false, methodMetadata[document.PublishedProperty])
 	})
 
 	t.Run("error - invalid initial state format (not encoded JCS)", func(t *testing.T) {

@@ -205,12 +205,13 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 	}
 
 	return &protocol.ResolutionModel{
-		Doc:                              nil,
+		Doc:                              make(document.Document),
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
 		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
 		UpdateCommitment:                 "",
 		RecoveryCommitment:               "",
+		Deactivated:                      true,
 	}, nil
 }
 

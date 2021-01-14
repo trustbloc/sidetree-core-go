@@ -34,8 +34,11 @@ func (m *MockDocumentTransformer) TransformDocument(internal *protocol.Resolutio
 	metadata[document.RecoveryCommitmentProperty] = internal.RecoveryCommitment
 	metadata[document.UpdateCommitmentProperty] = internal.UpdateCommitment
 
+	docMetadata := make(document.Metadata)
+	docMetadata[document.MethodProperty] = metadata
+
 	return &document.ResolutionResult{
-		Document:       internal.Doc,
-		MethodMetadata: metadata,
+		Document:         internal.Doc,
+		DocumentMetadata: docMetadata,
 	}, nil
 }

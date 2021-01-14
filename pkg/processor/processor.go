@@ -71,8 +71,9 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionM
 		logger.Debugf("[%s] Applying %d full operations for unique suffix [%s]", s.name, len(fullOps), uniqueSuffix)
 
 		rm = s.applyOperations(fullOps, rm, getRecoveryCommitment)
-		if rm.Doc == nil {
-			return nil, errors.New("document was deactivated")
+		if rm.Deactivated {
+			// document was deactivated, stop processing
+			return rm, nil
 		}
 	}
 

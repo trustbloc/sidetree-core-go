@@ -11,6 +11,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doctransformer"
 )
 
 // Transformer is responsible for transforming internal to external document.
@@ -25,12 +26,9 @@ func New() *Transformer {
 // TransformDocument takes internal resolution model and transformation info and creates
 // external representation of document (resolution result).
 func (v *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) {
-	if rm == nil || rm.Doc == nil {
-		return nil, errors.New("resolution model is required for document transformation")
-	}
-
-	if info == nil {
-		return nil, errors.New("transformation info is required for document transformation")
+	docMetadata, err := doctransformer.CreateDocumentMetadata(rm, info)
+	if err != nil {
+		return nil, err
 	}
 
 	id, ok := info[document.IDProperty]
@@ -38,32 +36,11 @@ func (v *Transformer) TransformDocument(rm *protocol.ResolutionModel, info proto
 		return nil, errors.New("id is required for document transformation")
 	}
 
-	published, ok := info[document.PublishedProperty]
-	if !ok {
-		return nil, errors.New("published is required for document transformation")
-	}
-
 	rm.Doc[document.IDProperty] = id
 
-	methodMetadata := make(document.Metadata)
-	methodMetadata[document.PublishedProperty] = published
-	methodMetadata[document.RecoveryCommitmentProperty] = rm.RecoveryCommitment
-	methodMetadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
-
 	result := &document.ResolutionResult{
-		Document:       rm.Doc,
-		MethodMetadata: methodMetadata,
-	}
-
-	docMetadata := make(document.Metadata)
-
-	canonicalID, ok := info[document.CanonicalIDProperty]
-	if ok {
-		docMetadata[document.CanonicalIDProperty] = canonicalID
-	}
-
-	if len(docMetadata) > 0 {
-		result.DocumentMetadata = docMetadata
+		Document:         rm.Doc,
+		DocumentMetadata: docMetadata,
 	}
 
 	return result, nil

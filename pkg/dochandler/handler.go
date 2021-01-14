@@ -223,10 +223,8 @@ func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string, 
 
 	ti := getTransformationInfo(namespace+docutil.NamespaceDelimiter+uniquePortion, true)
 
-	if r.namespace != namespace {
-		// we got here using alias; suggest using namespace
-		ti[document.CanonicalIDProperty] = r.namespace + docutil.NamespaceDelimiter + uniquePortion
-	}
+	// we should always set canonical id if document has been published
+	ti[document.CanonicalIDProperty] = r.namespace + docutil.NamespaceDelimiter + uniquePortion
 
 	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
 }
@@ -256,7 +254,12 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
-	externalResult, err := pv.DocumentTransformer().TransformDocument(rm, getTransformationInfo(longFormDID, false))
+	ti := getTransformationInfo(longFormDID, false)
+
+	// we should always set equivalent id for long form resolution
+	ti[document.EquivalentIDProperty] = []string{r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix}
+
+	externalResult, err := pv.DocumentTransformer().TransformDocument(rm, ti)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform create with initial state to external document: %s", err.Error())
 	}
