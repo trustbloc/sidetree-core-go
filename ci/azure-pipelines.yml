@@ -4,9 +4,9 @@
 
 name: $(SourceBranchName)-$(Date:yyyyMMdd).$(Rev:r)
 trigger:
-  - master
+  - main
 pr:
-  - master
+  - main
 
 variables:
   GO_VERSION: 1.13
