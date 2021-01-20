@@ -42,7 +42,6 @@ func CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.Transfor
 	docMetadata := make(document.Metadata)
 	docMetadata[document.MethodProperty] = methodMetadata
 
-	// TODO: (issue-535) It is still not 100% confirmed that 'deactivated' flage will be in document metadata
 	if rm.Deactivated {
 		docMetadata[document.DeactivatedProperty] = rm.Deactivated
 	}
