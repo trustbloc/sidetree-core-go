@@ -68,9 +68,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
 
 		anchorData, err := ParseAnchorData(anchorString)
 		require.NoError(t, err)
@@ -156,9 +157,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), createOpsNum)
 
 		anchorData, err := ParseAnchorData(anchorString)
 		require.NoError(t, err)
@@ -213,9 +215,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(nil)
+		anchorString, refs, err := handler.PrepareTxnFiles(nil)
 		require.Error(t, err)
 		require.Empty(t, anchorString)
+		require.Empty(t, refs)
 		require.Contains(t, err.Error(), "prepare txn operations called without operations, should not happen")
 	})
 
@@ -232,9 +235,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			Namespace:       defaultNS,
 		}
 
-		anchorString, err := handler.PrepareTxnFiles([]*operation.QueuedOperation{op})
+		anchorString, refs, err := handler.PrepareTxnFiles([]*operation.QueuedOperation{op})
 		require.Error(t, err)
 		require.Empty(t, anchorString)
+		require.Empty(t, refs)
 		require.Contains(t, err.Error(), "parse operation: operation type [] not supported")
 	})
 
@@ -247,7 +251,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, _, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
 		require.Empty(t, anchorString)
 		require.Contains(t, err.Error(), "failed to store chunk file: CAS error")
@@ -262,9 +266,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, err := handler.PrepareTxnFiles(ops)
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
 		require.Empty(t, anchorString)
+		require.Empty(t, refs)
 		require.Contains(t, err.Error(), "failed to store core proof file: CAS error")
 	})
 }

@@ -97,7 +97,7 @@ type DocumentComposer interface {
 // OperationHandler defines an interface for creating batch files.
 type OperationHandler interface {
 	// GetTxnOperations operations will create relevant batch files, store them in CAS and return anchor string.
-	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, error)
+	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*operation.Reference, error)
 }
 
 // OperationProvider retrieves the anchored operations for the given Sidetree transaction.

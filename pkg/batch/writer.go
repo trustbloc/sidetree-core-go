@@ -76,7 +76,7 @@ type Context interface {
 // BlockchainClient defines an interface to access the underlying blockchain.
 type BlockchainClient interface {
 	// WriteAnchor writes the anchor string as a transaction to blockchain
-	WriteAnchor(anchor string, protocolGenesisTime uint64) error
+	WriteAnchor(anchor string, ops []*operation.Reference, protocolGenesisTime uint64) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
 }
@@ -283,7 +283,7 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 		return err
 	}
 
-	anchorString, err := p.OperationHandler().PrepareTxnFiles(ops)
+	anchorString, dids, err := p.OperationHandler().PrepareTxnFiles(ops)
 	if err != nil {
 		return err
 	}
@@ -291,7 +291,7 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
 
 	// Create Sidetree transaction in blockchain (write anchor string)
-	return r.context.Blockchain().WriteAnchor(anchorString, protocolGenesisTime)
+	return r.context.Blockchain().WriteAnchor(anchorString, dids, protocolGenesisTime)
 }
 
 func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.Time {
