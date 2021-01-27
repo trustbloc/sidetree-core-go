@@ -52,6 +52,9 @@ type AnchoredOperation struct {
 
 	// ProtocolGenesisTime is the genesis time of the protocol that was used for this operation.
 	ProtocolGenesisTime uint64 `json:"protocolGenesisTime"`
+
+	// Reference contains additional information about this anchored operation
+	Reference string `json:"reference,omitempty"`
 }
 
 // Type defines valid values for operation type.
