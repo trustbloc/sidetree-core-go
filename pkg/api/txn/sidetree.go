@@ -13,4 +13,5 @@ type SidetreeTxn struct {
 	AnchorString        string
 	Namespace           string
 	ProtocolGenesisTime uint64
+	Reference           string
 }
