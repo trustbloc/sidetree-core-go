@@ -82,6 +82,7 @@ type ResolutionModel struct {
 	UpdateCommitment                 string
 	RecoveryCommitment               string
 	Deactivated                      bool
+	Reference                        string
 }
 
 // OperationApplier applies the given operation to the document.

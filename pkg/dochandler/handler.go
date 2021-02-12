@@ -184,7 +184,7 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 	}
 
 	// resolve document from the blockchain
-	doc, err := r.resolveRequestWithID(ns, uniquePortion, pv)
+	doc, err := r.resolveRequestWithID(shortFormDID, uniquePortion, pv)
 	if err == nil {
 		return doc, nil
 	}
@@ -213,7 +213,7 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
 }
 
-func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string, pv protocol.Version) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
 		logger.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
@@ -221,10 +221,15 @@ func (r *DocumentHandler) resolveRequestWithID(namespace, uniquePortion string, 
 		return nil, err
 	}
 
-	ti := getTransformationInfo(namespace+docutil.NamespaceDelimiter+uniquePortion, true)
+	ti := getTransformationInfo(shortFormDid, true)
+
+	reference := ""
+	if internalResult.Reference != "" {
+		reference = docutil.NamespaceDelimiter + internalResult.Reference
+	}
 
 	// we should always set canonical id if document has been published
-	ti[document.CanonicalIDProperty] = r.namespace + docutil.NamespaceDelimiter + uniquePortion
+	ti[document.CanonicalIDProperty] = r.namespace + reference + docutil.NamespaceDelimiter + uniquePortion
 
 	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
 }
@@ -307,7 +312,9 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 		return "", errors.New("did must start with configured namespace")
 	}
 
-	adjustedPos := pos + len(ns)
+	lastDelimiter := strings.LastIndex(idOrDocument, docutil.NamespaceDelimiter)
+
+	adjustedPos := lastDelimiter + 1
 	if adjustedPos >= len(idOrDocument) {
 		return "", errors.New("did suffix is empty")
 	}
