@@ -87,6 +87,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
 		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
+		Reference:                        anchoredOp.Reference,
 		RecoveryCommitment:               op.SuffixData.RecoveryCommitment,
 	}
 
@@ -159,6 +160,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
 		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
+		Reference:                        rm.Reference,
 		UpdateCommitment:                 op.Delta.UpdateCommitment,
 		RecoveryCommitment:               rm.RecoveryCommitment,
 	}
@@ -209,6 +211,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
 		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
+		Reference:                        rm.Reference,
 		UpdateCommitment:                 "",
 		RecoveryCommitment:               "",
 		Deactivated:                      true,
@@ -244,6 +247,7 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
 		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
+		Reference:                        anchoredOp.Reference,
 		RecoveryCommitment:               signedDataModel.RecoveryCommitment,
 	}
 

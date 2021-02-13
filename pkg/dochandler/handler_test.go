@@ -164,6 +164,27 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Contains(t, err.Error(), "did suffix is empty")
 }
 
+func TestDocumentHandler_ResolveDocument_DID_With_Reference(t *testing.T) {
+	store := mocks.NewMockOperationStore(nil)
+	dochandler, cleanup := getDocumentHandler(store)
+	require.NotNil(t, dochandler)
+	defer cleanup()
+
+	const reference = "reference"
+	anchoredOp := getAnchoredCreateOperation()
+	anchoredOp.Reference = reference
+
+	err := store.Put(anchoredOp)
+	require.NoError(t, err)
+
+	result, err := dochandler.ResolveDocument(namespace + docutil.NamespaceDelimiter + anchoredOp.UniqueSuffix)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	expected := namespace + docutil.NamespaceDelimiter + reference + docutil.NamespaceDelimiter + anchoredOp.UniqueSuffix
+	require.Equal(t, expected, result.DocumentMetadata[document.CanonicalIDProperty])
+}
+
 func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 	pc := newMockProtocolClient()
 	dochandler, cleanup := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
