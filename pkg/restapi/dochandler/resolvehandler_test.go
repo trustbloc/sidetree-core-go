@@ -142,7 +142,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
 		handler.Resolve(rw, req)
-		require.Equal(t, http.StatusGone, rw.Code)
+		require.Equal(t, http.StatusOK, rw.Code)
 	})
 }
 

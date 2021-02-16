@@ -177,8 +177,6 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 		externalPK := make(document.PublicKey)
 		externalPK[document.IDProperty] = id
 		externalPK[document.TypeProperty] = pk.Type()
-		// TODO: (issue-535) Setting controller to empty seems to violate did core spec
-		// Asked question to Sidetree group
 		externalPK[document.ControllerProperty] = t.getController(did)
 
 		if pk.Type() == ed25519VerificationKey2018 {

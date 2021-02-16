@@ -48,15 +48,6 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// TODO: (issue-535) Posted question on Sidetree slack if we should be returning 410 here considering that
-	// we are returning proper response with empty document and 'deactivated' flag
-	if isDeactivated(response) {
-		logger.Debugf("... resolved deactivated DID document for ID [%s]: %s", id, response)
-		common.WriteResponse(rw, http.StatusGone, response)
-
-		return
-	}
-
 	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Document)
 	common.WriteResponse(rw, http.StatusOK, response)
 }
@@ -77,15 +68,6 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 	}
 
 	return resolutionResult, nil
-}
-
-func isDeactivated(resolutionResult *document.ResolutionResult) bool {
-	deactivated, ok := resolutionResult.DocumentMetadata[document.DeactivatedProperty]
-	if !ok {
-		return false
-	}
-
-	return deactivated.(bool)
 }
 
 var getID = func(req *http.Request) string {
