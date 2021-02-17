@@ -83,9 +83,9 @@ func TestStart(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// we should have 4 anchors: 8 operations % max 2 operations per batch
-	require.Equal(t, 4, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, 4, len(ctx.AnchorWriter.GetAnchors()))
 
-	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnprovider.ParseAnchorData(ctx.AnchorWriter.GetAnchors()[0])
 	require.NoError(t, err)
 
 	// Check that first anchor has two operations per batch
@@ -169,9 +169,9 @@ func TestBatchTimer(t *testing.T) {
 	// maximum operations(=2) have not been reached
 	time.Sleep(3 * time.Second)
 
-	require.Equal(t, 1, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, 1, len(ctx.AnchorWriter.GetAnchors()))
 
-	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnprovider.ParseAnchorData(ctx.AnchorWriter.GetAnchors()[0])
 	require.NoError(t, err)
 
 	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
@@ -207,9 +207,9 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// we should have 1 anchors: 2 operations % max 2 operations per batch
-	require.Equal(t, 1, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, 1, len(ctx.AnchorWriter.GetAnchors()))
 
-	ad, err := txnprovider.ParseAnchorData(ctx.BlockchainClient.GetAnchors()[0])
+	ad, err := txnprovider.ParseAnchorData(ctx.AnchorWriter.GetAnchors()[0])
 	require.NoError(t, err)
 
 	// Check that first anchor has one operation per batch; second one has been discarded
@@ -243,15 +243,15 @@ func TestProcessOperationsError(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 
-	require.Equal(t, 0, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, 0, len(ctx.AnchorWriter.GetAnchors()))
 }
 
-func TestBlockchainError(t *testing.T) {
+func TestAnchorError(t *testing.T) {
 	ctx := newMockContext()
 	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second))
 	require.Nil(t, err)
 
-	ctx.BlockchainClient = mocks.NewMockBlockchainClient(fmt.Errorf("blockchain error"))
+	ctx.AnchorWriter = mocks.NewMockAnchorWriter(fmt.Errorf("anchor writer error"))
 	writer.Start()
 	defer writer.Stop()
 
@@ -263,7 +263,7 @@ func TestBlockchainError(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 
-	require.Equal(t, 0, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, 0, len(ctx.AnchorWriter.GetAnchors()))
 }
 
 func TestAddAfterStop(t *testing.T) {
@@ -312,7 +312,7 @@ func TestProcessBatchErrorRecovery(t *testing.T) {
 	ctx.ProtocolClient.CasClient.SetError(nil)
 	time.Sleep(1 * time.Second)
 
-	require.Equal(t, numBatchesExpected, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, numBatchesExpected, len(ctx.AnchorWriter.GetAnchors()))
 }
 
 func TestAddError(t *testing.T) {
@@ -353,7 +353,7 @@ func TestStartWithExistingItems(t *testing.T) {
 	defer writer.Stop()
 
 	time.Sleep(time.Second)
-	require.Equal(t, numBatchesExpected, len(ctx.BlockchainClient.GetAnchors()))
+	require.Equal(t, numBatchesExpected, len(ctx.AnchorWriter.GetAnchors()))
 }
 
 func TestProcessError(t *testing.T) {
@@ -377,7 +377,7 @@ func TestProcessError(t *testing.T) {
 
 		time.Sleep(50 * time.Millisecond)
 
-		require.Zero(t, len(ctx.BlockchainClient.GetAnchors()))
+		require.Zero(t, len(ctx.AnchorWriter.GetAnchors()))
 	})
 
 	t.Run("Cut error", func(t *testing.T) {
@@ -400,7 +400,7 @@ func TestProcessError(t *testing.T) {
 
 		time.Sleep(50 * time.Millisecond)
 
-		require.Zero(t, len(ctx.BlockchainClient.GetAnchors()))
+		require.Zero(t, len(ctx.AnchorWriter.GetAnchors()))
 	})
 
 	t.Run("Cutter commit error", func(t *testing.T) {
@@ -512,17 +512,17 @@ func generateOperation(num int) (*operation.QueuedOperation, error) {
 
 // mockContext implements mock batch writer context.
 type mockContext struct {
-	ProtocolClient   *mocks.MockProtocolClient
-	BlockchainClient *mocks.MockBlockchainClient
-	OpQueue          cutter.OperationQueue
+	ProtocolClient *mocks.MockProtocolClient
+	AnchorWriter   *mocks.MockAnchorWriter
+	OpQueue        cutter.OperationQueue
 }
 
 // newMockContext returns a new mockContext object.
 func newMockContext() *mockContext {
 	return &mockContext{
-		ProtocolClient:   newMockProtocolClient(),
-		BlockchainClient: mocks.NewMockBlockchainClient(nil),
-		OpQueue:          &opqueue.MemQueue{},
+		ProtocolClient: newMockProtocolClient(),
+		AnchorWriter:   mocks.NewMockAnchorWriter(nil),
+		OpQueue:        &opqueue.MemQueue{},
 	}
 }
 
@@ -531,9 +531,9 @@ func (m *mockContext) Protocol() protocol.Client {
 	return m.ProtocolClient
 }
 
-// Blockchain returns the block chain client.
-func (m *mockContext) Blockchain() BlockchainClient {
-	return m.BlockchainClient
+// Anchor returns the block chain client.
+func (m *mockContext) Anchor() AnchorWriter {
+	return m.AnchorWriter
 }
 
 // OperationQueue returns the queue containing the pending operations.

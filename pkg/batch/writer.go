@@ -6,14 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 
 // Package batch batches multiple operations into batch files and stores the batch files in a distributed
 // content-addressable storage (DCAS or CAS). A reference to the main batch file (core index) is then
-// anchored on the blockchain as Sidetree transaction.
+// anchored on the anchoring system as Sidetree transaction.
 //
 // Batch Writer basic flow:
 //
 // 1) accept operations being delivered via Add method
 // 2) 'cut' configurable number of operations into batch files
 // 3) store batch files into CAS (content addressable storage)
-// 4) write the anchor string referencing core index file URI to the underlying blockchain
+// 4) write the anchor string referencing core index file URI to the underlying anchoring system
 package batch
 
 import (
@@ -66,16 +66,16 @@ type Writer struct {
 // Context contains batch writer context.
 // 1) protocol information client
 // 2) content addressable storage client
-// 3) blockchain client.
+// 3) anchor writer.
 type Context interface {
 	Protocol() protocol.Client
-	Blockchain() BlockchainClient
+	Anchor() AnchorWriter
 	OperationQueue() cutter.OperationQueue
 }
 
-// BlockchainClient defines an interface to access the underlying blockchain.
-type BlockchainClient interface {
-	// WriteAnchor writes the anchor string as a transaction to blockchain
+// AnchorWriter defines an interface to access the underlying anchoring system.
+type AnchorWriter interface {
+	// WriteAnchor writes the anchor string as a transaction to anchoring system
 	WriteAnchor(anchor string, ops []*operation.Reference, protocolGenesisTime uint64) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
@@ -114,7 +114,7 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 	}, nil
 }
 
-// Start periodic anchoring of operation batches to blockchain.
+// Start periodic anchoring of operation batches to anchoring system.
 func (r *Writer) Start() {
 	go r.main()
 }
@@ -139,7 +139,7 @@ func (r *Writer) Stopped() bool {
 	return atomic.LoadUint32(&r.stopped) == 1
 }
 
-// Add the given operation to a queue of operations to be batched and anchored on blockchain.
+// Add the given operation to a queue of operations to be batched and anchored on anchoring system.
 func (r *Writer) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) error {
 	if r.Stopped() {
 		return errors.New("writer is stopped")
@@ -290,8 +290,8 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 
 	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
 
-	// Create Sidetree transaction in blockchain (write anchor string)
-	return r.context.Blockchain().WriteAnchor(anchorString, dids, protocolGenesisTime)
+	// Create Sidetree transaction in anchoring system (write anchor string)
+	return r.context.Anchor().WriteAnchor(anchorString, dids, protocolGenesisTime)
 }
 
 func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.Time {

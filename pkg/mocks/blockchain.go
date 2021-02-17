@@ -13,21 +13,21 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
 
-// MockBlockchainClient mocks blockchain client for testing purposes.
-type MockBlockchainClient struct {
+// MockAnchorWriter mocks anchor writer for testing purposes.
+type MockAnchorWriter struct {
 	sync.RWMutex
 	namespace string
 	anchors   []string
 	err       error
 }
 
-// NewMockBlockchainClient creates mock client.
-func NewMockBlockchainClient(err error) *MockBlockchainClient {
-	return &MockBlockchainClient{err: err, namespace: DefaultNS}
+// NewMockAnchorWriter creates mock anchor writer.
+func NewMockAnchorWriter(err error) *MockAnchorWriter {
+	return &MockAnchorWriter{err: err, namespace: DefaultNS}
 }
 
-// WriteAnchor writes the anchor string as a transaction to blockchain.
-func (m *MockBlockchainClient) WriteAnchor(anchor string, _ []*operation.Reference, _ uint64) error {
+// WriteAnchor writes the anchor string as a transaction to anchoring system.
+func (m *MockAnchorWriter) WriteAnchor(anchor string, _ []*operation.Reference, _ uint64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -41,7 +41,7 @@ func (m *MockBlockchainClient) WriteAnchor(anchor string, _ []*operation.Referen
 }
 
 // Read reads transactions since transaction number.
-func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn) {
+func (m *MockAnchorWriter) Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn) {
 	m.RLock()
 	defer m.RUnlock()
 	moreTransactions := false
@@ -66,7 +66,7 @@ func (m *MockBlockchainClient) Read(sinceTransactionNumber int) (bool, *txn.Side
 }
 
 // GetAnchors returns anchors.
-func (m *MockBlockchainClient) GetAnchors() []string {
+func (m *MockAnchorWriter) GetAnchors() []string {
 	m.RLock()
 	defer m.RUnlock()
 

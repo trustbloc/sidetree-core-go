@@ -157,7 +157,7 @@ func getTransformationInfo(id string, published bool) protocol.TransformationInf
 // 2. Long Form DID format:
 // did:METHOD:<did-suffix>:Base64url(JCS({suffix-data-object, delta-object}))
 //
-// Standard resolution is performed if the DID is found to be registered on the blockchain.
+// Standard resolution is performed if the DID is found to be registered on the anchoring system.
 // If the DID Document cannot be found, the <suffix-data-object> and <delta-object> are used
 // to generate and return resolved DID Document. In this case the supplied delta and suffix objects
 // are subject to the same validation as during processing create operation.

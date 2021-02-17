@@ -26,7 +26,7 @@ import (
 
 // Protocol defines protocol parameters.
 type Protocol struct {
-	// GenesisTime is inclusive starting logical blockchain time that this protocol applies to.
+	// GenesisTime is inclusive starting logical anchoring time that this protocol applies to.
 	// (e.g. block number in a blockchain)
 	GenesisTime uint64 `json:"genesisTime"`
 	// MultihashAlgorithms are supported multihash algorithm codes
