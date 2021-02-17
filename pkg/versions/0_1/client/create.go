@@ -38,6 +38,12 @@ type CreateRequestInfo struct {
 	// required
 	UpdateCommitment string
 
+	// AnchorOrigin signifies the system(s) that know the most recent anchor for this DID (optional)
+	AnchorOrigin interface{}
+
+	// Type signifies the type of entity a DID represents (optional)
+	Type string
+
 	// latest hashing algorithm supported by protocol
 	MultihashCode uint
 }
@@ -66,6 +72,8 @@ func NewCreateRequest(info *CreateRequestInfo) ([]byte, error) {
 	suffixData := &model.SuffixDataModel{
 		DeltaHash:          deltaHash,
 		RecoveryCommitment: info.RecoveryCommitment,
+		AnchorOrigin:       info.AnchorOrigin,
+		Type:               info.Type,
 	}
 
 	schema := &model.CreateRequest{

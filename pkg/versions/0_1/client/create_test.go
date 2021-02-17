@@ -10,6 +10,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 const (
@@ -143,6 +145,31 @@ func TestNewCreateRequest(t *testing.T) {
 		request, err := NewCreateRequest(info)
 		require.NoError(t, err)
 		require.NotEmpty(t, request)
+	})
+
+	t.Run("success - optional params (entity type and anchor origin)", func(t *testing.T) {
+		p, err := patch.NewAddPublicKeysPatch(addKeys)
+		require.NoError(t, err)
+
+		info := &CreateRequestInfo{
+			Patches:            []patch.Patch{p},
+			RecoveryCommitment: recoveryCommitment,
+			UpdateCommitment:   updateCommitment,
+			AnchorOrigin:       "anchor-origin",
+			Type:               "did-entity-type",
+			MultihashCode:      sha2_256,
+		}
+
+		bytes, err := NewCreateRequest(info)
+		require.NoError(t, err)
+		require.NotEmpty(t, bytes)
+
+		var request model.CreateRequest
+		err = json.Unmarshal(bytes, &request)
+		require.NoError(t, err)
+
+		require.Contains(t, request.SuffixData.AnchorOrigin, "anchor-origin")
+		require.Contains(t, request.SuffixData.Type, "did-entity-type")
 	})
 }
 

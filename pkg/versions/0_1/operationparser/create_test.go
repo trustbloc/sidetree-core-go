@@ -8,6 +8,7 @@ package operationparser
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -167,6 +168,24 @@ func TestValidateSuffixData(t *testing.T) {
 
 	parser := New(p)
 
+	t.Run("success", func(t *testing.T) {
+		suffixData, err := getSuffixData()
+		require.NoError(t, err)
+
+		err = parser.ValidateSuffixData(suffixData)
+		require.NoError(t, err)
+	})
+	t.Run("anchor origin validation error", func(t *testing.T) {
+		suffixData, err := getSuffixData()
+		require.NoError(t, err)
+
+		testErr := errors.New("validation error")
+		parserWithErr := New(p, WithAnchorOriginValidator(&mockObjectValidator{Err: testErr}))
+
+		err = parserWithErr.ValidateSuffixData(suffixData)
+		require.Error(t, err)
+		require.Equal(t, testErr, err)
+	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		suffixData, err := getSuffixData()
 		require.NoError(t, err)
