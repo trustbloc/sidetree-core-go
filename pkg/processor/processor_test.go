@@ -97,7 +97,7 @@ func TestResolve(t *testing.T) {
 		doc, err := op.applyOperation(createOp, &protocol.ResolutionModel{})
 		require.Nil(t, doc)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "apply 'create' operation: protocol parameters are not defined for blockchain time")
+		require.Contains(t, err.Error(), "apply 'create' operation: protocol parameters are not defined for anchoring time")
 	})
 
 	t.Run("resolution error", func(t *testing.T) {
@@ -634,7 +634,7 @@ func TestGetOperationCommitment(t *testing.T) {
 		value, err := New("test", store, pcWithoutProtocols).getRevealValue(updateOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
+		require.Contains(t, err.Error(), "protocol parameters are not defined for anchoring time")
 	})
 
 	t.Run("error - create operation doesn't have reveal value", func(t *testing.T) {
@@ -769,7 +769,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		value, err := New("test", store, pcWithoutProtocols).getCommitment(updateOp)
 		require.Error(t, err)
 		require.Empty(t, value)
-		require.Contains(t, err.Error(), "protocol parameters are not defined for blockchain time")
+		require.Contains(t, err.Error(), "protocol parameters are not defined for anchoring time")
 	})
 
 	t.Run("error - create operation is currently not supported", func(t *testing.T) {

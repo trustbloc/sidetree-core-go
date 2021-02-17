@@ -70,7 +70,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperatio
 
 		updatedOp := updateAnchoredOperation(op, sidetreeTxn)
 
-		logger.Debugf("updated operation with blockchain time: %s", updatedOp.UniqueSuffix)
+		logger.Debugf("updated operation with anchoring time: %s", updatedOp.UniqueSuffix)
 		ops = append(ops, updatedOp)
 
 		batchSuffixes[op.UniqueSuffix] = true
@@ -85,7 +85,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperatio
 }
 
 func updateAnchoredOperation(op *operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) *operation.AnchoredOperation {
-	//  The logical blockchain time that this operation was anchored on the blockchain
+	//  The logical anchoring time that this operation was anchored on
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
 	op.TransactionNumber = sidetreeTxn.TransactionNumber

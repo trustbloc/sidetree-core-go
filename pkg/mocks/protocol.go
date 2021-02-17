@@ -69,7 +69,7 @@ func (m *MockProtocolClient) Current() (protocol.Version, error) {
 	return m.CurrentVersion, nil
 }
 
-// Get mocks getting protocol version based on blockchain(transaction) time.
+// Get mocks getting protocol version based on anchoring(transaction) time.
 func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Version, error) {
 	if m.Err != nil {
 		return nil, m.Err
@@ -81,7 +81,7 @@ func (m *MockProtocolClient) Get(transactionTime uint64) (protocol.Version, erro
 		}
 	}
 
-	return nil, fmt.Errorf("protocol parameters are not defined for blockchain time: %d", transactionTime)
+	return nil, fmt.Errorf("protocol parameters are not defined for anchoring time: %d", transactionTime)
 }
 
 // NewMockProtocolClientProvider creates new mock protocol client provider.

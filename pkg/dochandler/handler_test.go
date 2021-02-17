@@ -369,10 +369,10 @@ func TestProcessOperation_ParseOperationError(t *testing.T) {
 
 // BatchContext implements batch writer context.
 type BatchContext struct {
-	ProtocolClient   *mocks.MockProtocolClient
-	CasClient        *mocks.MockCasClient
-	BlockchainClient *mocks.MockBlockchainClient
-	OpQueue          cutter.OperationQueue
+	ProtocolClient *mocks.MockProtocolClient
+	CasClient      *mocks.MockCasClient
+	AnchorWriter   *mocks.MockAnchorWriter
+	OpQueue        cutter.OperationQueue
 }
 
 // Protocol returns the ProtocolClient.
@@ -380,9 +380,9 @@ func (m *BatchContext) Protocol() protocol.Client {
 	return m.ProtocolClient
 }
 
-// Blockchain returns the block chain client.
-func (m *BatchContext) Blockchain() batch.BlockchainClient {
-	return m.BlockchainClient
+// Anchor returns the block chain client.
+func (m *BatchContext) Anchor() batch.AnchorWriter {
+	return m.AnchorWriter
 }
 
 // CAS returns the CAS client.
@@ -405,10 +405,10 @@ func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, 
 	processor := processor.New("test", store, protocol)
 
 	ctx := &BatchContext{
-		ProtocolClient:   protocol,
-		CasClient:        mocks.NewMockCasClient(nil),
-		BlockchainClient: mocks.NewMockBlockchainClient(nil),
-		OpQueue:          &opqueue.MemQueue{},
+		ProtocolClient: protocol,
+		CasClient:      mocks.NewMockCasClient(nil),
+		AnchorWriter:   mocks.NewMockAnchorWriter(nil),
+		OpQueue:        &opqueue.MemQueue{},
 	}
 	writer, err := batch.New("test", ctx)
 	if err != nil {
