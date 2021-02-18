@@ -23,12 +23,41 @@ var logger = log.New("sidetree-core-parser")
 // Parser is an operation parser.
 type Parser struct {
 	protocol.Protocol
+	anchorValidator ObjectValidator
 }
 
 // New returns a new operation parser.
-func New(p protocol.Protocol) *Parser {
-	return &Parser{
+func New(p protocol.Protocol, opts ...Option) *Parser {
+	parser := &Parser{
 		Protocol: p,
+	}
+
+	// default anchor origin validator
+	parser.anchorValidator = &objectValidator{}
+
+	// apply options
+	for _, opt := range opts {
+		opt(parser)
+	}
+
+	return parser
+}
+
+// ObjectValidator validates object. Currently used for anchor origin validation
+// however it can be used for any object validation.
+type ObjectValidator interface {
+	Validate(obj interface{}) error
+}
+
+// Option is a parser instance option.
+type Option func(opts *Parser)
+
+// WithAnchorOriginValidator sets optional anchor origin validator.
+func WithAnchorOriginValidator(v ObjectValidator) Option {
+	return func(opts *Parser) {
+		if v != nil {
+			opts.anchorValidator = v
+		}
 	}
 }
 
@@ -94,4 +123,12 @@ type operationSchema struct {
 
 	// operation
 	Operation operation.Type `json:"type"`
+}
+
+type objectValidator struct {
+}
+
+func (ov *objectValidator) Validate(_ interface{}) error {
+	// default validator allows any anchor origin
+	return nil
 }

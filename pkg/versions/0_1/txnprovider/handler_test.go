@@ -20,6 +20,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
+	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
@@ -36,6 +37,9 @@ import (
 const (
 	sha2_256  = 18
 	defaultNS = "did:sidetree"
+
+	createAnchorOrigin  = "create-anchor-origin"
+	recoverAnchorOrigin = "recover-anchor-origin"
 )
 
 func TestNewOperationHandler(t *testing.T) {
@@ -88,6 +92,7 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, cif)
 		require.Equal(t, createOpsNum, len(cif.Operations.Create))
+		require.Equal(t, createAnchorOrigin, cif.Operations.Create[0].SuffixData.AnchorOrigin)
 		require.Equal(t, recoverOpsNum, len(cif.Operations.Recover))
 		require.Equal(t, deactivateOpsNum, len(cif.Operations.Deactivate))
 
@@ -130,6 +135,15 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NotNil(t, cpf)
 		require.Equal(t, recoverOpsNum, len(cpf.Operations.Recover))
 		require.Equal(t, deactivateOpsNum, len(cpf.Operations.Deactivate))
+
+		signedData, err := internaljws.ParseJWS(cpf.Operations.Recover[0])
+		require.NoError(t, err)
+
+		var signedModel model.RecoverSignedDataModel
+		err = json.Unmarshal(signedData.Payload, &signedModel)
+		require.NoError(t, err)
+
+		require.Equal(t, recoverAnchorOrigin, signedModel.AnchorOrigin)
 
 		bytes, err = handler.cas.Read(mf.ProvisionalProofFileURI)
 		require.NoError(t, err)
@@ -424,6 +438,7 @@ func generateCreateOperation(num int) ([]byte, error) {
 		RecoveryCommitment: recoverCommitment,
 		UpdateCommitment:   updateCommitment,
 		MultihashCode:      sha2_256,
+		AnchorOrigin:       createAnchorOrigin, // optional
 	}
 
 	return client.NewCreateRequest(info)
@@ -461,6 +476,7 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		RecoveryCommitment: recoveryCommitment,
 		UpdateCommitment:   updateCommitment,
 		RecoveryKey:        jwk,
+		AnchorOrigin:       recoverAnchorOrigin,
 		MultihashCode:      sha2_256,
 		Signer:             ecsigner.New(privKey, "ES256", ""),
 		RevealValue:        rv,

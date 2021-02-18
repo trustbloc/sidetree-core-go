@@ -42,6 +42,9 @@ type RecoverRequestInfo struct {
 	// UpdateCommitment is update commitment to be used for the next update
 	UpdateCommitment string
 
+	// AnchorOrigin signifies the system(s) that know the most recent anchor for this DID (optional)
+	AnchorOrigin interface{}
+
 	// MultihashCode is the latest hashing algorithm supported by protocol
 	MultihashCode uint
 
@@ -79,6 +82,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		DeltaHash:          deltaHash,
 		RecoveryKey:        info.RecoveryKey,
 		RecoveryCommitment: info.RecoveryCommitment,
+		AnchorOrigin:       info.AnchorOrigin,
 	}
 
 	err = validateCommitment(info.RecoveryKey, info.MultihashCode, info.RecoveryCommitment)

@@ -8,6 +8,7 @@ package operationparser
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -201,13 +202,20 @@ func TestValidateSignedDataForRecovery(t *testing.T) {
 
 	parser := New(p)
 
-	t.Run("missing recovery key", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		signed := getSignedDataForRecovery()
-		signed.RecoveryKey = nil
 		err := parser.validateSignedDataForRecovery(signed)
+		require.NoError(t, err)
+	})
+	t.Run("anchor origin validation error", func(t *testing.T) {
+		signed := getSignedDataForRecovery()
+
+		testErr := errors.New("validation error")
+		parserWithErr := New(p, WithAnchorOriginValidator(&mockObjectValidator{Err: testErr}))
+
+		err := parserWithErr.validateSignedDataForRecovery(signed)
 		require.Error(t, err)
-		require.Contains(t, err.Error(),
-			"missing signing key")
+		require.Equal(t, testErr, err)
 	})
 	t.Run("invalid patch data hash", func(t *testing.T) {
 		signed := getSignedDataForRecovery()

@@ -17,9 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
+	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
 )
 
 func TestNewRecoverRequest(t *testing.T) {
@@ -153,6 +155,31 @@ func TestNewRecoverRequest(t *testing.T) {
 
 		require.Equal(t, "recover", request["type"])
 		require.Equal(t, didSuffix, request["didSuffix"])
+	})
+
+	t.Run("success - optional params (anchor origin)", func(t *testing.T) {
+		info := getRecoverRequestInfo()
+		info.AnchorOrigin = "test-anchor-origin"
+
+		bytes, err := NewRecoverRequest(info)
+		require.NoError(t, err)
+		require.NotEmpty(t, bytes)
+
+		var request map[string]interface{}
+		err = json.Unmarshal(bytes, &request)
+		require.NoError(t, err)
+
+		jws, ok := request["signedData"]
+		require.True(t, ok)
+
+		signedData, err := internaljws.ParseJWS(jws.(string))
+		require.NoError(t, err)
+
+		var signedModel model.RecoverSignedDataModel
+		err = json.Unmarshal(signedData.Payload, &signedModel)
+		require.NoError(t, err)
+
+		require.Equal(t, "test-anchor-origin", signedModel.AnchorOrigin)
 	})
 }
 

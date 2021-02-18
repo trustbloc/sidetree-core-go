@@ -30,11 +30,17 @@ type CreateRequest struct {
 // SuffixDataModel is part of create request.
 type SuffixDataModel struct {
 
-	// Hash of the delta object
+	// Hash of the delta object (required)
 	DeltaHash string `json:"deltaHash,omitempty"`
 
-	// Commitment hash for the next recovery or deactivate operation
+	// Commitment hash for the next recovery or deactivate operation (required)
 	RecoveryCommitment string `json:"recoveryCommitment,omitempty"`
+
+	// AnchorOrigin signifies the system(s) that know the most recent anchor for this DID (optional)
+	AnchorOrigin interface{} `json:"anchorOrigin,omitempty"`
+
+	// Type signifies the type of entity a DID represents (optional)
+	Type string `json:"type,omitempty"`
 }
 
 // DeltaModel contains patch data (patches used for create, recover, update).
@@ -102,6 +108,9 @@ type RecoverSignedDataModel struct {
 
 	// RecoveryCommitment is the commitment used for the next recovery/deactivate
 	RecoveryCommitment string `json:"recoveryCommitment"`
+
+	// AnchorOrigin signifies the system(s) that know the most recent anchor for this DID (optional)
+	AnchorOrigin interface{} `json:"anchorOrigin,omitempty"`
 }
 
 // DeactivateSignedDataModel defines data model for deactivate.

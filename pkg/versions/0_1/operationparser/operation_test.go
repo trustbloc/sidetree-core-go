@@ -8,6 +8,7 @@ package operationparser
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,26 @@ const (
 	maxHashLength    = 100
 	maxDeltaSize     = 1000
 )
+
+func TestNewParser(t *testing.T) {
+	p := protocol.Protocol{}
+
+	parser := New(p)
+	require.NotNil(t, parser)
+	require.NotNil(t, parser.anchorValidator)
+
+	// validator cannot be set to nil (default validator will kick in)
+	parser = New(p, WithAnchorOriginValidator(nil))
+	require.NotNil(t, parser)
+	require.NotNil(t, parser.anchorValidator)
+
+	// supply custom validator
+	ov := &mockObjectValidator{}
+
+	parser = New(p, WithAnchorOriginValidator(ov))
+	require.NotNil(t, parser)
+	require.Equal(t, ov, parser.anchorValidator)
+}
 
 func TestGetOperation(t *testing.T) {
 	p := protocol.Protocol{
@@ -67,6 +88,30 @@ func TestGetOperation(t *testing.T) {
 		op, err := parser.Parse(namespace, operation)
 		require.NoError(t, err)
 		require.NotNil(t, op)
+	})
+	t.Run("operation parsing error - anchor origin validator error (create)", func(t *testing.T) {
+		operation, err := getCreateRequestBytes()
+		require.NoError(t, err)
+
+		testErr := errors.New("validation error")
+		parserWithErr := New(p, WithAnchorOriginValidator(&mockObjectValidator{Err: testErr}))
+
+		op, err := parserWithErr.Parse(namespace, operation)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), testErr.Error())
+	})
+	t.Run("operation parsing error - anchor origin validator error (recover)", func(t *testing.T) {
+		operation, err := getRecoverRequestBytes()
+		require.NoError(t, err)
+
+		testErr := errors.New("validation error")
+		parserWithErr := New(p, WithAnchorOriginValidator(&mockObjectValidator{Err: testErr}))
+
+		op, err := parserWithErr.Parse(namespace, operation)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), testErr.Error())
 	})
 	t.Run("operation parsing error - exceeds max operation size", func(t *testing.T) {
 		// set-up invalid hash algorithm in protocol configuration
@@ -127,4 +172,12 @@ func getUnsupportedRequest() []byte {
 	}
 
 	return payload
+}
+
+type mockObjectValidator struct {
+	Err error
+}
+
+func (mov *mockObjectValidator) Validate(_ interface{}) error {
+	return mov.Err
 }

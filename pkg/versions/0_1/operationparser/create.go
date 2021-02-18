@@ -151,6 +151,10 @@ func (p *Parser) ValidateSuffixData(suffixData *model.SuffixDataModel) error {
 		return err
 	}
 
+	if err := p.anchorValidator.Validate(suffixData.AnchorOrigin); err != nil {
+		return err
+	}
+
 	return p.validateMultihash(suffixData.DeltaHash, "delta hash")
 }
 

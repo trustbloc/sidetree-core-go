@@ -93,6 +93,10 @@ func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSig
 }
 
 func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel) error {
+	if err := p.anchorValidator.Validate(signedData.AnchorOrigin); err != nil {
+		return err
+	}
+
 	if err := p.validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
 		return err
 	}
