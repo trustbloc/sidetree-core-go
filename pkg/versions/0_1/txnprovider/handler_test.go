@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -157,6 +158,43 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, ppf)
 		require.Equal(t, updateOpsNum, len(ppf.Operations.Update))
+	})
+
+	t.Run("success - stale operations not included", func(t *testing.T) {
+		// operations without from and until - will go through
+		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
+
+		// until = current time - 5 minutes
+		expiry := time.Now().Unix() - 5*60
+
+		// generate stale recover operation
+		op, err := generateQueueOperationWithAnchorTimes(operation.TypeRecover, "stale-recover", 0, expiry)
+		require.NoError(t, err)
+
+		ops = append(ops, op)
+
+		// generate stale recover operation
+		op, err = generateQueueOperationWithAnchorTimes(operation.TypeDeactivate, "stale-deactivate", 0, expiry)
+		require.NoError(t, err)
+
+		ops = append(ops, op)
+
+		// generate stale recover operation
+		op, err = generateQueueOperationWithAnchorTimes(operation.TypeUpdate, "stale-update", 0, expiry)
+		require.NoError(t, err)
+
+		ops = append(ops, op)
+
+		handler := NewOperationHandler(
+			protocol,
+			mocks.NewMockCasClient(nil),
+			compression,
+			operationparser.New(protocol, operationparser.WithAnchorTimeValidator(&mockTimeValidator{})))
+
+		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		require.NoError(t, err)
+		require.NotEmpty(t, anchorString)
+		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
 	})
 
 	t.Run("success - no recover, deactivate or update ops", func(t *testing.T) {
@@ -444,7 +482,7 @@ func generateCreateOperation(num int) ([]byte, error) {
 	return client.NewCreateRequest(info)
 }
 
-func generateRecoverOperation(num int) ([]byte, error) {
+func generateRecoverRequestInfo(num int) (*client.RecoverRequestInfo, error) {
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -470,7 +508,7 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &client.RecoverRequestInfo{
+	return &client.RecoverRequestInfo{
 		DidSuffix:          fmt.Sprintf("recover-%d", num),
 		OpaqueDocument:     `{"test":"value"}`,
 		RecoveryCommitment: recoveryCommitment,
@@ -480,12 +518,19 @@ func generateRecoverOperation(num int) ([]byte, error) {
 		MultihashCode:      sha2_256,
 		Signer:             ecsigner.New(privKey, "ES256", ""),
 		RevealValue:        rv,
+	}, nil
+}
+
+func generateRecoverOperation(num int) ([]byte, error) {
+	info, err := generateRecoverRequestInfo(num)
+	if err != nil {
+		return nil, err
 	}
 
 	return client.NewRecoverRequest(info)
 }
 
-func generateDeactivateOperation(num int) ([]byte, error) {
+func generateDeactivateRequestInfo(num int) (*client.DeactivateRequestInfo, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -501,17 +546,24 @@ func generateDeactivateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &client.DeactivateRequestInfo{
+	return &client.DeactivateRequestInfo{
 		DidSuffix:   fmt.Sprintf("deactivate-%d", num),
 		Signer:      ecsigner.New(privateKey, "ES256", ""),
 		RecoveryKey: recoveryPubKey,
 		RevealValue: rv,
+	}, nil
+}
+
+func generateDeactivateOperation(num int) ([]byte, error) {
+	info, err := generateDeactivateRequestInfo(num)
+	if err != nil {
+		return nil, err
 	}
 
 	return client.NewDeactivateRequest(info)
 }
 
-func generateUpdateOperation(num int) ([]byte, error) {
+func generateUpdateRequestInfo(num int) (*client.UpdateRequestInfo, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -537,7 +589,7 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &client.UpdateRequestInfo{
+	return &client.UpdateRequestInfo{
 		DidSuffix:        fmt.Sprintf("update-%d", num),
 		Signer:           ecsigner.New(privateKey, "ES256", ""),
 		UpdateCommitment: updateCommitment,
@@ -545,6 +597,13 @@ func generateUpdateOperation(num int) ([]byte, error) {
 		Patches:          []patch.Patch{testPatch},
 		MultihashCode:    sha2_256,
 		RevealValue:      rv,
+	}, nil
+}
+
+func generateUpdateOperation(num int) ([]byte, error) {
+	info, err := generateUpdateRequestInfo(num)
+	if err != nil {
+		return nil, err
 	}
 
 	return client.NewUpdateRequest(info)
@@ -571,4 +630,98 @@ func generateUniqueCommitment() (string, error) {
 	}
 
 	return c, nil
+}
+
+func generateRecoverOperationWithAnchorTimes(suffix string, from, until int64) ([]byte, error) {
+	op, err := generateRecoverRequestInfo(1)
+	if err != nil {
+		return nil, err
+	}
+
+	op.DidSuffix = suffix
+	op.AnchorUntil = until
+	op.AnchorFrom = from
+
+	return client.NewRecoverRequest(op)
+}
+
+func generateDeactivateOperationWithAnchorTimes(suffix string, from, until int64) ([]byte, error) {
+	op, err := generateDeactivateRequestInfo(1)
+	if err != nil {
+		return nil, err
+	}
+
+	op.DidSuffix = suffix
+	op.AnchorUntil = until
+	op.AnchorFrom = from
+
+	return client.NewDeactivateRequest(op)
+}
+
+func generateUpdateOperationWithAnchorTimes(suffix string, from, until int64) ([]byte, error) {
+	op, err := generateUpdateRequestInfo(1)
+	if err != nil {
+		return nil, err
+	}
+
+	op.DidSuffix = suffix
+	op.AnchorUntil = until
+	op.AnchorFrom = from
+
+	return client.NewUpdateRequest(op)
+}
+
+func generateQueueOperationWithAnchorTimes(opType operation.Type, suffix string, from, until int64) (*operation.QueuedOperation, error) {
+	var opBuffer []byte
+	var err error
+
+	switch opType {
+	case operation.TypeCreate:
+		return nil, errors.New("create operation is not supported")
+	case operation.TypeRecover:
+		opBuffer, err = generateRecoverOperationWithAnchorTimes(suffix, from, until)
+	case operation.TypeDeactivate:
+		opBuffer, err = generateDeactivateOperationWithAnchorTimes(suffix, from, until)
+	case operation.TypeUpdate:
+		opBuffer, err = generateUpdateOperationWithAnchorTimes(suffix, from, until)
+	default:
+		return nil, fmt.Errorf("operation type '%s' not supported", opType)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &operation.QueuedOperation{
+		OperationBuffer: opBuffer,
+		UniqueSuffix:    suffix,
+		Namespace:       defaultNS,
+	}, nil
+}
+
+type mockTimeValidator struct {
+	Err error
+}
+
+func (mtv *mockTimeValidator) Validate(from, until int64) error {
+	if mtv.Err != nil {
+		return mtv.Err
+	}
+
+	if from == 0 && until == 0 {
+		// from and until are not specified - no error
+		return nil
+	}
+
+	serverTime := time.Now().Unix()
+
+	if from >= serverTime {
+		return operationparser.ErrOperationEarly
+	}
+
+	if until <= serverTime {
+		return operationparser.ErrOperationExpired
+	}
+
+	return nil
 }

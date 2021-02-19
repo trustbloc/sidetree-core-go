@@ -41,6 +41,12 @@ type UpdateRequestInfo struct {
 
 	// RevealValue is reveal value
 	RevealValue string
+
+	// AnchorFrom defines earliest time for this operation.
+	AnchorFrom int64
+
+	// AnchorUntil defines expiry time for this operation.
+	AnchorUntil int64
 }
 
 // NewUpdateRequest is utility function to create payload for 'update' request.
@@ -60,8 +66,10 @@ func NewUpdateRequest(info *UpdateRequestInfo) ([]byte, error) {
 	}
 
 	signedDataModel := &model.UpdateSignedDataModel{
-		DeltaHash: deltaHash,
-		UpdateKey: info.UpdateKey,
+		DeltaHash:   deltaHash,
+		UpdateKey:   info.UpdateKey,
+		AnchorFrom:  info.AnchorFrom,
+		AnchorUntil: info.AnchorUntil,
 	}
 
 	err = validateCommitment(info.UpdateKey, info.MultihashCode, info.UpdateCommitment)

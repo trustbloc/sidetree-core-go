@@ -8,6 +8,7 @@ package operationparser
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/trustbloc/edge-core/pkg/log"
@@ -23,7 +24,8 @@ var logger = log.New("sidetree-core-parser")
 // Parser is an operation parser.
 type Parser struct {
 	protocol.Protocol
-	anchorValidator ObjectValidator
+	anchorOriginValidator ObjectValidator
+	anchorTimeValidator   TimeValidator
 }
 
 // New returns a new operation parser.
@@ -33,7 +35,10 @@ func New(p protocol.Protocol, opts ...Option) *Parser {
 	}
 
 	// default anchor origin validator
-	parser.anchorValidator = &objectValidator{}
+	parser.anchorOriginValidator = &objectValidator{}
+
+	// default anchor time validator
+	parser.anchorTimeValidator = &timeValidator{}
 
 	// apply options
 	for _, opt := range opts {
@@ -56,7 +61,27 @@ type Option func(opts *Parser)
 func WithAnchorOriginValidator(v ObjectValidator) Option {
 	return func(opts *Parser) {
 		if v != nil {
-			opts.anchorValidator = v
+			opts.anchorOriginValidator = v
+		}
+	}
+}
+
+// ErrOperationExpired is thrown if anchor until time is less then reference time(e.g. server time or anchoring time).
+var ErrOperationExpired = errors.New("operation expired")
+
+// ErrOperationEarly is thrown if anchor from time is greater then reference time(e.g. server time or anchoring time).
+var ErrOperationEarly = errors.New("operation early")
+
+// TimeValidator validates earliest and expiry time for an operation against server time.
+type TimeValidator interface {
+	Validate(from, until int64) error
+}
+
+// WithAnchorTimeValidator sets optional anchor time validator.
+func WithAnchorTimeValidator(v TimeValidator) Option {
+	return func(opts *Parser) {
+		if v != nil {
+			opts.anchorTimeValidator = v
 		}
 	}
 }
@@ -130,5 +155,13 @@ type objectValidator struct {
 
 func (ov *objectValidator) Validate(_ interface{}) error {
 	// default validator allows any anchor origin
+	return nil
+}
+
+type timeValidator struct {
+}
+
+func (tv *timeValidator) Validate(_, _ int64) error {
+	// default time validator allows any anchor time
 	return nil
 }

@@ -37,6 +37,12 @@ func (p *Parser) ParseDeactivateOperation(request []byte, batch bool) (*model.Op
 		return nil, fmt.Errorf("canonicalized recovery public key hash doesn't match reveal value: %s", err.Error())
 	}
 
+	if !batch {
+		if err := p.anchorTimeValidator.Validate(signedData.AnchorFrom, signedData.AnchorUntil); err != nil {
+			return nil, err
+		}
+	}
+
 	return &model.Operation{
 		Type:            operation.TypeDeactivate,
 		OperationBuffer: request,

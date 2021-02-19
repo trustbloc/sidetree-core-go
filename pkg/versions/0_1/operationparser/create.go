@@ -33,6 +33,11 @@ func (p *Parser) ParseCreateOperation(request []byte, batch bool) (*model.Operat
 	}
 
 	if !batch {
+		err = p.anchorOriginValidator.Validate(schema.SuffixData.AnchorOrigin)
+		if err != nil {
+			return nil, err
+		}
+
 		err = p.ValidateDelta(schema.Delta)
 		if err != nil {
 			return nil, err
@@ -148,10 +153,6 @@ func (p *Parser) ValidateSuffixData(suffixData *model.SuffixDataModel) error {
 	}
 
 	if err := p.validateMultihash(suffixData.RecoveryCommitment, "recovery commitment"); err != nil {
-		return err
-	}
-
-	if err := p.anchorValidator.Validate(suffixData.AnchorOrigin); err != nil {
 		return err
 	}
 
