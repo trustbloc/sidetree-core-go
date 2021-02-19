@@ -41,6 +41,12 @@ type DeactivateRequestInfo struct {
 
 	// RevealValue is reveal value
 	RevealValue string
+
+	// AnchorFrom defines earliest time for this operation.
+	AnchorFrom int64
+
+	// AnchorUntil defines expiry time for this operation.
+	AnchorUntil int64
 }
 
 // NewDeactivateRequest is utility function to create payload for 'deactivate' request.
@@ -52,6 +58,8 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 	signedDataModel := model.DeactivateSignedDataModel{
 		DidSuffix:   info.DidSuffix,
 		RecoveryKey: info.RecoveryKey,
+		AnchorFrom:  info.AnchorFrom,
+		AnchorUntil: info.AnchorUntil,
 	}
 
 	jws, err := signutil.SignModel(signedDataModel, info.Signer)

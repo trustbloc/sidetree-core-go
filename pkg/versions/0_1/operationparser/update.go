@@ -29,6 +29,11 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 	}
 
 	if !batch {
+		err = p.anchorTimeValidator.Validate(signedData.AnchorFrom, signedData.AnchorUntil)
+		if err != nil {
+			return nil, err
+		}
+
 		err = p.ValidateDelta(schema.Delta)
 		if err != nil {
 			return nil, err

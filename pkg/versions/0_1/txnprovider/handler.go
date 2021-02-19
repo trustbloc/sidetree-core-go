@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
 )
 
@@ -80,7 +81,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 	return ad.GetAnchorString(), dids, nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) {
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) { // nolint:gocyclo
 	if len(ops) == 0 {
 		return nil, nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
@@ -91,6 +92,15 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 	for _, d := range ops {
 		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer, false)
 		if e != nil {
+			if e == operationparser.ErrOperationExpired {
+				// stale operations should not be added to the batch; ignore operation
+				logger.Warnf("[%s] stale operation for suffix[%s] found in batch operations: discarding operation %s", d.Namespace, d.UniqueSuffix, d.OperationBuffer)
+
+				continue
+			}
+
+			// operations are already validated/parsed at REST so any error at this point
+			// will result in rejecting whole batch
 			return nil, nil, e
 		}
 

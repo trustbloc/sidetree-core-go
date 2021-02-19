@@ -45,6 +45,12 @@ type RecoverRequestInfo struct {
 	// AnchorOrigin signifies the system(s) that know the most recent anchor for this DID (optional)
 	AnchorOrigin interface{}
 
+	// AnchorFrom defines earliest time for this operation.
+	AnchorFrom int64
+
+	// AnchorUntil defines expiry time for this operation.
+	AnchorUntil int64
+
 	// MultihashCode is the latest hashing algorithm supported by protocol
 	MultihashCode uint
 
@@ -83,6 +89,8 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		RecoveryKey:        info.RecoveryKey,
 		RecoveryCommitment: info.RecoveryCommitment,
 		AnchorOrigin:       info.AnchorOrigin,
+		AnchorFrom:         info.AnchorFrom,
+		AnchorUntil:        info.AnchorUntil,
 	}
 
 	err = validateCommitment(info.RecoveryKey, info.MultihashCode, info.RecoveryCommitment)

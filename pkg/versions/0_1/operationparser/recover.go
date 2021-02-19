@@ -33,6 +33,16 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 	}
 
 	if !batch {
+		err = p.anchorOriginValidator.Validate(signedData.AnchorOrigin)
+		if err != nil {
+			return nil, err
+		}
+
+		err = p.anchorTimeValidator.Validate(signedData.AnchorFrom, signedData.AnchorUntil)
+		if err != nil {
+			return nil, err
+		}
+
 		err = p.ValidateDelta(schema.Delta)
 		if err != nil {
 			return nil, err
@@ -93,10 +103,6 @@ func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSig
 }
 
 func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel) error {
-	if err := p.anchorValidator.Validate(signedData.AnchorOrigin); err != nil {
-		return err
-	}
-
 	if err := p.validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
 		return err
 	}

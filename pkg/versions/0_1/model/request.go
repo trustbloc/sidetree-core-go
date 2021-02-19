@@ -95,6 +95,12 @@ type UpdateSignedDataModel struct {
 
 	// DeltaHash of the unsigned delta object
 	DeltaHash string `json:"deltaHash"`
+
+	// AnchorFrom defines earliest time for this operation.
+	AnchorFrom int64 `json:"anchorFrom,omitempty"`
+
+	// AnchorUntil defines expiry time for this operation.
+	AnchorUntil int64 `json:"anchorUntil,omitempty"`
 }
 
 // RecoverSignedDataModel defines signed data model for recovery.
@@ -111,6 +117,12 @@ type RecoverSignedDataModel struct {
 
 	// AnchorOrigin signifies the system(s) that know the most recent anchor for this DID (optional)
 	AnchorOrigin interface{} `json:"anchorOrigin,omitempty"`
+
+	// AnchorFrom defines earliest time for this operation.
+	AnchorFrom int64 `json:"anchorFrom,omitempty"`
+
+	// AnchorUntil defines expiry time for this operation.
+	AnchorUntil int64 `json:"anchorUntil,omitempty"`
 }
 
 // DeactivateSignedDataModel defines data model for deactivate.
@@ -125,6 +137,12 @@ type DeactivateSignedDataModel struct {
 
 	// RecoveryKey is the current recovery key
 	RecoveryKey *jws.JWK `json:"recoveryKey"`
+
+	// AnchorFrom defines earliest time for this operation.
+	AnchorFrom int64 `json:"anchorFrom,omitempty"`
+
+	// AnchorUntil defines expiry time for this operation.
+	AnchorUntil int64 `json:"anchorUntil,omitempty"`
 }
 
 // RecoverRequest is the struct for document recovery payload.
