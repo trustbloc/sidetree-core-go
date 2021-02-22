@@ -38,7 +38,9 @@ func (p *Parser) ParseDeactivateOperation(request []byte, batch bool) (*model.Op
 	}
 
 	if !batch {
-		if err := p.anchorTimeValidator.Validate(signedData.AnchorFrom, signedData.AnchorUntil); err != nil {
+		until := p.getAnchorUntil(signedData.AnchorFrom, signedData.AnchorUntil)
+
+		if err := p.anchorTimeValidator.Validate(signedData.AnchorFrom, until); err != nil {
 			return nil, err
 		}
 	}

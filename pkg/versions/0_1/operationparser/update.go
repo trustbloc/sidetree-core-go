@@ -29,7 +29,9 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 	}
 
 	if !batch {
-		err = p.anchorTimeValidator.Validate(signedData.AnchorFrom, signedData.AnchorUntil)
+		until := p.getAnchorUntil(signedData.AnchorFrom, signedData.AnchorUntil)
+
+		err = p.anchorTimeValidator.Validate(signedData.AnchorFrom, until)
 		if err != nil {
 			return nil, err
 		}

@@ -29,35 +29,52 @@ type Protocol struct {
 	// GenesisTime is inclusive starting logical anchoring time that this protocol applies to.
 	// (e.g. block number in a blockchain)
 	GenesisTime uint64 `json:"genesisTime"`
+
 	// MultihashAlgorithms are supported multihash algorithm codes
 	MultihashAlgorithms []uint `json:"multihashAlgorithms"`
+
 	// MaxOperationCount defines maximum number of operations per batch.
 	MaxOperationCount uint `json:"maxOperationCount"`
+
 	// MaxOperationSize is maximum operation size in bytes (used to reject operations before parsing them)
 	// It has to be greater than max delta size (big) + max proof size (medium) + other small values (operation type, suffix-data)
 	MaxOperationSize uint `json:"maxOperationSize"`
+
 	// MaxOperationHashLength is maximum operation hash length
 	MaxOperationHashLength uint `json:"maxOperationHashLength"`
+
 	// MaxDeltaSize is maximum size of operation's delta property.
 	MaxDeltaSize uint `json:"maxDeltaSize"`
+
 	// MaxCasUriLength is maximum length of CAS URI in batch files.
 	MaxCasURILength uint `json:"maxCasUriLength"`
+
 	// CompressionAlgorithm is file compression algorithm.
 	CompressionAlgorithm string `json:"compressionAlgorithm"`
+
 	// MaxCoreIndexFileSize is maximum allowed size (in bytes) of core index file stored in CAS.
 	MaxCoreIndexFileSize uint `json:"maxCoreIndexFileSize"`
+
 	// MaxProofFileSize is maximum allowed size (in bytes) of proof files stored in CAS.
 	MaxProofFileSize uint `json:"maxProofFileSize"`
+
 	// MaxProvisionalIndexFileSize is maximum allowed size (in bytes) of provisional index file stored in CAS.
 	MaxProvisionalIndexFileSize uint `json:"maxProvisionalIndexFileSize"`
+
 	// MaxChunkFileSize is maximum allowed size (in bytes) of chunk file stored in CAS.
 	MaxChunkFileSize uint `json:"maxChunkFileSize"`
+
 	// Patches contains the list of allowed patches.
 	Patches []string `json:"patches"`
+
 	// SignatureAlgorithms contain supported signature algorithms for signed operations (e.g. EdDSA, ES256, ES384, ES512, ES256K).
 	SignatureAlgorithms []string `json:"signatureAlgorithms"`
+
 	// KeyAlgorithms contain supported key algorithms for signed operations (e.g. secp256k1, P-256, P-384, P-512, Ed25519).
 	KeyAlgorithms []string `json:"keyAlgorithms"`
+
+	// MaxOperationTimeDelta is maximum time that operation should be valid before it expires; used with anchor from time
+	MaxOperationTimeDelta uint64 `json:"maxOperationTimeDelta"`
 }
 
 // TxnProcessor defines the functions for processing a Sidetree transaction.

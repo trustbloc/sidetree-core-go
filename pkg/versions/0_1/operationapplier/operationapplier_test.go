@@ -59,6 +59,7 @@ var (
 		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
 		KeyAlgorithms:               []string{"Ed25519", "P-256"},
 		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MaxOperationTimeDelta:       600,
 	}
 
 	parser = operationparser.New(p)
@@ -458,6 +459,47 @@ func TestDeactivate(t *testing.T) {
 		doc, err := applier.Apply(deactivateOp, rm)
 		require.NoError(t, err)
 		require.NotNil(t, doc)
+	})
+
+	t.Run("success - anchor until time defaulted based on protocol parameter", func(t *testing.T) {
+		applier := New(p, parser, dc)
+
+		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		require.NoError(t, err)
+
+		recoverPubKey, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
+		require.NoError(t, err)
+
+		rv, err := commitment.GetRevealValue(recoverPubKey, sha2_256)
+		require.NoError(t, err)
+
+		now := time.Now().Unix()
+
+		signedDataModel := model.DeactivateSignedDataModel{
+			DidSuffix:   uniqueSuffix,
+			RecoveryKey: recoverPubKey,
+			AnchorFrom:  now - 5*60,
+		}
+
+		signer := ecsigner.New(recoveryKey, "ES256", "")
+		jws, err := signutil.SignModel(signedDataModel, signer)
+		require.NoError(t, err)
+
+		deactiveOp := &model.Operation{
+			Namespace:    mocks.DefaultNS,
+			ID:           "did:sidetree:" + uniqueSuffix,
+			UniqueSuffix: uniqueSuffix,
+			Type:         operation.TypeDeactivate,
+			SignedData:   jws,
+			RevealValue:  rv,
+		}
+
+		anchoredOp := getAnchoredOperation(deactiveOp)
+		anchoredOp.TransactionTime = uint64(now)
+
+		rm, err = applier.Apply(anchoredOp, rm)
+		require.NoError(t, err)
+		require.NotNil(t, rm)
 	})
 
 	t.Run("deactivate can only be applied to an existing document", func(t *testing.T) {
