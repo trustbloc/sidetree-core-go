@@ -120,7 +120,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 	return result, nil
 }
 
-func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
+func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl,funlen
 	logger.Debugf("Applying update operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
@@ -165,6 +165,14 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 		RecoveryCommitment:               rm.RecoveryCommitment,
 	}
 
+	// verify anchor from and until time against anchoring time
+	err = s.verifyAnchoringTimeRange(signedDataModel.AnchorFrom, signedDataModel.AnchorUntil, anchoredOp.TransactionTime)
+	if err != nil {
+		logger.Infof("invalid anchoring time range; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+
+		return result, nil
+	}
+
 	doc, err := s.ApplyPatches(rm.Doc, op.Delta.Patches)
 	if err != nil {
 		logger.Infof("Apply patches failed; advance update commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
@@ -206,6 +214,12 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 		return nil, fmt.Errorf("failed to check signature: %s", err.Error())
 	}
 
+	// verify anchor from and until time against anchoring time
+	err = s.verifyAnchoringTimeRange(signedDataModel.AnchorFrom, signedDataModel.AnchorUntil, anchoredOp.TransactionTime)
+	if err != nil {
+		return nil, fmt.Errorf("invalid anchoring time range: %s", err.Error())
+	}
+
 	return &protocol.ResolutionModel{
 		Doc:                              make(document.Document),
 		LastOperationTransactionTime:     anchoredOp.TransactionTime,
@@ -218,7 +232,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 	}, nil
 }
 
-func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl
+func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl,funlen
 	logger.Debugf("Applying recover operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
@@ -268,6 +282,14 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 
 	result.UpdateCommitment = op.Delta.UpdateCommitment
 
+	// verify anchor from and until time against anchoring time
+	err = s.verifyAnchoringTimeRange(signedDataModel.AnchorFrom, signedDataModel.AnchorUntil, anchoredOp.TransactionTime)
+	if err != nil {
+		logger.Infof("invalid anchoring time range; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+
+		return result, nil
+	}
+
 	doc, err := s.ApplyPatches(make(document.Document), op.Delta.Patches)
 	if err != nil {
 		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
@@ -278,4 +300,21 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 	result.Doc = doc
 
 	return result, nil
+}
+
+func (s *Applier) verifyAnchoringTimeRange(from, until int64, anchor uint64) error {
+	if from == 0 && until == 0 {
+		// from and until are not specified - nothing to check
+		return nil
+	}
+
+	if from > int64(anchor) {
+		return fmt.Errorf("anchor from time is greater then anchoring time")
+	}
+
+	if until < int64(anchor) {
+		return fmt.Errorf("anchor until time is less then anchoring time")
+	}
+
+	return nil
 }

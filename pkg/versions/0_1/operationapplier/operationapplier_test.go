@@ -14,6 +14,7 @@ import (
 	"errors"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -265,9 +266,6 @@ func TestUpdateDocument(t *testing.T) {
 	t.Run("missing signed data error", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
-		require.NoError(t, err)
-
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
@@ -284,9 +282,6 @@ func TestUpdateDocument(t *testing.T) {
 
 	t.Run("unmarshal signed data model error", func(t *testing.T) {
 		applier := New(p, parser, dc)
-
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
-		require.NoError(t, err)
 
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
@@ -310,9 +305,6 @@ func TestUpdateDocument(t *testing.T) {
 	t.Run("invalid signature error", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
-		require.NoError(t, err)
-
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
@@ -335,9 +327,6 @@ func TestUpdateDocument(t *testing.T) {
 	t.Run("delta hash doesn't match delta error", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		createOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
-		require.NoError(t, err)
-
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
@@ -350,6 +339,73 @@ func TestUpdateDocument(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "update delta doesn't match delta hash")
+	})
+
+	t.Run("invalid anchoring range - anchor until time is less then anchoring time", func(t *testing.T) {
+		applier := New(p, parser, dc)
+
+		createResult, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		require.NoError(t, err)
+
+		p := map[string]interface{}{
+			"op":    "replace",
+			"path":  "/test",
+			"value": "value",
+		}
+
+		patchBytes, err := canonicalizer.MarshalCanonical([]map[string]interface{}{p})
+		require.NoError(t, err)
+
+		jsonPatch, err := patch.NewJSONPatch(string(patchBytes))
+		require.NoError(t, err)
+
+		_, updateCommitment, err := generateKeyAndCommitment()
+		require.NoError(t, err)
+
+		delta := &model.DeltaModel{
+			UpdateCommitment: updateCommitment,
+			Patches:          []patch.Patch{jsonPatch},
+		}
+
+		deltaHash, err := hashing.CalculateModelMultihash(delta, sha2_256)
+		require.NoError(t, err)
+
+		updatePubKey, err := pubkey.GetPublicKeyJWK(&updateKey.PublicKey)
+		require.NoError(t, err)
+
+		now := time.Now().Unix()
+
+		signedData := &model.UpdateSignedDataModel{
+			DeltaHash:   deltaHash,
+			UpdateKey:   updatePubKey,
+			AnchorUntil: now - 5*60,
+		}
+
+		signer := ecsigner.New(updateKey, "ES256", "")
+		jws, err := signutil.SignModel(signedData, signer)
+		require.NoError(t, err)
+
+		rv, err := commitment.GetRevealValue(updatePubKey, sha2_256)
+		require.NoError(t, err)
+
+		updateOp := &model.Operation{
+			Namespace:    mocks.DefaultNS,
+			ID:           "did:sidetree:" + uniqueSuffix,
+			UniqueSuffix: uniqueSuffix,
+			Delta:        delta,
+			Type:         operation.TypeUpdate,
+			SignedData:   jws,
+			RevealValue:  rv,
+		}
+
+		anchoredOp := getAnchoredOperation(updateOp)
+		anchoredOp.TransactionTime = uint64(now)
+
+		updateResult, err := applier.Apply(anchoredOp, createResult)
+		require.NoError(t, err)
+		require.NotNil(t, updateResult)
+		require.Equal(t, createResult.Doc, updateResult.Doc)
+		require.NotEqual(t, updateResult.UpdateCommitment, createResult.UpdateCommitment)
 	})
 
 	t.Run("error - document composer error", func(t *testing.T) {
@@ -520,6 +576,48 @@ func TestDeactivate(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rm)
 		require.Contains(t, err.Error(), "failed to parse deactive operation in batch mode: signed did suffix mismatch for deactivate")
+	})
+
+	t.Run("invalid anchoring time range - anchor until time is less then anchoring time", func(t *testing.T) {
+		applier := New(p, parser, dc)
+
+		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		require.NoError(t, err)
+
+		recoverPubKey, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
+		require.NoError(t, err)
+
+		rv, err := commitment.GetRevealValue(recoverPubKey, sha2_256)
+		require.NoError(t, err)
+
+		now := time.Now().Unix()
+
+		signedDataModel := model.DeactivateSignedDataModel{
+			DidSuffix:   uniqueSuffix,
+			RecoveryKey: recoverPubKey,
+			AnchorUntil: now - 5*60,
+		}
+
+		signer := ecsigner.New(recoveryKey, "ES256", "")
+		jws, err := signutil.SignModel(signedDataModel, signer)
+		require.NoError(t, err)
+
+		deactiveOp := &model.Operation{
+			Namespace:    mocks.DefaultNS,
+			ID:           "did:sidetree:" + uniqueSuffix,
+			UniqueSuffix: uniqueSuffix,
+			Type:         operation.TypeDeactivate,
+			SignedData:   jws,
+			RevealValue:  rv,
+		}
+
+		anchoredOp := getAnchoredOperation(deactiveOp)
+		anchoredOp.TransactionTime = uint64(now)
+
+		rm, err = applier.Apply(anchoredOp, rm)
+		require.Error(t, err)
+		require.Nil(t, rm)
+		require.Contains(t, err.Error(), "invalid anchoring time range: anchor until time is less then anchoring time")
 	})
 }
 
@@ -695,6 +793,63 @@ func TestRecover(t *testing.T) {
 		require.NotEqual(t, recoverResult.RecoveryCommitment, createResult.RecoveryCommitment)
 	})
 
+	t.Run("invalid anchoring range - anchor until time is less then anchoring time", func(t *testing.T) {
+		applier := New(p, parser, dc)
+
+		createResult, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		require.NoError(t, err)
+
+		updateCommitment, err := getCommitment(updateKey)
+		require.NoError(t, err)
+
+		delta, err := getDeltaModel(recoveredDoc, updateCommitment)
+		require.NoError(t, err)
+
+		deltaHash, err := hashing.CalculateModelMultihash(delta, sha2_256)
+		require.NoError(t, err)
+
+		recoveryPubKey, err := pubkey.GetPublicKeyJWK(&recoveryKey.PublicKey)
+		require.NoError(t, err)
+
+		_, recoveryCommitment, err := generateKeyAndCommitment()
+		require.NoError(t, err)
+
+		now := time.Now().Unix()
+
+		recoverSignedData := &model.RecoverSignedDataModel{
+			RecoveryKey:        recoveryPubKey,
+			RecoveryCommitment: recoveryCommitment,
+			DeltaHash:          deltaHash,
+			AnchorUntil:        now - 6*60,
+		}
+
+		signer := ecsigner.New(recoveryKey, "ES256", "")
+		recoverRequest, err := getRecoverRequest(signer, delta, recoverSignedData)
+		require.NoError(t, err)
+
+		operationBuffer, err := json.Marshal(recoverRequest)
+		require.NoError(t, err)
+
+		recoverOp := &model.Operation{
+			Namespace:       mocks.DefaultNS,
+			UniqueSuffix:    uniqueSuffix,
+			Type:            operation.TypeRecover,
+			OperationBuffer: operationBuffer,
+			Delta:           recoverRequest.Delta,
+			SignedData:      recoverRequest.SignedData,
+			RevealValue:     recoverRequest.RevealValue,
+		}
+
+		anchoredOp := getAnchoredOperation(recoverOp)
+		anchoredOp.TransactionTime = uint64(now)
+
+		recoverResult, err := applier.Apply(anchoredOp, createResult)
+		require.NoError(t, err)
+		require.NotNil(t, recoverResult)
+		require.Equal(t, recoverResult.Doc, make(document.Document))
+		require.NotEqual(t, recoverResult.RecoveryCommitment, createResult.RecoveryCommitment)
+	})
+
 	t.Run("error - document composer error", func(t *testing.T) {
 		applier := New(p, parser, &mockDocComposer{Err: errors.New("doc composer error")})
 
@@ -711,6 +866,34 @@ func TestRecover(t *testing.T) {
 		require.NotNil(t, recoverResult)
 		require.Equal(t, make(document.Document), recoverResult.Doc)
 		require.NotEqual(t, recoverResult.RecoveryCommitment, createResult.RecoveryCommitment)
+	})
+}
+
+func TestVerifyAnchoringTimeRange(t *testing.T) {
+	applier := New(p, parser, dc)
+
+	now := time.Now().Unix()
+
+	t.Run("success - no anchoring times specified", func(t *testing.T) {
+		err := applier.verifyAnchoringTimeRange(0, 0, uint64(now))
+		require.NoError(t, err)
+	})
+
+	t.Run("success - anchoring times specififed", func(t *testing.T) {
+		err := applier.verifyAnchoringTimeRange(now-5*60, now+5*50, uint64(now))
+		require.NoError(t, err)
+	})
+
+	t.Run("error - anchor from time is greater then anchoring time", func(t *testing.T) {
+		err := applier.verifyAnchoringTimeRange(now+55*60, 0, uint64(now))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "anchor from time is greater then anchoring time")
+	})
+
+	t.Run("error - anchor until time is less then anchoring time", func(t *testing.T) {
+		err := applier.verifyAnchoringTimeRange(now-5*60, now-5*50, uint64(now))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "anchor until time is less then anchoring time")
 	})
 }
 
