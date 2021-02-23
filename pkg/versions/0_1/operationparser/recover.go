@@ -38,7 +38,9 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 			return nil, err
 		}
 
-		err = p.anchorTimeValidator.Validate(signedData.AnchorFrom, signedData.AnchorUntil)
+		until := p.getAnchorUntil(signedData.AnchorFrom, signedData.AnchorUntil)
+
+		err = p.anchorTimeValidator.Validate(signedData.AnchorFrom, until)
 		if err != nil {
 			return nil, err
 		}
@@ -227,4 +229,12 @@ func (p *Parser) validateCommitment(jwk *jws.JWK, nextCommitment string) error {
 	}
 
 	return nil
+}
+
+func (p *Parser) getAnchorUntil(from, until int64) int64 {
+	if from != 0 && until == 0 {
+		return from + int64(p.MaxDeltaSize)
+	}
+
+	return until
 }

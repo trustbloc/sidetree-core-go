@@ -154,5 +154,6 @@ func GetDefaultProtocolParameters() protocol.Protocol {
 		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
 		KeyAlgorithms:               []string{"Ed25519", "P-256"},
 		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MaxOperationTimeDelta:       2 * 60 * 60,
 	}
 }

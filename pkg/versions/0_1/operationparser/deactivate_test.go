@@ -9,6 +9,7 @@ package operationparser
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -29,6 +30,7 @@ func TestParseDeactivateOperation(t *testing.T) {
 		MaxOperationHashLength: maxHashLength,
 		SignatureAlgorithms:    []string{"alg"},
 		KeyAlgorithms:          []string{"crv"},
+		MaxOperationTimeDelta:  5 * 60,
 	}
 
 	parser := New(p)
@@ -47,6 +49,31 @@ func TestParseDeactivateOperation(t *testing.T) {
 
 		require.Equal(t, expectedRevealValue, op.RevealValue)
 	})
+
+	t.Run("success - anchor until default to anchor from + max operation time delta protocol param", func(t *testing.T) {
+		now := time.Now().Unix()
+
+		signedData := &model.DeactivateSignedDataModel{
+			DidSuffix: "did",
+			RecoveryKey: &jws.JWK{
+				Kty: "kty",
+				Crv: "crv",
+				X:   "x",
+			},
+			AnchorFrom: now - 5*60,
+		}
+
+		deactivateRequest, err := getDeactivateRequest(signedData)
+		require.NoError(t, err)
+
+		reqBytes, err := json.Marshal(deactivateRequest)
+		require.NoError(t, err)
+
+		op, err := parser.ParseDeactivateOperation(reqBytes, false)
+		require.NoError(t, err)
+		require.NotEmpty(t, op)
+	})
+
 	t.Run("missing unique suffix", func(t *testing.T) {
 		schema, err := parser.ParseDeactivateOperation([]byte("{}"), false)
 		require.Error(t, err)

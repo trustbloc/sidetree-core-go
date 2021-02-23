@@ -312,9 +312,17 @@ func (s *Applier) verifyAnchoringTimeRange(from, until int64, anchor uint64) err
 		return fmt.Errorf("anchor from time is greater then anchoring time")
 	}
 
-	if until < int64(anchor) {
+	if s.getAnchorUntil(from, until) < int64(anchor) {
 		return fmt.Errorf("anchor until time is less then anchoring time")
 	}
 
 	return nil
+}
+
+func (s *Applier) getAnchorUntil(from, until int64) int64 {
+	if from != 0 && until == 0 {
+		return from + int64(s.MaxDeltaSize)
+	}
+
+	return until
 }
