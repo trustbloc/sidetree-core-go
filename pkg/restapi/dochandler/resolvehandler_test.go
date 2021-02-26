@@ -23,7 +23,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
 )
 
 func TestResolveHandler_Resolve(t *testing.T) {

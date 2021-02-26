@@ -24,12 +24,12 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/client"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprovider/models"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/client"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationapplier"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationparser"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/txnprovider"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/txnprovider/models"
 )
 
 //go:generate counterfeiter -o ../mocks/operationqueue.gen.go --fake-name OperationQueue ./cutter OperationQueue
