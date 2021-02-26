@@ -14,6 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -105,7 +106,7 @@ func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSig
 }
 
 func (p *Parser) validateSignedDataForRecovery(signedData *model.RecoverSignedDataModel) error {
-	if err := p.validateSigningKey(signedData.RecoveryKey, p.KeyAlgorithms); err != nil {
+	if err := p.validateSigningKey(signedData.RecoveryKey); err != nil {
 		return err
 	}
 
@@ -186,18 +187,26 @@ func (p *Parser) validateRecoverRequest(recover *model.RecoverRequest) error {
 	return p.validateMultihash(recover.RevealValue, "reveal value")
 }
 
-func (p *Parser) validateSigningKey(key *jws.JWK, allowedAlgorithms []string) error {
+func (p *Parser) validateSigningKey(key *jws.JWK) error {
 	if key == nil {
 		return errors.New("missing signing key")
 	}
 
+	// validate mandatory values
 	err := key.Validate()
 	if err != nil {
 		return fmt.Errorf("signing key validation failed: %s", err.Error())
 	}
 
-	if !contains(allowedAlgorithms, key.Crv) {
-		return errors.Errorf("key algorithm '%s' is not in the allowed list %v", key.Crv, allowedAlgorithms)
+	// validate key algorithm
+	if !contains(p.KeyAlgorithms, key.Crv) {
+		return errors.Errorf("key algorithm '%s' is not in the allowed list %v", key.Crv, p.KeyAlgorithms)
+	}
+
+	// validate optional nonce
+	err = p.validateNonce(key.Nonce)
+	if err != nil {
+		return fmt.Errorf("validate signing key nonce: %s", err.Error())
 	}
 
 	return nil
@@ -226,6 +235,24 @@ func (p *Parser) validateCommitment(jwk *jws.JWK, nextCommitment string) error {
 
 	if currentCommitment == nextCommitment {
 		return errors.New("re-using public keys for commitment is not allowed")
+	}
+
+	return nil
+}
+
+func (p *Parser) validateNonce(nonce string) error {
+	// nonce is optional
+	if nonce == "" {
+		return nil
+	}
+
+	nonceBytes, err := encoder.DecodeString(nonce)
+	if err != nil {
+		return fmt.Errorf("failed to decode nonce '%s': %s", nonce, err.Error())
+	}
+
+	if len(nonceBytes) != int(p.NonceSize) {
+		return fmt.Errorf("nonce size '%d' doesn't match configured nonce size '%d'", len(nonceBytes), p.NonceSize)
 	}
 
 	return nil

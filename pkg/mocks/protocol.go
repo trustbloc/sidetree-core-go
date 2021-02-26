@@ -155,5 +155,6 @@ func GetDefaultProtocolParameters() protocol.Protocol {
 		KeyAlgorithms:               []string{"Ed25519", "P-256"},
 		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 		MaxOperationTimeDelta:       2 * 60 * 60,
+		NonceSize:                   16, // 16 bytes = 128 bits
 	}
 }

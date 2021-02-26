@@ -75,6 +75,9 @@ type Protocol struct {
 
 	// MaxOperationTimeDelta is maximum time that operation should be valid before it expires; used with anchor from time
 	MaxOperationTimeDelta uint64 `json:"maxOperationTimeDelta"`
+
+	// NonceSize is the number of bytes in nonce values
+	NonceSize uint64 `json:"nonceSize"`
 }
 
 // TxnProcessor defines the functions for processing a Sidetree transaction.

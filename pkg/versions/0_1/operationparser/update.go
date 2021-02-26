@@ -109,7 +109,7 @@ func (p *Parser) validateUpdateRequest(update *model.UpdateRequest) error {
 }
 
 func (p *Parser) validateSignedDataForUpdate(signedData *model.UpdateSignedDataModel) error {
-	if err := p.validateSigningKey(signedData.UpdateKey, p.KeyAlgorithms); err != nil {
+	if err := p.validateSigningKey(signedData.UpdateKey); err != nil {
 		return err
 	}
 
