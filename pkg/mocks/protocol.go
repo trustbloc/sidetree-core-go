@@ -25,14 +25,11 @@ const (
 	// MaxOperationByteSize is maximum operation size in bytes.
 	MaxOperationByteSize = 2000
 
-	// MaxProofByteSize is maximum proof size in bytes.
-	MaxProofByteSize = 500
-
 	// MaxDeltaByteSize is maximum delta size in bytes.
 	MaxDeltaByteSize = 1000
 
 	// CurrentVersion is the current protocol version.
-	CurrentVersion = "0.1"
+	CurrentVersion = "1.0"
 )
 
 // MockProtocolClient mocks protocol for testing purposes.

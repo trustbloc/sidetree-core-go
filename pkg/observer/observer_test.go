@@ -16,7 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/txnprocessor"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/txnprocessor"
 )
 
 func TestStartObserver(t *testing.T) {

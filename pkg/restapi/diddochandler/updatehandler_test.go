@@ -24,10 +24,10 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationapplier"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/operationparser"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationapplier"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationparser"
 )
 
 const (

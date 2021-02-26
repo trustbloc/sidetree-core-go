@@ -17,8 +17,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/doccomposer"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/0_1/model"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doccomposer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
 )
 
 const deleted = "_deleted"
