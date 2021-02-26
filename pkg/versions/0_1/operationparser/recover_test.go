@@ -15,6 +15,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
+	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/signutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
@@ -311,12 +312,10 @@ func TestValidateSigningKey(t *testing.T) {
 		X:   "x",
 	}
 
-	allowedAlgorithms := []string{"crv"}
-
-	parser := New(protocol.Protocol{})
+	parser := New(protocol.Protocol{KeyAlgorithms: []string{"crv"}, NonceSize: 16})
 
 	t.Run("success", func(t *testing.T) {
-		err := parser.validateSigningKey(testJWK, allowedAlgorithms)
+		err := parser.validateSigningKey(testJWK)
 		require.NoError(t, err)
 	})
 
@@ -324,15 +323,58 @@ func TestValidateSigningKey(t *testing.T) {
 		err := parser.validateSigningKey(&jws.JWK{
 			Crv: "crv",
 			X:   "x",
-		}, allowedAlgorithms)
+		})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "signing key validation failed: JWK kty is missing")
 	})
 
 	t.Run("error - key algorithm not supported", func(t *testing.T) {
-		err := parser.validateSigningKey(testJWK, []string{"other"})
+		err := New(protocol.Protocol{KeyAlgorithms: []string{"other"}}).validateSigningKey(testJWK)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "key algorithm 'crv' is not in the allowed list [other]")
+	})
+
+	t.Run("error - failed to decode signing key nonce", func(t *testing.T) {
+		nonceJWK := &jws.JWK{
+			Kty:   "kty",
+			Crv:   "crv",
+			X:     "x",
+			Nonce: "nonce",
+		}
+
+		err := parser.validateSigningKey(nonceJWK)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "validate signing key nonce: failed to decode nonce 'nonce': illegal base64 data")
+	})
+
+	t.Run("error - failed to validate nonce size", func(t *testing.T) {
+		nonceJWK := &jws.JWK{
+			Kty:   "kty",
+			Crv:   "crv",
+			X:     "x",
+			Nonce: encoder.EncodeToString([]byte("nonce")),
+		}
+
+		err := parser.validateSigningKey(nonceJWK)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "validate signing key nonce: nonce size '5' doesn't match configured nonce size '16'")
+	})
+
+	t.Run("success - valid nonce size", func(t *testing.T) {
+		nonceJWK := &jws.JWK{
+			Kty:   "kty",
+			Crv:   "crv",
+			X:     "x",
+			Nonce: encoder.EncodeToString([]byte("nonce")),
+		}
+
+		parserWithNonceSize := New(protocol.Protocol{
+			KeyAlgorithms: []string{"crv"},
+			NonceSize:     5,
+		})
+
+		err := parserWithNonceSize.validateSigningKey(nonceJWK)
+		require.NoError(t, err)
 	})
 }
 

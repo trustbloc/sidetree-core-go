@@ -10,10 +10,11 @@ import "errors"
 
 // JWK contains public key in JWK format.
 type JWK struct {
-	Kty string `json:"kty"`
-	Crv string `json:"crv"`
-	X   string `json:"x"`
-	Y   string `json:"y"`
+	Kty   string `json:"kty"`
+	Crv   string `json:"crv"`
+	X     string `json:"x"`
+	Y     string `json:"y"`
+	Nonce string `json:"nonce,omitempty"`
 }
 
 // Validate validates JWK.

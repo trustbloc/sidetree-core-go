@@ -60,6 +60,7 @@ var (
 		KeyAlgorithms:               []string{"Ed25519", "P-256"},
 		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
 		MaxOperationTimeDelta:       600,
+		NonceSize:                   16,
 	}
 
 	parser = operationparser.New(p)
