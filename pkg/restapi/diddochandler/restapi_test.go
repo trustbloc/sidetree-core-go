@@ -27,7 +27,9 @@ import (
 const (
 	url       = "localhost:4656"
 	clientURL = "http://" + url
-	basePath  = "/Document"
+
+	operationsPath = "/document/operations"
+	resolutionPath = "/document/identifiers"
 )
 
 func TestRESTAPI(t *testing.T) {
@@ -36,8 +38,8 @@ func TestRESTAPI(t *testing.T) {
 
 	s := newRESTService(
 		url,
-		NewUpdateHandler(basePath, didDocHandler, pc),
-		NewResolveHandler(basePath, didDocHandler),
+		NewUpdateHandler(operationsPath, didDocHandler, pc),
+		NewResolveHandler(resolutionPath, didDocHandler),
 	)
 	s.start()
 	defer s.stop()
@@ -48,7 +50,7 @@ func TestRESTAPI(t *testing.T) {
 		request, err := json.Marshal(createRequest)
 		require.NoError(t, err)
 
-		resp, err := httpPut(t, clientURL+basePath+"/operations", request)
+		resp, err := httpPut(t, clientURL+operationsPath, request)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 
@@ -66,7 +68,7 @@ func TestRESTAPI(t *testing.T) {
 		didID, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
-		resp, err := httpGet(t, clientURL+basePath+"/identifiers/"+didID)
+		resp, err := httpGet(t, clientURL+resolutionPath+"/"+didID)
 		require.NoError(t, err)
 		require.NotEmpty(t, resp)
 
