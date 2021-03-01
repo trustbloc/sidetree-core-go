@@ -136,22 +136,23 @@ func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 func GetDefaultProtocolParameters() protocol.Protocol {
 	//nolint:gomnd
 	return protocol.Protocol{
-		GenesisTime:                 0,
-		MultihashAlgorithms:         []uint{sha2_256},
-		MaxOperationCount:           2,
-		MaxOperationSize:            MaxOperationByteSize,
-		MaxOperationHashLength:      100,
-		MaxDeltaSize:                MaxDeltaByteSize,
-		MaxCasURILength:             100,
-		CompressionAlgorithm:        "GZIP",
-		MaxChunkFileSize:            MaxBatchFileSize,
-		MaxProvisionalIndexFileSize: MaxBatchFileSize,
-		MaxCoreIndexFileSize:        MaxBatchFileSize,
-		MaxProofFileSize:            MaxBatchFileSize,
-		SignatureAlgorithms:         []string{"EdDSA", "ES256"},
-		KeyAlgorithms:               []string{"Ed25519", "P-256"},
-		Patches:                     []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
-		MaxOperationTimeDelta:       2 * 60 * 60,
-		NonceSize:                   16, // 16 bytes = 128 bits
+		GenesisTime:                  0,
+		MultihashAlgorithms:          []uint{sha2_256},
+		MaxOperationCount:            2,
+		MaxOperationSize:             MaxOperationByteSize,
+		MaxOperationHashLength:       100,
+		MaxDeltaSize:                 MaxDeltaByteSize,
+		MaxCasURILength:              100,
+		CompressionAlgorithm:         "GZIP",
+		MaxChunkFileSize:             MaxBatchFileSize,
+		MaxProvisionalIndexFileSize:  MaxBatchFileSize,
+		MaxCoreIndexFileSize:         MaxBatchFileSize,
+		MaxProofFileSize:             MaxBatchFileSize,
+		SignatureAlgorithms:          []string{"EdDSA", "ES256"},
+		KeyAlgorithms:                []string{"Ed25519", "P-256"},
+		Patches:                      []string{"add-public-keys", "remove-public-keys", "add-services", "remove-services", "ietf-json-patch"},
+		MaxOperationTimeDelta:        2 * 60 * 60,
+		NonceSize:                    16, // 16 bytes = 128 bits
+		MaxMemoryDecompressionFactor: 3,
 	}
 }

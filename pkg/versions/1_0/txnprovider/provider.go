@@ -320,7 +320,7 @@ func checkForDuplicates(values []string) error {
 
 // getCoreIndexFile will download core index file from cas and parse it into core index file model.
 func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxCoreIndexFileSize)
+	content, err := h.readFromCAS(uri, h.MaxCoreIndexFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading core index file")
 	}
@@ -428,7 +428,7 @@ func (h *OperationProvider) validateRequiredMultihash(mh, alias string) error {
 
 // getCoreProofFile will download core proof file from cas and parse it into core proof file model.
 func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProofFileSize)
+	content, err := h.readFromCAS(uri, h.MaxProofFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading core proof file")
 	}
@@ -468,7 +468,7 @@ func (h *OperationProvider) validateCoreProofFile(cpf *models.CoreProofFile) err
 
 // getProvisionalProofFile will download provisional proof file from cas and parse it into provisional proof file model.
 func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.ProvisionalProofFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProofFileSize)
+	content, err := h.readFromCAS(uri, h.MaxProofFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional proof file")
 	}
@@ -501,7 +501,7 @@ func (h *OperationProvider) validateProvisionalProofFile(ppf *models.Provisional
 
 // getProvisionalIndexFile will download provisional index file from cas and parse it into provisional index file model.
 func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.ProvisionalIndexFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxProvisionalIndexFileSize)
+	content, err := h.readFromCAS(uri, h.MaxProvisionalIndexFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional index file")
 	}
@@ -575,7 +575,7 @@ func (h *OperationProvider) validateProvisionalIndexOperations(ops *models.Provi
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model.
 func (h *OperationProvider) getChunkFile(uri string) (*models.ChunkFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.CompressionAlgorithm, h.MaxChunkFileSize)
+	content, err := h.readFromCAS(uri, h.MaxChunkFileSize)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading chunk file")
 	}
@@ -606,7 +606,7 @@ func (h *OperationProvider) validateChunkFile(cf *models.ChunkFile) error {
 	return nil
 }
 
-func (h *OperationProvider) readFromCAS(uri, alg string, maxSize uint) ([]byte, error) {
+func (h *OperationProvider) readFromCAS(uri string, maxSize uint) ([]byte, error) {
 	bytes, err := h.cas.Read(uri)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieve CAS content at uri[%s]", uri)
@@ -616,9 +616,14 @@ func (h *OperationProvider) readFromCAS(uri, alg string, maxSize uint) ([]byte, 
 		return nil, fmt.Errorf("uri[%s]: content size %d exceeded maximum size %d", uri, len(bytes), maxSize)
 	}
 
-	content, err := h.dp.Decompress(alg, bytes)
+	content, err := h.dp.Decompress(h.CompressionAlgorithm, bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "decompress CAS uri[%s] using '%s'", uri, alg)
+		return nil, errors.Wrapf(err, "decompress CAS uri[%s] using '%s'", uri, h.CompressionAlgorithm)
+	}
+
+	maxDecompressedSize := maxSize * h.MaxMemoryDecompressionFactor
+	if len(content) > int(maxDecompressedSize) {
+		return nil, fmt.Errorf("uri[%s]: decompressed content size %d exceeded maximum decompressed content size %d", uri, len(content), maxDecompressedSize)
 	}
 
 	return content, nil
