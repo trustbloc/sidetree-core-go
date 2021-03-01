@@ -78,6 +78,9 @@ type Protocol struct {
 
 	// NonceSize is the number of bytes in nonce values
 	NonceSize uint64 `json:"nonceSize"`
+
+	// MaxMemoryDecompressionFactor is maximum file size after decompression (e.g. 3 times maximum file size)
+	MaxMemoryDecompressionFactor uint `json:"maxMemoryDecompressionFactor"`
 }
 
 // TxnProcessor defines the functions for processing a Sidetree transaction.

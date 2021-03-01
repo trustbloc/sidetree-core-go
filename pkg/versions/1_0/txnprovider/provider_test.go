@@ -317,10 +317,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 func TestHandler_GetCoreIndexFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
 	p := protocol.Protocol{
-		MaxCoreIndexFileSize: maxFileSize,
-		CompressionAlgorithm: compressionAlgorithm,
-		MaxCasURILength:      100,
-		MultihashAlgorithms:  []uint{sha2_256},
+		MaxCoreIndexFileSize:         maxFileSize,
+		CompressionAlgorithm:         compressionAlgorithm,
+		MaxCasURILength:              100,
+		MultihashAlgorithms:          []uint{sha2_256},
+		MaxMemoryDecompressionFactor: 3,
 	}
 
 	cas := mocks.NewMockCasClient(nil)
@@ -520,7 +521,11 @@ func TestHandler_ValidateCoreIndexFile(t *testing.T) {
 
 func TestHandler_GetProvisionalIndexFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxProvisionalIndexFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{
+		MaxProvisionalIndexFileSize:  maxFileSize,
+		CompressionAlgorithm:         compressionAlgorithm,
+		MaxMemoryDecompressionFactor: 3,
+	}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -665,7 +670,11 @@ func TestHandler_ValidateProvisionalIndexFile(t *testing.T) {
 
 func TestHandler_GetChunkFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxChunkFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{
+		MaxChunkFileSize:             maxFileSize,
+		CompressionAlgorithm:         compressionAlgorithm,
+		MaxMemoryDecompressionFactor: 3,
+	}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -754,7 +763,11 @@ func TestHandler_ValidateChunkFile(t *testing.T) {
 
 func TestHandler_readFromCAS(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxChunkFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{
+		MaxChunkFileSize:             maxFileSize,
+		CompressionAlgorithm:         compressionAlgorithm,
+		MaxMemoryDecompressionFactor: 3,
+	}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -765,7 +778,7 @@ func TestHandler_readFromCAS(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
-		file, err := provider.readFromCAS(address, compressionAlgorithm, maxFileSize)
+		file, err := provider.readFromCAS(address, maxFileSize)
 		require.NoError(t, err)
 		require.NotNil(t, file)
 	})
@@ -782,16 +795,41 @@ func TestHandler_readFromCAS(t *testing.T) {
 	t.Run("error - content exceeds maximum size", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
-		file, err := provider.readFromCAS(address, compressionAlgorithm, 20)
+		file, err := provider.readFromCAS(address, 20)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "exceeded maximum size 20")
 	})
 
-	t.Run("error - decompression error", func(t *testing.T) {
-		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+	t.Run("error - content exceeds maximum decompressed size", func(t *testing.T) {
+		p2 := protocol.Protocol{
+			CompressionAlgorithm:         compressionAlgorithm,
+			MaxMemoryDecompressionFactor: 1,
+		}
 
-		file, err := provider.readFromCAS(address, "alg", maxFileSize)
+		provider := NewOperationProvider(p2, operationparser.New(p2), cas, cp)
+
+		testContent, err := cp.Compress(compressionAlgorithm, []byte(sampleChunkFile))
+		require.NoError(t, err)
+		testAddress, err := cas.Write(testContent)
+		require.NoError(t, err)
+
+		file, err := provider.readFromCAS(testAddress, 247)
+		require.Error(t, err)
+		require.Nil(t, file)
+		require.Contains(t, err.Error(), "decompressed content size 267 exceeded maximum decompressed content size 247")
+	})
+
+	t.Run("error - decompression error", func(t *testing.T) {
+		p2 := protocol.Protocol{
+			MaxChunkFileSize:             maxFileSize,
+			CompressionAlgorithm:         "alg",
+			MaxMemoryDecompressionFactor: 3,
+		}
+
+		provider := NewOperationProvider(p2, operationparser.New(p2), cas, cp)
+
+		file, err := provider.readFromCAS(address, maxFileSize)
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "compression algorithm 'alg' not supported")
@@ -800,7 +838,11 @@ func TestHandler_readFromCAS(t *testing.T) {
 
 func TestHandler_GetCorePoofFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxProofFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{
+		MaxProofFileSize:             maxFileSize,
+		CompressionAlgorithm:         compressionAlgorithm,
+		MaxMemoryDecompressionFactor: 3,
+	}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -938,7 +980,11 @@ func TestHandler_ValidateCorePoofFile(t *testing.T) {
 
 func TestHandler_GetProvisionalPoofFile(t *testing.T) {
 	cp := compression.New(compression.WithDefaultAlgorithms())
-	p := protocol.Protocol{MaxProofFileSize: maxFileSize, CompressionAlgorithm: compressionAlgorithm}
+	p := protocol.Protocol{
+		MaxProofFileSize:             maxFileSize,
+		CompressionAlgorithm:         compressionAlgorithm,
+		MaxMemoryDecompressionFactor: 3,
+	}
 
 	cas := mocks.NewMockCasClient(nil)
 	content, err := cp.Compress(compressionAlgorithm, []byte("{}"))
@@ -1595,3 +1641,5 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 
 	return pc
 }
+
+const sampleChunkFile = `{"chunks":[{"chunkFileUri":"EiDkiD-FuKC5mcsY4m0pd3OMTP7FAfo690gzN7-6JxcN1g"}],"operations":{"update":[{"didSuffix":"update-1","revealValue":"EiAdqFJ-x5QhwPq62DB9EfenKloqntykHJkZrwI6uxkoVQ"}]},"provisionalProofFileUri":"EiDdEHTL3VmFZO5hXoth8vTKnXgvfvW4lLJXyMjqs7ezUA"}`
