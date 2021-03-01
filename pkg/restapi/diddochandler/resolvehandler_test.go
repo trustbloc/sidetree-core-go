@@ -18,13 +18,13 @@ import (
 
 func TestResolveHandler_Resolve(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-	handler := NewResolveHandler(basePath, docHandler)
-	require.Equal(t, basePath+"/identifiers/{id}", handler.Path())
+	handler := NewResolveHandler(resolutionPath, docHandler)
+	require.Equal(t, resolutionPath+"/{id}", handler.Path())
 	require.Equal(t, http.MethodGet, handler.Method())
 	require.NotNil(t, handler.Handler())
 
 	rw := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/document/identifiers", nil)
+	req := httptest.NewRequest(http.MethodGet, resolutionPath, nil)
 	handler.Handler()(rw, req)
 	require.Equal(t, http.StatusBadRequest, rw.Code)
 	require.Contains(t, rw.Body.String(), "must start with supported namespace")

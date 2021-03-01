@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package diddochandler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -23,7 +22,7 @@ type UpdateHandler struct {
 func NewUpdateHandler(basePath string, processor dochandler.Processor, pc protocol.Client) *UpdateHandler {
 	return &UpdateHandler{
 		handler: newHandler(
-			fmt.Sprintf("%s/operations", basePath),
+			basePath,
 			http.MethodPost,
 			dochandler.NewUpdateHandler(processor, pc).Update,
 		),

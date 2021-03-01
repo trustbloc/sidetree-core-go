@@ -22,7 +22,7 @@ type ResolveHandler struct {
 func NewResolveHandler(basePath string, resolver dochandler.Resolver) *ResolveHandler {
 	return &ResolveHandler{
 		handler: newHandler(
-			fmt.Sprintf("%s/identifiers/{id}", basePath),
+			fmt.Sprintf("%s/{id}", basePath),
 			http.MethodGet,
 			dochandler.NewResolveHandler(resolver).Resolve,
 		),
