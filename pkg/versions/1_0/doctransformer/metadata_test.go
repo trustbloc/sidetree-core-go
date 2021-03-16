@@ -19,7 +19,7 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 	doc, err := document.FromBytes(validDoc)
 	require.NoError(t, err)
 
-	internal := &protocol.ResolutionModel{Doc: doc, RecoveryCommitment: "recovery", UpdateCommitment: "update"}
+	internal := &protocol.ResolutionModel{Doc: doc, RecoveryCommitment: "recovery", UpdateCommitment: "update", AnchorOrigin: "origin.com"}
 
 	t.Run("success - all info present", func(t *testing.T) {
 		info := make(protocol.TransformationInfo)

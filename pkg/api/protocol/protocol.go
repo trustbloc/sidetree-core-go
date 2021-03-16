@@ -106,6 +106,7 @@ type ResolutionModel struct {
 	RecoveryCommitment               string
 	Deactivated                      bool
 	Reference                        string
+	AnchorOrigin                     interface{}
 }
 
 // OperationApplier applies the given operation to the document.

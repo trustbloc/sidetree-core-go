@@ -89,6 +89,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
 		Reference:                        anchoredOp.Reference,
 		RecoveryCommitment:               op.SuffixData.RecoveryCommitment,
+		AnchorOrigin:                     op.SuffixData.AnchorOrigin,
 	}
 
 	// verify actual delta hash matches expected delta hash
@@ -163,6 +164,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 		Reference:                        rm.Reference,
 		UpdateCommitment:                 op.Delta.UpdateCommitment,
 		RecoveryCommitment:               rm.RecoveryCommitment,
+		AnchorOrigin:                     rm.AnchorOrigin,
 	}
 
 	// verify anchor from and until time against anchoring time
@@ -229,6 +231,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 		UpdateCommitment:                 "",
 		RecoveryCommitment:               "",
 		Deactivated:                      true,
+		AnchorOrigin:                     rm.AnchorOrigin,
 	}, nil
 }
 
@@ -263,6 +266,7 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
 		Reference:                        anchoredOp.Reference,
 		RecoveryCommitment:               signedDataModel.RecoveryCommitment,
+		AnchorOrigin:                     signedDataModel.AnchorOrigin,
 	}
 
 	// verify the delta against the signed delta hash

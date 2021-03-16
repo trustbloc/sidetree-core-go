@@ -14,7 +14,7 @@ import (
 )
 
 // CreateDocumentMetadata will create document metadata.
-func CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (document.Metadata, error) {
+func CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (document.Metadata, error) { // nolint: gocyclo
 	if rm == nil || rm.Doc == nil {
 		return nil, errors.New("resolution model is required for creating document metadata")
 	}
@@ -37,6 +37,10 @@ func CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.Transfor
 
 	if rm.UpdateCommitment != "" {
 		methodMetadata[document.UpdateCommitmentProperty] = rm.UpdateCommitment
+	}
+
+	if rm.AnchorOrigin != nil {
+		methodMetadata[document.AnchorOriginProperty] = rm.AnchorOrigin
 	}
 
 	docMetadata := make(document.Metadata)
