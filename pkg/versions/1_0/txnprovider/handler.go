@@ -81,12 +81,12 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 	return ad.GetAnchorString(), dids, nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) { // nolint:gocyclo
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) { // nolint:gocyclo,funlen
 	if len(ops) == 0 {
 		return nil, nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
 
-	batchSuffixes := make(map[string]operation.Type)
+	batchSuffixes := make(map[string]*operation.Reference)
 
 	result := &models.SortedOperations{}
 	for _, d := range ops {
@@ -111,26 +111,46 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 			continue
 		}
 
+		var anchorOrigin interface{}
+
 		switch op.Type {
 		case operation.TypeCreate:
 			result.Create = append(result.Create, op)
+
+			anchorOrigin = op.SuffixData.AnchorOrigin
+
 		case operation.TypeUpdate:
 			result.Update = append(result.Update, op)
+
 		case operation.TypeRecover:
 			result.Recover = append(result.Recover, op)
+
+			signedData, e := h.parser.ParseSignedDataForRecover(op.SignedData)
+			if e != nil {
+				return nil, nil, e
+			}
+
+			anchorOrigin = signedData.AnchorOrigin
+
 		case operation.TypeDeactivate:
 			result.Deactivate = append(result.Deactivate, op)
 		}
 
-		batchSuffixes[op.UniqueSuffix] = op.Type
+		opRef := &operation.Reference{
+			UniqueSuffix: op.UniqueSuffix,
+			Type:         op.Type,
+			AnchorOrigin: anchorOrigin,
+		}
+
+		batchSuffixes[op.UniqueSuffix] = opRef
 	}
 
-	dids := make([]*operation.Reference, 0, len(batchSuffixes))
-	for did, op := range batchSuffixes {
-		dids = append(dids, &operation.Reference{UniqueSuffix: did, Type: op})
+	opRefs := make([]*operation.Reference, 0, len(batchSuffixes))
+	for _, opRef := range batchSuffixes {
+		opRefs = append(opRefs, opRef)
 	}
 
-	return result, dids, nil
+	return result, opRefs, nil
 }
 
 // createCoreIndexFile will create core index file from operations, proof files and provisional index file and write it to CAS

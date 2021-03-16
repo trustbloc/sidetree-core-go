@@ -30,6 +30,9 @@ type Reference struct {
 
 	// Type defines operation type.
 	Type Type
+
+	// AnchorOrigin defines anchor origin.
+	AnchorOrigin interface{}
 }
 
 // AnchoredOperation defines an anchored operation (stored in document operation store).

@@ -29,6 +29,9 @@ const (
 	// DeactivatedProperty is deactivated flag key.
 	DeactivatedProperty = "deactivated"
 
+	// AnchorOriginProperty is anchor origin key.
+	AnchorOriginProperty = "anchorOrigin"
+
 	// CanonicalIDProperty is canonical ID key.
 	CanonicalIDProperty = "canonicalId"
 
