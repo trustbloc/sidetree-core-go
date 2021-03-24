@@ -43,8 +43,8 @@ func New(providers *Providers) *TxnProcessor {
 }
 
 // Process persists all of the operations for the given anchor.
-func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn) error {
-	logger.Debugf("processing sidetree txn:%+v", sidetreeTxn)
+func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) error {
+	logger.Debugf("processing sidetree txn:%+v, suffixes: %s", sidetreeTxn, suffixes)
 
 	txnOps, err := p.OperationProtocolProvider.GetTxnOperations(&sidetreeTxn)
 	if err != nil {

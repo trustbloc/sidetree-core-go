@@ -9,10 +9,11 @@ import (
 )
 
 type TxnProcessor struct {
-	ProcessStub        func(txn.SidetreeTxn) error
+	ProcessStub        func(txn.SidetreeTxn, ...string) error
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
 		arg1 txn.SidetreeTxn
+		arg2 []string
 	}
 	processReturns struct {
 		result1 error
@@ -24,16 +25,17 @@ type TxnProcessor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *TxnProcessor) Process(arg1 txn.SidetreeTxn) error {
+func (fake *TxnProcessor) Process(arg1 txn.SidetreeTxn, arg2 ...string) error {
 	fake.processMutex.Lock()
 	ret, specificReturn := fake.processReturnsOnCall[len(fake.processArgsForCall)]
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
 		arg1 txn.SidetreeTxn
-	}{arg1})
-	fake.recordInvocation("Process", []interface{}{arg1})
+		arg2 []string
+	}{arg1, arg2})
+	fake.recordInvocation("Process", []interface{}{arg1, arg2})
 	fake.processMutex.Unlock()
 	if fake.ProcessStub != nil {
-		return fake.ProcessStub(arg1)
+		return fake.ProcessStub(arg1, arg2...)
 	}
 	if specificReturn {
 		return ret.result1
@@ -48,17 +50,17 @@ func (fake *TxnProcessor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
-func (fake *TxnProcessor) ProcessCalls(stub func(txn.SidetreeTxn) error) {
+func (fake *TxnProcessor) ProcessCalls(stub func(txn.SidetreeTxn, ...string) error) {
 	fake.processMutex.Lock()
 	defer fake.processMutex.Unlock()
 	fake.ProcessStub = stub
 }
 
-func (fake *TxnProcessor) ProcessArgsForCall(i int) txn.SidetreeTxn {
+func (fake *TxnProcessor) ProcessArgsForCall(i int) (txn.SidetreeTxn, []string) {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
 	argsForCall := fake.processArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *TxnProcessor) ProcessReturns(result1 error) {
