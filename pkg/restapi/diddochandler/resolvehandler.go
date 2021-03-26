@@ -18,7 +18,7 @@ type ResolveHandler struct {
 	*handler
 }
 
-// NewResolveHandler returns a new DID document resolve handler.
+// NewResolveHandler returns a newHandler DID document resolve handler.
 func NewResolveHandler(basePath string, resolver dochandler.Resolver) *ResolveHandler {
 	return &ResolveHandler{
 		handler: newHandler(

@@ -18,7 +18,7 @@ type UpdateHandler struct {
 	*handler
 }
 
-// NewUpdateHandler returns a new DID document update handler.
+// NewUpdateHandler returns a newHandler DID document update handler.
 func NewUpdateHandler(basePath string, processor dochandler.Processor, pc protocol.Client) *UpdateHandler {
 	return &UpdateHandler{
 		handler: newHandler(

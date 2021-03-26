@@ -17,6 +17,7 @@ type handler struct {
 	reqHandler common.HTTPRequestHandler
 }
 
+// newHandler creates new REST handler.
 func newHandler(path, method string, reqHandler common.HTTPRequestHandler) *handler {
 	return &handler{
 		path:       path,
