@@ -198,16 +198,16 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 }
 
 func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error) {
-	// check namespace
-	if strings.HasPrefix(shortOrLongFormDID, r.namespace+docutil.NamespaceDelimiter) {
-		return r.namespace, nil
-	}
-
-	// check aliases
+	// check aliases first (if configured)
 	for _, ns := range r.aliases {
 		if strings.HasPrefix(shortOrLongFormDID, ns+docutil.NamespaceDelimiter) {
 			return ns, nil
 		}
+	}
+
+	// check namespace
+	if strings.HasPrefix(shortOrLongFormDID, r.namespace+docutil.NamespaceDelimiter) {
+		return r.namespace, nil
 	}
 
 	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
