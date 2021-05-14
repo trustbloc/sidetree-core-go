@@ -223,13 +223,26 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 
 	ti := getTransformationInfo(shortFormDid, true)
 
-	reference := ""
-	if internalResult.Reference != "" {
-		reference = docutil.NamespaceDelimiter + internalResult.Reference
+	canonicalRef := ""
+	if internalResult.CanonicalReference != "" {
+		canonicalRef = docutil.NamespaceDelimiter + internalResult.CanonicalReference
 	}
 
+	canonicalID := r.namespace + canonicalRef + docutil.NamespaceDelimiter + uniquePortion
+
 	// we should always set canonical id if document has been published
-	ti[document.CanonicalIDProperty] = r.namespace + reference + docutil.NamespaceDelimiter + uniquePortion
+	ti[document.CanonicalIDProperty] = canonicalID
+
+	equivalentIDs := []string{canonicalID}
+	if len(internalResult.EquivalentReferences) > 0 {
+		for _, eqRef := range internalResult.EquivalentReferences {
+			equivalentID := r.namespace + docutil.NamespaceDelimiter + eqRef + docutil.NamespaceDelimiter + uniquePortion
+			equivalentIDs = append(equivalentIDs, equivalentID)
+		}
+	}
+
+	// equivalent ids should always include canonical id (if specified)
+	ti[document.EquivalentIDProperty] = equivalentIDs
 
 	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
 }
