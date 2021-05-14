@@ -45,6 +45,8 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	logger.Debugf("processing update request: %s", string(request))
+
 	response, err := h.doUpdate(request)
 	if err != nil {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)

@@ -164,15 +164,19 @@ func TestDocumentHandler_ResolveDocument_DID(t *testing.T) {
 	require.Contains(t, err.Error(), "did suffix is empty")
 }
 
-func TestDocumentHandler_ResolveDocument_DID_With_Reference(t *testing.T) {
+func TestDocumentHandler_ResolveDocument_DID_With_References(t *testing.T) {
 	store := mocks.NewMockOperationStore(nil)
 	dochandler, cleanup := getDocumentHandler(store)
 	require.NotNil(t, dochandler)
 	defer cleanup()
 
 	const reference = "reference"
+	const equivalent1 = "equivalent1"
+	const equivalent2 = "equivalent2"
+
 	anchoredOp := getAnchoredCreateOperation()
-	anchoredOp.Reference = reference
+	anchoredOp.CanonicalReference = reference
+	anchoredOp.EquivalentReferences = []string{equivalent1, equivalent2}
 
 	err := store.Put(anchoredOp)
 	require.NoError(t, err)
@@ -181,8 +185,14 @@ func TestDocumentHandler_ResolveDocument_DID_With_Reference(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	expected := namespace + docutil.NamespaceDelimiter + reference + docutil.NamespaceDelimiter + anchoredOp.UniqueSuffix
-	require.Equal(t, expected, result.DocumentMetadata[document.CanonicalIDProperty])
+	expectedCanonical := namespace + docutil.NamespaceDelimiter + reference + docutil.NamespaceDelimiter + anchoredOp.UniqueSuffix
+	require.Equal(t, expectedCanonical, result.DocumentMetadata[document.CanonicalIDProperty])
+
+	expectedEquivalent1 := namespace + docutil.NamespaceDelimiter + equivalent1 + docutil.NamespaceDelimiter + anchoredOp.UniqueSuffix
+	expectedEquivalent2 := namespace + docutil.NamespaceDelimiter + equivalent2 + docutil.NamespaceDelimiter + anchoredOp.UniqueSuffix
+	expectedEquivalence := []string{expectedCanonical, expectedEquivalent1, expectedEquivalent2}
+
+	require.Equal(t, expectedEquivalence, result.DocumentMetadata[document.EquivalentIDProperty])
 }
 
 func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
