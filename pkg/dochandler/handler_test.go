@@ -52,6 +52,12 @@ func TestDocumentHandler_New(t *testing.T) {
 	dh := New(namespace, aliases, nil, nil, nil)
 	require.Equal(t, namespace, dh.Namespace())
 	require.Equal(t, aliases, dh.aliases)
+	require.Empty(t, dh.domain)
+
+	const domain = "domain.com"
+	dh = New(namespace, nil, nil, nil, nil, WithDomain(domain))
+	require.Equal(t, namespace, dh.Namespace())
+	require.Equal(t, domain, dh.domain)
 }
 
 func TestDocumentHandler_Protocol(t *testing.T) {
@@ -70,6 +76,22 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
 	require.NoError(t, err)
 	require.NotNil(t, doc)
+}
+
+func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
+	dochandler, cleanup := getDocumentHandler(mocks.NewMockOperationStore(nil))
+	require.NotNil(t, dochandler)
+	defer cleanup()
+
+	dochandler.domain = "domain.com"
+
+	createOp := getCreateOperation()
+
+	result, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	require.Len(t, result.DocumentMetadata[document.EquivalentIDProperty], 1)
 }
 
 func TestDocumentHandler_ProcessOperation_Create_ApplyDeltaError(t *testing.T) {

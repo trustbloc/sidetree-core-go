@@ -47,6 +47,7 @@ type DocumentHandler struct {
 	writer    BatchWriter
 	namespace string
 	aliases   []string // namespace aliases
+	domain    string
 }
 
 // OperationProcessor is an interface which resolves the document based on the ID.
@@ -59,15 +60,32 @@ type BatchWriter interface {
 	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) error
 }
 
-// New creates a new requestHandler with the context.
-func New(namespace string, aliases []string, pc protocol.Client, writer BatchWriter, processor OperationProcessor) *DocumentHandler {
-	return &DocumentHandler{
+// Option is an option for document handler.
+type Option func(opts *DocumentHandler)
+
+// WithDomain sets optional domain hint for unpublished/interim documents.
+func WithDomain(domain string) Option {
+	return func(opts *DocumentHandler) {
+		opts.domain = domain
+	}
+}
+
+// New creates a new document handler with the context.
+func New(namespace string, aliases []string, pc protocol.Client, writer BatchWriter, processor OperationProcessor, opts ...Option) *DocumentHandler {
+	dh := &DocumentHandler{
 		protocol:  pc,
 		processor: processor,
 		writer:    writer,
 		namespace: namespace,
 		aliases:   aliases,
 	}
+
+	// apply options
+	for _, opt := range opts {
+		opt(dh)
+	}
+
+	return dh
 }
 
 // Namespace returns the namespace of the document handler.
@@ -139,7 +157,24 @@ func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol
 		return nil, err
 	}
 
-	return pv.DocumentTransformer().TransformDocument(rm, getTransformationInfo(op.ID, false))
+	ti := make(protocol.TransformationInfo)
+	ti[document.PublishedProperty] = false
+
+	id := r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
+
+	// if optional domain is specified we should set equivalent id with domain hint for interim/unpublished documents
+	if r.domain != "" {
+		id = r.namespace + docutil.NamespaceDelimiter + "interim" + docutil.NamespaceDelimiter + op.UniqueSuffix
+
+		equivalentID := r.namespace + docutil.NamespaceDelimiter +
+			"interim" + docutil.NamespaceDelimiter + r.domain + docutil.NamespaceDelimiter + op.UniqueSuffix
+
+		ti[document.EquivalentIDProperty] = []string{equivalentID}
+	}
+
+	ti[document.IDProperty] = id
+
+	return pv.DocumentTransformer().TransformDocument(rm, ti)
 }
 
 func getTransformationInfo(id string, published bool) protocol.TransformationInfo {
