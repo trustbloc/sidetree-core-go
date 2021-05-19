@@ -55,9 +55,11 @@ func TestDocumentHandler_New(t *testing.T) {
 	require.Empty(t, dh.domain)
 
 	const domain = "domain.com"
-	dh = New(namespace, nil, nil, nil, nil, WithDomain(domain))
+	const label = "interim"
+	dh = New(namespace, nil, nil, nil, nil, WithLabel(label), WithDomain(domain))
 	require.Equal(t, namespace, dh.Namespace())
 	require.Equal(t, domain, dh.domain)
+	require.Equal(t, label, dh.label)
 }
 
 func TestDocumentHandler_Protocol(t *testing.T) {
@@ -84,6 +86,7 @@ func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
 	defer cleanup()
 
 	dochandler.domain = "domain.com"
+	dochandler.label = "interim"
 
 	createOp := getCreateOperation()
 
@@ -91,7 +94,11 @@ func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	require.Len(t, result.DocumentMetadata[document.EquivalentIDProperty], 1)
+	require.Contains(t, result.Document.ID(), namespace+":interim")
+
+	equivalentIds := result.DocumentMetadata[document.EquivalentIDProperty].([]string)
+	require.Len(t, equivalentIds, 1)
+	require.Contains(t, equivalentIds[0], namespace+":interim:domain.com")
 }
 
 func TestDocumentHandler_ProcessOperation_Create_ApplyDeltaError(t *testing.T) {
@@ -246,6 +253,41 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		require.True(t, ok)
 
 		require.Equal(t, false, methodMetadata[document.PublishedProperty])
+
+		equivalentIds := result.DocumentMetadata[document.EquivalentIDProperty].([]string)
+		require.Len(t, equivalentIds, 1)
+	})
+
+	t.Run("success - initial state with label and domain", func(t *testing.T) {
+		docHandlerWithDomain, clean := getDocumentHandlerWithProtocolClient(mocks.NewMockOperationStore(nil), pc)
+		require.NotNil(t, docHandlerWithDomain)
+		defer clean()
+
+		const label = "interim"
+		const domain = "domain.com"
+
+		docHandlerWithDomain.label = label
+		docHandlerWithDomain.domain = domain
+
+		result, err := docHandlerWithDomain.ResolveDocument(docID + longFormPart)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+		require.True(t, ok)
+
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, false, methodMetadata[document.PublishedProperty])
+
+		require.Contains(t, result.Document.ID(), fmt.Sprintf("%s:%s", namespace, label))
+
+		equivalentIds := result.DocumentMetadata[document.EquivalentIDProperty].([]string)
+		require.Len(t, equivalentIds, 2)
+		require.Contains(t, equivalentIds[0], fmt.Sprintf("%s:%s", namespace, label))
+		require.NotContains(t, equivalentIds[0], fmt.Sprintf("%s:%s%s", namespace, label, domain))
+		require.Contains(t, equivalentIds[1], fmt.Sprintf("%s:%s:%s", namespace, label, domain))
 	})
 
 	t.Run("error - invalid initial state format (not encoded JCS)", func(t *testing.T) {

@@ -48,6 +48,7 @@ type DocumentHandler struct {
 	namespace string
 	aliases   []string // namespace aliases
 	domain    string
+	label     string
 }
 
 // OperationProcessor is an interface which resolves the document based on the ID.
@@ -67,6 +68,13 @@ type Option func(opts *DocumentHandler)
 func WithDomain(domain string) Option {
 	return func(opts *DocumentHandler) {
 		opts.domain = domain
+	}
+}
+
+// WithLabel sets optional label for unpublished/interim documents.
+func WithLabel(label string) Option {
+	return func(opts *DocumentHandler) {
+		opts.label = label
 	}
 }
 
@@ -157,30 +165,44 @@ func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol
 		return nil, err
 	}
 
-	ti := make(protocol.TransformationInfo)
-	ti[document.PublishedProperty] = false
-
-	id := r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix
-
-	// if optional domain is specified we should set equivalent id with domain hint for interim/unpublished documents
-	if r.domain != "" {
-		id = r.namespace + docutil.NamespaceDelimiter + "interim" + docutil.NamespaceDelimiter + op.UniqueSuffix
-
-		equivalentID := r.namespace + docutil.NamespaceDelimiter +
-			"interim" + docutil.NamespaceDelimiter + r.domain + docutil.NamespaceDelimiter + op.UniqueSuffix
-
-		ti[document.EquivalentIDProperty] = []string{equivalentID}
-	}
-
-	ti[document.IDProperty] = id
+	ti := r.getTransformationInfoForUnpublished(op.UniqueSuffix, "")
 
 	return pv.DocumentTransformer().TransformDocument(rm, ti)
 }
 
-func getTransformationInfo(id string, published bool) protocol.TransformationInfo {
+func (r *DocumentHandler) getTransformationInfoForUnpublished(suffix string, createRequestJCS string) protocol.TransformationInfo {
 	ti := make(protocol.TransformationInfo)
+	ti[document.PublishedProperty] = false
+
+	id := fmt.Sprintf("%s:%s", r.namespace, suffix)
+
+	// For interim/unpublished documents we should set optional label if specified.
+	if r.label != "" {
+		id = fmt.Sprintf("%s:%s:%s", r.namespace, r.label, suffix)
+	}
+
+	var equivalentIDs []string
+
+	if createRequestJCS != "" {
+		// we should always set short form equivalent id for long form resolution
+		equivalentIDs = append(equivalentIDs, id)
+	}
+
+	// Also, if optional domain is specified, we should set equivalent id with domain hint
+	if r.label != "" && r.domain != "" {
+		equivalentID := fmt.Sprintf("%s:%s:%s:%s", r.namespace, r.label, r.domain, suffix)
+		equivalentIDs = append(equivalentIDs, equivalentID)
+	}
+
+	if len(equivalentIDs) > 0 {
+		ti[document.EquivalentIDProperty] = equivalentIDs
+	}
+
+	if createRequestJCS != "" {
+		id = fmt.Sprintf("%s:%s", id, createRequestJCS)
+	}
+
 	ti[document.IDProperty] = id
-	ti[document.PublishedProperty] = published
 
 	return ti
 }
@@ -256,7 +278,9 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 		return nil, err
 	}
 
-	ti := getTransformationInfo(shortFormDid, true)
+	ti := make(protocol.TransformationInfo)
+	ti[document.IDProperty] = shortFormDid
+	ti[document.PublishedProperty] = true
 
 	canonicalRef := ""
 	if internalResult.CanonicalReference != "" {
@@ -307,10 +331,9 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 		return nil, fmt.Errorf("%s: validate initial document: %s", badRequest, err.Error())
 	}
 
-	ti := getTransformationInfo(longFormDID, false)
+	createRequestJCS := longFormDID[strings.LastIndex(longFormDID, docutil.NamespaceDelimiter)+1:]
 
-	// we should always set equivalent id for long form resolution
-	ti[document.EquivalentIDProperty] = []string{r.namespace + docutil.NamespaceDelimiter + op.UniqueSuffix}
+	ti := r.getTransformationInfoForUnpublished(uniqueSuffix, createRequestJCS)
 
 	externalResult, err := pv.DocumentTransformer().TransformDocument(rm, ti)
 	if err != nil {
