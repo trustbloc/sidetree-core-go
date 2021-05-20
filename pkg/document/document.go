@@ -39,6 +39,11 @@ func (doc Document) ID() string {
 	return stringEntry(doc[IDProperty])
 }
 
+// Context is the context of document.
+func (doc Document) Context() []interface{} {
+	return interfaceArray(doc[ContextProperty])
+}
+
 // PublicKeys in generic document are used for managing operation keys.
 func (doc Document) PublicKeys() []PublicKey {
 	return ParsePublicKeys(doc[PublicKeyProperty])

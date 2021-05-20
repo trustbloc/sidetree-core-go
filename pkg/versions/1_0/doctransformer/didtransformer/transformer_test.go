@@ -44,6 +44,14 @@ func TestNewTransformer(t *testing.T) {
 
 	transformer = New(WithBase(true))
 	require.Equal(t, true, transformer.includeBase)
+
+	var keyCtx map[string]string = map[string]string{
+		"key-1": "value-1",
+		"key-2": "value-2",
+	}
+
+	transformer = New(WithKeyContext(keyCtx))
+	require.Equal(t, 2, len(transformer.keyCtx))
 }
 
 func TestTransformDocument(t *testing.T) {
@@ -81,8 +89,12 @@ func TestTransformDocument(t *testing.T) {
 
 		didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(didDoc.Context()))
+
+		// test document has 5 keys defined, two distinct key types: EcdsaSecp256k1VerificationKey2019, JsonWebKey2020
+		require.Equal(t, 3, len(didDoc.Context()))
 		require.Equal(t, didContext, didDoc.Context()[0])
+		require.Equal(t, ecdsaSecp256k1VerificationKey2019Ctx, didDoc.Context()[1])
+		require.Equal(t, jsonWebKey2020Ctx, didDoc.Context()[2])
 
 		// validate services
 		service := didDoc.Services()[0]
@@ -129,7 +141,6 @@ func TestTransformDocument(t *testing.T) {
 		expectedInvocationKeys := []string{"master", "invocation"}
 		require.Equal(t, len(expectedInvocationKeys), len(didDoc.InvocationKeys()))
 	})
-
 	t.Run("success - with canonical, equivalent ID", func(t *testing.T) {
 		info := make(protocol.TransformationInfo)
 		info[document.IDProperty] = "did:abc:123"
@@ -152,6 +163,68 @@ func TestTransformDocument(t *testing.T) {
 
 		require.Equal(t, "canonical", result.DocumentMetadata[document.CanonicalIDProperty])
 		require.NotEmpty(t, result.DocumentMetadata[document.EquivalentIDProperty])
+	})
+
+	t.Run("success - all supported contexts for key type", func(t *testing.T) {
+		doc, err := document.FromBytes([]byte(allKeyTypes))
+		require.NoError(t, err)
+
+		trans := New()
+
+		internalDoc := &protocol.ResolutionModel{Doc: doc}
+
+		info := make(protocol.TransformationInfo)
+		info[document.IDProperty] = testID
+		info[document.PublishedProperty] = true
+
+		result, err := trans.TransformDocument(internalDoc, info)
+		require.NoError(t, err)
+		require.NotEmpty(t, result)
+
+		didDoc := result.Document
+
+		require.Equal(t, 6, len(didDoc.Context()))
+		require.Equal(t, didContext, didDoc.Context()[0])
+		require.Equal(t, bls12381G2Key2020Ctx, didDoc.Context()[1])
+		require.Equal(t, jsonWebKey2020Ctx, didDoc.Context()[2])
+		require.Equal(t, ecdsaSecp256k1VerificationKey2019Ctx, didDoc.Context()[3])
+		require.Equal(t, ed25519VerificationKey2018Ctx, didDoc.Context()[4])
+		require.Equal(t, x25519KeyAgreementKey2019Ctx, didDoc.Context()[5])
+	})
+
+	t.Run("success - override contexts for key type", func(t *testing.T) {
+		testKeyContexts := map[string]string{
+			bls12381G2Key2020:                 "context-1",
+			jsonWebKey2020:                    "context-2",
+			ecdsaSecp256k1VerificationKey2019: "context-3",
+			ed25519VerificationKey2018:        "context-4",
+			x25519KeyAgreementKey2019:         "context-5",
+		}
+
+		doc, err := document.FromBytes([]byte(allKeyTypes))
+		require.NoError(t, err)
+
+		trans := New(WithKeyContext(testKeyContexts))
+
+		internalDoc := &protocol.ResolutionModel{Doc: doc}
+
+		info := make(protocol.TransformationInfo)
+		info[document.IDProperty] = testID
+		info[document.PublishedProperty] = true
+
+		result, err := trans.TransformDocument(internalDoc, info)
+		require.NoError(t, err)
+		require.NotEmpty(t, result)
+
+		didDoc := result.Document
+
+		require.Equal(t, 6, len(didDoc.Context()))
+		require.Equal(t, didContext, didDoc.Context()[0])
+		require.Equal(t, "context-1", didDoc.Context()[1])
+		require.Equal(t, "context-2", didDoc.Context()[2])
+		require.Equal(t, "context-3", didDoc.Context()[3])
+		require.Equal(t, "context-4", didDoc.Context()[4])
+		require.Equal(t, "context-5", didDoc.Context()[5])
 	})
 
 	t.Run("error - internal document is missing", func(t *testing.T) {
@@ -180,6 +253,24 @@ func TestTransformDocument(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, result)
 		require.Contains(t, err.Error(), "id is required for document transformation")
+	})
+
+	t.Run("error - missing context for key type", func(t *testing.T) {
+		doc, err := document.FromBytes([]byte(noContextForKeyType))
+		require.NoError(t, err)
+
+		transformer := New()
+
+		internal := &protocol.ResolutionModel{Doc: doc}
+
+		info := make(protocol.TransformationInfo)
+		info[document.IDProperty] = testID
+		info[document.PublishedProperty] = true
+
+		result, err := transformer.TransformDocument(internal, info)
+		require.Error(t, err)
+		require.Nil(t, result)
+		require.Contains(t, err.Error(), "key context not found for key type: InvalidType")
 	})
 }
 
@@ -230,7 +321,10 @@ func TestWithBase(t *testing.T) {
 
 	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(didDoc.Context()))
+
+	// test document has 5 keys defined, two distinct key types: EcdsaSecp256k1VerificationKey2019, JsonWebKey2020
+	// two distinct key context + did context + @base context
+	require.Equal(t, 4, len(didDoc.Context()))
 
 	// second context is @base
 	baseMap := didDoc.Context()[1].(map[string]interface{})
@@ -256,6 +350,7 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 	require.NoError(t, err)
 
 	data := fmt.Sprintf(ed25519DocTemplate, string(publicKeyBytes))
+
 	doc, err := document.FromBytes([]byte(data))
 	require.NoError(t, err)
 
@@ -360,5 +455,80 @@ const ed25519Invalid = `{
         	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
       	}
 	}
+  ]
+}`
+
+const noContextForKeyType = `{
+  "publicKey": [
+	{
+  		"id": "assertion",
+  		"type": "InvalidType",
+		"purposes": ["assertionMethod"],
+      	"publicKeyJwk": {
+        	"kty": "OKP",
+        	"crv": "curve",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+	}
+  ]
+}`
+
+const allKeyTypes = `{
+  "publicKey": [
+	{
+	  	"id": "key-1",
+      	"type": "Bls12381G2Key2020",
+		"purposes": ["keyAgreement"],
+      	"publicKeyJwk": {
+        	"kty": "OKP",
+        	"crv": "P-256",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+	},
+    {
+      	"id": "key-2",
+      	"type": "JsonWebKey2020",
+      	"purposes": ["authentication"],
+      	"publicKeyJwk": {
+        	"kty": "EC",
+        	"crv": "P-256",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+    },    
+	{
+      	"id": "key-3",
+      	"type": "EcdsaSecp256k1VerificationKey2019",
+      	"purposes": ["assertionMethod"],
+      	"publicKeyJwk": {
+        	"kty": "EC",
+        	"crv": "P-256K",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+    },
+    {
+      	"id": "key-4",
+		"type": "Ed25519VerificationKey2018",
+		"purposes": ["assertionMethod"],
+  		"publicKeyJwk": {
+			"kty":"OKP",
+			"crv":"Ed25519",
+			"x":"K24aib_Py_D2ST8F_IiIA2SJo1EiseS0hbaa36tVSAU"
+		}
+    },
+    {
+      	"id": "key-5",
+      	"type": "X25519KeyAgreementKey2019",
+      	"purposes": ["keyAgreement"],
+      	"publicKeyJwk": {
+        	"kty": "EC",
+        	"crv": "P-256",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+    }
   ]
 }`
