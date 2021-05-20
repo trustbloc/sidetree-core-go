@@ -26,6 +26,7 @@ func TestFromBytes(t *testing.T) {
 	require.NotNil(t, doc)
 	require.Equal(t, "", doc.ID())
 	require.Equal(t, 1, len(doc.PublicKeys()))
+	require.Equal(t, 0, len(doc.Context()))
 
 	bytes, err := doc.Bytes()
 	require.Nil(t, err)

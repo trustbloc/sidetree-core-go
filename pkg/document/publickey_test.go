@@ -20,11 +20,11 @@ func TestPublicKey(t *testing.T) {
 
 	pk = NewPublicKey(map[string]interface{}{
 		"id":         "did:example:123456789abcdefghi#keys-1",
-		"type":       "JwsVerificationKey2020",
+		"type":       "JsonWebKey2020",
 		"controller": "did:example:123456789abcdefghi",
 	})
 	require.Equal(t, "did:example:123456789abcdefghi#keys-1", pk.ID())
-	require.Equal(t, "JwsVerificationKey2020", pk.Type())
+	require.Equal(t, "JsonWebKey2020", pk.Type())
 	require.Equal(t, "did:example:123456789abcdefghi", pk.Controller())
 	require.Empty(t, pk.Purpose())
 	require.Empty(t, pk.PublicKeyJwk())

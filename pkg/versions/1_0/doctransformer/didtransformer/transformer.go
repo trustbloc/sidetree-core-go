@@ -26,7 +26,28 @@ const (
 
 	// ed25519VerificationKey2018 requires special handling (convert to base58).
 	ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
+
+	bls12381G2Key2020                 = "Bls12381G2Key2020"
+	jsonWebKey2020                    = "JsonWebKey2020"
+	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
+	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
+
+	bls12381G2Key2020Ctx                 = "https://w3id.org/security/suites/bls12381-2020/v1"
+	jsonWebKey2020Ctx                    = "https://w3id.org/security/suites/jws-2020/v1"
+	ecdsaSecp256k1VerificationKey2019Ctx = "https://w3id.org/security/suites/secp256k1-2019/v1"
+	ed25519VerificationKey2018Ctx        = "https://w3id.org/security/suites/ed25519-2018/v1"
+	x25519KeyAgreementKey2019Ctx         = "https://w3id.org/security/suites/x25519-2019/v1"
 )
+
+type keyContextMap map[string]string
+
+var defaultKeyContextMap = keyContextMap{
+	bls12381G2Key2020:                 bls12381G2Key2020Ctx,
+	jsonWebKey2020:                    jsonWebKey2020Ctx,
+	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019Ctx,
+	ed25519VerificationKey2018:        ed25519VerificationKey2018Ctx,
+	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019Ctx,
+}
 
 // Option is a registry instance option.
 type Option func(opts *Transformer)
@@ -35,6 +56,13 @@ type Option func(opts *Transformer)
 func WithMethodContext(ctx []string) Option {
 	return func(opts *Transformer) {
 		opts.methodCtx = ctx
+	}
+}
+
+// WithKeyContext sets optional key context.
+func WithKeyContext(ctx map[string]string) Option {
+	return func(opts *Transformer) {
+		opts.keyCtx = ctx
 	}
 }
 
@@ -47,6 +75,7 @@ func WithBase(enabled bool) Option {
 
 // Transformer is responsible for transforming internal to external document.
 type Transformer struct {
+	keyCtx      map[string]string
 	methodCtx   []string // used for setting additional contexts during resolution
 	includeBase bool
 }
@@ -58,6 +87,11 @@ func New(opts ...Option) *Transformer {
 	// apply options
 	for _, opt := range opts {
 		opt(transformer)
+	}
+
+	// if key contexts are not provided via options use default key contexts
+	if len(transformer.keyCtx) == 0 {
+		transformer.keyCtx = defaultKeyContextMap
 	}
 
 	return transformer
@@ -171,6 +205,8 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 
 	var publicKeys []document.PublicKey
 
+	var keyContexts []string
+
 	for _, pk := range internal.PublicKeys() {
 		id := t.getObjectID(did, pk.ID())
 
@@ -187,6 +223,15 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 			externalPK[document.PublicKeyBase58Property] = base58.Encode(ed25519PubKey)
 		} else {
 			externalPK[document.PublicKeyJwkProperty] = pk.PublicKeyJwk()
+		}
+
+		keyContext, ok := t.keyCtx[pk.Type()]
+		if !ok {
+			return fmt.Errorf("key context not found for key type: %s", pk.Type())
+		}
+
+		if !contains(keyContexts, keyContext) {
+			keyContexts = append(keyContexts, keyContext)
 		}
 
 		publicKeys = append(publicKeys, externalPK)
@@ -209,6 +254,10 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 
 	if len(publicKeys) > 0 {
 		resolutionResult.Document[document.VerificationMethodProperty] = publicKeys
+
+		// we need to add key context(s) to original context
+		ctx := append(resolutionResult.Document.Context(), interfaceArray(keyContexts)...)
+		resolutionResult.Document[document.ContextProperty] = ctx
 	}
 
 	for key, value := range purposes {
@@ -218,6 +267,25 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 	}
 
 	return nil
+}
+
+func contains(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
+}
+
+func interfaceArray(values []string) []interface{} {
+	var iArr []interface{}
+	for _, v := range values {
+		iArr = append(iArr, v)
+	}
+
+	return iArr
 }
 
 func (t *Transformer) getObjectID(docID string, objectID string) interface{} {
