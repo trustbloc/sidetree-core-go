@@ -236,7 +236,7 @@ func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOper
 	return anchoredOps, nil
 }
 
-func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) { //nolint:funlen
 	cifOps, err := h.parseCoreIndexOperations(batchFiles.CoreIndex, txn)
 	if err != nil {
 		return nil, fmt.Errorf("parse core index operations: %s", err.Error())
@@ -272,6 +272,14 @@ func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, t
 	// add signed data from core proof file
 	for i := range cifOps.Recover {
 		cifOps.Recover[i].SignedData = batchFiles.CoreProof.Operations.Recover[i]
+
+		// parse signed data to extract anchor origin
+		signedDataModel, err := h.parser.ParseSignedDataForRecover(cifOps.Recover[i].SignedData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate signed data for recover[%d]: %s", i, err.Error())
+		}
+
+		cifOps.Recover[i].AnchorOrigin = signedDataModel.AnchorOrigin
 	}
 
 	operations = append(operations, cifOps.Recover...)
@@ -657,6 +665,7 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 			Type:         operation.TypeCreate,
 			UniqueSuffix: suffix,
 			SuffixData:   op.SuffixData,
+			AnchorOrigin: op.SuffixData.AnchorOrigin,
 		}
 
 		suffixes = append(suffixes, suffix)

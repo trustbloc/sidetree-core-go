@@ -39,4 +39,7 @@ type Operation struct {
 
 	// SuffixDataModel is suffix data model
 	SuffixData *SuffixDataModel
+
+	// AnchorOrigin is anchor origin
+	AnchorOrigin interface{}
 }
