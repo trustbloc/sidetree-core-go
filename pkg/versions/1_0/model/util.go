@@ -65,6 +65,7 @@ func GetAnchoredOperation(op *Operation) (*operation.AnchoredOperation, error) {
 		Type:            op.Type,
 		UniqueSuffix:    op.UniqueSuffix,
 		OperationBuffer: operationBuffer,
+		AnchorOrigin:    op.AnchorOrigin,
 	}, nil
 }
 

@@ -61,6 +61,9 @@ type AnchoredOperation struct {
 
 	// EquivalenceReferences contains equivalence reference that applies to this operation.
 	EquivalentReferences []string `json:"equivalentReferences,omitempty"`
+
+	// AnchorOrigin is anchor origin
+	AnchorOrigin interface{} `json:"anchorOrigin,omitempty"`
 }
 
 // Type defines valid values for operation type.

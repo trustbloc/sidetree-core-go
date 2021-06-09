@@ -1315,6 +1315,20 @@ func TestHandler_assembleBatchOperations(t *testing.T) {
 		require.Equal(t, 4, len(anchoredOps))
 	})
 
+	t.Run("error - recover signed data error ", func(t *testing.T) {
+		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
+
+		batchFiles, err := generateDefaultBatchFiles()
+		require.NoError(t, err)
+
+		batchFiles.CoreProof.Operations.Recover[0] = ""
+
+		anchoredOps, err := provider.assembleAnchoredOperations(batchFiles, &txn.SidetreeTxn{Namespace: defaultNS})
+		require.Error(t, err)
+		require.Nil(t, anchoredOps)
+		require.Contains(t, err.Error(), "failed to validate signed data for recover[0]: missing signed data")
+	})
+
 	t.Run("error - core/provisional index, chunk file operation number mismatch", func(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), nil, nil)
 
