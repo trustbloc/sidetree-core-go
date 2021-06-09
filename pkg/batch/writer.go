@@ -162,8 +162,6 @@ func (r *Writer) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) 
 }
 
 func (r *Writer) main() {
-	var timer <-chan time.Time
-
 	// On startup, there may be operations in the queue. Send a notification
 	// so that any pending items in the queue may be immediately processed.
 	r.sendChan <- process{force: true}
@@ -172,13 +170,11 @@ func (r *Writer) main() {
 		select {
 		case p := <-r.sendChan:
 			logger.Infof("[%s] Handling process notification for batch writer: %v", r.namespace, p)
-			pending := r.processAvailable(p.force) > 0
-			timer = r.handleTimer(timer, pending)
+			r.processAvailable(p.force)
 
-		case <-timer:
+		case <-time.After(r.batchTimeout):
 			logger.Infof("[%s] Handling batch writer timeout", r.namespace)
-			pending := r.processAvailable(true) > 0
-			timer = r.handleTimer(nil, pending)
+			r.processAvailable(true)
 
 		case <-r.exitChan:
 			logger.Infof("[%s] exiting batch writer", r.namespace)
@@ -292,22 +288,6 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
 	return r.context.Anchor().WriteAnchor(anchorString, dids, protocolGenesisTime)
-}
-
-func (r *Writer) handleTimer(timer <-chan time.Time, pending bool) <-chan time.Time {
-	switch {
-	case timer != nil && !pending:
-		// Timer is already running but there are no messages pending, stop the timer
-		return nil
-	case timer == nil && pending:
-		// Timer is not already running and there are messages pending, so start it
-		return time.After(r.batchTimeout)
-	default:
-		// Do nothing when:
-		// 1. Timer is already running and there are messages pending
-		// 2. Timer is not set and there are no messages pending
-		return timer
-	}
 }
 
 // WithBatchTimeout allows for specifying batch timeout.
