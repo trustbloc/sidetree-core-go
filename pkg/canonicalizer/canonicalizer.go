@@ -14,10 +14,16 @@ import (
 
 // MarshalCanonical is using JCS RFC canonicalization.
 func MarshalCanonical(value interface{}) ([]byte, error) {
-	jsonLiteralValByte, err := json.Marshal(value)
-	if err != nil {
-		return nil, err
+	valueBytes, ok := value.([]byte)
+
+	if !ok {
+		var err error
+
+		valueBytes, err = json.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return jsoncanonicalizer.Transform(jsonLiteralValByte)
+	return jsoncanonicalizer.Transform(valueBytes)
 }

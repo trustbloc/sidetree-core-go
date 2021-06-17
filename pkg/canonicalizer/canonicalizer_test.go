@@ -27,6 +27,12 @@ func TestMarshalCanonical(t *testing.T) {
 		require.Equal(t, string(result), `{"alpha":"alpha","beta":"beta"}`)
 	})
 
+	t.Run("success - accepts bytes", func(t *testing.T) {
+		result, err := MarshalCanonical([]byte(`{"beta":"beta","alpha":"alpha"}`))
+		require.NoError(t, err)
+		require.Equal(t, string(result), `{"alpha":"alpha","beta":"beta"}`)
+	})
+
 	t.Run("marshal error", func(t *testing.T) {
 		var c chan int
 		result, err := MarshalCanonical(c)
