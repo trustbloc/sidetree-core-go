@@ -169,11 +169,13 @@ func (r *Writer) main() {
 	for {
 		select {
 		case p := <-r.sendChan:
-			logger.Infof("[%s] Handling process notification for batch writer: %v", r.namespace, p)
+			logger.Debugf("[%s] Handling process notification for batch writer: %v", r.namespace, p)
+
 			r.processAvailable(p.force)
 
 		case <-time.After(r.batchTimeout):
-			logger.Infof("[%s] Handling batch writer timeout", r.namespace)
+			logger.Debugf("[%s] Handling batch writer timeout", r.namespace)
+
 			r.processAvailable(true)
 
 		case <-r.exitChan:
@@ -199,7 +201,7 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 		return pending
 	}
 
-	logger.Infof("[%s] Forcefully processing operations. Pending operations: %d", r.namespace, pending)
+	logger.Debugf("[%s] Forcefully processing operations. Pending operations: %d", r.namespace, pending)
 
 	// Now process the remaining operations
 	n, pending, err := r.cutAndProcess(true)
@@ -222,11 +224,13 @@ func (r *Writer) drain() (pending uint, err error) {
 
 			return pending, err
 		}
+
 		if n == 0 {
-			logger.Infof("[%s] ... drain - no outstanding batches to be processed. Pending operations: %d", r.namespace, pending)
+			logger.Debugf("[%s] ... drain - no outstanding batches to be processed. Pending operations: %d", r.namespace, pending)
 
 			return pending, nil
 		}
+
 		logger.Infof("[%s] ... drain processed %d operations into batch. Pending operations: %d", r.namespace, n, pending)
 	}
 }
