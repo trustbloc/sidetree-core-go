@@ -38,7 +38,6 @@ func TestBatchCutter(t *testing.T) {
 	require.EqualError(t, err, c.Err.Error())
 	require.Empty(t, result.Operations)
 	require.Zero(t, result.Pending)
-	require.Nil(t, result.Commit)
 	require.Zero(t, result.ProtocolGenesisTime)
 
 	c.Err = nil
@@ -47,7 +46,6 @@ func TestBatchCutter(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, result.Operations)
 	require.Zero(t, result.Pending)
-	require.Nil(t, result.Commit)
 	require.Zero(t, result.ProtocolGenesisTime)
 
 	l, err := r.Add(operation1, 10)
@@ -60,7 +58,6 @@ func TestBatchCutter(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, result.Operations)
 	require.Equal(t, uint(2), result.Pending)
-	require.Nil(t, result.Commit)
 	require.Equal(t, uint64(0), result.ProtocolGenesisTime)
 
 	result, err = r.Cut(true)
@@ -71,7 +68,9 @@ func TestBatchCutter(t *testing.T) {
 	require.Zero(t, result.Pending)
 	require.Equal(t, uint64(10), result.ProtocolGenesisTime)
 
-	// Without committing, the operations should still be in the queue
+	result.Nack()
+
+	// After a rollback, the operations should still be in the queue
 	result, err = r.Cut(true)
 	require.NoError(t, err)
 	require.Len(t, result.Operations, 2)
@@ -79,9 +78,7 @@ func TestBatchCutter(t *testing.T) {
 	require.Equal(t, operation2, result.Operations[1])
 	require.Zero(t, result.Pending)
 
-	pending, err := result.Commit()
-	require.NoError(t, err)
-	require.Zero(t, pending)
+	require.Zero(t, result.Ack())
 
 	// After a commit, the operations should be gone
 	result, err = r.Cut(true)
@@ -100,7 +97,6 @@ func TestBatchCutter(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, result.Operations)
 	require.Equal(t, uint(2), result.Pending)
-	require.Nil(t, result.Commit)
 
 	l, err = r.Add(operation5, 20)
 	require.NoError(t, err)
@@ -115,11 +111,8 @@ func TestBatchCutter(t *testing.T) {
 	require.Equal(t, operation3, result.Operations[0])
 	require.Equal(t, operation4, result.Operations[1])
 	require.Equal(t, uint(2), result.Pending)
-	require.NotNil(t, result.Commit)
 
-	pending, err = result.Commit()
-	require.NoError(t, err)
-	require.Equal(t, uint(2), pending)
+	require.Equal(t, uint(2), result.Ack())
 
 	result, err = r.Cut(true)
 	require.NoError(t, err)
@@ -128,7 +121,5 @@ func TestBatchCutter(t *testing.T) {
 	require.Equal(t, operation6, result.Operations[1])
 	require.Zero(t, result.Pending)
 
-	pending, err = result.Commit()
-	require.NoError(t, err)
-	require.Zero(t, pending)
+	require.Zero(t, result.Ack())
 }
