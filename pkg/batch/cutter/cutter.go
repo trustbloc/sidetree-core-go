@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package cutter
 
 import (
+	"fmt"
+
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
@@ -19,11 +21,13 @@ var logger = log.New("sidetree-core-cutter")
 type OperationQueue interface {
 	// Add adds the given operation to the tail of the queue and returns the new length of the queue.
 	Add(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error)
-	// Remove removes (up to) the given number of items from the head of the queue.
-	// Returns the actual number of items that were removed and the new length of the queue.
-	Remove(num uint) (uint, uint, error)
+	// Remove removes (up to) the given number of items from the head of the queue and returns:
+	// - The operations that are to be removed.
+	// - The 'Ack' function that must be called to commit the remove.
+	// - The 'Nack' function that must be called to roll back the remove.
+	Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(), err error)
 	// Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
-	Peek(num uint) ([]*operation.QueuedOperationAtTime, error)
+	Peek(num uint) (operation.QueuedOperationsAtTime, error)
 	// Len returns the number of operation in the queue.
 	Len() uint
 }
@@ -40,9 +44,10 @@ type Result struct {
 	ProtocolGenesisTime uint64
 	// Pending is the number of operations remaining in the queue
 	Pending uint
-	// Commit should be invoked in order to commit the 'Cut' (i.e. the operations will be permanently removed from the queue)
-	// If Commit is not invoked then the operations will remain in the queue.
-	Commit Committer
+	// Ack commits the remove from the queue and returns the number of pending operations.
+	Ack func() uint
+	// Nack rolls back the remove so that a retry may occur.
+	Nack func()
 }
 
 // BatchCutter implements batch cutting.
@@ -69,7 +74,8 @@ func (r *BatchCutter) Add(op *operation.QueuedOperation, protocolGenesisTime uin
 // Cut returns the current batch along with number of items that should be remaining in the queue after the committer is called.
 // If force is false then the batch will be cut only if it has reached the max batch size (as specified in the protocol)
 // If force is true then the batch will be cut if there is at least one Data in the batch
-// Note that the operations are removed from the queue when Result.Commit is invoked, otherwise they remain in the queue.
+// Note that the operations are removed from the queue when Result.Ack is invoked, otherwise Result.Nack should be called
+// in order to place the operations back in the queue so that they be processed again.
 func (r *BatchCutter) Cut(force bool) (Result, error) {
 	pending := r.pendingBatch.Len()
 
@@ -101,19 +107,17 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 
 	logger.Infof("Pending Size: %d, MaxOperationsPerBatch: %d, Batch Size: %d", pending, maxOperationsPerBatch, batchSize)
 
-	committer := func() (uint, error) {
-		logger.Infof("Removing %d operations from the queue", batchSize)
-
-		_, p, err := r.pendingBatch.Remove(batchSize)
-
-		return p, err
+	ops, ack, nack, err := r.pendingBatch.Remove(batchSize)
+	if err != nil {
+		return Result{}, fmt.Errorf("pending batch queue remove: %w", err)
 	}
 
 	return Result{
-		Operations:          operations,
+		Operations:          ops.QueuedOperations(),
 		ProtocolGenesisTime: protocolGenesisTime,
 		Pending:             pending,
-		Commit:              committer,
+		Ack:                 ack,
+		Nack:                nack,
 	}, nil
 }
 

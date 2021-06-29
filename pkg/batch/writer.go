@@ -255,18 +255,14 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	if err != nil {
 		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(result.Operations), err)
 
+		result.Nack()
+
 		return 0, result.Pending + uint(len(result.Operations)), err
 	}
 
 	logger.Infof("[%s] Successfully processed %d batch operations. Committing to batch cutter ...", r.namespace, len(result.Operations))
 
-	pending, err = result.Commit()
-	if err != nil {
-		logger.Errorf("[%s] Batch operations were committed but could not be removed from the queue due to error [%s]. Stopping the batch writer so that no further ops are added.", r.namespace, err)
-		r.Stop()
-
-		return 0, pending, errors.WithMessagef(err, "operations were committed but could not be removed from the queue")
-	}
+	pending = result.Ack()
 
 	logger.Infof("[%s] Successfully committed to batch cutter. Pending operations: %d", r.namespace, pending)
 

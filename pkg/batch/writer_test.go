@@ -364,6 +364,7 @@ func TestProcessError(t *testing.T) {
 
 		q.LenReturns(1)
 		q.PeekReturns(invalidQueue, nil)
+		q.RemoveReturns(nil, func() uint { return 0 }, func() {}, nil)
 
 		ctx := newMockContext()
 		ctx.ProtocolClient.Protocol.MaxOperationCount = 1
@@ -410,7 +411,7 @@ func TestProcessError(t *testing.T) {
 		const numOperations = 3
 		q.LenReturns(numOperations)
 		q.PeekReturns(generateOperationsAtTime(numOperations, 0), nil)
-		q.RemoveReturns(0, 1, errExpected)
+		q.RemoveReturns(nil, nil, nil, errExpected)
 
 		ctx := newMockContext()
 		ctx.ProtocolClient.Protocol.MaxOperationCount = 2
@@ -423,8 +424,6 @@ func TestProcessError(t *testing.T) {
 		defer writer.Stop()
 
 		time.Sleep(50 * time.Millisecond)
-
-		require.Truef(t, writer.Stopped(), "The batch writer should have been stopped due to a remove error")
 	})
 }
 

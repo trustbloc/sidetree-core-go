@@ -55,18 +55,35 @@ func TestMemQueue(t *testing.T) {
 	require.Equal(t, *op2, ops[1].QueuedOperation)
 	require.Equal(t, *op3, ops[2].QueuedOperation)
 
-	n, l, err := q.Remove(1)
+	ops, ack, nack, err := q.Remove(1)
 	require.NoError(t, err)
-	require.Equal(t, uint(1), n)
-	require.Equal(t, uint(2), l)
+	require.NotNil(t, ack)
+	require.NotNil(t, nack)
+	require.Len(t, ops, 1)
+	require.Equal(t, *op1, ops[0].QueuedOperation)
+
+	require.Equal(t, uint(2), ack())
 
 	ops, err = q.Peek(1)
 	require.NoError(t, err)
 	require.Len(t, ops, 1)
 	require.Equal(t, *op2, ops[0].QueuedOperation)
 
-	n, l, err = q.Remove(5)
+	ops, _, nack, err = q.Remove(5)
 	require.NoError(t, err)
-	require.Equal(t, uint(2), n)
-	require.Zero(t, l)
+	require.NotNil(t, nack)
+	require.Len(t, ops, 2)
+	require.Equal(t, *op2, ops[0].QueuedOperation)
+	require.Equal(t, *op3, ops[1].QueuedOperation)
+
+	nack()
+
+	ops, ack, _, err = q.Remove(5)
+	require.NoError(t, err)
+	require.NotNil(t, ack)
+	require.Len(t, ops, 2)
+	require.Equal(t, *op2, ops[0].QueuedOperation)
+	require.Equal(t, *op3, ops[1].QueuedOperation)
+
+	require.Zero(t, ack())
 }

@@ -32,7 +32,7 @@ func (q *MemQueue) Add(data *operation.QueuedOperation, protocolGenesisTime uint
 }
 
 // Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
-func (q *MemQueue) Peek(num uint) ([]*operation.QueuedOperationAtTime, error) {
+func (q *MemQueue) Peek(num uint) (operation.QueuedOperationsAtTime, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -45,8 +45,7 @@ func (q *MemQueue) Peek(num uint) ([]*operation.QueuedOperationAtTime, error) {
 }
 
 // Remove removes (up to) the given number of items from the head of the queue.
-// Returns the actual number of items that were removed and the new length of the queue.
-func (q *MemQueue) Remove(num uint) (uint, uint, error) {
+func (q *MemQueue) Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(), err error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -58,7 +57,20 @@ func (q *MemQueue) Remove(num uint) (uint, uint, error) {
 	items := q.items[0:n]
 	q.items = q.items[n:]
 
-	return uint(len(items)), uint(len(q.items)), nil
+	return items,
+		func() uint {
+			q.mutex.RLock()
+			defer q.mutex.RUnlock()
+
+			return uint(len(q.items))
+		},
+		func() {
+			q.mutex.Lock()
+			defer q.mutex.Unlock()
+
+			// Add the items to the head of the queue.
+			q.items = append(items, q.items...)
+		}, nil
 }
 
 // Len returns the length of the queue.

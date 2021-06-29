@@ -22,32 +22,34 @@ type OperationQueue struct {
 		result1 uint
 		result2 error
 	}
-	RemoveStub        func(num uint) (uint, uint, error)
+	RemoveStub        func(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(), err error)
 	removeMutex       sync.RWMutex
 	removeArgsForCall []struct {
 		num uint
 	}
 	removeReturns struct {
-		result1 uint
-		result2 uint
-		result3 error
+		result1 operation.QueuedOperationsAtTime
+		result2 func() uint
+		result3 func()
+		result4 error
 	}
 	removeReturnsOnCall map[int]struct {
-		result1 uint
-		result2 uint
-		result3 error
+		result1 operation.QueuedOperationsAtTime
+		result2 func() uint
+		result3 func()
+		result4 error
 	}
-	PeekStub        func(num uint) ([]*operation.QueuedOperationAtTime, error)
+	PeekStub        func(num uint) (operation.QueuedOperationsAtTime, error)
 	peekMutex       sync.RWMutex
 	peekArgsForCall []struct {
 		num uint
 	}
 	peekReturns struct {
-		result1 []*operation.QueuedOperationAtTime
+		result1 operation.QueuedOperationsAtTime
 		result2 error
 	}
 	peekReturnsOnCall map[int]struct {
-		result1 []*operation.QueuedOperationAtTime
+		result1 operation.QueuedOperationsAtTime
 		result2 error
 	}
 	LenStub        func() uint
@@ -115,7 +117,7 @@ func (fake *OperationQueue) AddReturnsOnCall(i int, result1 uint, result2 error)
 	}{result1, result2}
 }
 
-func (fake *OperationQueue) Remove(num uint) (uint, uint, error) {
+func (fake *OperationQueue) Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(), err error) {
 	fake.removeMutex.Lock()
 	ret, specificReturn := fake.removeReturnsOnCall[len(fake.removeArgsForCall)]
 	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
@@ -127,9 +129,9 @@ func (fake *OperationQueue) Remove(num uint) (uint, uint, error) {
 		return fake.RemoveStub(num)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
+		return ret.result1, ret.result2, ret.result3, ret.result4
 	}
-	return fake.removeReturns.result1, fake.removeReturns.result2, fake.removeReturns.result3
+	return fake.removeReturns.result1, fake.removeReturns.result2, fake.removeReturns.result3, fake.removeReturns.result4
 }
 
 func (fake *OperationQueue) RemoveCallCount() int {
@@ -144,32 +146,35 @@ func (fake *OperationQueue) RemoveArgsForCall(i int) uint {
 	return fake.removeArgsForCall[i].num
 }
 
-func (fake *OperationQueue) RemoveReturns(result1 uint, result2 uint, result3 error) {
+func (fake *OperationQueue) RemoveReturns(result1 operation.QueuedOperationsAtTime, result2 func() uint, result3 func(), result4 error) {
 	fake.RemoveStub = nil
 	fake.removeReturns = struct {
-		result1 uint
-		result2 uint
-		result3 error
-	}{result1, result2, result3}
+		result1 operation.QueuedOperationsAtTime
+		result2 func() uint
+		result3 func()
+		result4 error
+	}{result1, result2, result3, result4}
 }
 
-func (fake *OperationQueue) RemoveReturnsOnCall(i int, result1 uint, result2 uint, result3 error) {
+func (fake *OperationQueue) RemoveReturnsOnCall(i int, result1 operation.QueuedOperationsAtTime, result2 func() uint, result3 func(), result4 error) {
 	fake.RemoveStub = nil
 	if fake.removeReturnsOnCall == nil {
 		fake.removeReturnsOnCall = make(map[int]struct {
-			result1 uint
-			result2 uint
-			result3 error
+			result1 operation.QueuedOperationsAtTime
+			result2 func() uint
+			result3 func()
+			result4 error
 		})
 	}
 	fake.removeReturnsOnCall[i] = struct {
-		result1 uint
-		result2 uint
-		result3 error
-	}{result1, result2, result3}
+		result1 operation.QueuedOperationsAtTime
+		result2 func() uint
+		result3 func()
+		result4 error
+	}{result1, result2, result3, result4}
 }
 
-func (fake *OperationQueue) Peek(num uint) ([]*operation.QueuedOperationAtTime, error) {
+func (fake *OperationQueue) Peek(num uint) (operation.QueuedOperationsAtTime, error) {
 	fake.peekMutex.Lock()
 	ret, specificReturn := fake.peekReturnsOnCall[len(fake.peekArgsForCall)]
 	fake.peekArgsForCall = append(fake.peekArgsForCall, struct {
@@ -198,24 +203,24 @@ func (fake *OperationQueue) PeekArgsForCall(i int) uint {
 	return fake.peekArgsForCall[i].num
 }
 
-func (fake *OperationQueue) PeekReturns(result1 []*operation.QueuedOperationAtTime, result2 error) {
+func (fake *OperationQueue) PeekReturns(result1 operation.QueuedOperationsAtTime, result2 error) {
 	fake.PeekStub = nil
 	fake.peekReturns = struct {
-		result1 []*operation.QueuedOperationAtTime
+		result1 operation.QueuedOperationsAtTime
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *OperationQueue) PeekReturnsOnCall(i int, result1 []*operation.QueuedOperationAtTime, result2 error) {
+func (fake *OperationQueue) PeekReturnsOnCall(i int, result1 operation.QueuedOperationsAtTime, result2 error) {
 	fake.PeekStub = nil
 	if fake.peekReturnsOnCall == nil {
 		fake.peekReturnsOnCall = make(map[int]struct {
-			result1 []*operation.QueuedOperationAtTime
+			result1 operation.QueuedOperationsAtTime
 			result2 error
 		})
 	}
 	fake.peekReturnsOnCall[i] = struct {
-		result1 []*operation.QueuedOperationAtTime
+		result1 operation.QueuedOperationsAtTime
 		result2 error
 	}{result1, result2}
 }

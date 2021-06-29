@@ -96,3 +96,17 @@ type QueuedOperationAtTime struct {
 	QueuedOperation
 	ProtocolGenesisTime uint64
 }
+
+// QueuedOperationsAtTime contains a collection of queued operations with protocol genesis time.
+type QueuedOperationsAtTime []*QueuedOperationAtTime
+
+// QueuedOperations returns a collection of QueuedOperation.
+func (o QueuedOperationsAtTime) QueuedOperations() []*QueuedOperation {
+	ops := make([]*QueuedOperation, len(o))
+
+	for i, op := range o {
+		ops[i] = &op.QueuedOperation
+	}
+
+	return ops
+}
