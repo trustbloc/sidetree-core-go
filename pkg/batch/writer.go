@@ -174,8 +174,6 @@ func (r *Writer) main() {
 			r.processAvailable(p.force)
 
 		case <-time.After(r.batchTimeout):
-			logger.Debugf("[%s] Handling batch writer timeout", r.namespace)
-
 			r.processAvailable(true)
 
 		case <-r.exitChan:
@@ -196,8 +194,6 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 	}
 
 	if pending == 0 || !forceCut {
-		logger.Debugf("[%s] No further processing necessary. Pending operations: %d", r.namespace, pending)
-
 		return pending
 	}
 
@@ -216,7 +212,6 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 
 // drain cuts and processes all pending operations that are ready to form a batch.
 func (r *Writer) drain() (pending uint, err error) {
-	logger.Debugf("[%s] Draining operations queue...", r.namespace)
 	for {
 		n, pending, err := r.cutAndProcess(false)
 		if err != nil {
@@ -226,8 +221,6 @@ func (r *Writer) drain() (pending uint, err error) {
 		}
 
 		if n == 0 {
-			logger.Debugf("[%s] ... drain - no outstanding batches to be processed. Pending operations: %d", r.namespace, pending)
-
 			return pending, nil
 		}
 
@@ -244,8 +237,6 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	}
 
 	if len(result.Operations) == 0 {
-		logger.Debugf("[%s] No operations to be processed", r.namespace)
-
 		return 0, result.Pending, nil
 	}
 
