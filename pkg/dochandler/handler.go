@@ -127,7 +127,7 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenes
 		return nil, err
 	}
 
-	logger.Infof("[%s] operation added to the batch", op.ID)
+	logger.Debugf("[%s] operation added to the batch", op.ID)
 
 	// create operation will also return document
 	if op.Type == operation.TypeCreate {
@@ -273,7 +273,7 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion)
 	if err != nil {
-		logger.Errorf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
+		logger.Debugf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 
 		return nil, err
 	}
