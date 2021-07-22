@@ -24,9 +24,19 @@ func TestWriteResponse(t *testing.T) {
 }
 
 func TestWriteError(t *testing.T) {
-	rw := httptest.NewRecorder()
 	errExpected := errors.New("some error")
-	WriteError(rw, http.StatusBadRequest, errExpected)
-	require.Equal(t, http.StatusBadRequest, rw.Code)
-	require.Equal(t, errExpected.Error(), rw.Body.String())
+
+	t.Run("Bad request", func(t *testing.T) {
+		rw := httptest.NewRecorder()
+		WriteError(rw, http.StatusBadRequest, errExpected)
+		require.Equal(t, http.StatusBadRequest, rw.Code)
+		require.Equal(t, errExpected.Error(), rw.Body.String())
+	})
+
+	t.Run("Server error", func(t *testing.T) {
+		rw := httptest.NewRecorder()
+		WriteError(rw, http.StatusServiceUnavailable, errExpected)
+		require.Equal(t, http.StatusServiceUnavailable, rw.Code)
+		require.Equal(t, errExpected.Error(), rw.Body.String())
+	})
 }

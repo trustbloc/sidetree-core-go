@@ -23,7 +23,11 @@ func WriteResponse(rw http.ResponseWriter, status int, v interface{}) {
 
 // WriteError writes an error to the response writer.
 func WriteError(rw http.ResponseWriter, status int, err error) {
-	logger.Warnf("returning error status: %d, message: %s", status, err.Error())
+	if status >= http.StatusInternalServerError {
+		logger.Warnf("returning error status: %d, message: %s", status, err.Error())
+	} else {
+		logger.Debugf("returning error status: %d, message: %s", status, err.Error())
+	}
 
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(status)

@@ -153,7 +153,7 @@ func (r *Writer) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) 
 	select {
 	case r.sendChan <- process{force: false}:
 		// Send a notification that an operation was added to the queue
-		logger.Infof("[%s] operation added to the queue", op.UniqueSuffix)
+		logger.Debugf("[%s] operation added to the queue", op.UniqueSuffix)
 
 		return nil
 	case <-r.exitChan:
