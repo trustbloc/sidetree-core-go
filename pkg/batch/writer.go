@@ -76,7 +76,7 @@ type Context interface {
 // AnchorWriter defines an interface to access the underlying anchoring system.
 type AnchorWriter interface {
 	// WriteAnchor writes the anchor string as a transaction to anchoring system
-	WriteAnchor(anchor string, ops []*operation.Reference, protocolGenesisTime uint64) error
+	WriteAnchor(anchor string, artifacts []*protocol.AnchorDocument, ops []*operation.Reference, protocolGenesisTime uint64) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
 }
@@ -270,7 +270,7 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 		return err
 	}
 
-	anchorString, dids, err := p.OperationHandler().PrepareTxnFiles(ops)
+	anchorString, artifacts, dids, err := p.OperationHandler().PrepareTxnFiles(ops)
 	if err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
-	return r.context.Anchor().WriteAnchor(anchorString, dids, protocolGenesisTime)
+	return r.context.Anchor().WriteAnchor(anchorString, artifacts, dids, protocolGenesisTime)
 }
 
 // WithBatchTimeout allows for specifying batch timeout.

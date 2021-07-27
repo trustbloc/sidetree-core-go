@@ -62,10 +62,11 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
+		require.Len(t, refs, createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
+		require.Len(t, artifacts, 5)
 
 		provider := NewOperationProvider(pc.Protocol, parser, cas, cp)
 
@@ -86,7 +87,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		anchorString, _, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
@@ -115,7 +116,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
 		// anchor string has 9 operations "9.coreIndexURI"
-		anchorString, _, err := handler.PrepareTxnFiles(ops)
+		anchorString, _, _, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
@@ -161,7 +162,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, _, err := handler.PrepareTxnFiles(ops)
+		anchorString, _, _, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 
@@ -206,11 +207,13 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 		require.Equal(t, len(refs), deactivateOpsNum)
 		require.Equal(t, refs[0].Type, operation.TypeDeactivate)
+		// core proof, core index
+		require.Len(t, artifacts, 2)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
@@ -235,11 +238,13 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 		require.Equal(t, len(refs), updateOpsNum)
 		require.Equal(t, refs[0].Type, operation.TypeUpdate)
+		// chunk, provisional proof and provisional index, core index
+		require.Len(t, artifacts, 4)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
@@ -264,11 +269,13 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 		require.Equal(t, len(refs), createOpsNum)
 		require.Equal(t, refs[0].Type, operation.TypeCreate)
+		// chunk, provisional index, and core index
+		require.Len(t, artifacts, 3)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
@@ -293,11 +300,13 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, refs, err := handler.PrepareTxnFiles(ops)
+		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
 		require.NotEmpty(t, anchorString)
 		require.Equal(t, len(refs), recoverOpsNum)
 		require.Equal(t, refs[0].Type, operation.TypeRecover)
+		// chunk, provisional index, core proof, core index
+		require.Len(t, artifacts, 4)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)

@@ -36,49 +36,90 @@ func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProv
 	return &OperationHandler{cas: cas, protocol: p, cp: cp, parser: parser}
 }
 
-// PrepareTxnFiles will create batch files(chunk, map, anchor) from batch operations,
-// store those files in CAS and return anchor string.
-func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*operation.Reference, error) {
+// PrepareTxnFiles will create batch files(core index, core proof, provisional index, provisional proof and chunk)
+// from batch operation and return anchor string, batch files information and operations.
+func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*protocol.AnchorDocument, []*operation.Reference, error) { //nolint:funlen
 	parsedOps, dids, err := h.parseOperations(ops)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
+
+	var artifacts []*protocol.AnchorDocument
 
 	// special case: if all ops are deactivate don't create chunk and provisional files
 	provisionalIndexURI := ""
 	if len(parsedOps.Deactivate) != len(ops) {
 		chunkURI, innerErr := h.createChunkFile(parsedOps)
 		if innerErr != nil {
-			return "", nil, innerErr
+			return "", nil, nil, innerErr
 		}
+
+		artifacts = append(artifacts,
+			&protocol.AnchorDocument{
+				ID:   chunkURI,
+				Desc: "chunk file",
+				Type: protocol.TypeProvisional,
+			})
 
 		provisionalProofURI, innerErr := h.createProvisionalProofFile(parsedOps.Update)
 		if innerErr != nil {
-			return "", nil, innerErr
+			return "", nil, nil, innerErr
+		}
+
+		if provisionalProofURI != "" {
+			artifacts = append(artifacts,
+				&protocol.AnchorDocument{
+					ID:   provisionalProofURI,
+					Desc: "provisional proof file",
+					Type: protocol.TypeProvisional,
+				})
 		}
 
 		provisionalIndexURI, innerErr = h.createProvisionalIndexFile([]string{chunkURI}, provisionalProofURI, parsedOps.Update)
 		if innerErr != nil {
-			return "", nil, innerErr
+			return "", nil, nil, innerErr
 		}
+
+		artifacts = append(artifacts,
+			&protocol.AnchorDocument{
+				ID:   provisionalIndexURI,
+				Desc: "provisional index file",
+				Type: protocol.TypeProvisional,
+			})
 	}
 
 	coreProofURI, err := h.createCoreProofFile(parsedOps.Recover, parsedOps.Deactivate)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
+	}
+
+	if coreProofURI != "" {
+		artifacts = append(artifacts,
+			&protocol.AnchorDocument{
+				ID:   coreProofURI,
+				Desc: "core proof file",
+				Type: protocol.TypePermanent,
+			})
 	}
 
 	coreIndexURI, err := h.createCoreIndexFile(coreProofURI, provisionalIndexURI, parsedOps)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
+
+	artifacts = append(artifacts,
+		&protocol.AnchorDocument{
+			ID:   coreIndexURI,
+			Desc: "core index file",
+			Type: protocol.TypePermanent,
+		})
 
 	ad := AnchorData{
 		NumberOfOperations: parsedOps.Size(),
 		CoreIndexFileURI:   coreIndexURI,
 	}
 
-	return ad.GetAnchorString(), dids, nil
+	return ad.GetAnchorString(), artifacts, dids, nil
 }
 
 func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) { // nolint:gocyclo,funlen
