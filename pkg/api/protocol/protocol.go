@@ -120,10 +120,29 @@ type DocumentComposer interface {
 	ApplyPatches(doc document.Document, patches []patch.Patch) (document.Document, error)
 }
 
+// AnchorDocumentType defines valid values for anchor document type.
+type AnchorDocumentType string
+
+const (
+
+	// TypePermanent captures "permanent" anchor document type.
+	TypePermanent AnchorDocumentType = "permanent"
+
+	// TypeProvisional captures "provisional" anchor document type.
+	TypeProvisional AnchorDocumentType = "provisional"
+)
+
+// AnchorDocument describes Sidetree batch files.
+type AnchorDocument struct {
+	ID   string
+	Desc string
+	Type AnchorDocumentType
+}
+
 // OperationHandler defines an interface for creating batch files.
 type OperationHandler interface {
-	// GetTxnOperations operations will create relevant batch files, store them in CAS and return anchor string.
-	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*operation.Reference, error)
+	// PrepareTxnFiles operations will create relevant batch files, store them in CAS and return anchor string.
+	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*AnchorDocument, []*operation.Reference, error)
 }
 
 // OperationProvider retrieves the anchored operations for the given Sidetree transaction.

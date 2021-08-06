@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
+	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 )
 
@@ -27,7 +28,7 @@ func NewMockAnchorWriter(err error) *MockAnchorWriter {
 }
 
 // WriteAnchor writes the anchor string as a transaction to anchoring system.
-func (m *MockAnchorWriter) WriteAnchor(anchor string, _ []*operation.Reference, _ uint64) error {
+func (m *MockAnchorWriter) WriteAnchor(anchor string, _ []*protocol.AnchorDocument, _ []*operation.Reference, _ uint64) error {
 	if m.err != nil {
 		return m.err
 	}
