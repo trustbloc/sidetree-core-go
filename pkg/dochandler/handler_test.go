@@ -85,7 +85,7 @@ func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
 	require.NotNil(t, dochandler)
 	defer cleanup()
 
-	dochandler.domain = "domain.com"
+	dochandler.domain = "https:domain.com"
 	dochandler.label = "interim"
 
 	createOp := getCreateOperation()
@@ -98,7 +98,7 @@ func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
 
 	equivalentIds := result.DocumentMetadata[document.EquivalentIDProperty].([]string)
 	require.Len(t, equivalentIds, 1)
-	require.Contains(t, equivalentIds[0], namespace+":interim:domain.com")
+	require.Contains(t, equivalentIds[0], namespace+":https:domain.com:interim")
 }
 
 func TestDocumentHandler_ProcessOperation_Create_ApplyDeltaError(t *testing.T) {
@@ -287,7 +287,7 @@ func TestDocumentHandler_ResolveDocument_InitialValue(t *testing.T) {
 		require.Len(t, equivalentIds, 2)
 		require.Contains(t, equivalentIds[0], fmt.Sprintf("%s:%s", namespace, label))
 		require.NotContains(t, equivalentIds[0], fmt.Sprintf("%s:%s%s", namespace, label, domain))
-		require.Contains(t, equivalentIds[1], fmt.Sprintf("%s:%s:%s", namespace, label, domain))
+		require.Contains(t, equivalentIds[1], fmt.Sprintf("%s:%s:%s", namespace, domain, label))
 	})
 
 	t.Run("error - invalid initial state format (not encoded JCS)", func(t *testing.T) {

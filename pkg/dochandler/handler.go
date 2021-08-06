@@ -190,7 +190,7 @@ func (r *DocumentHandler) getTransformationInfoForUnpublished(suffix string, cre
 
 	// Also, if optional domain is specified, we should set equivalent id with domain hint
 	if r.label != "" && r.domain != "" {
-		equivalentID := fmt.Sprintf("%s:%s:%s:%s", r.namespace, r.label, r.domain, suffix)
+		equivalentID := fmt.Sprintf("%s:%s:%s:%s", r.namespace, r.domain, r.label, suffix)
 		equivalentIDs = append(equivalentIDs, equivalentID)
 	}
 
