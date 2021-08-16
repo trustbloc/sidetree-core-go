@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/square/go-jose/v3 v3.0.0-20200630053402-0a67ce9b0693
 	github.com/stretchr/testify v1.7.0
-	github.com/trustbloc/edge-core v0.1.7-0.20210812092729-6c61997fa9dd
+	github.com/trustbloc/edge-core v0.1.7-0.20210816120552-ed93662ac716
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 )
 
