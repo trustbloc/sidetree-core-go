@@ -417,6 +417,39 @@ func TestEd25519VerificationKey2018_Error(t *testing.T) {
 	require.Contains(t, err.Error(), "unknown curve")
 }
 
+func TestPublicKeyBase58(t *testing.T) {
+	pkB58 := "36d8RkFy2SdabnGzcZ3LcCSDA8NP5T4bsoADwuXtoN3B"
+
+	doc, err := document.FromBytes([]byte(fmt.Sprintf(publicKeyBase58Template, pkB58)))
+	require.NoError(t, err)
+
+	transformer := New()
+
+	internal := &protocol.ResolutionModel{Doc: doc}
+
+	info := make(protocol.TransformationInfo)
+	info[document.IDProperty] = testID
+	info[document.PublishedProperty] = true
+
+	result, err := transformer.TransformDocument(internal, info)
+	require.NoError(t, err)
+
+	jsonTransformed, err := json.Marshal(result.Document)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
+	require.Equal(t, didDoc.VerificationMethods()[0].Controller(), didDoc.ID())
+	require.Equal(t, didContext, didDoc.Context()[0])
+
+	pk := didDoc.VerificationMethods()[0]
+	require.Contains(t, pk.ID(), testID)
+	require.Equal(t, "Ed25519VerificationKey2018", pk.Type())
+	require.Empty(t, pk.PublicKeyJwk())
+
+	require.Equal(t, pkB58, pk.PublicKeyBase58())
+}
+
 func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.NoError(t, err)
@@ -431,6 +464,24 @@ const ed25519DocTemplate = `{
   		"type": "Ed25519VerificationKey2018",
 		"purposes": ["assertionMethod"],
   		"publicKeyJwk": %s
+	}
+  ],
+  "service": [
+	{
+	   "id": "oidc",
+	   "type": "OpenIdConnectVersion1.0Service",
+	   "serviceEndpoint": "https://openid.example.com/"
+	}
+  ]
+}`
+
+const publicKeyBase58Template = `{
+  "publicKey": [
+	{
+  		"id": "assertion",
+  		"type": "Ed25519VerificationKey2018",
+		"purposes": ["assertionMethod"],
+  		"publicKeyBase58": "%s"
 	}
   ],
   "service": [
