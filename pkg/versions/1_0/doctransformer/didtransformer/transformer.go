@@ -215,14 +215,20 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 		externalPK[document.TypeProperty] = pk.Type()
 		externalPK[document.ControllerProperty] = t.getController(did)
 
-		if pk.Type() == ed25519VerificationKey2018 {
-			ed25519PubKey, err := getED2519PublicKey(pk.PublicKeyJwk())
-			if err != nil {
-				return err
+		if pkJwk := pk.PublicKeyJwk(); pkJwk != nil { // nolint: nestif
+			if pk.Type() == ed25519VerificationKey2018 {
+				ed25519PubKey, err := getED2519PublicKey(pkJwk)
+				if err != nil {
+					return err
+				}
+				externalPK[document.PublicKeyBase58Property] = base58.Encode(ed25519PubKey)
+			} else {
+				externalPK[document.PublicKeyJwkProperty] = pkJwk
 			}
-			externalPK[document.PublicKeyBase58Property] = base58.Encode(ed25519PubKey)
+		} else if pkb58 := pk.PublicKeyBase58(); pkb58 != "" {
+			externalPK[document.PublicKeyBase58Property] = pkb58
 		} else {
-			externalPK[document.PublicKeyJwkProperty] = pk.PublicKeyJwk()
+			externalPK[document.PublicKeyJwkProperty] = nil // if key missing, default to adding nil jwk
 		}
 
 		keyContext, ok := t.keyCtx[pk.Type()]

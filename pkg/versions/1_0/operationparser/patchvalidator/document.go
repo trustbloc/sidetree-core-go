@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
@@ -102,21 +103,47 @@ func validatePublicKeys(pubKeys []document.PublicKey) error {
 		}
 
 		if err := validateJWK(pubKey.PublicKeyJwk()); err != nil {
-			return err
+			if pubKey.PublicKeyBase58() == "" || pubKey.Type() == jsonWebKey2020 {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func validatePublicKeyProperties(pubKey document.PublicKey) error {
-	requiredKeys := []string{document.TypeProperty, document.IDProperty, document.PublicKeyJwkProperty}
+func validatePublicKeyProperties(pubKey document.PublicKey) error { // nolint:gocyclo
+	requiredKeys := []string{document.TypeProperty, document.IDProperty}
 	optionalKeys := []string{document.PurposesProperty}
+	oneOfNKeys := [][]string{{document.PublicKeyJwkProperty, document.PublicKeyBase58Property}}
 	allowedKeys := append(requiredKeys, optionalKeys...)
+
+	for _, keyGroup := range oneOfNKeys {
+		allowedKeys = append(allowedKeys, keyGroup...)
+	}
 
 	for _, required := range requiredKeys {
 		if _, ok := pubKey[required]; !ok {
 			return fmt.Errorf("key '%s' is required for public key", required)
+		}
+	}
+
+	for _, keyGroup := range oneOfNKeys {
+		var satisfied bool
+
+		for _, key := range keyGroup {
+			_, ok := pubKey[key]
+			if ok && satisfied { // at most one element
+				satisfied = false
+
+				break
+			}
+
+			satisfied = satisfied || ok
+		}
+
+		if !satisfied {
+			return fmt.Errorf("exactly one key required of '%s'", strings.Join(keyGroup, "', '"))
 		}
 	}
 

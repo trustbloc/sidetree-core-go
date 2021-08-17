@@ -38,6 +38,14 @@ func TestValidatePublicKeys(t *testing.T) {
 		err = validatePublicKeys(doc.PublicKeys())
 		require.NoError(t, err)
 	})
+
+	t.Run("success - base58 key", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(withB58key))
+		require.Nil(t, err)
+
+		err = validatePublicKeys(doc.PublicKeys())
+		require.NoError(t, err)
+	})
 }
 
 func TestValidatePublicKeysErrors(t *testing.T) {
@@ -105,6 +113,46 @@ func TestValidatePublicKeysErrors(t *testing.T) {
 		err = validatePublicKeys(doc.PublicKeys())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "key 'other' is not allowed for public key")
+	})
+
+	t.Run("invalid jwk", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(invalidJWK))
+		require.Nil(t, err)
+
+		err = validatePublicKeys(doc.PublicKeys())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "JWK crv is missing")
+	})
+
+	t.Run("pkB58 key with jwk type", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(jwkTypeWithB58Key))
+		require.Nil(t, err)
+
+		err = validatePublicKeys(doc.PublicKeys())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "key has to be in JWK format")
+	})
+
+	t.Run("no public key field", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(missingPubKey))
+		require.Nil(t, err)
+
+		err = validatePublicKeys(doc.PublicKeys())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "exactly one key required of")
+		require.Contains(t, err.Error(), document.PublicKeyJwkProperty)
+		require.Contains(t, err.Error(), document.PublicKeyBase58Property)
+	})
+
+	t.Run("too many public key fields", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(multiplePublicKeyFields))
+		require.Nil(t, err)
+
+		err = validatePublicKeys(doc.PublicKeys())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "exactly one key required of")
+		require.Contains(t, err.Error(), document.PublicKeyJwkProperty)
+		require.Contains(t, err.Error(), document.PublicKeyBase58Property)
 	})
 }
 
@@ -385,6 +433,39 @@ const noPurpose = `{
   ]
 }`
 
+const invalidJWK = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "type": "JsonWebKey2020",
+      "publicKeyJwk": {
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ]
+}`
+
+const withB58key = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "type": "Ed25519VerificationKey2018",
+      "publicKeyBase58": "36d8RkFy2SdabnGzcZ3LcCSDA8NP5T4bsoADwuXtoN3B"
+    }
+  ]
+}`
+
+const jwkTypeWithB58Key = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "type": "JsonWebKey2020",
+      "publicKeyBase58": "36d8RkFy2SdabnGzcZ3LcCSDA8NP5T4bsoADwuXtoN3B"
+    }
+  ]
+}`
+
 const emptyPurpose = `{
   "publicKey": [
     {
@@ -466,6 +547,31 @@ const invalidKeyType = `{
     {
       "id": "key1",
       "type": "InvalidKeyType",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256K",
+        "x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        "y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      }
+    }
+  ]
+}`
+
+const missingPubKey = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "type": "JsonWebKey2020"
+    }
+  ]
+}`
+
+const multiplePublicKeyFields = `{
+  "publicKey": [
+    {
+      "id": "key1",
+      "type": "JsonWebKey2020",
+      "publicKeyBase58": "36d8RkFy2SdabnGzcZ3LcCSDA8NP5T4bsoADwuXtoN3B",
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "P-256K",
