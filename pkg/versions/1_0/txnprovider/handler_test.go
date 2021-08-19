@@ -41,6 +41,8 @@ const (
 
 	createAnchorOrigin  = "create-anchor-origin"
 	recoverAnchorOrigin = "recover-anchor-origin"
+
+	universalAnchorOrigin = "universal-anchor-origin"
 )
 
 func TestNewOperationHandler(t *testing.T) {
@@ -420,6 +422,7 @@ func generateOperationInfo(num int, opType operation.Type) (*operation.QueuedOpe
 		OperationBuffer: op,
 		UniqueSuffix:    fmt.Sprintf("%s-%d", opType, num),
 		Namespace:       defaultNS,
+		AnchorOrigin:    universalAnchorOrigin,
 	}, nil
 }
 

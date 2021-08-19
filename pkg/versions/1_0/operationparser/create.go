@@ -65,6 +65,7 @@ func (p *Parser) ParseCreateOperation(request []byte, batch bool) (*model.Operat
 		UniqueSuffix:    uniqueSuffix,
 		Delta:           schema.Delta,
 		SuffixData:      schema.SuffixData,
+		AnchorOrigin:    schema.SuffixData.AnchorOrigin,
 	}, nil
 }
 

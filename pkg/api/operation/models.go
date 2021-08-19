@@ -20,6 +20,9 @@ type Operation struct {
 
 	// OperationBuffer is the original operation request
 	OperationBuffer []byte
+
+	// AnchorOrigin defines anchor origin.
+	AnchorOrigin interface{}
 }
 
 // Reference holds minimum information about did operation (suffix and type).
@@ -89,6 +92,7 @@ type QueuedOperation struct {
 	OperationBuffer []byte
 	UniqueSuffix    string
 	Namespace       string
+	AnchorOrigin    interface{}
 }
 
 // QueuedOperationAtTime contains queued operation info with protocol genesis time.
