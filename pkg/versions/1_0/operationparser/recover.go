@@ -68,6 +68,7 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 		Delta:           schema.Delta,
 		SignedData:      schema.SignedData,
 		RevealValue:     schema.RevealValue,
+		AnchorOrigin:    signedData.AnchorOrigin,
 	}, nil
 }
 

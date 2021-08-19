@@ -163,6 +163,8 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 		case operation.TypeUpdate:
 			result.Update = append(result.Update, op)
 
+			anchorOrigin = d.AnchorOrigin
+
 		case operation.TypeRecover:
 			result.Recover = append(result.Recover, op)
 
@@ -175,6 +177,8 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 
 		case operation.TypeDeactivate:
 			result.Deactivate = append(result.Deactivate, op)
+
+			anchorOrigin = d.AnchorOrigin
 		}
 
 		opRef := &operation.Reference{

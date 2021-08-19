@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +26,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/compression"
+	docmocks "github.com/trustbloc/sidetree-core-go/pkg/dochandler/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
 	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
@@ -31,6 +35,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 	"github.com/trustbloc/sidetree-core-go/pkg/processor"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/ecsigner"
+	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/client"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doccomposer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doctransformer/didtransformer"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doctransformer/doctransformer"
@@ -39,6 +46,8 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/txnprovider"
 )
+
+//go:generate counterfeiter -o ./mocks/operationprocessor.gen.go --fake-name OperationProcessor . operationProcessor
 
 const (
 	namespace = "did:sidetree"
@@ -78,6 +87,52 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
 	require.NoError(t, err)
 	require.NotNil(t, doc)
+}
+
+func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		dochandler, cleanup := getDocumentHandler(store)
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		createOp := getCreateOperation()
+
+		createOpBuffer, err := json.Marshal(createOp)
+		require.NoError(t, err)
+
+		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
+		require.NoError(t, err)
+
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationBuffer: createOpBuffer})
+		require.NoError(t, err)
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.NoError(t, err)
+		require.Nil(t, doc)
+	})
+
+	t.Run("error - processor error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		dochandler, cleanup := getDocumentHandler(store)
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		processor := &docmocks.OperationProcessor{}
+		processor.ResolveReturns(nil, fmt.Errorf("processor error"))
+
+		dochandler.processor = processor
+
+		updateOp, err := generateUpdateOperation("suffix")
+		require.NoError(t, err)
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "processor error")
+	})
 }
 
 func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
@@ -689,6 +744,75 @@ func getUpdateOperation() *operation.Operation {
 		UniqueSuffix:    request.DidSuffix,
 		ID:              namespace + docutil.NamespaceDelimiter + request.DidSuffix,
 	}
+}
+
+func generateUpdateRequestInfo(uniqueSuffix string) (*client.UpdateRequestInfo, error) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	testPatch, err := getTestPatch()
+	if err != nil {
+		return nil, err
+	}
+
+	updateCommitment, err := generateUniqueCommitment()
+	if err != nil {
+		return nil, err
+	}
+
+	updatePubKey, err := pubkey.GetPublicKeyJWK(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	rv, err := commitment.GetRevealValue(updatePubKey, sha2_256)
+	if err != nil {
+		return nil, err
+	}
+
+	return &client.UpdateRequestInfo{
+		DidSuffix:        uniqueSuffix,
+		Signer:           ecsigner.New(privateKey, "ES256", ""),
+		UpdateCommitment: updateCommitment,
+		UpdateKey:        updatePubKey,
+		Patches:          []patch.Patch{testPatch},
+		MultihashCode:    sha2_256,
+		RevealValue:      rv,
+	}, nil
+}
+
+func generateUpdateOperation(uniqueSuffix string) ([]byte, error) {
+	info, err := generateUpdateRequestInfo(uniqueSuffix)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.NewUpdateRequest(info)
+}
+
+func getTestPatch() (patch.Patch, error) {
+	return patch.NewJSONPatch(`[{"op": "replace", "path": "/name", "value": "Jane"}]`)
+}
+
+func generateUniqueCommitment() (string, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	pubKey, err := pubkey.GetPublicKeyJWK(&key.PublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	c, err := commitment.GetCommitment(pubKey, sha2_256)
+	if err != nil {
+		return "", err
+	}
+
+	return c, nil
 }
 
 // test value taken from reference implementation.

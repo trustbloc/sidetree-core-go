@@ -7,22 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package didvalidator
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
-	"github.com/trustbloc/sidetree-core-go/pkg/mocks"
 )
 
 func TestNew(t *testing.T) {
-	store := mocks.NewMockOperationStore(nil)
-
-	v := New(store)
+	v := New()
 	require.NotNil(t, v)
 }
 
@@ -31,14 +25,14 @@ func TestIsValidOriginalDocument(t *testing.T) {
 	didDoc, err := ioutil.ReadAll(r)
 	require.Nil(t, err)
 
-	v := getDefaultValidator()
+	v := New()
 
 	err = v.IsValidOriginalDocument(didDoc)
 	require.Nil(t, err)
 }
 
 func TestIsValidOriginalDocument_ContextProvidedError(t *testing.T) {
-	v := getDefaultValidator()
+	v := New()
 
 	err := v.IsValidOriginalDocument(docWithContext)
 	require.NotNil(t, err)
@@ -46,7 +40,7 @@ func TestIsValidOriginalDocument_ContextProvidedError(t *testing.T) {
 }
 
 func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
-	v := getDefaultValidator()
+	v := New()
 
 	err := v.IsValidOriginalDocument(docWithID)
 	require.NotNil(t, err)
@@ -54,62 +48,18 @@ func TestIsValidOriginalDocument_MustNotHaveIDError(t *testing.T) {
 }
 
 func TestIsValidPayload(t *testing.T) {
-	store := mocks.NewMockOperationStore(nil)
-	v := New(store)
-
-	store.Put(&operation.AnchoredOperation{UniqueSuffix: "abc"})
+	v := New()
 
 	err := v.IsValidPayload(validUpdate)
 	require.Nil(t, err)
 }
 
 func TestIsValidPayloadError(t *testing.T) {
-	v := getDefaultValidator()
+	v := New()
 
 	err := v.IsValidPayload(invalidUpdate)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "missing did unique suffix")
-}
-
-func TestIsValidPayload_StoreErrors(t *testing.T) {
-	store := mocks.NewMockOperationStore(nil)
-	v := New(store)
-
-	// scenario: document is not in the store
-	err := v.IsValidPayload(validUpdate)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "not found")
-
-	// scenario: found in the store and is valid
-	store.Put(&operation.AnchoredOperation{UniqueSuffix: "abc"})
-	err = v.IsValidPayload(validUpdate)
-	require.Nil(t, err)
-
-	// scenario: store error
-	storeErr := fmt.Errorf("store error")
-	v = New(mocks.NewMockOperationStore(storeErr))
-	err = v.IsValidPayload(validUpdate)
-	require.NotNil(t, err)
-	require.Equal(t, err, storeErr)
-}
-
-func TestInvalidPayloadError(t *testing.T) {
-	v := getDefaultValidator()
-
-	// payload is invalid json
-	payload := []byte("[test : 123]")
-
-	err := v.IsValidPayload(payload)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid character")
-
-	err = v.IsValidOriginalDocument(payload)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid character")
-}
-
-func getDefaultValidator() *Validator {
-	return New(mocks.NewMockOperationStore(nil))
 }
 
 func reader(t *testing.T, filename string) io.Reader {

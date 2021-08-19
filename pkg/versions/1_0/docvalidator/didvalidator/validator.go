@@ -9,30 +9,18 @@ package didvalidator
 import (
 	"errors"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
-const (
-	didSuffix = "didSuffix"
-)
+const didSuffix = "didSuffix"
 
 // Validator is responsible for validating did operations and sidetree rules.
 type Validator struct {
-	store OperationStoreClient
-}
-
-// OperationStoreClient defines interface for retrieving all operations related to document.
-type OperationStoreClient interface {
-	// Get retrieves all operations related to document
-	Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error)
 }
 
 // New creates a new did validator.
-func New(store OperationStoreClient) *Validator {
-	return &Validator{
-		store: store,
-	}
+func New() *Validator {
+	return &Validator{}
 }
 
 // IsValidPayload verifies that the given payload is a valid Sidetree specific payload
@@ -48,16 +36,7 @@ func (v *Validator) IsValidPayload(payload []byte) error {
 		return errors.New("missing did unique suffix")
 	}
 
-	// did document has to exist in the store for all operations except for create
-	docs, err := v.store.Get(didSuffix)
-	if err != nil {
-		return err
-	}
-
-	if len(docs) == 0 {
-		return errors.New("missing did document operations")
-	}
-
+	// checking for previous operation existence has been pushed to handler
 	return nil
 }
 

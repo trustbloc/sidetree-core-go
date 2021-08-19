@@ -43,21 +43,21 @@ const (
 // DocumentHandler implements document handler.
 type DocumentHandler struct {
 	protocol  protocol.Client
-	processor OperationProcessor
-	writer    BatchWriter
+	processor operationProcessor
+	writer    batchWriter
 	namespace string
 	aliases   []string // namespace aliases
 	domain    string
 	label     string
 }
 
-// OperationProcessor is an interface which resolves the document based on the ID.
-type OperationProcessor interface {
+// operationProcessor is an interface which resolves the document based on the ID.
+type operationProcessor interface {
 	Resolve(uniqueSuffix string) (*protocol.ResolutionModel, error)
 }
 
-// BatchWriter is an interface to add an operation to the batch.
-type BatchWriter interface {
+// batchWriter is an interface to add an operation to the batch.
+type batchWriter interface {
 	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) error
 }
 
@@ -79,7 +79,7 @@ func WithLabel(label string) Option {
 }
 
 // New creates a new document handler with the context.
-func New(namespace string, aliases []string, pc protocol.Client, writer BatchWriter, processor OperationProcessor, opts ...Option) *DocumentHandler {
+func New(namespace string, aliases []string, pc protocol.Client, writer batchWriter, processor operationProcessor, opts ...Option) *DocumentHandler {
 	dh := &DocumentHandler{
 		protocol:  pc,
 		processor: processor,
@@ -118,6 +118,19 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenes
 		logger.Warnf("Failed to validate operation: %s", err.Error())
 
 		return nil, err
+	}
+
+	if op.Type != operation.TypeCreate {
+		internalResult, err := r.processor.Resolve(op.UniqueSuffix)
+		if err != nil {
+			logger.Debugf("Failed to resolve suffix[%s] for operation type[%s]: %s", op.UniqueSuffix, op.Type, err.Error())
+
+			return nil, err
+		}
+
+		if op.Type == operation.TypeUpdate || op.Type == operation.TypeDeactivate {
+			op.AnchorOrigin = internalResult.AnchorOrigin
+		}
 	}
 
 	// validated operation will be added to the batch
@@ -350,6 +363,7 @@ func (r *DocumentHandler) addToBatch(op *operation.Operation, genesisTime uint64
 			Namespace:       r.namespace,
 			UniqueSuffix:    op.UniqueSuffix,
 			OperationBuffer: op.OperationBuffer,
+			AnchorOrigin:    op.AnchorOrigin,
 		}, genesisTime)
 }
 
