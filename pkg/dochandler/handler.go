@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
@@ -49,6 +50,16 @@ type DocumentHandler struct {
 	aliases   []string // namespace aliases
 	domain    string
 	label     string
+
+	unpublishedOperationStore unpublishedOperationStore
+	unpublishedOperationTypes []operation.Type
+}
+
+type unpublishedOperationStore interface {
+	// Put saves operation into unpublished operation store.
+	Put(op *operation.AnchoredOperation) error
+	// Delete deletes operation from unpublished operation store.
+	Delete(suffix string) error
 }
 
 // operationProcessor is an interface which resolves the document based on the ID.
@@ -78,14 +89,24 @@ func WithLabel(label string) Option {
 	}
 }
 
+// WithUnpublishedOperationStore stores unpublished operation into unpublished operation store.
+func WithUnpublishedOperationStore(store unpublishedOperationStore, operationTypes []operation.Type) Option {
+	return func(opts *DocumentHandler) {
+		opts.unpublishedOperationStore = store
+		opts.unpublishedOperationTypes = operationTypes
+	}
+}
+
 // New creates a new document handler with the context.
 func New(namespace string, aliases []string, pc protocol.Client, writer batchWriter, processor operationProcessor, opts ...Option) *DocumentHandler {
 	dh := &DocumentHandler{
-		protocol:  pc,
-		processor: processor,
-		writer:    writer,
-		namespace: namespace,
-		aliases:   aliases,
+		protocol:                  pc,
+		processor:                 processor,
+		writer:                    writer,
+		namespace:                 namespace,
+		aliases:                   aliases,
+		unpublishedOperationStore: &noopUnpublishedOpsStore{},
+		unpublishedOperationTypes: []operation.Type{},
 	}
 
 	// apply options
@@ -102,7 +123,7 @@ func (r *DocumentHandler) Namespace() string {
 }
 
 // ProcessOperation validates operation and adds it to the batch.
-func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenesisTime uint64) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenesisTime uint64) (*document.ResolutionResult, error) { //nolint:gocyclo
 	pv, err := r.protocol.Get(protocolGenesisTime)
 	if err != nil {
 		return nil, err
@@ -114,18 +135,19 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenes
 	}
 
 	// perform validation for operation request
-	if err := r.validateOperation(op, pv); err != nil {
+	err = r.validateOperation(op, pv)
+	if err != nil {
 		logger.Warnf("Failed to validate operation: %s", err.Error())
 
 		return nil, err
 	}
 
 	if op.Type != operation.TypeCreate {
-		internalResult, err := r.processor.Resolve(op.UniqueSuffix)
-		if err != nil {
-			logger.Debugf("Failed to resolve suffix[%s] for operation type[%s]: %s", op.UniqueSuffix, op.Type, err.Error())
+		internalResult, innerErr := r.processor.Resolve(op.UniqueSuffix)
+		if innerErr != nil {
+			logger.Debugf("Failed to resolve suffix[%s] for operation type[%s]: %w", op.UniqueSuffix, op.Type, innerErr)
 
-			return nil, err
+			return nil, innerErr
 		}
 
 		if op.Type == operation.TypeUpdate || op.Type == operation.TypeDeactivate {
@@ -133,9 +155,16 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenes
 		}
 	}
 
+	err = r.addOperationToUnpublishedOpsStore(op, pv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add operation for suffix[%s] to unpublished operation store: %s", op.UniqueSuffix, err.Error())
+	}
+
 	// validated operation will be added to the batch
 	if err := r.addToBatch(op, pv.Protocol().GenesisTime); err != nil {
 		logger.Errorf("Failed to add operation to batch: %s", err.Error())
+
+		r.deleteOperationFromUnpublishedOpsStore(op.UniqueSuffix)
 
 		return nil, err
 	}
@@ -148,6 +177,40 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenes
 	}
 
 	return nil, nil
+}
+
+func (r *DocumentHandler) addOperationToUnpublishedOpsStore(op *operation.Operation, pv protocol.Version) error {
+	if !contains(r.unpublishedOperationTypes, op.Type) {
+		return nil
+	}
+
+	unpublishedOp := &operation.AnchoredOperation{
+		Type:                op.Type,
+		UniqueSuffix:        op.UniqueSuffix,
+		OperationBuffer:     op.OperationBuffer,
+		TransactionTime:     uint64(time.Now().Unix()),
+		ProtocolGenesisTime: pv.Protocol().GenesisTime,
+		AnchorOrigin:        op.AnchorOrigin,
+	}
+
+	return r.unpublishedOperationStore.Put(unpublishedOp)
+}
+
+func (r *DocumentHandler) deleteOperationFromUnpublishedOpsStore(suffix string) {
+	err := r.unpublishedOperationStore.Delete(suffix)
+	if err != nil {
+		logger.Warnf("Failed to delete operation from unpublished store: %s", err.Error())
+	}
+}
+
+func contains(values []operation.Type, value operation.Type) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
@@ -405,4 +468,15 @@ func getSuffix(namespace, idOrDocument string) (string, error) {
 	}
 
 	return idOrDocument[adjustedPos:], nil
+}
+
+type noopUnpublishedOpsStore struct {
+}
+
+func (noop *noopUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
+	return nil
+}
+
+func (noop *noopUnpublishedOpsStore) Delete(_ string) error {
+	return nil
 }
