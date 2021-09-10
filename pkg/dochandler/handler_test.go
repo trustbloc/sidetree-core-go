@@ -113,6 +113,73 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		require.Nil(t, doc)
 	})
 
+	t.Run("success - unpublished operation store option", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		opt := WithUnpublishedOperationStore(&noopUnpublishedOpsStore{}, []operation.Type{operation.TypeUpdate})
+
+		dochandler, cleanup := getDocumentHandler(store, opt)
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		createOp := getCreateOperation()
+
+		createOpBuffer, err := json.Marshal(createOp)
+		require.NoError(t, err)
+
+		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
+		require.NoError(t, err)
+
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationBuffer: createOpBuffer})
+		require.NoError(t, err)
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.NoError(t, err)
+		require.Nil(t, doc)
+	})
+
+	t.Run("error - unpublished operation store put error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		opt := WithUnpublishedOperationStore(
+			&mockUnpublishedOpsStore{PutErr: fmt.Errorf("put error")},
+			[]operation.Type{operation.TypeUpdate})
+
+		dochandler, cleanup := getDocumentHandler(store, opt)
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		createOp := getCreateOperation()
+
+		createOpBuffer, err := json.Marshal(createOp)
+		require.NoError(t, err)
+
+		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
+		require.NoError(t, err)
+
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationBuffer: createOpBuffer})
+		require.NoError(t, err)
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "put error")
+	})
+
+	t.Run("error - unpublished operation store delete error", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		opt := WithUnpublishedOperationStore(
+			&mockUnpublishedOpsStore{DeleteErr: fmt.Errorf("delete error")},
+			[]operation.Type{operation.TypeUpdate})
+
+		dochandler, cleanup := getDocumentHandler(store, opt)
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		dochandler.deleteOperationFromUnpublishedOpsStore("suffix")
+	})
+
 	t.Run("error - processor error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
@@ -526,11 +593,11 @@ func (m *BatchContext) OperationQueue() cutter.OperationQueue {
 
 type cleanup func()
 
-func getDocumentHandler(store processor.OperationStoreClient) (*DocumentHandler, cleanup) {
-	return getDocumentHandlerWithProtocolClient(store, newMockProtocolClient())
+func getDocumentHandler(store *mocks.MockOperationStore, opts ...Option) (*DocumentHandler, cleanup) {
+	return getDocumentHandlerWithProtocolClient(store, newMockProtocolClient(), opts...)
 }
 
-func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, protocol *mocks.MockProtocolClient) (*DocumentHandler, cleanup) {
+func getDocumentHandlerWithProtocolClient(store *mocks.MockOperationStore, protocol *mocks.MockProtocolClient, opts ...Option) (*DocumentHandler, cleanup) { //nolint: interfacer
 	processor := processor.New("test", store, protocol)
 
 	ctx := &BatchContext{
@@ -547,7 +614,7 @@ func getDocumentHandlerWithProtocolClient(store processor.OperationStoreClient, 
 	// start go routine for cutting batches
 	writer.Start()
 
-	return New(namespace, []string{alias}, protocol, writer, processor), func() { writer.Stop() }
+	return New(namespace, []string{alias}, protocol, writer, processor, opts...), func() { writer.Stop() }
 }
 
 func getCreateOperation() *model.Operation {
@@ -841,4 +908,17 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 	}
 
 	return pc
+}
+
+type mockUnpublishedOpsStore struct {
+	PutErr    error
+	DeleteErr error
+}
+
+func (m *mockUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
+	return m.PutErr
+}
+
+func (m *mockUnpublishedOpsStore) Delete(_ string) error {
+	return m.DeleteErr
 }

@@ -26,6 +26,8 @@ type OperationProcessor struct {
 	name  string
 	store OperationStoreClient
 	pc    protocol.Client
+
+	unpublishedOperationStore unpublishedOperationStore
 }
 
 // OperationStoreClient defines interface for retrieving all operations related to document.
@@ -34,9 +36,31 @@ type OperationStoreClient interface {
 	Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error)
 }
 
+type unpublishedOperationStore interface {
+	// Get retrieves unpublished operation related to document, we can have only one unpublished operation.
+	Get(uniqueSuffix string) (*operation.AnchoredOperation, error)
+}
+
 // New returns new operation processor with the given name. (Note that name is only used for logging.)
-func New(name string, store OperationStoreClient, pc protocol.Client) *OperationProcessor {
-	return &OperationProcessor{name: name, store: store, pc: pc}
+func New(name string, store OperationStoreClient, pc protocol.Client, opts ...Option) *OperationProcessor {
+	op := &OperationProcessor{name: name, store: store, pc: pc, unpublishedOperationStore: &noopUnpublishedOpsStore{}}
+
+	// apply options
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	return op
+}
+
+// Option is an option for operation processor.
+type Option func(opts *OperationProcessor)
+
+// WithUnpublishedOperationStore stores unpublished operation into unpublished operation store.
+func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
+	return func(opts *OperationProcessor) {
+		opts.unpublishedOperationStore = store
+	}
 }
 
 // Resolve document based on the given unique suffix.
@@ -46,6 +70,13 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionM
 	ops, err := s.store.Get(uniqueSuffix)
 	if err != nil {
 		return nil, err
+	}
+
+	unpublishedOp, err := s.unpublishedOperationStore.Get(uniqueSuffix)
+	if err == nil {
+		logger.Debugf("[%s] Found unpublished %s operation for unique suffix [%s]", s.name, unpublishedOp.Type, uniqueSuffix)
+
+		ops = append(ops, unpublishedOp)
 	}
 
 	sortOperations(ops)
@@ -321,4 +352,10 @@ func (s *OperationProcessor) getCommitment(op *operation.AnchoredOperation) (str
 	}
 
 	return nextCommitment, nil
+}
+
+type noopUnpublishedOpsStore struct{}
+
+func (noop *noopUnpublishedOpsStore) Get(_ string) (*operation.AnchoredOperation, error) {
+	return nil, fmt.Errorf("not found")
 }

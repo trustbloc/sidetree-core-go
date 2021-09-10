@@ -160,6 +160,21 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special2", didDoc["test"])
 	})
 
+	t.Run("success - with unpublished operation store", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+
+		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
+		require.Nil(t, err)
+
+		p := New("test", store, pc, WithUnpublishedOperationStore(&mockUnpublishedOpsStore{AnchoredOp: updateOp}))
+		result, err := p.Resolve(uniqueSuffix)
+		require.Nil(t, err)
+
+		// check if service type value is updated (done via json patch)
+		didDoc := document.DidDocumentFromJSONLDObject(result.Doc)
+		require.Equal(t, "special1", didDoc["test"])
+	})
+
 	t.Run("success - protocol version changed between create/update", func(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 
@@ -1352,4 +1367,17 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 	}
 
 	return pc
+}
+
+type mockUnpublishedOpsStore struct {
+	GetErr     error
+	AnchoredOp *operation.AnchoredOperation
+}
+
+func (m *mockUnpublishedOpsStore) Get(_ string) (*operation.AnchoredOperation, error) {
+	if m.GetErr != nil {
+		return nil, m.GetErr
+	}
+
+	return m.AnchoredOp, nil
 }
