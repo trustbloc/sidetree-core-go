@@ -11,12 +11,24 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doctransformer/metadata"
 )
 
+const testID = "doc:abc:123"
+
 func TestNewTransformer(t *testing.T) {
-	require.NotNil(t, New())
+	transformer := New()
+	require.NotNil(t, transformer)
+	require.Equal(t, false, transformer.includePublishedOperations)
+	require.Equal(t, false, transformer.includeUnpublishedOperations)
+
+	transformer = New(WithIncludeUnpublishedOperations(true), WithIncludePublishedOperations(true))
+	require.NotNil(t, transformer)
+	require.Equal(t, true, transformer.includePublishedOperations)
+	require.Equal(t, true, transformer.includeUnpublishedOperations)
 }
 
 func TestTransformDocument(t *testing.T) {
@@ -68,6 +80,50 @@ func TestTransformDocument(t *testing.T) {
 
 		require.Equal(t, "canonical", result.DocumentMetadata[document.CanonicalIDProperty])
 		require.NotEmpty(t, result.DocumentMetadata[document.EquivalentIDProperty])
+	})
+
+	t.Run("success - include operations (published/unpublished)", func(t *testing.T) {
+		trans := New(
+			WithIncludePublishedOperations(true),
+			WithIncludeUnpublishedOperations(true))
+
+		info := make(protocol.TransformationInfo)
+		info[document.IDProperty] = testID
+		info[document.PublishedProperty] = true
+
+		publishedOps := []*operation.AnchoredOperation{
+			{Type: "create", UniqueSuffix: "suffix"},
+			{Type: "update", UniqueSuffix: "suffix"},
+		}
+
+		unpublishedOps := []*operation.AnchoredOperation{
+			{Type: "update", UniqueSuffix: "suffix"},
+		}
+
+		rm := &protocol.ResolutionModel{
+			Doc:                   doc,
+			RecoveryCommitment:    "recovery",
+			UpdateCommitment:      "update",
+			PublishedOperations:   publishedOps,
+			UnpublishedOperations: unpublishedOps,
+		}
+
+		result, err := trans.TransformDocument(rm, info)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, testID, result.Document[document.IDProperty])
+
+		methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+		require.True(t, ok)
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, true, methodMetadata[document.PublishedProperty])
+		require.Equal(t, "recovery", methodMetadata[document.RecoveryCommitmentProperty])
+		require.Equal(t, "update", methodMetadata[document.UpdateCommitmentProperty])
+
+		require.Equal(t, 2, len(methodMetadata[document.PublishedOperationsProperty].([]*metadata.PublishedOperation)))
+		require.Equal(t, 1, len(methodMetadata[document.UnpublishedOperationsProperty].([]*metadata.UnpublishedOperation)))
 	})
 
 	t.Run("error - internal document is missing", func(t *testing.T) {

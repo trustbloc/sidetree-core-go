@@ -16,7 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	internaljws "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
-	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doctransformer"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doctransformer/metadata"
 )
 
 const (
@@ -73,11 +73,28 @@ func WithBase(enabled bool) Option {
 	}
 }
 
+// WithIncludePublishedOperations sets optional include published operations flag.
+func WithIncludePublishedOperations(enabled bool) Option {
+	return func(opts *Transformer) {
+		opts.includePublishedOperations = enabled
+	}
+}
+
+// WithIncludeUnpublishedOperations sets optional include unpublished operations flag.
+func WithIncludeUnpublishedOperations(enabled bool) Option {
+	return func(opts *Transformer) {
+		opts.includeUnpublishedOperations = enabled
+	}
+}
+
 // Transformer is responsible for transforming internal to external document.
 type Transformer struct {
 	keyCtx      map[string]string
 	methodCtx   []string // used for setting additional contexts during resolution
 	includeBase bool
+
+	includePublishedOperations   bool
+	includeUnpublishedOperations bool
 }
 
 // New creates a new DID Transformer.
@@ -100,7 +117,10 @@ func New(opts ...Option) *Transformer {
 // TransformDocument takes internal resolution model and transformation info and creates
 // external representation of document (resolution result).
 func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) { //nolint:funlen,gocyclo
-	docMetadata, err := doctransformer.CreateDocumentMetadata(rm, info)
+	docMetadata, err := metadata.New(
+		metadata.WithIncludeUnpublishedOperations(t.includeUnpublishedOperations),
+		metadata.WithIncludePublishedOperations(t.includePublishedOperations)).
+		CreateDocumentMetadata(rm, info)
 	if err != nil {
 		return nil, err
 	}

@@ -108,6 +108,8 @@ type ResolutionModel struct {
 	AnchorOrigin                     interface{}
 	EquivalentReferences             []string
 	CanonicalReference               string
+	PublishedOperations              []*operation.AnchoredOperation
+	UnpublishedOperations            []*operation.AnchoredOperation
 }
 
 // OperationApplier applies the given operation to the document.
