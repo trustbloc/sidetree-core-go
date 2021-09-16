@@ -216,12 +216,15 @@ func contains(values []operation.Type, value operation.Type) bool {
 func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
 	// we can use operation applier to generate create response even though operation is not anchored yet
 	anchored := &operation.AnchoredOperation{
-		Type:            op.Type,
-		UniqueSuffix:    op.UniqueSuffix,
-		OperationBuffer: op.OperationBuffer,
+		Type:                op.Type,
+		UniqueSuffix:        op.UniqueSuffix,
+		OperationBuffer:     op.OperationBuffer,
+		TransactionTime:     uint64(time.Now().Unix()),
+		ProtocolGenesisTime: pv.Protocol().GenesisTime,
+		AnchorOrigin:        op.AnchorOrigin,
 	}
 
-	rm := &protocol.ResolutionModel{}
+	rm := &protocol.ResolutionModel{UnpublishedOperations: []*operation.AnchoredOperation{anchored}}
 	rm, err := pv.OperationApplier().Apply(anchored, rm)
 	if err != nil {
 		return nil, err

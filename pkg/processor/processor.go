@@ -67,23 +67,27 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
 func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionModel, error) {
-	ops, err := s.store.Get(uniqueSuffix)
+	publishedOps, err := s.store.Get(uniqueSuffix)
 	if err != nil {
 		return nil, err
 	}
+
+	var unpublishedOps []*operation.AnchoredOperation
 
 	unpublishedOp, err := s.unpublishedOperationStore.Get(uniqueSuffix)
 	if err == nil {
 		logger.Debugf("[%s] Found unpublished %s operation for unique suffix [%s]", s.name, unpublishedOp.Type, uniqueSuffix)
 
-		ops = append(ops, unpublishedOp)
+		unpublishedOps = append(unpublishedOps, unpublishedOp)
 	}
+
+	ops := append(publishedOps, unpublishedOps...)
 
 	sortOperations(ops)
 
 	logger.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
 
-	rm := &protocol.ResolutionModel{}
+	rm := &protocol.ResolutionModel{PublishedOperations: publishedOps, UnpublishedOperations: unpublishedOps}
 
 	// split operations into 'create', 'update' and 'full' operations
 	createOps, updateOps, fullOps := splitOperations(ops)

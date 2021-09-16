@@ -40,4 +40,10 @@ const (
 
 	// MethodProperty is used for method metadata within did document metadata.
 	MethodProperty = "method"
+
+	// UnpublishedOperationsProperty holds unpublished did operations.
+	UnpublishedOperationsProperty = "unpublishedOperations"
+
+	// PublishedOperationsProperty holds published did operations.
+	PublishedOperationsProperty = "publishedOperations"
 )

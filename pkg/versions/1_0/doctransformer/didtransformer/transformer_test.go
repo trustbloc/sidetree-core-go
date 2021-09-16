@@ -19,9 +19,11 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/util/pubkey"
+	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/doctransformer/metadata"
 )
 
 const testID = "doc:abc:123"
@@ -31,6 +33,8 @@ func TestNewTransformer(t *testing.T) {
 	require.NotNil(t, transformer)
 	require.Empty(t, transformer.methodCtx)
 	require.Equal(t, false, transformer.includeBase)
+	require.Equal(t, false, transformer.includePublishedOperations)
+	require.Equal(t, false, transformer.includeUnpublishedOperations)
 
 	const ctx1 = "ctx-1"
 	transformer = New(WithMethodContext([]string{ctx1}))
@@ -52,6 +56,10 @@ func TestNewTransformer(t *testing.T) {
 
 	transformer = New(WithKeyContext(keyCtx))
 	require.Equal(t, 2, len(transformer.keyCtx))
+
+	transformer = New(WithIncludePublishedOperations(true), WithIncludeUnpublishedOperations(true))
+	require.Equal(t, true, transformer.includePublishedOperations)
+	require.Equal(t, true, transformer.includeUnpublishedOperations)
 }
 
 func TestTransformDocument(t *testing.T) {
@@ -166,12 +174,12 @@ func TestTransformDocument(t *testing.T) {
 	})
 
 	t.Run("success - all supported contexts for key type", func(t *testing.T) {
-		doc, err := document.FromBytes([]byte(allKeyTypes))
+		d, err := document.FromBytes([]byte(allKeyTypes))
 		require.NoError(t, err)
 
 		trans := New()
 
-		internalDoc := &protocol.ResolutionModel{Doc: doc}
+		internalDoc := &protocol.ResolutionModel{Doc: d}
 
 		info := make(protocol.TransformationInfo)
 		info[document.IDProperty] = testID
@@ -201,12 +209,12 @@ func TestTransformDocument(t *testing.T) {
 			x25519KeyAgreementKey2019:         "context-5",
 		}
 
-		doc, err := document.FromBytes([]byte(allKeyTypes))
+		d, err := document.FromBytes([]byte(allKeyTypes))
 		require.NoError(t, err)
 
 		trans := New(WithKeyContext(testKeyContexts))
 
-		internalDoc := &protocol.ResolutionModel{Doc: doc}
+		internalDoc := &protocol.ResolutionModel{Doc: d}
 
 		info := make(protocol.TransformationInfo)
 		info[document.IDProperty] = testID
@@ -225,6 +233,50 @@ func TestTransformDocument(t *testing.T) {
 		require.Equal(t, "context-3", didDoc.Context()[3])
 		require.Equal(t, "context-4", didDoc.Context()[4])
 		require.Equal(t, "context-5", didDoc.Context()[5])
+	})
+
+	t.Run("success - include operations (published/unpublished)", func(t *testing.T) {
+		trans := New(
+			WithIncludePublishedOperations(true),
+			WithIncludeUnpublishedOperations(true))
+
+		info := make(protocol.TransformationInfo)
+		info[document.IDProperty] = testID
+		info[document.PublishedProperty] = true
+
+		publishedOps := []*operation.AnchoredOperation{
+			{Type: "create", UniqueSuffix: "suffix"},
+			{Type: "update", UniqueSuffix: "suffix"},
+		}
+
+		unpublishedOps := []*operation.AnchoredOperation{
+			{Type: "update", UniqueSuffix: "suffix"},
+		}
+
+		rm := &protocol.ResolutionModel{
+			Doc:                   doc,
+			RecoveryCommitment:    "recovery",
+			UpdateCommitment:      "update",
+			PublishedOperations:   publishedOps,
+			UnpublishedOperations: unpublishedOps,
+		}
+
+		result, err := trans.TransformDocument(rm, info)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, testID, result.Document[document.IDProperty])
+
+		methodMetadataEntry, ok := result.DocumentMetadata[document.MethodProperty]
+		require.True(t, ok)
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, true, methodMetadata[document.PublishedProperty])
+		require.Equal(t, "recovery", methodMetadata[document.RecoveryCommitmentProperty])
+		require.Equal(t, "update", methodMetadata[document.UpdateCommitmentProperty])
+
+		require.Equal(t, 2, len(methodMetadata[document.PublishedOperationsProperty].([]*metadata.PublishedOperation)))
+		require.Equal(t, 1, len(methodMetadata[document.UnpublishedOperationsProperty].([]*metadata.UnpublishedOperation)))
 	})
 
 	t.Run("error - internal document is missing", func(t *testing.T) {
