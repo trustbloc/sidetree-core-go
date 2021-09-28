@@ -25,8 +25,8 @@ type Operation struct {
 	// UniqueSuffix is unique suffix
 	UniqueSuffix string
 
-	// OperationBuffer is the original operation request
-	OperationBuffer []byte
+	// OperationRequest is the original operation request
+	OperationRequest []byte
 
 	// SignedData is signed data for the operation (compact JWS)
 	SignedData string

@@ -76,23 +76,23 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 		return nil, errors.New("create has to be the first operation")
 	}
 
-	op, err := s.OperationParser.ParseCreateOperation(anchoredOp.OperationBuffer, true)
+	op, err := s.OperationParser.ParseCreateOperation(anchoredOp.OperationRequest, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse create operation in batch mode: %s", err.Error())
 	}
 
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
-		Doc:                              make(document.Document),
-		LastOperationTransactionTime:     anchoredOp.TransactionTime,
-		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
-		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
-		CanonicalReference:               anchoredOp.CanonicalReference,
-		EquivalentReferences:             anchoredOp.EquivalentReferences,
-		RecoveryCommitment:               op.SuffixData.RecoveryCommitment,
-		AnchorOrigin:                     op.SuffixData.AnchorOrigin,
-		PublishedOperations:              rm.PublishedOperations,
-		UnpublishedOperations:            rm.UnpublishedOperations,
+		Doc:                            make(document.Document),
+		LastOperationTransactionTime:   anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
+		CanonicalReference:             anchoredOp.CanonicalReference,
+		EquivalentReferences:           anchoredOp.EquivalentReferences,
+		RecoveryCommitment:             op.SuffixData.RecoveryCommitment,
+		AnchorOrigin:                   op.SuffixData.AnchorOrigin,
+		PublishedOperations:            rm.PublishedOperations,
+		UnpublishedOperations:          rm.UnpublishedOperations,
 	}
 
 	// verify actual delta hash matches expected delta hash
@@ -131,7 +131,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 		return nil, errors.New("update cannot be first operation")
 	}
 
-	op, err := s.OperationParser.ParseUpdateOperation(anchoredOp.OperationBuffer, true)
+	op, err := s.OperationParser.ParseUpdateOperation(anchoredOp.OperationRequest, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse update operation in batch mode: %s", err.Error())
 	}
@@ -160,17 +160,17 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 
 	// delta is valid so advance update commitment
 	result := &protocol.ResolutionModel{
-		Doc:                              rm.Doc,
-		LastOperationTransactionTime:     anchoredOp.TransactionTime,
-		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
-		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
-		CanonicalReference:               rm.CanonicalReference,
-		EquivalentReferences:             rm.EquivalentReferences,
-		UpdateCommitment:                 op.Delta.UpdateCommitment,
-		RecoveryCommitment:               rm.RecoveryCommitment,
-		AnchorOrigin:                     rm.AnchorOrigin,
-		PublishedOperations:              rm.PublishedOperations,
-		UnpublishedOperations:            rm.UnpublishedOperations,
+		Doc:                            rm.Doc,
+		LastOperationTransactionTime:   anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
+		CanonicalReference:             rm.CanonicalReference,
+		EquivalentReferences:           rm.EquivalentReferences,
+		UpdateCommitment:               op.Delta.UpdateCommitment,
+		RecoveryCommitment:             rm.RecoveryCommitment,
+		AnchorOrigin:                   rm.AnchorOrigin,
+		PublishedOperations:            rm.PublishedOperations,
+		UnpublishedOperations:          rm.UnpublishedOperations,
 	}
 
 	// verify anchor from and until time against anchoring time
@@ -201,7 +201,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 		return nil, errors.New("deactivate can only be applied to an existing document")
 	}
 
-	op, err := s.OperationParser.ParseDeactivateOperation(anchoredOp.OperationBuffer, true)
+	op, err := s.OperationParser.ParseDeactivateOperation(anchoredOp.OperationRequest, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse deactive operation in batch mode: %s", err.Error())
 	}
@@ -229,18 +229,18 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 	}
 
 	return &protocol.ResolutionModel{
-		Doc:                              make(document.Document),
-		LastOperationTransactionTime:     anchoredOp.TransactionTime,
-		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
-		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
-		CanonicalReference:               rm.CanonicalReference,
-		EquivalentReferences:             rm.EquivalentReferences,
-		UpdateCommitment:                 "",
-		RecoveryCommitment:               "",
-		Deactivated:                      true,
-		AnchorOrigin:                     rm.AnchorOrigin,
-		PublishedOperations:              rm.PublishedOperations,
-		UnpublishedOperations:            rm.UnpublishedOperations,
+		Doc:                            make(document.Document),
+		LastOperationTransactionTime:   anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
+		CanonicalReference:             rm.CanonicalReference,
+		EquivalentReferences:           rm.EquivalentReferences,
+		UpdateCommitment:               "",
+		RecoveryCommitment:             "",
+		Deactivated:                    true,
+		AnchorOrigin:                   rm.AnchorOrigin,
+		PublishedOperations:            rm.PublishedOperations,
+		UnpublishedOperations:          rm.UnpublishedOperations,
 	}, nil
 }
 
@@ -251,7 +251,7 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 		return nil, errors.New("recover can only be applied to an existing document")
 	}
 
-	op, err := s.OperationParser.ParseRecoverOperation(anchoredOp.OperationBuffer, true)
+	op, err := s.OperationParser.ParseRecoverOperation(anchoredOp.OperationRequest, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse recover operation in batch mode: %s", err.Error())
 	}
@@ -269,16 +269,16 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
-		Doc:                              make(document.Document),
-		LastOperationTransactionTime:     anchoredOp.TransactionTime,
-		LastOperationTransactionNumber:   anchoredOp.TransactionTime,
-		LastOperationProtocolGenesisTime: anchoredOp.ProtocolGenesisTime,
-		CanonicalReference:               anchoredOp.CanonicalReference,
-		EquivalentReferences:             anchoredOp.EquivalentReferences,
-		RecoveryCommitment:               signedDataModel.RecoveryCommitment,
-		AnchorOrigin:                     signedDataModel.AnchorOrigin,
-		PublishedOperations:              rm.PublishedOperations,
-		UnpublishedOperations:            rm.UnpublishedOperations,
+		Doc:                            make(document.Document),
+		LastOperationTransactionTime:   anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
+		CanonicalReference:             anchoredOp.CanonicalReference,
+		EquivalentReferences:           anchoredOp.EquivalentReferences,
+		RecoveryCommitment:             signedDataModel.RecoveryCommitment,
+		AnchorOrigin:                   signedDataModel.AnchorOrigin,
+		PublishedOperations:            rm.PublishedOperations,
+		UnpublishedOperations:          rm.UnpublishedOperations,
 	}
 
 	// verify the delta against the signed delta hash

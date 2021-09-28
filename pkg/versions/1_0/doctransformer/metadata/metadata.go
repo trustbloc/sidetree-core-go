@@ -113,10 +113,10 @@ func getPublishedOperations(ops []*operation.AnchoredOperation) []*PublishedOper
 	for i, op := range ops {
 		publishedOps[i] = &PublishedOperation{
 			Type:                 op.Type,
-			OperationRequest:     op.OperationBuffer,
+			OperationRequest:     op.OperationRequest,
 			TransactionTime:      op.TransactionTime,
 			TransactionNumber:    op.TransactionNumber,
-			ProtocolVersion:      op.ProtocolGenesisTime,
+			ProtocolVersion:      op.ProtocolVersion,
 			CanonicalReference:   op.CanonicalReference,
 			EquivalentReferences: op.EquivalentReferences,
 			AnchorOrigin:         op.AnchorOrigin,
@@ -132,9 +132,9 @@ func getUnpublishedOperations(ops []*operation.AnchoredOperation) []*Unpublished
 	for i, op := range ops {
 		unpublishedOps[i] = &UnpublishedOperation{
 			Type:             op.Type,
-			OperationRequest: op.OperationBuffer,
+			OperationRequest: op.OperationRequest,
 			TransactionTime:  op.TransactionTime,
-			ProtocolVersion:  op.ProtocolGenesisTime,
+			ProtocolVersion:  op.ProtocolVersion,
 			AnchorOrigin:     op.AnchorOrigin,
 		}
 	}

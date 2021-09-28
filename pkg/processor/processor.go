@@ -66,7 +66,7 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
 // Resolve document based on the given unique suffix.
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
-func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionModel, error) {
+func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error) {
 	publishedOps, err := s.store.Get(uniqueSuffix)
 	if err != nil {
 		return nil, err
@@ -80,6 +80,8 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionM
 
 		unpublishedOps = append(unpublishedOps, unpublishedOp)
 	}
+
+	publishedOps, unpublishedOps = addAdditionalOperations(publishedOps, unpublishedOps, additionalOps)
 
 	ops := append(publishedOps, unpublishedOps...)
 
@@ -120,6 +122,30 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string) (*protocol.ResolutionM
 	}
 
 	return rm, nil
+}
+
+func addAdditionalOperations(published, unpublished, additional []*operation.AnchoredOperation) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation) {
+	canonicalIds := getCanonicalMap(published)
+
+	for _, op := range additional {
+		if op.CanonicalReference == "" {
+			unpublished = append(unpublished, op)
+		} else if _, ok := canonicalIds[op.CanonicalReference]; !ok {
+			published = append(published, op)
+		}
+	}
+
+	return published, unpublished
+}
+
+func getCanonicalMap(published []*operation.AnchoredOperation) map[string]bool {
+	canonicalMap := make(map[string]bool)
+
+	for _, op := range published {
+		canonicalMap[op.CanonicalReference] = true
+	}
+
+	return canonicalMap
 }
 
 func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOperation) map[string][]*operation.AnchoredOperation {
@@ -308,7 +334,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 }
 
 func (s *OperationProcessor) applyOperation(op *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	p, err := s.pc.Get(op.ProtocolGenesisTime)
+	p, err := s.pc.Get(op.ProtocolVersion)
 	if err != nil {
 		return nil, fmt.Errorf("apply '%s' operation: %s", op.Type, err.Error())
 	}
@@ -331,12 +357,12 @@ func (s *OperationProcessor) getRevealValue(op *operation.AnchoredOperation) (st
 		return "", errors.New("create operation doesn't have reveal value")
 	}
 
-	p, err := s.pc.Get(op.ProtocolGenesisTime)
+	p, err := s.pc.Get(op.ProtocolVersion)
 	if err != nil {
 		return "", fmt.Errorf("get operation reveal value - retrieve protocol: %s", err.Error())
 	}
 
-	rv, err := p.OperationParser().GetRevealValue(op.OperationBuffer)
+	rv, err := p.OperationParser().GetRevealValue(op.OperationRequest)
 	if err != nil {
 		return "", fmt.Errorf("get operation reveal value from operation parser: %s", err.Error())
 	}
@@ -345,12 +371,12 @@ func (s *OperationProcessor) getRevealValue(op *operation.AnchoredOperation) (st
 }
 
 func (s *OperationProcessor) getCommitment(op *operation.AnchoredOperation) (string, error) {
-	p, err := s.pc.Get(op.ProtocolGenesisTime)
+	p, err := s.pc.Get(op.ProtocolVersion)
 	if err != nil {
 		return "", fmt.Errorf("get next operation commitment: %s", err.Error())
 	}
 
-	nextCommitment, err := p.OperationParser().GetCommitment(op.OperationBuffer)
+	nextCommitment, err := p.OperationParser().GetCommitment(op.OperationRequest)
 	if err != nil {
 		return "", fmt.Errorf("get commitment from operation parser: %s", err.Error())
 	}

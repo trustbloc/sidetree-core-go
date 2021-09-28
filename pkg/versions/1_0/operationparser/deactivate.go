@@ -46,11 +46,11 @@ func (p *Parser) ParseDeactivateOperation(request []byte, batch bool) (*model.Op
 	}
 
 	return &model.Operation{
-		Type:            operation.TypeDeactivate,
-		OperationBuffer: request,
-		UniqueSuffix:    schema.DidSuffix,
-		SignedData:      schema.SignedData,
-		RevealValue:     schema.RevealValue,
+		Type:             operation.TypeDeactivate,
+		OperationRequest: request,
+		UniqueSuffix:     schema.DidSuffix,
+		SignedData:       schema.SignedData,
+		RevealValue:      schema.RevealValue,
 	}, nil
 }
 

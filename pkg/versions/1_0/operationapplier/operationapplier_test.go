@@ -875,13 +875,13 @@ func TestRecover(t *testing.T) {
 		require.NoError(t, err)
 
 		recoverOp := &model.Operation{
-			Namespace:       mocks.DefaultNS,
-			UniqueSuffix:    uniqueSuffix,
-			Type:            operation.TypeRecover,
-			OperationBuffer: operationBuffer,
-			Delta:           recoverRequest.Delta,
-			SignedData:      recoverRequest.SignedData,
-			RevealValue:     recoverRequest.RevealValue,
+			Namespace:        mocks.DefaultNS,
+			UniqueSuffix:     uniqueSuffix,
+			Type:             operation.TypeRecover,
+			OperationRequest: operationBuffer,
+			Delta:            recoverRequest.Delta,
+			SignedData:       recoverRequest.SignedData,
+			RevealValue:      recoverRequest.RevealValue,
 		}
 
 		anchoredOp := getAnchoredOperation(recoverOp)
@@ -1113,13 +1113,13 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 	}
 
 	return &model.Operation{
-		Namespace:       mocks.DefaultNS,
-		UniqueSuffix:    uniqueSuffix,
-		Type:            operation.TypeRecover,
-		OperationBuffer: operationBuffer,
-		Delta:           recoverRequest.Delta,
-		SignedData:      recoverRequest.SignedData,
-		RevealValue:     recoverRequest.RevealValue,
+		Namespace:        mocks.DefaultNS,
+		UniqueSuffix:     uniqueSuffix,
+		Type:             operation.TypeRecover,
+		OperationRequest: operationBuffer,
+		Delta:            recoverRequest.Delta,
+		SignedData:       recoverRequest.SignedData,
+		RevealValue:      recoverRequest.RevealValue,
 	}, nextRecoveryKey, nil
 }
 
@@ -1239,13 +1239,13 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 	}
 
 	return &model.Operation{
-		Namespace:       mocks.DefaultNS,
-		ID:              "did:sidetree:" + uniqueSuffix,
-		UniqueSuffix:    uniqueSuffix,
-		Type:            operation.TypeCreate,
-		OperationBuffer: operationBuffer,
-		Delta:           delta,
-		SuffixData:      suffixData,
+		Namespace:        mocks.DefaultNS,
+		ID:               "did:sidetree:" + uniqueSuffix,
+		UniqueSuffix:     uniqueSuffix,
+		Type:             operation.TypeCreate,
+		OperationRequest: operationBuffer,
+		Delta:            delta,
+		SuffixData:       suffixData,
 	}, nil
 }
 

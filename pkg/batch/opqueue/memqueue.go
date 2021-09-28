@@ -19,13 +19,13 @@ type MemQueue struct {
 }
 
 // Add adds the given data to the tail of the queue and returns the new length of the queue.
-func (q *MemQueue) Add(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error) {
+func (q *MemQueue) Add(data *operation.QueuedOperation, protocolVersion uint64) (uint, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
 	q.items = append(q.items, &operation.QueuedOperationAtTime{
-		QueuedOperation:     *data,
-		ProtocolGenesisTime: protocolGenesisTime,
+		QueuedOperation: *data,
+		ProtocolVersion: protocolVersion,
 	})
 
 	return uint(len(q.items)), nil

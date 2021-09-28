@@ -95,10 +95,10 @@ func (p *Parser) Parse(namespace string, operationBuffer []byte) (*operation.Ope
 	}
 
 	return &operation.Operation{
-		Type:            internal.Type,
-		UniqueSuffix:    internal.UniqueSuffix,
-		ID:              internal.ID,
-		OperationBuffer: operationBuffer,
+		Type:             internal.Type,
+		UniqueSuffix:     internal.UniqueSuffix,
+		ID:               internal.ID,
+		OperationRequest: operationBuffer,
 	}, nil
 }
 

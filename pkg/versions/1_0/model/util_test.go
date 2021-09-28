@@ -37,7 +37,7 @@ func TestGetAnchoredOperation(t *testing.T) {
 		require.NotNil(t, anchored)
 
 		require.Equal(t, op.Type, anchored.Type)
-		require.Equal(t, opBuffer, string(anchored.OperationBuffer))
+		require.Equal(t, opBuffer, string(anchored.OperationRequest))
 		require.Equal(t, suffix, anchored.UniqueSuffix)
 	})
 
@@ -56,7 +56,7 @@ func TestGetAnchoredOperation(t *testing.T) {
 		require.NotNil(t, anchored)
 
 		require.Equal(t, op.Type, anchored.Type)
-		require.Equal(t, opBuffer, string(anchored.OperationBuffer))
+		require.Equal(t, opBuffer, string(anchored.OperationRequest))
 		require.Equal(t, suffix, anchored.UniqueSuffix)
 	})
 
@@ -78,7 +78,7 @@ func TestGetAnchoredOperation(t *testing.T) {
 		require.NotNil(t, anchored)
 		require.Equal(t, op.Type, anchored.Type)
 
-		require.Equal(t, opBuffer, string(anchored.OperationBuffer))
+		require.Equal(t, opBuffer, string(anchored.OperationRequest))
 		require.Equal(t, suffix, anchored.UniqueSuffix)
 	})
 
@@ -99,7 +99,7 @@ func TestGetAnchoredOperation(t *testing.T) {
 		require.NotNil(t, anchored)
 		require.Equal(t, anchored.Type, op.Type)
 
-		require.Equal(t, opBuffer, string(anchored.OperationBuffer))
+		require.Equal(t, opBuffer, string(anchored.OperationRequest))
 		require.Equal(t, suffix, anchored.UniqueSuffix)
 	})
 

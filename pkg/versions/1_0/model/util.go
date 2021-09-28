@@ -62,10 +62,10 @@ func GetAnchoredOperation(op *Operation) (*operation.AnchoredOperation, error) {
 	}
 
 	return &operation.AnchoredOperation{
-		Type:            op.Type,
-		UniqueSuffix:    op.UniqueSuffix,
-		OperationBuffer: operationBuffer,
-		AnchorOrigin:    op.AnchorOrigin,
+		Type:             op.Type,
+		UniqueSuffix:     op.UniqueSuffix,
+		OperationRequest: operationBuffer,
+		AnchorOrigin:     op.AnchorOrigin,
 	}, nil
 }
 

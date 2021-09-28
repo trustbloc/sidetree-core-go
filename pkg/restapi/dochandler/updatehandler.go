@@ -19,7 +19,7 @@ import (
 // Processor processes document operations.
 type Processor interface {
 	Namespace() string
-	ProcessOperation(operation []byte, protocolGenesisTime uint64) (*document.ResolutionResult, error)
+	ProcessOperation(operation []byte, protocolVersion uint64) (*document.ResolutionResult, error)
 }
 
 // UpdateHandler handles the creation and update of documents.

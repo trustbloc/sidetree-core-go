@@ -64,9 +64,9 @@ func TestStartObserver(t *testing.T) {
 		defer o.Stop()
 
 		sidetreeTxnCh <- []txn.SidetreeTxn{
-			{Namespace: namespace1, ProtocolGenesisTime: 0, TransactionTime: 10, TransactionNumber: 0, AnchorString: "1.address"},
-			{Namespace: namespace1, ProtocolGenesisTime: 20, TransactionTime: 21, TransactionNumber: 2, AnchorString: "1.address"},
-			{Namespace: namespace2, ProtocolGenesisTime: 100, TransactionTime: 200, TransactionNumber: 2, AnchorString: "2.address"},
+			{Namespace: namespace1, ProtocolVersion: 0, TransactionTime: 10, TransactionNumber: 0, AnchorString: "1.address"},
+			{Namespace: namespace1, ProtocolVersion: 20, TransactionTime: 21, TransactionNumber: 2, AnchorString: "1.address"},
+			{Namespace: namespace2, ProtocolVersion: 100, TransactionTime: 200, TransactionNumber: 2, AnchorString: "2.address"},
 		}
 		time.Sleep(200 * time.Millisecond)
 

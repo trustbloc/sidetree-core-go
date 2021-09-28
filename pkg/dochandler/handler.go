@@ -64,12 +64,12 @@ type unpublishedOperationStore interface {
 
 // operationProcessor is an interface which resolves the document based on the ID.
 type operationProcessor interface {
-	Resolve(uniqueSuffix string) (*protocol.ResolutionModel, error)
+	Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error)
 }
 
 // batchWriter is an interface to add an operation to the batch.
 type batchWriter interface {
-	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) error
+	Add(operation *operation.QueuedOperation, protocolVersion uint64) error
 }
 
 // Option is an option for document handler.
@@ -123,8 +123,8 @@ func (r *DocumentHandler) Namespace() string {
 }
 
 // ProcessOperation validates operation and adds it to the batch.
-func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolGenesisTime uint64) (*document.ResolutionResult, error) { //nolint:gocyclo
-	pv, err := r.protocol.Get(protocolGenesisTime)
+func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersion uint64) (*document.ResolutionResult, error) { //nolint:gocyclo
+	pv, err := r.protocol.Get(protocolVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -185,12 +185,12 @@ func (r *DocumentHandler) addOperationToUnpublishedOpsStore(op *operation.Operat
 	}
 
 	unpublishedOp := &operation.AnchoredOperation{
-		Type:                op.Type,
-		UniqueSuffix:        op.UniqueSuffix,
-		OperationBuffer:     op.OperationBuffer,
-		TransactionTime:     uint64(time.Now().Unix()),
-		ProtocolGenesisTime: pv.Protocol().GenesisTime,
-		AnchorOrigin:        op.AnchorOrigin,
+		Type:             op.Type,
+		UniqueSuffix:     op.UniqueSuffix,
+		OperationRequest: op.OperationRequest,
+		TransactionTime:  uint64(time.Now().Unix()),
+		ProtocolVersion:  pv.Protocol().GenesisTime,
+		AnchorOrigin:     op.AnchorOrigin,
 	}
 
 	return r.unpublishedOperationStore.Put(unpublishedOp)
@@ -216,12 +216,12 @@ func contains(values []operation.Type, value operation.Type) bool {
 func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
 	// we can use operation applier to generate create response even though operation is not anchored yet
 	anchored := &operation.AnchoredOperation{
-		Type:                op.Type,
-		UniqueSuffix:        op.UniqueSuffix,
-		OperationBuffer:     op.OperationBuffer,
-		TransactionTime:     uint64(time.Now().Unix()),
-		ProtocolGenesisTime: pv.Protocol().GenesisTime,
-		AnchorOrigin:        op.AnchorOrigin,
+		Type:             op.Type,
+		UniqueSuffix:     op.UniqueSuffix,
+		OperationRequest: op.OperationRequest,
+		TransactionTime:  uint64(time.Now().Unix()),
+		ProtocolVersion:  pv.Protocol().GenesisTime,
+		AnchorOrigin:     op.AnchorOrigin,
 	}
 
 	rm := &protocol.ResolutionModel{UnpublishedOperations: []*operation.AnchoredOperation{anchored}}
@@ -297,7 +297,7 @@ func (r *DocumentHandler) getTransformationInfoForUnpublished(suffix string, cre
 // If the DID Document cannot be found, the <suffix-data-object> and <delta-object> are used
 // to generate and return resolved DID Document. In this case the supplied delta and suffix objects
 // are subject to the same validation as during processing create operation.
-func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string, additionalOps ...*operation.AnchoredOperation) (*document.ResolutionResult, error) {
 	ns, err := r.getNamespace(shortOrLongFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
@@ -320,7 +320,7 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string) (*document.
 	}
 
 	// resolve document from the blockchain
-	doc, err := r.resolveRequestWithID(shortFormDID, uniquePortion, pv)
+	doc, err := r.resolveRequestWithID(shortFormDID, uniquePortion, pv, additionalOps...)
 	if err == nil {
 		return doc, nil
 	}
@@ -349,8 +349,8 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
 }
 
-func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version) (*document.ResolutionResult, error) {
-	internalResult, err := r.processor.Resolve(uniquePortion)
+func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version, additionalOps ...*operation.AnchoredOperation) (*document.ResolutionResult, error) {
+	internalResult, err := r.processor.Resolve(uniquePortion, additionalOps...)
 	if err != nil {
 		logger.Debugf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 
@@ -423,14 +423,14 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 }
 
 // helper for adding operations to the batch.
-func (r *DocumentHandler) addToBatch(op *operation.Operation, genesisTime uint64) error {
+func (r *DocumentHandler) addToBatch(op *operation.Operation, versionTime uint64) error {
 	return r.writer.Add(
 		&operation.QueuedOperation{
-			Namespace:       r.namespace,
-			UniqueSuffix:    op.UniqueSuffix,
-			OperationBuffer: op.OperationBuffer,
-			AnchorOrigin:    op.AnchorOrigin,
-		}, genesisTime)
+			Namespace:        r.namespace,
+			UniqueSuffix:     op.UniqueSuffix,
+			OperationRequest: op.OperationRequest,
+			AnchorOrigin:     op.AnchorOrigin,
+		}, versionTime)
 }
 
 func (r *DocumentHandler) validateOperation(op *operation.Operation, pv protocol.Version) error {
@@ -438,7 +438,7 @@ func (r *DocumentHandler) validateOperation(op *operation.Operation, pv protocol
 		return r.validateCreateDocument(op, pv)
 	}
 
-	return pv.DocumentValidator().IsValidPayload(op.OperationBuffer)
+	return pv.DocumentValidator().IsValidPayload(op.OperationRequest)
 }
 
 func (r *DocumentHandler) validateCreateDocument(op *operation.Operation, pv protocol.Version) error {

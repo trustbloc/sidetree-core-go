@@ -62,13 +62,13 @@ func (p *Parser) ParseRecoverOperation(request []byte, batch bool) (*model.Opera
 	}
 
 	return &model.Operation{
-		OperationBuffer: request,
-		Type:            operation.TypeRecover,
-		UniqueSuffix:    schema.DidSuffix,
-		Delta:           schema.Delta,
-		SignedData:      schema.SignedData,
-		RevealValue:     schema.RevealValue,
-		AnchorOrigin:    signedData.AnchorOrigin,
+		OperationRequest: request,
+		Type:             operation.TypeRecover,
+		UniqueSuffix:     schema.DidSuffix,
+		Delta:            schema.Delta,
+		SignedData:       schema.SignedData,
+		RevealValue:      schema.RevealValue,
+		AnchorOrigin:     signedData.AnchorOrigin,
 	}, nil
 }
 

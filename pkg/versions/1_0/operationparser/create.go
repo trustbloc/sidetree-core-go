@@ -60,12 +60,12 @@ func (p *Parser) ParseCreateOperation(request []byte, batch bool) (*model.Operat
 	}
 
 	return &model.Operation{
-		OperationBuffer: request,
-		Type:            operation.TypeCreate,
-		UniqueSuffix:    uniqueSuffix,
-		Delta:           schema.Delta,
-		SuffixData:      schema.SuffixData,
-		AnchorOrigin:    schema.SuffixData.AnchorOrigin,
+		OperationRequest: request,
+		Type:             operation.TypeCreate,
+		UniqueSuffix:     uniqueSuffix,
+		Delta:            schema.Delta,
+		SuffixData:       schema.SuffixData,
+		AnchorOrigin:     schema.SuffixData.AnchorOrigin,
 	}, nil
 }
 
