@@ -360,7 +360,7 @@ func TestProcessError(t *testing.T) {
 	t.Run("process operation error", func(t *testing.T) {
 		q := &mocks.OperationQueue{}
 
-		invalidQueue := []*operation.QueuedOperationAtTime{{QueuedOperation: operation.QueuedOperation{OperationBuffer: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}}
+		invalidQueue := []*operation.QueuedOperationAtTime{{QueuedOperation: operation.QueuedOperation{OperationRequest: []byte(""), UniqueSuffix: "unique", Namespace: "ns"}}}
 
 		q.LenReturns(1)
 		q.PeekReturns(invalidQueue, nil)
@@ -447,7 +447,7 @@ func generateOperations(numOfOperations int) (ops []*operation.QueuedOperation) 
 	return
 }
 
-func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (ops []*operation.QueuedOperationAtTime) {
+func generateOperationsAtTime(numOfOperations int, protocolVersion uint64) (ops []*operation.QueuedOperationAtTime) {
 	for j := 1; j <= numOfOperations; j++ {
 		op, err := generateOperation(j)
 		if err != nil {
@@ -455,8 +455,8 @@ func generateOperationsAtTime(numOfOperations int, protocolGenesisTime uint64) (
 		}
 
 		ops = append(ops, &operation.QueuedOperationAtTime{
-			QueuedOperation:     *op,
-			ProtocolGenesisTime: protocolGenesisTime,
+			QueuedOperation: *op,
+			ProtocolVersion: protocolVersion,
 		})
 	}
 
@@ -501,9 +501,9 @@ func generateOperation(num int) (*operation.QueuedOperation, error) {
 	}
 
 	op := &operation.QueuedOperation{
-		Namespace:       "did:sidetree",
-		UniqueSuffix:    fmt.Sprint(num),
-		OperationBuffer: request,
+		Namespace:        "did:sidetree",
+		UniqueSuffix:     fmt.Sprint(num),
+		OperationRequest: request,
 	}
 
 	return op, nil

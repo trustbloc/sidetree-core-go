@@ -53,12 +53,12 @@ func (p *Parser) ParseUpdateOperation(request []byte, batch bool) (*model.Operat
 	}
 
 	return &model.Operation{
-		Type:            operation.TypeUpdate,
-		OperationBuffer: request,
-		UniqueSuffix:    schema.DidSuffix,
-		Delta:           schema.Delta,
-		SignedData:      schema.SignedData,
-		RevealValue:     schema.RevealValue,
+		Type:             operation.TypeUpdate,
+		OperationRequest: request,
+		UniqueSuffix:     schema.DidSuffix,
+		Delta:            schema.Delta,
+		SignedData:       schema.SignedData,
+		RevealValue:      schema.RevealValue,
 	}, nil
 }
 

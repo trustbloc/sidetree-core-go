@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	op1 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op1", OperationBuffer: []byte("op1")}
-	op2 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op2", OperationBuffer: []byte("op2")}
-	op3 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op3", OperationBuffer: []byte("op3")}
+	op1 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op1", OperationRequest: []byte("op1")}
+	op2 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op2", OperationRequest: []byte("op2")}
+	op3 = &operation.QueuedOperation{Namespace: "ns", UniqueSuffix: "op3", OperationRequest: []byte("op3")}
 )
 
 func TestMemQueue(t *testing.T) {

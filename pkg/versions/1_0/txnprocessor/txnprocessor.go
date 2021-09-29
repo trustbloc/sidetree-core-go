@@ -130,7 +130,7 @@ func updateAnchoredOperation(op *operation.AnchoredOperation, sidetreeTxn txn.Si
 	// The transaction number of the transaction this operation was batched within
 	op.TransactionNumber = sidetreeTxn.TransactionNumber
 	// The genesis time of the protocol that was used for this operation
-	op.ProtocolGenesisTime = sidetreeTxn.ProtocolGenesisTime
+	op.ProtocolVersion = sidetreeTxn.ProtocolVersion
 
 	return op
 }

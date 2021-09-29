@@ -84,7 +84,7 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
+	doc, err := dochandler.ProcessOperation(createOp.OperationRequest, 0)
 	require.NoError(t, err)
 	require.NotNil(t, doc)
 }
@@ -105,7 +105,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
 		require.NoError(t, err)
 
-		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationBuffer: createOpBuffer})
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationRequest: createOpBuffer})
 		require.NoError(t, err)
 
 		doc, err := dochandler.ProcessOperation(updateOp, 0)
@@ -130,7 +130,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
 		require.NoError(t, err)
 
-		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationBuffer: createOpBuffer})
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationRequest: createOpBuffer})
 		require.NoError(t, err)
 
 		doc, err := dochandler.ProcessOperation(updateOp, 0)
@@ -157,7 +157,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
 		require.NoError(t, err)
 
-		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationBuffer: createOpBuffer})
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationRequest: createOpBuffer})
 		require.NoError(t, err)
 
 		doc, err := dochandler.ProcessOperation(updateOp, 0)
@@ -212,7 +212,7 @@ func TestDocumentHandler_ProcessOperation_Create_WithDomain(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	result, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
+	result, err := dochandler.ProcessOperation(createOp.OperationRequest, 0)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -242,7 +242,7 @@ func TestDocumentHandler_ProcessOperation_Create_ApplyDeltaError(t *testing.T) {
 	createOp, err := getCreateOperationWithInitialState(suffixData, delta)
 	require.NoError(t, err)
 
-	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
+	doc, err := dochandler.ProcessOperation(createOp.OperationRequest, 0)
 	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "applying delta resulted in an empty document (most likely due to an invalid patch)")
@@ -257,7 +257,7 @@ func TestDocumentHandler_ProcessOperation_ProtocolError(t *testing.T) {
 
 	createOp := getCreateOperation()
 
-	doc, err := dochandler.ProcessOperation(createOp.OperationBuffer, 0)
+	doc, err := dochandler.ProcessOperation(createOp.OperationRequest, 0)
 	require.EqualError(t, err, pc.Err.Error())
 	require.Nil(t, doc)
 }
@@ -557,7 +557,7 @@ func TestProcessOperation_ParseOperationError(t *testing.T) {
 	err := store.Put(getAnchoredCreateOperation())
 	require.NoError(t, err)
 
-	doc, err := dochandler.ProcessOperation(getUpdateOperation().OperationBuffer, 0)
+	doc, err := dochandler.ProcessOperation(getUpdateOperation().OperationRequest, 0)
 	require.Error(t, err)
 	require.Nil(t, doc)
 	require.Contains(t, err.Error(), "bad request: missing signed data")
@@ -649,12 +649,12 @@ func getCreateOperationWithInitialState(suffixData *model.SuffixDataModel, delta
 	}
 
 	return &model.Operation{
-		Type:            operation.TypeCreate,
-		UniqueSuffix:    uniqueSuffix,
-		ID:              namespace + docutil.NamespaceDelimiter + uniqueSuffix,
-		OperationBuffer: payload,
-		Delta:           delta,
-		SuffixData:      suffixData,
+		Type:             operation.TypeCreate,
+		UniqueSuffix:     uniqueSuffix,
+		ID:               namespace + docutil.NamespaceDelimiter + uniqueSuffix,
+		OperationRequest: payload,
+		Delta:            delta,
+		SuffixData:       suffixData,
 	}, nil
 }
 
@@ -806,10 +806,10 @@ func getUpdateOperation() *operation.Operation {
 	}
 
 	return &operation.Operation{
-		OperationBuffer: payload,
-		Type:            operation.TypeUpdate,
-		UniqueSuffix:    request.DidSuffix,
-		ID:              namespace + docutil.NamespaceDelimiter + request.DidSuffix,
+		OperationRequest: payload,
+		Type:             operation.TypeUpdate,
+		UniqueSuffix:     request.DidSuffix,
+		ID:               namespace + docutil.NamespaceDelimiter + request.DidSuffix,
 	}
 }
 

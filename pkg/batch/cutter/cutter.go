@@ -20,7 +20,7 @@ var logger = log.New("sidetree-core-cutter")
 // OperationQueue defines the functions for adding and removing operations from a queue.
 type OperationQueue interface {
 	// Add adds the given operation to the tail of the queue and returns the new length of the queue.
-	Add(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error)
+	Add(data *operation.QueuedOperation, protocolVersion uint64) (uint, error)
 	// Remove removes (up to) the given number of items from the head of the queue and returns:
 	// - The operations that are to be removed.
 	// - The 'Ack' function that must be called to commit the remove.
@@ -40,8 +40,8 @@ type Committer = func() (pending uint, err error)
 type Result struct {
 	// Operations holds the operations that were cut from the queue
 	Operations []*operation.QueuedOperation
-	// ProtocolGenesisTime is the genesis time of the protocol version that was used to add the operations to the queue
-	ProtocolGenesisTime uint64
+	// ProtocolVersion is the genesis time of the protocol version that was used to add the operations to the queue
+	ProtocolVersion uint64
 	// Pending is the number of operations remaining in the queue
 	Pending uint
 	// Ack commits the remove from the queue and returns the number of pending operations.
@@ -66,9 +66,9 @@ func New(client protocol.Client, queue OperationQueue) *BatchCutter {
 
 // Add adds the given operation to pending batch queue and returns the total
 // number of pending operations.
-func (r *BatchCutter) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error) {
+func (r *BatchCutter) Add(op *operation.QueuedOperation, protocolVersion uint64) (uint, error) {
 	// Enqueuing operation into batch
-	return r.pendingBatch.Add(op, protocolGenesisTime)
+	return r.pendingBatch.Add(op, protocolVersion)
 }
 
 // Cut returns the current batch along with number of items that should be remaining in the queue after the committer is called.
@@ -95,7 +95,7 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 		return Result{Pending: pending}, nil
 	}
 
-	operations, protocolGenesisTime := getOperationsAtProtocolVersion(ops)
+	operations, protocolVersion := getOperationsAtProtocolVersion(ops)
 
 	batchSize = uint(len(operations))
 
@@ -113,41 +113,41 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 	}
 
 	return Result{
-		Operations:          ops.QueuedOperations(),
-		ProtocolGenesisTime: protocolGenesisTime,
-		Pending:             pending,
-		Ack:                 ack,
-		Nack:                nack,
+		Operations:      ops.QueuedOperations(),
+		ProtocolVersion: protocolVersion,
+		Pending:         pending,
+		Ack:             ack,
+		Nack:            nack,
 	}, nil
 }
 
 // getOperationsAtProtocolVersion iterates through the operations and returns the operations which are at the same protocol genesis time.
 func getOperationsAtProtocolVersion(opsAtTime []*operation.QueuedOperationAtTime) ([]*operation.QueuedOperation, uint64) {
 	var ops []*operation.QueuedOperation
-	var protocolGenesisTime uint64
+	var protocolVersion uint64
 
 	for _, op := range opsAtTime {
-		if protocolGenesisTime == 0 {
-			protocolGenesisTime = op.ProtocolGenesisTime
+		if protocolVersion == 0 {
+			protocolVersion = op.ProtocolVersion
 		}
 
-		if op.ProtocolGenesisTime != protocolGenesisTime {
+		if op.ProtocolVersion != protocolVersion {
 			// This operation was added using a different transaction time so it can't go into the same batch
-			logger.Infof("Not adding operation since its protocol genesis time [%d] is different from the protocol genesis time [%d] of the existing ops in the batch", op.ProtocolGenesisTime, protocolGenesisTime)
+			logger.Infof("Not adding operation since its protocol genesis time [%d] is different from the protocol genesis time [%d] of the existing ops in the batch", op.ProtocolVersion, protocolVersion)
 
 			break
 		}
 
 		ops = append(ops,
 			&operation.QueuedOperation{
-				OperationBuffer: op.OperationBuffer,
-				UniqueSuffix:    op.UniqueSuffix,
-				Namespace:       op.Namespace,
+				OperationRequest: op.OperationRequest,
+				UniqueSuffix:     op.UniqueSuffix,
+				Namespace:        op.Namespace,
 			},
 		)
 	}
 
-	return ops, protocolGenesisTime
+	return ops, protocolVersion
 }
 
 func min(i, j uint) uint {

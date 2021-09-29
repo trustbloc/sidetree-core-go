@@ -12,7 +12,7 @@ type SidetreeTxn struct {
 	TransactionNumber    uint64
 	AnchorString         string
 	Namespace            string
-	ProtocolGenesisTime  uint64
+	ProtocolVersion      uint64
 	CanonicalReference   string
 	EquivalentReferences []string
 }

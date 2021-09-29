@@ -41,7 +41,7 @@ const (
 type Option func(opts *Options) error
 
 type batchCutter interface {
-	Add(operation *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error)
+	Add(operation *operation.QueuedOperation, protocolVersion uint64) (uint, error)
 	Cut(force bool) (cutter.Result, error)
 }
 
@@ -76,7 +76,7 @@ type Context interface {
 // AnchorWriter defines an interface to access the underlying anchoring system.
 type AnchorWriter interface {
 	// WriteAnchor writes the anchor string as a transaction to anchoring system
-	WriteAnchor(anchor string, artifacts []*protocol.AnchorDocument, ops []*operation.Reference, protocolGenesisTime uint64) error
+	WriteAnchor(anchor string, artifacts []*protocol.AnchorDocument, ops []*operation.Reference, protocolVersion uint64) error
 	// Read ledger transaction
 	Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn)
 }
@@ -140,12 +140,12 @@ func (r *Writer) Stopped() bool {
 }
 
 // Add the given operation to a queue of operations to be batched and anchored on anchoring system.
-func (r *Writer) Add(op *operation.QueuedOperation, protocolGenesisTime uint64) error {
+func (r *Writer) Add(op *operation.QueuedOperation, protocolVersion uint64) error {
 	if r.Stopped() {
 		return errors.New("writer is stopped")
 	}
 
-	_, err := r.batchCutter.Add(op, protocolGenesisTime)
+	_, err := r.batchCutter.Add(op, protocolVersion)
 	if err != nil {
 		return err
 	}
@@ -240,9 +240,9 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 		return 0, result.Pending, nil
 	}
 
-	logger.Infof("[%s] processing %d batch operations for protocol genesis time[%d]...", r.namespace, len(result.Operations), result.ProtocolGenesisTime)
+	logger.Infof("[%s] processing %d batch operations for protocol genesis time[%d]...", r.namespace, len(result.Operations), result.ProtocolVersion)
 
-	err = r.process(result.Operations, result.ProtocolGenesisTime)
+	err = r.process(result.Operations, result.ProtocolVersion)
 	if err != nil {
 		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(result.Operations), err)
 
@@ -260,12 +260,12 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	return len(result.Operations), pending, nil
 }
 
-func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime uint64) error {
+func (r *Writer) process(ops []*operation.QueuedOperation, protocolVersion uint64) error {
 	if len(ops) == 0 {
 		return errors.New("create batch called with no pending operations, should not happen")
 	}
 
-	p, err := r.protocol.Get(protocolGenesisTime)
+	p, err := r.protocol.Get(protocolVersion)
 	if err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolGenesisTime u
 	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
-	return r.context.Anchor().WriteAnchor(anchorString, artifacts, dids, protocolGenesisTime)
+	return r.context.Anchor().WriteAnchor(anchorString, artifacts, dids, protocolVersion)
 }
 
 // WithBatchTimeout allows for specifying batch timeout.

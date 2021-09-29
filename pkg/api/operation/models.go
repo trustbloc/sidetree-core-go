@@ -18,8 +18,8 @@ type Operation struct {
 	// ID defines ID
 	ID string
 
-	// OperationBuffer is the original operation request
-	OperationBuffer []byte
+	// OperationRequest is the original operation request
+	OperationRequest []byte
 
 	// AnchorOrigin defines anchor origin.
 	AnchorOrigin interface{}
@@ -47,8 +47,8 @@ type AnchoredOperation struct {
 	// UniqueSuffix defines document unique suffix.
 	UniqueSuffix string `json:"uniqueSuffix"`
 
-	// OperationBuffer is the original operation request
-	OperationBuffer []byte `json:"operationBuffer"`
+	// OperationRequest is the original operation request
+	OperationRequest []byte `json:"operationRequest"`
 
 	// TransactionTime is the logical anchoring time (block number in case of blockchain) for this operation in the anchoring system (blockchain).
 	TransactionTime uint64 `json:"transactionTime"`
@@ -56,8 +56,8 @@ type AnchoredOperation struct {
 	// TransactionNumber is the transaction number of the transaction this operation was batched within.
 	TransactionNumber uint64 `json:"transactionNumber"`
 
-	// ProtocolGenesisTime is the genesis time of the protocol that was used for this operation.
-	ProtocolGenesisTime uint64 `json:"protocolGenesisTime"`
+	// ProtocolVersion is the genesis time (version) of the protocol that was used for this operation.
+	ProtocolVersion uint64 `json:"protocolVersion"`
 
 	// CanonicalReference contains canonical reference that applies to this operation.
 	CanonicalReference string `json:"canonicalReference,omitempty"`
@@ -89,16 +89,16 @@ const (
 
 // QueuedOperation stores minimum required operation info for operations queue.
 type QueuedOperation struct {
-	OperationBuffer []byte
-	UniqueSuffix    string
-	Namespace       string
-	AnchorOrigin    interface{}
+	OperationRequest []byte
+	UniqueSuffix     string
+	Namespace        string
+	AnchorOrigin     interface{}
 }
 
 // QueuedOperationAtTime contains queued operation info with protocol genesis time.
 type QueuedOperationAtTime struct {
 	QueuedOperation
-	ProtocolGenesisTime uint64
+	ProtocolVersion uint64
 }
 
 // QueuedOperationsAtTime contains a collection of queued operations with protocol genesis time.

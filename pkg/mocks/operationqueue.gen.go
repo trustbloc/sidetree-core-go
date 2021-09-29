@@ -8,11 +8,11 @@ import (
 )
 
 type OperationQueue struct {
-	AddStub        func(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error)
+	AddStub        func(data *operation.QueuedOperation, protocolVersion uint64) (uint, error)
 	addMutex       sync.RWMutex
 	addArgsForCall []struct {
-		data                *operation.QueuedOperation
-		protocolGenesisTime uint64
+		data            *operation.QueuedOperation
+		protocolVersion uint64
 	}
 	addReturns struct {
 		result1 uint
@@ -65,17 +65,17 @@ type OperationQueue struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OperationQueue) Add(data *operation.QueuedOperation, protocolGenesisTime uint64) (uint, error) {
+func (fake *OperationQueue) Add(data *operation.QueuedOperation, protocolVersion uint64) (uint, error) {
 	fake.addMutex.Lock()
 	ret, specificReturn := fake.addReturnsOnCall[len(fake.addArgsForCall)]
 	fake.addArgsForCall = append(fake.addArgsForCall, struct {
-		data                *operation.QueuedOperation
-		protocolGenesisTime uint64
-	}{data, protocolGenesisTime})
-	fake.recordInvocation("Add", []interface{}{data, protocolGenesisTime})
+		data            *operation.QueuedOperation
+		protocolVersion uint64
+	}{data, protocolVersion})
+	fake.recordInvocation("Add", []interface{}{data, protocolVersion})
 	fake.addMutex.Unlock()
 	if fake.AddStub != nil {
-		return fake.AddStub(data, protocolGenesisTime)
+		return fake.AddStub(data, protocolVersion)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -92,7 +92,7 @@ func (fake *OperationQueue) AddCallCount() int {
 func (fake *OperationQueue) AddArgsForCall(i int) (*operation.QueuedOperation, uint64) {
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
-	return fake.addArgsForCall[i].data, fake.addArgsForCall[i].protocolGenesisTime
+	return fake.addArgsForCall[i].data, fake.addArgsForCall[i].protocolVersion
 }
 
 func (fake *OperationQueue) AddReturns(result1 uint, result2 error) {

@@ -40,7 +40,7 @@ type OperationProvider struct {
 
 // OperationParser defines the functions for parsing operations.
 type OperationParser interface {
-	ParseOperation(namespace string, operationBuffer []byte, batch bool) (*model.Operation, error)
+	ParseOperation(namespace string, operationRequest []byte, batch bool) (*model.Operation, error)
 	ValidateSuffixData(suffixData *model.SuffixDataModel) error
 	ValidateDelta(delta *model.DeltaModel) error
 	ParseSignedDataForUpdate(compactJWS string) (*model.UpdateSignedDataModel, error)

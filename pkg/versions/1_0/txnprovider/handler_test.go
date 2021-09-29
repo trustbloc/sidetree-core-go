@@ -288,9 +288,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			operationparser.New(protocol))
 
 		op := &operation.QueuedOperation{
-			OperationBuffer: []byte(`{"key":"value"}`),
-			UniqueSuffix:    "suffix",
-			Namespace:       defaultNS,
+			OperationRequest: []byte(`{"key":"value"}`),
+			UniqueSuffix:     "suffix",
+			Namespace:        defaultNS,
 		}
 
 		anchorString, artifacts, refs, err := handler.PrepareTxnFiles([]*operation.QueuedOperation{op})
@@ -419,10 +419,10 @@ func generateOperationInfo(num int, opType operation.Type) (*operation.QueuedOpe
 	}
 
 	return &operation.QueuedOperation{
-		OperationBuffer: op,
-		UniqueSuffix:    fmt.Sprintf("%s-%d", opType, num),
-		Namespace:       defaultNS,
-		AnchorOrigin:    universalAnchorOrigin,
+		OperationRequest: op,
+		UniqueSuffix:     fmt.Sprintf("%s-%d", opType, num),
+		Namespace:        defaultNS,
+		AnchorOrigin:     universalAnchorOrigin,
 	}, nil
 }
 
@@ -704,9 +704,9 @@ func generateQueueOperationWithAnchorTimes(opType operation.Type, suffix string,
 	}
 
 	return &operation.QueuedOperation{
-		OperationBuffer: opBuffer,
-		UniqueSuffix:    suffix,
-		Namespace:       defaultNS,
+		OperationRequest: opBuffer,
+		UniqueSuffix:     suffix,
+		Namespace:        defaultNS,
 	}, nil
 }
 

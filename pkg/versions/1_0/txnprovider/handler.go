@@ -131,11 +131,11 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 
 	result := &models.SortedOperations{}
 	for _, d := range ops {
-		op, e := h.parser.ParseOperation(d.Namespace, d.OperationBuffer, false)
+		op, e := h.parser.ParseOperation(d.Namespace, d.OperationRequest, false)
 		if e != nil {
 			if e == operationparser.ErrOperationExpired {
 				// stale operations should not be added to the batch; ignore operation
-				logger.Warnf("[%s] stale operation for suffix[%s] found in batch operations: discarding operation %s", d.Namespace, d.UniqueSuffix, d.OperationBuffer)
+				logger.Warnf("[%s] stale operation for suffix[%s] found in batch operations: discarding operation %s", d.Namespace, d.UniqueSuffix, d.OperationRequest)
 
 				continue
 			}

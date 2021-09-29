@@ -63,6 +63,20 @@ func TestResolve(t *testing.T) {
 		require.NotNil(t, doc)
 	})
 
+	t.Run("success - with additional operations", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pc)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{Type: operation.TypeUpdate},                            // unpublished operation
+			{Type: operation.TypeUpdate, CanonicalReference: "abc"}, // published operation
+		}
+
+		doc, err := op.Resolve(uniqueSuffix, additionalOps...)
+		require.Nil(t, err)
+		require.NotNil(t, doc)
+	})
+
 	t.Run("document not found error", func(t *testing.T) {
 		store, _ := getDefaultStore(recoveryKey, updateKey)
 
@@ -831,7 +845,7 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		bytes, err := canonicalizer.MarshalCanonical(request)
 		require.NoError(t, err)
 
-		value, err := p.getCommitment(&operation.AnchoredOperation{OperationBuffer: bytes})
+		value, err := p.getCommitment(&operation.AnchoredOperation{OperationRequest: bytes})
 		require.Error(t, err)
 		require.Empty(t, value)
 		require.Contains(t, err.Error(), "operation type [other] not supported")
@@ -1051,13 +1065,13 @@ func getRecoverOperationWithSigner(signer client.Signer, recoveryKey, updateKey 
 	}
 
 	return &model.Operation{
-		Namespace:       mocks.DefaultNS,
-		UniqueSuffix:    uniqueSuffix,
-		Type:            operation.TypeRecover,
-		OperationBuffer: []byte(recoverRequest.Operation),
-		Delta:           recoverRequest.Delta,
-		SignedData:      recoverRequest.SignedData,
-		RevealValue:     recoverRequest.RevealValue,
+		Namespace:        mocks.DefaultNS,
+		UniqueSuffix:     uniqueSuffix,
+		Type:             operation.TypeRecover,
+		OperationRequest: []byte(recoverRequest.Operation),
+		Delta:            recoverRequest.Delta,
+		SignedData:       recoverRequest.SignedData,
+		RevealValue:      recoverRequest.RevealValue,
 	}, nextRecoveryKey, nil
 }
 
@@ -1183,13 +1197,13 @@ func getCreateOperationWithDoc(recoveryKey, updateKey *ecdsa.PrivateKey, doc str
 	}
 
 	return &model.Operation{
-		Namespace:       mocks.DefaultNS,
-		ID:              "did:sidetree:" + uniqueSuffix,
-		UniqueSuffix:    uniqueSuffix,
-		Type:            operation.TypeCreate,
-		OperationBuffer: operationBuffer,
-		Delta:           delta,
-		SuffixData:      suffixData,
+		Namespace:        mocks.DefaultNS,
+		ID:               "did:sidetree:" + uniqueSuffix,
+		UniqueSuffix:     uniqueSuffix,
+		Type:             operation.TypeCreate,
+		OperationRequest: operationBuffer,
+		Delta:            delta,
+		SuffixData:       suffixData,
 	}, nil
 }
 
@@ -1213,7 +1227,7 @@ func getAnchoredOperation(op *model.Operation, blockNum uint64) *operation.Ancho
 	}
 
 	anchoredOp.TransactionTime = blockNum
-	anchoredOp.ProtocolGenesisTime = getProtocol(blockNum).GenesisTime
+	anchoredOp.ProtocolVersion = getProtocol(blockNum).GenesisTime
 
 	return anchoredOp
 }
