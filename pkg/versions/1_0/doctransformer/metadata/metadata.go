@@ -8,6 +8,7 @@ package metadata
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -107,26 +108,50 @@ func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info pro
 	return docMetadata, nil
 }
 
-func getPublishedOperations(ops []*operation.AnchoredOperation) []*PublishedOperation {
-	publishedOps := make([]*PublishedOperation, len(ops))
+func sortOperations(ops []*operation.AnchoredOperation) {
+	sort.Slice(ops, func(i, j int) bool {
+		if ops[i].TransactionTime < ops[j].TransactionTime {
+			return true
+		}
 
-	for i, op := range ops {
-		publishedOps[i] = &PublishedOperation{
-			Type:                 op.Type,
-			OperationRequest:     op.OperationRequest,
-			TransactionTime:      op.TransactionTime,
-			TransactionNumber:    op.TransactionNumber,
-			ProtocolVersion:      op.ProtocolVersion,
-			CanonicalReference:   op.CanonicalReference,
-			EquivalentReferences: op.EquivalentReferences,
-			AnchorOrigin:         op.AnchorOrigin,
+		return ops[i].TransactionNumber < ops[j].TransactionNumber
+	})
+}
+
+// remove duplicate published operations and then sort them by transaction (anchoring) time.
+func getPublishedOperations(ops []*operation.AnchoredOperation) []*PublishedOperation {
+	sortOperations(ops)
+
+	uniqueOps := make(map[string]bool)
+
+	var publishedOps []*PublishedOperation
+
+	for _, op := range ops {
+		_, ok := uniqueOps[op.CanonicalReference]
+		if !ok {
+			publishedOps = append(publishedOps,
+				&PublishedOperation{
+					Type:                 op.Type,
+					OperationRequest:     op.OperationRequest,
+					TransactionTime:      op.TransactionTime,
+					TransactionNumber:    op.TransactionNumber,
+					ProtocolVersion:      op.ProtocolVersion,
+					CanonicalReference:   op.CanonicalReference,
+					EquivalentReferences: op.EquivalentReferences,
+					AnchorOrigin:         op.AnchorOrigin,
+				})
+
+			uniqueOps[op.CanonicalReference] = true
 		}
 	}
 
 	return publishedOps
 }
 
+// sort unpublished operations by request time.
 func getUnpublishedOperations(ops []*operation.AnchoredOperation) []*UnpublishedOperation {
+	sortOperations(ops)
+
 	unpublishedOps := make([]*UnpublishedOperation, len(ops))
 
 	for i, op := range ops {

@@ -63,12 +63,14 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 		info[document.AnchorOriginProperty] = "domain.com"
 
 		publishedOps := []*operation.AnchoredOperation{
-			{Type: "create", UniqueSuffix: "suffix"},
-			{Type: "update", UniqueSuffix: "suffix"},
+			{Type: "create", UniqueSuffix: "suffix", CanonicalReference: "ref1", TransactionTime: 1},
+			{Type: "update", UniqueSuffix: "suffix", CanonicalReference: "ref3", TransactionTime: 3},
+			{Type: "update", UniqueSuffix: "suffix", CanonicalReference: "ref2", TransactionTime: 2},
+			{Type: "update", UniqueSuffix: "suffix", CanonicalReference: "ref2", TransactionTime: 2},
 		}
 
 		unpublishedOps := []*operation.AnchoredOperation{
-			{Type: "update", UniqueSuffix: "suffix"},
+			{Type: "update", UniqueSuffix: "suffix", TransactionTime: 4},
 		}
 
 		rm := &protocol.ResolutionModel{
@@ -96,7 +98,7 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 		require.Equal(t, "recovery", methodMetadata[document.RecoveryCommitmentProperty])
 		require.Equal(t, "update", methodMetadata[document.UpdateCommitmentProperty])
 
-		require.Equal(t, 2, len(methodMetadata[document.PublishedOperationsProperty].([]*PublishedOperation)))
+		require.Equal(t, 3, len(methodMetadata[document.PublishedOperationsProperty].([]*PublishedOperation)))
 		require.Equal(t, 1, len(methodMetadata[document.UnpublishedOperationsProperty].([]*UnpublishedOperation)))
 	})
 

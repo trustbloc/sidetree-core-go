@@ -245,8 +245,8 @@ func TestTransformDocument(t *testing.T) {
 		info[document.PublishedProperty] = true
 
 		publishedOps := []*operation.AnchoredOperation{
-			{Type: "create", UniqueSuffix: "suffix"},
-			{Type: "update", UniqueSuffix: "suffix"},
+			{Type: "create", UniqueSuffix: "suffix", CanonicalReference: "ref1"},
+			{Type: "update", UniqueSuffix: "suffix", CanonicalReference: "ref2"},
 		}
 
 		unpublishedOps := []*operation.AnchoredOperation{
