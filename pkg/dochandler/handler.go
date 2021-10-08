@@ -45,6 +45,7 @@ const (
 type DocumentHandler struct {
 	protocol  protocol.Client
 	processor operationProcessor
+	decorator operationDecorator
 	writer    batchWriter
 	namespace string
 	aliases   []string // namespace aliases
@@ -62,7 +63,12 @@ type unpublishedOperationStore interface {
 	Delete(suffix string) error
 }
 
-// operationProcessor is an interface which resolves the document based on the ID.
+// operationDecorator is an interface for validating/pre-processing operations.
+type operationDecorator interface {
+	Decorate(operation *operation.Operation) (*operation.Operation, error)
+}
+
+// operationProcessor is an interface which resolves the document based on the unique suffix.
 type operationProcessor interface {
 	Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error)
 }
@@ -97,11 +103,19 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore, operationTyp
 	}
 }
 
+// WithOperationDecorator sets an optional operation decorator (used for additional business validation/pre-processing).
+func WithOperationDecorator(decorator operationDecorator) Option {
+	return func(opts *DocumentHandler) {
+		opts.decorator = decorator
+	}
+}
+
 // New creates a new document handler with the context.
 func New(namespace string, aliases []string, pc protocol.Client, writer batchWriter, processor operationProcessor, opts ...Option) *DocumentHandler {
 	dh := &DocumentHandler{
 		protocol:                  pc,
 		processor:                 processor,
+		decorator:                 &defaultOperationDecorator{processor: processor},
 		writer:                    writer,
 		namespace:                 namespace,
 		aliases:                   aliases,
@@ -137,22 +151,12 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 	// perform validation for operation request
 	err = r.validateOperation(op, pv)
 	if err != nil {
-		logger.Warnf("Failed to validate operation: %s", err.Error())
-
-		return nil, err
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	if op.Type != operation.TypeCreate {
-		internalResult, innerErr := r.processor.Resolve(op.UniqueSuffix)
-		if innerErr != nil {
-			logger.Debugf("Failed to resolve suffix[%s] for operation type[%s]: %w", op.UniqueSuffix, op.Type, innerErr)
-
-			return nil, innerErr
-		}
-
-		if op.Type == operation.TypeUpdate || op.Type == operation.TypeDeactivate {
-			op.AnchorOrigin = internalResult.AnchorOrigin
-		}
+	op, err = r.decorator.Decorate(op)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
 	err = r.addOperationToUnpublishedOpsStore(op, pv)
@@ -482,4 +486,25 @@ func (noop *noopUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
 
 func (noop *noopUnpublishedOpsStore) Delete(_ string) error {
 	return nil
+}
+
+type defaultOperationDecorator struct {
+	processor operationProcessor
+}
+
+func (d *defaultOperationDecorator) Decorate(op *operation.Operation) (*operation.Operation, error) {
+	if op.Type != operation.TypeCreate {
+		internalResult, err := d.processor.Resolve(op.UniqueSuffix)
+		if err != nil {
+			logger.Debugf("Failed to resolve suffix[%s] for operation type[%s]: %s", op.UniqueSuffix, op.Type, err.Error())
+
+			return nil, err
+		}
+
+		if op.Type == operation.TypeUpdate || op.Type == operation.TypeDeactivate {
+			op.AnchorOrigin = internalResult.AnchorOrigin
+		}
+	}
+
+	return op, nil
 }
