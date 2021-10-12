@@ -135,6 +135,9 @@ func addAdditionalOperations(published, unpublished, additional []*operation.Anc
 		}
 	}
 
+	sortOperations(published)
+	sortOperations(unpublished)
+
 	return published, unpublished
 }
 

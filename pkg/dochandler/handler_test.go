@@ -65,10 +65,15 @@ func TestDocumentHandler_New(t *testing.T) {
 
 	const domain = "domain.com"
 	const label = "interim"
-	dh = New(namespace, nil, nil, nil, nil, WithLabel(label), WithDomain(domain))
+
+	opDecorator := &mockOperationDecorator{}
+
+	dh = New(namespace, nil, nil, nil, nil,
+		WithLabel(label), WithDomain(domain), WithOperationDecorator(opDecorator))
 	require.Equal(t, namespace, dh.Namespace())
 	require.Equal(t, domain, dh.domain)
 	require.Equal(t, label, dh.label)
+	require.Equal(t, opDecorator, dh.decorator)
 }
 
 func TestDocumentHandler_Protocol(t *testing.T) {
@@ -180,7 +185,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		dochandler.deleteOperationFromUnpublishedOpsStore("suffix")
 	})
 
-	t.Run("error - processor error", func(t *testing.T) {
+	t.Run("error - decorator error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
 		dochandler, cleanup := getDocumentHandler(store)
@@ -190,7 +195,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		processor := &docmocks.OperationProcessor{}
 		processor.ResolveReturns(nil, fmt.Errorf("processor error"))
 
-		dochandler.processor = processor
+		dochandler.decorator = &defaultOperationDecorator{processor: processor}
 
 		updateOp, err := generateUpdateOperation("suffix")
 		require.NoError(t, err)
@@ -921,4 +926,16 @@ func (m *mockUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
 
 func (m *mockUnpublishedOpsStore) Delete(_ string) error {
 	return m.DeleteErr
+}
+
+type mockOperationDecorator struct {
+	Err error
+}
+
+func (m *mockOperationDecorator) Decorate(op *operation.Operation) (*operation.Operation, error) {
+	if m.Err == nil {
+		return nil, m.Err
+	}
+
+	return op, nil
 }
