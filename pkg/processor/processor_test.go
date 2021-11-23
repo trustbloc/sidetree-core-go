@@ -825,18 +825,6 @@ func TestGetNextOperationCommitment(t *testing.T) {
 		require.Contains(t, err.Error(), "missing signed data")
 	})
 
-	t.Run("error - invalid delta", func(t *testing.T) {
-		updateOp, _, err := getUpdateOperation(updateKey, uniqueSuffix, 1)
-		require.NoError(t, err)
-
-		updateOp.Delta = &model.DeltaModel{}
-
-		value, err := p.getCommitment(getAnchoredOperation(updateOp, 1))
-		require.Error(t, err)
-		require.Empty(t, value)
-		require.Contains(t, err.Error(), "get commitment - parse operation error: missing patches")
-	})
-
 	t.Run("error - operation type not supported", func(t *testing.T) {
 		request := model.RecoverRequest{
 			Operation: "other",

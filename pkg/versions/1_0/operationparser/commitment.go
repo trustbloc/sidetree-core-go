@@ -9,7 +9,7 @@ import (
 // GetRevealValue returns this operation reveal value.
 func (p *Parser) GetRevealValue(opBytes []byte) (string, error) {
 	// namespace is irrelevant in this case
-	op, err := p.ParseOperation("", opBytes, false)
+	op, err := p.ParseOperation("", opBytes, true)
 	if err != nil {
 		return "", fmt.Errorf("get reveal value - parse operation error: %s", err.Error())
 	}
@@ -24,7 +24,7 @@ func (p *Parser) GetRevealValue(opBytes []byte) (string, error) {
 // GetCommitment returns next operation commitment.
 func (p *Parser) GetCommitment(opBytes []byte) (string, error) {
 	// namespace is irrelevant in this case
-	op, err := p.ParseOperation("", opBytes, false)
+	op, err := p.ParseOperation("", opBytes, true)
 	if err != nil {
 		return "", fmt.Errorf("get commitment - parse operation error: %s", err.Error())
 	}
