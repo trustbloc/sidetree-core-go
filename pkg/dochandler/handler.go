@@ -248,20 +248,21 @@ func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol
 		return nil, err
 	}
 
-	ti := r.getTransformationInfoForUnpublished(op.UniqueSuffix, "")
+	ti := GetTransformationInfoForUnpublished(r.namespace, r.domain, r.label, op.UniqueSuffix, "")
 
 	return pv.DocumentTransformer().TransformDocument(rm, ti)
 }
 
-func (r *DocumentHandler) getTransformationInfoForUnpublished(suffix string, createRequestJCS string) protocol.TransformationInfo {
+// GetTransformationInfoForUnpublished will create transformation info object for unpublished document.
+func GetTransformationInfoForUnpublished(namespace, domain, label, suffix string, createRequestJCS string) protocol.TransformationInfo {
 	ti := make(protocol.TransformationInfo)
 	ti[document.PublishedProperty] = false
 
-	id := fmt.Sprintf("%s:%s", r.namespace, suffix)
+	id := fmt.Sprintf("%s:%s", namespace, suffix)
 
 	// For interim/unpublished documents we should set optional label if specified.
-	if r.label != "" {
-		id = fmt.Sprintf("%s:%s:%s", r.namespace, r.label, suffix)
+	if label != "" {
+		id = fmt.Sprintf("%s:%s:%s", namespace, label, suffix)
 	}
 
 	var equivalentIDs []string
@@ -272,8 +273,8 @@ func (r *DocumentHandler) getTransformationInfoForUnpublished(suffix string, cre
 	}
 
 	// Also, if optional domain is specified, we should set equivalent id with domain hint
-	if r.label != "" && r.domain != "" {
-		equivalentID := fmt.Sprintf("%s:%s:%s:%s", r.namespace, r.domain, r.label, suffix)
+	if label != "" && domain != "" {
+		equivalentID := fmt.Sprintf("%s:%s:%s:%s", namespace, domain, label, suffix)
 		equivalentIDs = append(equivalentIDs, equivalentID)
 	}
 
@@ -361,8 +362,16 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 		return nil, err
 	}
 
+	ti := GetTransformationInfoForPublished(r.namespace, shortFormDid, uniquePortion, internalResult)
+
+	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
+}
+
+// GetTransformationInfoForPublished will create transformation info object for published document.
+func GetTransformationInfoForPublished(namespace, id, suffix string,
+	internalResult *protocol.ResolutionModel) protocol.TransformationInfo {
 	ti := make(protocol.TransformationInfo)
-	ti[document.IDProperty] = shortFormDid
+	ti[document.IDProperty] = id
 	ti[document.PublishedProperty] = true
 
 	canonicalRef := ""
@@ -370,15 +379,16 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 		canonicalRef = docutil.NamespaceDelimiter + internalResult.CanonicalReference
 	}
 
-	canonicalID := r.namespace + canonicalRef + docutil.NamespaceDelimiter + uniquePortion
+	canonicalID := namespace + canonicalRef + docutil.NamespaceDelimiter + suffix
 
 	// we should always set canonical id if document has been published
 	ti[document.CanonicalIDProperty] = canonicalID
 
 	equivalentIDs := []string{canonicalID}
+
 	if len(internalResult.EquivalentReferences) > 0 {
 		for _, eqRef := range internalResult.EquivalentReferences {
-			equivalentID := r.namespace + docutil.NamespaceDelimiter + eqRef + docutil.NamespaceDelimiter + uniquePortion
+			equivalentID := namespace + docutil.NamespaceDelimiter + eqRef + docutil.NamespaceDelimiter + suffix
 			equivalentIDs = append(equivalentIDs, equivalentID)
 		}
 	}
@@ -386,7 +396,7 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 	// equivalent ids should always include canonical id (if specified)
 	ti[document.EquivalentIDProperty] = equivalentIDs
 
-	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
+	return ti
 }
 
 func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
@@ -416,7 +426,7 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 
 	createRequestJCS := longFormDID[strings.LastIndex(longFormDID, docutil.NamespaceDelimiter)+1:]
 
-	ti := r.getTransformationInfoForUnpublished(uniqueSuffix, createRequestJCS)
+	ti := GetTransformationInfoForUnpublished(r.namespace, r.domain, r.label, uniqueSuffix, createRequestJCS)
 
 	externalResult, err := pv.DocumentTransformer().TransformDocument(rm, ti)
 	if err != nil {
