@@ -270,15 +270,25 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolVersion uint6
 		return err
 	}
 
-	anchorString, artifacts, dids, err := p.OperationHandler().PrepareTxnFiles(ops)
+	anchoringInfo, err := p.OperationHandler().PrepareTxnFiles(ops)
 	if err != nil {
 		return err
 	}
 
-	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchorString)
+	// Sidetree spec allows for one operation per suffix in the batch
+	// Process additional operations for suffix in the next batch
+	for _, op := range anchoringInfo.AdditionalOperations {
+		err = r.Add(op, protocolVersion)
+		if err != nil {
+			// this error should never happen since parsing of this operation has already been done for the previous batch
+			logger.Warnf("unable to add additional operation for suffix[%s] to the next batch: %s", op.UniqueSuffix, err.Error())
+		}
+	}
+
+	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchoringInfo.AnchorString)
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
-	return r.context.Anchor().WriteAnchor(anchorString, artifacts, dids, protocolVersion)
+	return r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts, anchoringInfo.OperationReferences, protocolVersion)
 }
 
 // WithBatchTimeout allows for specifying batch timeout.

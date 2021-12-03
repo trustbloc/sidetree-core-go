@@ -9,28 +9,24 @@ import (
 )
 
 type OperationHandler struct {
-	PrepareTxnFilesStub        func([]*operation.QueuedOperation) (string, []*protocol.AnchorDocument, []*operation.Reference, error)
+	PrepareTxnFilesStub        func([]*operation.QueuedOperation) (*protocol.AnchoringInfo, error)
 	prepareTxnFilesMutex       sync.RWMutex
 	prepareTxnFilesArgsForCall []struct {
 		arg1 []*operation.QueuedOperation
 	}
 	prepareTxnFilesReturns struct {
-		result1 string
-		result2 []*protocol.AnchorDocument
-		result3 []*operation.Reference
-		result4 error
+		result1 *protocol.AnchoringInfo
+		result2 error
 	}
 	prepareTxnFilesReturnsOnCall map[int]struct {
-		result1 string
-		result2 []*protocol.AnchorDocument
-		result3 []*operation.Reference
-		result4 error
+		result1 *protocol.AnchoringInfo
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OperationHandler) PrepareTxnFiles(arg1 []*operation.QueuedOperation) (string, []*protocol.AnchorDocument, []*operation.Reference, error) {
+func (fake *OperationHandler) PrepareTxnFiles(arg1 []*operation.QueuedOperation) (*protocol.AnchoringInfo, error) {
 	var arg1Copy []*operation.QueuedOperation
 	if arg1 != nil {
 		arg1Copy = make([]*operation.QueuedOperation, len(arg1))
@@ -47,10 +43,10 @@ func (fake *OperationHandler) PrepareTxnFiles(arg1 []*operation.QueuedOperation)
 		return fake.PrepareTxnFilesStub(arg1)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3, ret.result4
+		return ret.result1, ret.result2
 	}
 	fakeReturns := fake.prepareTxnFilesReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3, fakeReturns.result4
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *OperationHandler) PrepareTxnFilesCallCount() int {
@@ -59,7 +55,7 @@ func (fake *OperationHandler) PrepareTxnFilesCallCount() int {
 	return len(fake.prepareTxnFilesArgsForCall)
 }
 
-func (fake *OperationHandler) PrepareTxnFilesCalls(stub func([]*operation.QueuedOperation) (string, []*protocol.AnchorDocument, []*operation.Reference, error)) {
+func (fake *OperationHandler) PrepareTxnFilesCalls(stub func([]*operation.QueuedOperation) (*protocol.AnchoringInfo, error)) {
 	fake.prepareTxnFilesMutex.Lock()
 	defer fake.prepareTxnFilesMutex.Unlock()
 	fake.PrepareTxnFilesStub = stub
@@ -72,36 +68,30 @@ func (fake *OperationHandler) PrepareTxnFilesArgsForCall(i int) []*operation.Que
 	return argsForCall.arg1
 }
 
-func (fake *OperationHandler) PrepareTxnFilesReturns(result1 string, result2 []*protocol.AnchorDocument, result3 []*operation.Reference, result4 error) {
+func (fake *OperationHandler) PrepareTxnFilesReturns(result1 *protocol.AnchoringInfo, result2 error) {
 	fake.prepareTxnFilesMutex.Lock()
 	defer fake.prepareTxnFilesMutex.Unlock()
 	fake.PrepareTxnFilesStub = nil
 	fake.prepareTxnFilesReturns = struct {
-		result1 string
-		result2 []*protocol.AnchorDocument
-		result3 []*operation.Reference
-		result4 error
-	}{result1, result2, result3, result4}
+		result1 *protocol.AnchoringInfo
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *OperationHandler) PrepareTxnFilesReturnsOnCall(i int, result1 string, result2 []*protocol.AnchorDocument, result3 []*operation.Reference, result4 error) {
+func (fake *OperationHandler) PrepareTxnFilesReturnsOnCall(i int, result1 *protocol.AnchoringInfo, result2 error) {
 	fake.prepareTxnFilesMutex.Lock()
 	defer fake.prepareTxnFilesMutex.Unlock()
 	fake.PrepareTxnFilesStub = nil
 	if fake.prepareTxnFilesReturnsOnCall == nil {
 		fake.prepareTxnFilesReturnsOnCall = make(map[int]struct {
-			result1 string
-			result2 []*protocol.AnchorDocument
-			result3 []*operation.Reference
-			result4 error
+			result1 *protocol.AnchoringInfo
+			result2 error
 		})
 	}
 	fake.prepareTxnFilesReturnsOnCall[i] = struct {
-		result1 string
-		result2 []*protocol.AnchorDocument
-		result3 []*operation.Reference
-		result4 error
-	}{result1, result2, result3, result4}
+		result1 *protocol.AnchoringInfo
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *OperationHandler) Invocations() map[string][][]interface{} {

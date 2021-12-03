@@ -62,17 +62,17 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Len(t, refs, createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
-		require.Len(t, artifacts, 5)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Len(t, anchoringInfo.OperationReferences, createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
+		require.Len(t, anchoringInfo.Artifacts, 5)
 
 		provider := NewOperationProvider(pc.Protocol, parser, cas, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -87,10 +87,10 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, _, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
 
 		smallDeltaProofSize := mocks.GetDefaultProtocolParameters()
 		smallDeltaProofSize.MaxDeltaSize = 50
@@ -99,7 +99,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -116,15 +116,15 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
 		// anchor string has 9 operations "9.coreIndexURI"
-		anchorString, _, _, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
 
 		// update number of operations in anchor string from 9 to 7
-		ad, err := ParseAnchorData(anchorString)
+		ad, err := ParseAnchorData(anchoringInfo.AnchorString)
 		require.NoError(t, err)
 		ad.NumberOfOperations = 7
-		anchorString = ad.GetAnchorString()
+		anchorString := ad.GetAnchorString()
 
 		provider := NewOperationProvider(mocks.NewMockProtocolClient().Protocol, operationparser.New(pc.Protocol), cas, cp)
 
@@ -162,9 +162,9 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
-		anchorString, _, _, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
 
 		invalid := mocks.NewMockProtocolClient().Protocol
 		invalid.MultihashAlgorithms = []uint{55}
@@ -173,7 +173,7 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         mocks.DefaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -207,20 +207,20 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), deactivateOpsNum)
-		require.Equal(t, refs[0].Type, operation.TypeDeactivate)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), deactivateOpsNum)
+		require.Equal(t, anchoringInfo.OperationReferences[0].Type, operation.TypeDeactivate)
 		// core proof, core index
-		require.Len(t, artifacts, 2)
+		require.Len(t, anchoringInfo.Artifacts, 2)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -238,20 +238,20 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), updateOpsNum)
-		require.Equal(t, refs[0].Type, operation.TypeUpdate)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), updateOpsNum)
+		require.Equal(t, anchoringInfo.OperationReferences[0].Type, operation.TypeUpdate)
 		// chunk, provisional proof and provisional index, core index
-		require.Len(t, artifacts, 4)
+		require.Len(t, anchoringInfo.Artifacts, 4)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -269,20 +269,20 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), createOpsNum)
-		require.Equal(t, refs[0].Type, operation.TypeCreate)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), createOpsNum)
+		require.Equal(t, anchoringInfo.OperationReferences[0].Type, operation.TypeCreate)
 		// chunk, provisional index, and core index
-		require.Len(t, artifacts, 3)
+		require.Len(t, anchoringInfo.Artifacts, 3)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})
@@ -300,20 +300,20 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), recoverOpsNum)
-		require.Equal(t, refs[0].Type, operation.TypeRecover)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), recoverOpsNum)
+		require.Equal(t, anchoringInfo.OperationReferences[0].Type, operation.TypeRecover)
 		// chunk, provisional index, core proof, core index
-		require.Len(t, artifacts, 4)
+		require.Len(t, anchoringInfo.Artifacts, 4)
 
 		p := mocks.NewMockProtocolClient().Protocol
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
 		txnOps, err := provider.GetTxnOperations(&txn.SidetreeTxn{
 			Namespace:         defaultNS,
-			AnchorString:      anchorString,
+			AnchorString:      anchoringInfo.AnchorString,
 			TransactionNumber: 1,
 			TransactionTime:   1,
 		})

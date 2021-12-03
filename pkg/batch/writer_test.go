@@ -186,7 +186,7 @@ func TestBatchTimer(t *testing.T) {
 	require.Equal(t, 1, len(cf.Deltas))
 }
 
-func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
+func TestAdditionalSuffixInBatchFile(t *testing.T) {
 	ctx := newMockContext()
 	writer, err := New(namespace, ctx)
 	require.Nil(t, err)
@@ -204,17 +204,31 @@ func TestDiscardDuplicateSuffixInBatchFile(t *testing.T) {
 	err = writer.Add(op, 0)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second)
+	time.Sleep(3 * time.Second)
 
-	// we should have 1 anchors: 2 operations % max 2 operations per batch
-	require.Equal(t, 1, len(ctx.AnchorWriter.GetAnchors()))
+	// we should have 2 anchors because we have two operations for the same suffix in one batch
+	// second one will be processed in the next batch
+	require.Equal(t, 2, len(ctx.AnchorWriter.GetAnchors()))
 
 	ad, err := txnprovider.ParseAnchorData(ctx.AnchorWriter.GetAnchors()[0])
 	require.NoError(t, err)
 
-	// Check that first anchor has one operation per batch; second one has been discarded
+	// Check that first anchor has one operation per batch; second one will be processed in the next batch
 	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
-	require.Nil(t, err)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(cif.Operations.Create))
+	require.Equal(t, 0, len(cif.Operations.Recover))
+	require.Equal(t, 0, len(cif.Operations.Deactivate))
+
+	require.Nil(t, pif.Operations)
+
+	ad, err = txnprovider.ParseAnchorData(ctx.AnchorWriter.GetAnchors()[1])
+	require.NoError(t, err)
+
+	// Check that first anchor has one operation per batch; second one has been discarded
+	cif, pif, cf, err = getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
+	require.NoError(t, err)
 
 	require.Equal(t, 1, len(cif.Operations.Create))
 	require.Equal(t, 0, len(cif.Operations.Recover))
