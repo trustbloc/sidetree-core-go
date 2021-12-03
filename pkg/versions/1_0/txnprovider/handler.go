@@ -38,10 +38,10 @@ func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProv
 
 // PrepareTxnFiles will create batch files(core index, core proof, provisional index, provisional proof and chunk)
 // from batch operation and return anchor string, batch files information and operations.
-func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*protocol.AnchorDocument, []*operation.Reference, error) { //nolint:funlen
-	parsedOps, dids, err := h.parseOperations(ops)
+func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (*protocol.AnchoringInfo, error) { //nolint:funlen
+	parsedOps, info, err := h.parseOperations(ops)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
 
 	var artifacts []*protocol.AnchorDocument
@@ -51,7 +51,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 	if len(parsedOps.Deactivate) != len(ops) {
 		chunkURI, innerErr := h.createChunkFile(parsedOps)
 		if innerErr != nil {
-			return "", nil, nil, innerErr
+			return nil, innerErr
 		}
 
 		artifacts = append(artifacts,
@@ -63,7 +63,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 
 		provisionalProofURI, innerErr := h.createProvisionalProofFile(parsedOps.Update)
 		if innerErr != nil {
-			return "", nil, nil, innerErr
+			return nil, innerErr
 		}
 
 		if provisionalProofURI != "" {
@@ -77,7 +77,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 
 		provisionalIndexURI, innerErr = h.createProvisionalIndexFile([]string{chunkURI}, provisionalProofURI, parsedOps.Update)
 		if innerErr != nil {
-			return "", nil, nil, innerErr
+			return nil, innerErr
 		}
 
 		artifacts = append(artifacts,
@@ -90,7 +90,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 
 	coreProofURI, err := h.createCoreProofFile(parsedOps.Recover, parsedOps.Deactivate)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
 
 	if coreProofURI != "" {
@@ -104,7 +104,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 
 	coreIndexURI, err := h.createCoreIndexFile(coreProofURI, provisionalIndexURI, parsedOps)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
 
 	artifacts = append(artifacts,
@@ -119,23 +119,34 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (st
 		CoreIndexFileURI:   coreIndexURI,
 	}
 
-	return ad.GetAnchorString(), artifacts, dids, nil
+	return &protocol.AnchoringInfo{
+		AnchorString:         ad.GetAnchorString(),
+		Artifacts:            artifacts,
+		OperationReferences:  info.OperationReferences,
+		ExpiredOperations:    info.ExpiredOperations,
+		AdditionalOperations: info.AdditionalOperations,
+	}, nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, []*operation.Reference, error) { // nolint:gocyclo,funlen
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, *additionalAnchoringInfo, error) { // nolint:gocyclo,funlen
 	if len(ops) == 0 {
 		return nil, nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
 
 	batchSuffixes := make(map[string]*operation.Reference)
 
+	var expiredOperations []*operation.QueuedOperation
+	var additionalOperations []*operation.QueuedOperation
+
 	result := &models.SortedOperations{}
-	for _, d := range ops {
-		op, e := h.parser.ParseOperation(d.Namespace, d.OperationRequest, false)
+	for _, queuedOperation := range ops {
+		op, e := h.parser.ParseOperation(queuedOperation.Namespace, queuedOperation.OperationRequest, false)
 		if e != nil {
 			if e == operationparser.ErrOperationExpired {
 				// stale operations should not be added to the batch; ignore operation
-				logger.Warnf("[%s] stale operation for suffix[%s] found in batch operations: discarding operation %s", d.Namespace, d.UniqueSuffix, d.OperationRequest)
+				logger.Warnf("[%s] stale operation for suffix[%s] found in batch operations: discarding operation %s", queuedOperation.Namespace, queuedOperation.UniqueSuffix, queuedOperation.OperationRequest)
+
+				expiredOperations = append(expiredOperations, queuedOperation)
 
 				continue
 			}
@@ -147,7 +158,9 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
-			logger.Warnf("[%s] duplicate suffix[%s] found in batch operations: discarding operation %v", d.Namespace, op.UniqueSuffix, op)
+			logger.Debugf("[%s] additional operation for suffix[%s] found in batch operations - adding operation to additional queue to be processed in the next batch", queuedOperation.Namespace, op.UniqueSuffix)
+
+			additionalOperations = append(additionalOperations, queuedOperation)
 
 			continue
 		}
@@ -163,7 +176,7 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 		case operation.TypeUpdate:
 			result.Update = append(result.Update, op)
 
-			anchorOrigin = d.AnchorOrigin
+			anchorOrigin = queuedOperation.AnchorOrigin
 
 		case operation.TypeRecover:
 			result.Recover = append(result.Recover, op)
@@ -178,7 +191,7 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 		case operation.TypeDeactivate:
 			result.Deactivate = append(result.Deactivate, op)
 
-			anchorOrigin = d.AnchorOrigin
+			anchorOrigin = queuedOperation.AnchorOrigin
 		}
 
 		opRef := &operation.Reference{
@@ -195,7 +208,11 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 		opRefs = append(opRefs, opRef)
 	}
 
-	return result, opRefs, nil
+	return result, &additionalAnchoringInfo{
+		OperationReferences:  opRefs,
+		ExpiredOperations:    expiredOperations,
+		AdditionalOperations: additionalOperations,
+	}, nil
 }
 
 // createCoreIndexFile will create core index file from operations, proof files and provisional index file and write it to CAS
@@ -267,4 +284,10 @@ func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (str
 	}
 
 	return address, nil
+}
+
+type additionalAnchoringInfo struct {
+	OperationReferences  []*operation.Reference
+	ExpiredOperations    []*operation.QueuedOperation
+	AdditionalOperations []*operation.QueuedOperation
 }

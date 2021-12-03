@@ -141,10 +141,19 @@ type AnchorDocument struct {
 	Type AnchorDocumentType
 }
 
+// AnchoringInfo contains anchoring info plus additional batch information.
+type AnchoringInfo struct {
+	AnchorString         string
+	Artifacts            []*AnchorDocument
+	OperationReferences  []*operation.Reference
+	AdditionalOperations []*operation.QueuedOperation
+	ExpiredOperations    []*operation.QueuedOperation
+}
+
 // OperationHandler defines an interface for creating batch files.
 type OperationHandler interface {
 	// PrepareTxnFiles operations will create relevant batch files, store them in CAS and return anchor string.
-	PrepareTxnFiles(ops []*operation.QueuedOperation) (string, []*AnchorDocument, []*operation.Reference, error)
+	PrepareTxnFiles(ops []*operation.QueuedOperation) (*AnchoringInfo, error)
 }
 
 // OperationProvider retrieves the anchored operations for the given Sidetree transaction.

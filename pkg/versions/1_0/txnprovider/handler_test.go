@@ -75,13 +75,13 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
-		require.Len(t, artifacts, 5)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
+		require.Len(t, anchoringInfo.Artifacts, 5)
 
-		anchorData, err := ParseAnchorData(anchorString)
+		anchorData, err := ParseAnchorData(anchoringInfo.AnchorString)
 		require.NoError(t, err)
 
 		bytes, err := handler.cas.Read(anchorData.CoreIndexFileURI)
@@ -194,10 +194,10 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol, operationparser.WithAnchorTimeValidator(&mockTimeValidator{})))
 
-		anchorString, _, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Equal(t, len(refs), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Equal(t, len(anchoringInfo.OperationReferences), createOpsNum+updateOpsNum+deactivateOpsNum+recoverOpsNum)
 	})
 
 	t.Run("success - no recover, deactivate or update ops", func(t *testing.T) {
@@ -212,14 +212,14 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
-		require.NotEmpty(t, anchorString)
-		require.Len(t, refs, createOpsNum)
+		require.NotEmpty(t, anchoringInfo.AnchorString)
+		require.Len(t, anchoringInfo.OperationReferences, createOpsNum)
 		// additional artifacts: chunk, provisional index, core index
-		require.Equal(t, 3, len(artifacts))
+		require.Equal(t, 3, len(anchoringInfo.Artifacts))
 
-		anchorData, err := ParseAnchorData(anchorString)
+		anchorData, err := ParseAnchorData(anchoringInfo.AnchorString)
 		require.NoError(t, err)
 
 		bytes, err := handler.cas.Read(anchorData.CoreIndexFileURI)
@@ -272,11 +272,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(nil)
+		anchoringInfo, err := handler.PrepareTxnFiles(nil)
 		require.Error(t, err)
-		require.Empty(t, anchorString)
-		require.Nil(t, refs)
-		require.Nil(t, artifacts)
+		require.Empty(t, anchoringInfo)
 		require.Contains(t, err.Error(), "prepare txn operations called without operations, should not happen")
 	})
 
@@ -293,11 +291,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			Namespace:        defaultNS,
 		}
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles([]*operation.QueuedOperation{op})
+		anchoringInfo, err := handler.PrepareTxnFiles([]*operation.QueuedOperation{op})
 		require.Error(t, err)
-		require.Empty(t, anchorString)
-		require.Nil(t, refs)
-		require.Nil(t, artifacts)
+		require.Empty(t, anchoringInfo)
 		require.Contains(t, err.Error(), "parse operation: operation type [] not supported")
 	})
 
@@ -310,11 +306,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
-		require.Empty(t, anchorString)
-		require.Nil(t, refs)
-		require.Nil(t, artifacts)
+		require.Empty(t, anchoringInfo)
 		require.Contains(t, err.Error(), "failed to store chunk file: CAS error")
 	})
 
@@ -327,11 +321,9 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			compression,
 			operationparser.New(protocol))
 
-		anchorString, artifacts, refs, err := handler.PrepareTxnFiles(ops)
+		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
-		require.Empty(t, anchorString)
-		require.Nil(t, refs)
-		require.Nil(t, artifacts)
+		require.Empty(t, anchoringInfo)
 		require.Contains(t, err.Error(), "failed to store core proof file: CAS error")
 	})
 }
