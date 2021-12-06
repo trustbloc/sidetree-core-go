@@ -143,6 +143,34 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		require.Nil(t, doc)
 	})
 
+	t.Run("error - batch writer error (unpublished operation store option)", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		opt := WithUnpublishedOperationStore(&noopUnpublishedOpsStore{}, []operation.Type{operation.TypeUpdate})
+
+		dochandler, cleanup := getDocumentHandler(store, opt)
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		createOp := getCreateOperation()
+
+		createOpBuffer, err := json.Marshal(createOp)
+		require.NoError(t, err)
+
+		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
+		require.NoError(t, err)
+
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationRequest: createOpBuffer})
+		require.NoError(t, err)
+
+		dochandler.writer = &mockBatchWriter{Err: fmt.Errorf("batch writer error")}
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "batch writer error")
+	})
+
 	t.Run("error - unpublished operation store put error", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
@@ -182,7 +210,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		require.NotNil(t, dochandler)
 		defer cleanup()
 
-		dochandler.deleteOperationFromUnpublishedOpsStore("suffix")
+		dochandler.deleteOperationFromUnpublishedOpsStore(&operation.AnchoredOperation{UniqueSuffix: "suffix"})
 	})
 
 	t.Run("error - decorator error", func(t *testing.T) {
@@ -924,7 +952,7 @@ func (m *mockUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
 	return m.PutErr
 }
 
-func (m *mockUnpublishedOpsStore) Delete(_ string) error {
+func (m *mockUnpublishedOpsStore) Delete(_ *operation.AnchoredOperation) error {
 	return m.DeleteErr
 }
 
@@ -938,4 +966,12 @@ func (m *mockOperationDecorator) Decorate(op *operation.Operation) (*operation.O
 	}
 
 	return op, nil
+}
+
+type mockBatchWriter struct {
+	Err error
+}
+
+func (mbw *mockBatchWriter) Add(_ *operation.QueuedOperation, _ uint64) error {
+	return mbw.Err
 }
