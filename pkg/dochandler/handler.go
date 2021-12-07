@@ -60,7 +60,7 @@ type unpublishedOperationStore interface {
 	// Put saves operation into unpublished operation store.
 	Put(op *operation.AnchoredOperation) error
 	// Delete deletes operation from unpublished operation store.
-	Delete(suffix string) error
+	Delete(op *operation.AnchoredOperation) error
 }
 
 // operationDecorator is an interface for validating/pre-processing operations.
@@ -159,7 +159,9 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
-	err = r.addOperationToUnpublishedOpsStore(op, pv)
+	unpublishedOp := r.getUnpublishedOperation(op, pv)
+
+	err = r.addOperationToUnpublishedOpsStore(unpublishedOp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add operation for suffix[%s] to unpublished operation store: %s", op.UniqueSuffix, err.Error())
 	}
@@ -168,7 +170,7 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 	if err := r.addToBatch(op, pv.Protocol().GenesisTime); err != nil {
 		logger.Errorf("Failed to add operation to batch: %s", err.Error())
 
-		r.deleteOperationFromUnpublishedOpsStore(op.UniqueSuffix)
+		r.deleteOperationFromUnpublishedOpsStore(unpublishedOp)
 
 		return nil, err
 	}
@@ -183,12 +185,12 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 	return nil, nil
 }
 
-func (r *DocumentHandler) addOperationToUnpublishedOpsStore(op *operation.Operation, pv protocol.Version) error {
+func (r *DocumentHandler) getUnpublishedOperation(op *operation.Operation, pv protocol.Version) *operation.AnchoredOperation {
 	if !contains(r.unpublishedOperationTypes, op.Type) {
 		return nil
 	}
 
-	unpublishedOp := &operation.AnchoredOperation{
+	return &operation.AnchoredOperation{
 		Type:             op.Type,
 		UniqueSuffix:     op.UniqueSuffix,
 		OperationRequest: op.OperationRequest,
@@ -196,12 +198,24 @@ func (r *DocumentHandler) addOperationToUnpublishedOpsStore(op *operation.Operat
 		ProtocolVersion:  pv.Protocol().GenesisTime,
 		AnchorOrigin:     op.AnchorOrigin,
 	}
+}
+
+func (r *DocumentHandler) addOperationToUnpublishedOpsStore(unpublishedOp *operation.AnchoredOperation) error {
+	if unpublishedOp == nil {
+		// nothing to do
+		return nil
+	}
 
 	return r.unpublishedOperationStore.Put(unpublishedOp)
 }
 
-func (r *DocumentHandler) deleteOperationFromUnpublishedOpsStore(suffix string) {
-	err := r.unpublishedOperationStore.Delete(suffix)
+func (r *DocumentHandler) deleteOperationFromUnpublishedOpsStore(unpublishedOp *operation.AnchoredOperation) {
+	if unpublishedOp == nil {
+		// nothing to do
+		return
+	}
+
+	err := r.unpublishedOperationStore.Delete(unpublishedOp)
 	if err != nil {
 		logger.Warnf("Failed to delete operation from unpublished store: %s", err.Error())
 	}
@@ -494,7 +508,7 @@ func (noop *noopUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
 	return nil
 }
 
-func (noop *noopUnpublishedOpsStore) Delete(_ string) error {
+func (noop *noopUnpublishedOpsStore) Delete(_ *operation.AnchoredOperation) error {
 	return nil
 }
 

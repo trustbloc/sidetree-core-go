@@ -180,7 +180,8 @@ func TestUpdateDocument(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
-		p := New("test", store, pc, WithUnpublishedOperationStore(&mockUnpublishedOpsStore{AnchoredOp: updateOp}))
+		p := New("test", store, pc,
+			WithUnpublishedOperationStore(&mockUnpublishedOpsStore{AnchoredOps: []*operation.AnchoredOperation{updateOp}}))
 		result, err := p.Resolve(uniqueSuffix)
 		require.Nil(t, err)
 
@@ -1372,14 +1373,14 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 }
 
 type mockUnpublishedOpsStore struct {
-	GetErr     error
-	AnchoredOp *operation.AnchoredOperation
+	GetErr      error
+	AnchoredOps []*operation.AnchoredOperation
 }
 
-func (m *mockUnpublishedOpsStore) Get(_ string) (*operation.AnchoredOperation, error) {
+func (m *mockUnpublishedOpsStore) Get(_ string) ([]*operation.AnchoredOperation, error) {
 	if m.GetErr != nil {
 		return nil, m.GetErr
 	}
 
-	return m.AnchoredOp, nil
+	return m.AnchoredOps, nil
 }

@@ -38,7 +38,7 @@ type OperationStoreClient interface {
 
 type unpublishedOperationStore interface {
 	// Get retrieves unpublished operation related to document, we can have only one unpublished operation.
-	Get(uniqueSuffix string) (*operation.AnchoredOperation, error)
+	Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error)
 }
 
 // New returns new operation processor with the given name. (Note that name is only used for logging.)
@@ -74,11 +74,11 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*oper
 
 	var unpublishedOps []*operation.AnchoredOperation
 
-	unpublishedOp, err := s.unpublishedOperationStore.Get(uniqueSuffix)
+	unpubOps, err := s.unpublishedOperationStore.Get(uniqueSuffix)
 	if err == nil {
-		logger.Debugf("[%s] Found unpublished %s operation for unique suffix [%s]", s.name, unpublishedOp.Type, uniqueSuffix)
+		logger.Debugf("[%s] Found %d unpublished operations for unique suffix [%s]", s.name, len(unpubOps), uniqueSuffix)
 
-		unpublishedOps = append(unpublishedOps, unpublishedOp)
+		unpublishedOps = append(unpublishedOps, unpubOps...)
 	}
 
 	publishedOps, unpublishedOps = addAdditionalOperations(publishedOps, unpublishedOps, additionalOps)
@@ -389,6 +389,6 @@ func (s *OperationProcessor) getCommitment(op *operation.AnchoredOperation) (str
 
 type noopUnpublishedOpsStore struct{}
 
-func (noop *noopUnpublishedOpsStore) Get(_ string) (*operation.AnchoredOperation, error) {
+func (noop *noopUnpublishedOpsStore) Get(_ string) ([]*operation.AnchoredOperation, error) {
 	return nil, fmt.Errorf("not found")
 }
