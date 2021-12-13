@@ -54,6 +54,8 @@ type DocumentHandler struct {
 
 	unpublishedOperationStore unpublishedOperationStore
 	unpublishedOperationTypes []operation.Type
+
+	metrics metricsProvider
 }
 
 type unpublishedOperationStore interface {
@@ -110,8 +112,20 @@ func WithOperationDecorator(decorator operationDecorator) Option {
 	}
 }
 
+type metricsProvider interface {
+	ProcessOperation(duration time.Duration)
+	GetProtocolVersionTime(since time.Duration)
+	ParseOperationTime(since time.Duration)
+	ValidateOperationTime(since time.Duration)
+	DecorateOperationTime(since time.Duration)
+	AddUnpublishedOperationTime(since time.Duration)
+	AddOperationToBatchTime(since time.Duration)
+	GetCreateOperationResultTime(since time.Duration)
+}
+
 // New creates a new document handler with the context.
-func New(namespace string, aliases []string, pc protocol.Client, writer batchWriter, processor operationProcessor, opts ...Option) *DocumentHandler {
+func New(namespace string, aliases []string, pc protocol.Client, writer batchWriter, processor operationProcessor,
+	metrics metricsProvider, opts ...Option) *DocumentHandler { //nolint:funlen,gocyclo
 	dh := &DocumentHandler{
 		protocol:                  pc,
 		processor:                 processor,
@@ -119,6 +133,7 @@ func New(namespace string, aliases []string, pc protocol.Client, writer batchWri
 		writer:                    writer,
 		namespace:                 namespace,
 		aliases:                   aliases,
+		metrics:                   metrics,
 		unpublishedOperationStore: &noopUnpublishedOpsStore{},
 		unpublishedOperationTypes: []operation.Type{},
 	}
@@ -137,16 +152,32 @@ func (r *DocumentHandler) Namespace() string {
 }
 
 // ProcessOperation validates operation and adds it to the batch.
-func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersion uint64) (*document.ResolutionResult, error) { //nolint:gocyclo
+func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersion uint64) (*document.ResolutionResult, error) { //nolint:gocyclo,funlen
+	startTime := time.Now()
+
+	defer func() {
+		r.metrics.ProcessOperation(time.Since(startTime))
+	}()
+
+	getProtocolVersionTime := time.Now()
+
 	pv, err := r.protocol.Get(protocolVersion)
 	if err != nil {
 		return nil, err
 	}
 
+	r.metrics.GetProtocolVersionTime(time.Since(getProtocolVersionTime))
+
+	parseOperationStartTime := time.Now()
+
 	op, err := pv.OperationParser().Parse(r.namespace, operationBuffer)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
+
+	r.metrics.ParseOperationTime(time.Since(parseOperationStartTime))
+
+	validateOperationStartTime := time.Now()
 
 	// perform validation for operation request
 	err = r.validateOperation(op, pv)
@@ -154,17 +185,29 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
+	r.metrics.ValidateOperationTime(time.Since(validateOperationStartTime))
+
+	decorateOperationStartTime := time.Now()
+
 	op, err = r.decorator.Decorate(op)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
 	}
 
+	r.metrics.DecorateOperationTime(time.Since(decorateOperationStartTime))
+
 	unpublishedOp := r.getUnpublishedOperation(op, pv)
+
+	addUnpublishedOperationStartTime := time.Now()
 
 	err = r.addOperationToUnpublishedOpsStore(unpublishedOp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add operation for suffix[%s] to unpublished operation store: %s", op.UniqueSuffix, err.Error())
 	}
+
+	r.metrics.AddUnpublishedOperationTime(time.Since(addUnpublishedOperationStartTime))
+
+	addToBatchStartTime := time.Now()
 
 	// validated operation will be added to the batch
 	if err := r.addToBatch(op, pv.Protocol().GenesisTime); err != nil {
@@ -174,6 +217,8 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 
 		return nil, err
 	}
+
+	r.metrics.AddOperationToBatchTime(time.Since(addToBatchStartTime))
 
 	logger.Debugf("[%s] operation added to the batch", op.ID)
 
@@ -257,6 +302,12 @@ func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.V
 }
 
 func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol.Version) (*document.ResolutionResult, error) {
+	startTime := time.Now()
+
+	defer func() {
+		r.metrics.GetCreateOperationResultTime(time.Since(startTime))
+	}()
+
 	rm, err := r.getCreateResult(op, pv)
 	if err != nil {
 		return nil, err
