@@ -58,7 +58,7 @@ const (
 
 func TestDocumentHandler_New(t *testing.T) {
 	aliases := []string{"alias1", "alias2"}
-	dh := New(namespace, aliases, nil, nil, nil)
+	dh := New(namespace, aliases, nil, nil, nil, &mocks.MetricsProvider{})
 	require.Equal(t, namespace, dh.Namespace())
 	require.Equal(t, aliases, dh.aliases)
 	require.Empty(t, dh.domain)
@@ -68,7 +68,7 @@ func TestDocumentHandler_New(t *testing.T) {
 
 	opDecorator := &mockOperationDecorator{}
 
-	dh = New(namespace, nil, nil, nil, nil,
+	dh = New(namespace, nil, nil, nil, nil, &mocks.MetricsProvider{},
 		WithLabel(label), WithDomain(domain), WithOperationDecorator(opDecorator))
 	require.Equal(t, namespace, dh.Namespace())
 	require.Equal(t, domain, dh.domain)
@@ -78,7 +78,7 @@ func TestDocumentHandler_New(t *testing.T) {
 
 func TestDocumentHandler_Protocol(t *testing.T) {
 	pc := newMockProtocolClient()
-	dh := New("", nil, pc, nil, nil)
+	dh := New("", nil, pc, nil, nil, &mocks.MetricsProvider{})
 	require.NotNil(t, dh)
 }
 
@@ -647,7 +647,7 @@ func getDocumentHandlerWithProtocolClient(store *mocks.MockOperationStore, proto
 	// start go routine for cutting batches
 	writer.Start()
 
-	return New(namespace, []string{alias}, protocol, writer, processor, opts...), func() { writer.Stop() }
+	return New(namespace, []string{alias}, protocol, writer, processor, &mocks.MetricsProvider{}, opts...), func() { writer.Stop() }
 }
 
 func getCreateOperation() *model.Operation {
