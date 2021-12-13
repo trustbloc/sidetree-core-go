@@ -49,7 +49,6 @@ func TestNew(t *testing.T) {
 	writer, err = New(namespace, ctx, WithBatchTimeout(10*time.Second))
 	require.Nil(t, err)
 	require.NotNil(t, writer)
-	require.EqualValues(t, writer.batchTimeout, 10*time.Second)
 
 	writer, err = New(namespace, ctx, withError())
 	require.Error(t, err)
@@ -80,7 +79,7 @@ func TestStart(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 
 	// we should have 4 anchors: 8 operations % max 2 operations per batch
 	require.Equal(t, 4, len(ctx.AnchorWriter.GetAnchors()))
@@ -153,7 +152,7 @@ func getBatchFiles(cc cas.Client, anchor string) (*models.CoreIndexFile, *models
 
 func TestBatchTimer(t *testing.T) {
 	ctx := newMockContext()
-	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second))
+	writer, err := New(namespace, ctx, WithBatchTimeout(2*time.Second), WithMonitorInterval(time.Second))
 	require.Nil(t, err)
 
 	writer.Start()
