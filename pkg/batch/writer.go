@@ -34,7 +34,7 @@ var logger = log.New("sidetree-core-writer")
 
 const (
 	defaultBatchTimeout    = 2 * time.Second
-	defaultSendChannelSize = 100
+	defaultMonitorInterval = time.Second
 )
 
 // Option defines Writer options such as batch timeout.
@@ -45,22 +45,16 @@ type batchCutter interface {
 	Cut(force bool) (cutter.Result, error)
 }
 
-type process struct {
-	// force indicates that the operation is to be processed
-	// immediately, i.e. don't wait for the batch timeout
-	force bool
-}
-
 // Writer implements batch writer.
 type Writer struct {
-	namespace    string
-	context      Context
-	batchCutter  batchCutter
-	sendChan     chan process
-	exitChan     chan struct{}
-	batchTimeout time.Duration
-	stopped      uint32
-	protocol     protocol.Client
+	namespace          string
+	context            Context
+	batchCutter        batchCutter
+	exitChan           chan struct{}
+	stopped            uint32
+	protocol           protocol.Client
+	monitorTicker      *time.Ticker
+	batchTimeoutTicker *time.Ticker
 }
 
 // Context contains batch writer context.
@@ -103,14 +97,19 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 		batchTimeout = rOpts.BatchTimeout
 	}
 
+	monitorInterval := defaultMonitorInterval
+	if rOpts.MonitorInterval != 0 {
+		monitorInterval = rOpts.MonitorInterval
+	}
+
 	return &Writer{
-		namespace:    namespace,
-		batchCutter:  cutter.New(context.Protocol(), context.OperationQueue()),
-		sendChan:     make(chan process, defaultSendChannelSize),
-		exitChan:     make(chan struct{}),
-		batchTimeout: batchTimeout,
-		context:      context,
-		protocol:     context.Protocol(),
+		namespace:          namespace,
+		batchCutter:        cutter.New(context.Protocol(), context.OperationQueue()),
+		exitChan:           make(chan struct{}),
+		context:            context,
+		protocol:           context.Protocol(),
+		batchTimeoutTicker: time.NewTicker(batchTimeout),
+		monitorTicker:      time.NewTicker(monitorInterval),
 	}, nil
 }
 
@@ -150,30 +149,19 @@ func (r *Writer) Add(op *operation.QueuedOperation, protocolVersion uint64) erro
 		return err
 	}
 
-	select {
-	case r.sendChan <- process{force: false}:
-		// Send a notification that an operation was added to the queue
-		logger.Debugf("[%s] operation added to the queue", op.UniqueSuffix)
-
-		return nil
-	case <-r.exitChan:
-		return fmt.Errorf("message from exit channel")
-	}
+	return nil
 }
 
 func (r *Writer) main() {
-	// On startup, there may be operations in the queue. Send a notification
-	// so that any pending items in the queue may be immediately processed.
-	r.sendChan <- process{force: true}
+	// On startup, there may be operations in the queue. Process them immediately.
+	r.processAvailable(true)
 
 	for {
 		select {
-		case p := <-r.sendChan:
-			logger.Debugf("[%s] Handling process notification for batch writer: %v", r.namespace, p)
+		case <-r.monitorTicker.C:
+			r.processAvailable(false)
 
-			r.processAvailable(p.force)
-
-		case <-time.After(r.batchTimeout):
+		case <-r.batchTimeoutTicker.C:
 			r.processAvailable(true)
 
 		case <-r.exitChan:
@@ -300,9 +288,20 @@ func WithBatchTimeout(batchTimeout time.Duration) Option {
 	}
 }
 
+// WithMonitorInterval specifies the interval in which the operation queue is monitored in order to see
+// if the maximum batch size has been reached.
+func WithMonitorInterval(interval time.Duration) Option {
+	return func(o *Options) error {
+		o.MonitorInterval = interval
+
+		return nil
+	}
+}
+
 // Options allows the user to specify more advanced options.
 type Options struct {
-	BatchTimeout time.Duration
+	BatchTimeout    time.Duration
+	MonitorInterval time.Duration
 }
 
 // prepareOptsFromOptions reads options.
