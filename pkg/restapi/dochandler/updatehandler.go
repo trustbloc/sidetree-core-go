@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -22,22 +23,34 @@ type Processor interface {
 	ProcessOperation(operation []byte, protocolVersion uint64) (*document.ResolutionResult, error)
 }
 
+type metricsProvider interface {
+	HTTPCreateUpdateTime(duration time.Duration)
+}
+
 // UpdateHandler handles the creation and update of documents.
 type UpdateHandler struct {
 	processor Processor
 	protocol  protocol.Client
+	metrics   metricsProvider
 }
 
 // NewUpdateHandler returns a new document update handler.
-func NewUpdateHandler(processor Processor, pc protocol.Client) *UpdateHandler {
+func NewUpdateHandler(processor Processor, pc protocol.Client, metrics metricsProvider) *UpdateHandler {
 	return &UpdateHandler{
 		processor: processor,
 		protocol:  pc,
+		metrics:   metrics,
 	}
 }
 
 // Update creates or updates a document.
 func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
+	startTime := time.Now()
+
+	defer func() {
+		h.metrics.HTTPCreateUpdateTime(time.Since(startTime))
+	}()
+
 	request, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		common.WriteError(rw, http.StatusBadRequest, err)

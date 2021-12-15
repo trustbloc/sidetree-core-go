@@ -47,7 +47,7 @@ const (
 func TestUpdateHandler_Update(t *testing.T) {
 	pc := newMockProtocolClient()
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(pc)
-	handler := NewUpdateHandler(docHandler, pc)
+	handler := NewUpdateHandler(docHandler, pc, &mocks.MetricsProvider{})
 
 	req, err := getCreateRequestInfo()
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		errExpected := errors.New("create doc error")
 		docHandlerWithErr := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
-		handler := NewUpdateHandler(docHandlerWithErr, newMockProtocolClient())
+		handler := NewUpdateHandler(docHandlerWithErr, newMockProtocolClient(), &mocks.MetricsProvider{})
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/document", bytes.NewReader(create))

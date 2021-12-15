@@ -9,6 +9,7 @@ package dochandler
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -25,20 +26,32 @@ type Resolver interface {
 	ResolveDocument(idOrDocument string) (*document.ResolutionResult, error)
 }
 
+type metricsResolveProvider interface {
+	HTTPResolveTime(duration time.Duration)
+}
+
 // ResolveHandler resolves generic documents.
 type ResolveHandler struct {
 	resolver Resolver
+	metrics  metricsResolveProvider
 }
 
 // NewResolveHandler returns a new document resolve handler.
-func NewResolveHandler(resolver Resolver) *ResolveHandler {
+func NewResolveHandler(resolver Resolver, metrics metricsResolveProvider) *ResolveHandler {
 	return &ResolveHandler{
 		resolver: resolver,
+		metrics:  metrics,
 	}
 }
 
 // Resolve resolves a document.
 func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
+	startTime := time.Now()
+
+	defer func() {
+		o.metrics.HTTPResolveTime(time.Since(startTime))
+	}()
+
 	id := getID(req)
 	logger.Debugf("Resolving DID document for ID [%s]", id)
 	response, err := o.doResolve(id)

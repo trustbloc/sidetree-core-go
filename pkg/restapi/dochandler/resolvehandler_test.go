@@ -41,7 +41,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		getID = func(req *http.Request) string { return result.Document.ID() }
-		handler := NewResolveHandler(docHandler)
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
 		handler.Resolve(rw, req)
@@ -65,7 +65,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		initialState := ":" + initialStateJCS
 
 		getID = func(req *http.Request) string { return id + initialState }
-		handler := NewResolveHandler(docHandler)
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
 		handler.Resolve(rw, req)
@@ -77,7 +77,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 	t.Run("Invalid ID", func(t *testing.T) {
 		getID = func(req *http.Request) string { return "someid" }
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewResolveHandler(docHandler)
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -89,7 +89,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 			return namespace + docutil.NamespaceDelimiter + "someid"
 		}
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-		handler := NewResolveHandler(docHandler)
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -102,7 +102,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		}
 		errExpected := errors.New("get doc error")
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithError(errExpected)
-		handler := NewResolveHandler(docHandler)
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
@@ -137,7 +137,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		getID = func(req *http.Request) string { return result.Document.ID() }
-		handler := NewResolveHandler(docHandler)
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/document", nil)
