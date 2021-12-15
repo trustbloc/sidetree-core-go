@@ -18,7 +18,7 @@ import (
 
 func TestResolveHandler_Resolve(t *testing.T) {
 	docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)
-	handler := NewResolveHandler(resolutionPath, docHandler)
+	handler := NewResolveHandler(resolutionPath, docHandler, &mocks.MetricsProvider{})
 	require.Equal(t, resolutionPath+"/{id}", handler.Path())
 	require.Equal(t, http.MethodGet, handler.Method())
 	require.NotNil(t, handler.Handler())

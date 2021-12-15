@@ -42,3 +42,11 @@ func (m *MetricsProvider) AddOperationToBatchTime(value time.Duration) {
 // GetCreateOperationResultTime records the time to create operation result response.
 func (m *MetricsProvider) GetCreateOperationResultTime(value time.Duration) {
 }
+
+// HTTPCreateUpdateTime records the time rest call for create or update.
+func (m *MetricsProvider) HTTPCreateUpdateTime(value time.Duration) {
+}
+
+// HTTPResolveTime records the time rest call for resolve.
+func (m *MetricsProvider) HTTPResolveTime(value time.Duration) {
+}

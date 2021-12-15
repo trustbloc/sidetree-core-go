@@ -39,7 +39,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		pc := newMockProtocolClient()
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(pc)
-		handler := NewUpdateHandler(operationsPath, docHandler, pc)
+		handler := NewUpdateHandler(operationsPath, docHandler, pc, &mocks.MetricsProvider{})
 		require.Equal(t, operationsPath, handler.Path())
 		require.Equal(t, http.MethodPost, handler.Method())
 		require.NotNil(t, handler.Handler())
@@ -71,7 +71,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		pc := newMockProtocolClient()
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace).WithProtocolClient(pc)
-		handler := NewUpdateHandler(operationsPath, docHandler, pc)
+		handler := NewUpdateHandler(operationsPath, docHandler, pc, &mocks.MetricsProvider{})
 
 		createRequest, err := getCreateRequest()
 		require.NoError(t, err)

@@ -38,8 +38,8 @@ func TestRESTAPI(t *testing.T) {
 
 	s := newRESTService(
 		url,
-		NewUpdateHandler(operationsPath, didDocHandler, pc),
-		NewResolveHandler(resolutionPath, didDocHandler),
+		NewUpdateHandler(operationsPath, didDocHandler, pc, &mocks.MetricsProvider{}),
+		NewResolveHandler(resolutionPath, didDocHandler, &mocks.MetricsProvider{}),
 	)
 	s.start()
 	defer s.stop()
