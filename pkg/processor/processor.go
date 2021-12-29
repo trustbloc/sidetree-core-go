@@ -258,7 +258,7 @@ func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation,
 	}
 
 	if len(commitmentMap) != len(ops) {
-		logger.Infof("[%s] Number of commitments applied '%d' doesn't match number of operations '%d' {UniqueSuffix: %s}", s.name, len(commitmentMap), len(ops), uniqueSuffix)
+		logger.Debugf("[%s] Number of commitments applied '%d' doesn't match number of operations '%d' {UniqueSuffix: %s}", s.name, len(commitmentMap), len(ops), uniqueSuffix)
 	}
 
 	return state
