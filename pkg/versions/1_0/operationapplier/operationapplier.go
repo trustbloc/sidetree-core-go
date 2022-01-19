@@ -195,7 +195,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 }
 
 func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	logger.Debugf("[%s] Applying deactivate operation: %+v", anchoredOp)
+	logger.Debugf("Applying deactivate operation: %+v", anchoredOp)
 
 	if rm.Doc == nil {
 		return nil, errors.New("deactivate can only be applied to an existing document")
