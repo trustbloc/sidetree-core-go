@@ -576,6 +576,12 @@ func (d *defaultOperationDecorator) Decorate(op *operation.Operation) (*operatio
 			return nil, err
 		}
 
+		logger.Debugf("processor returned internal result for suffix[%s] for operation type[%s]: %+v", op.UniqueSuffix, op.Type, internalResult)
+
+		if internalResult.Deactivated {
+			return nil, fmt.Errorf("document has been deactivated, no further operations are allowed")
+		}
+
 		if op.Type == operation.TypeUpdate || op.Type == operation.TypeDeactivate {
 			op.AnchorOrigin = internalResult.AnchorOrigin
 		}

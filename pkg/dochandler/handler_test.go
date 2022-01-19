@@ -94,6 +94,86 @@ func TestDocumentHandler_ProcessOperation_Create(t *testing.T) {
 	require.NotNil(t, doc)
 }
 
+func TestDocumentHandler_DefaultDecorator(t *testing.T) {
+	t.Run("success - create", func(t *testing.T) {
+		processor := processor.New("test", mocks.NewMockOperationStore(nil), newMockProtocolClient())
+
+		decorator := &defaultOperationDecorator{processor: processor}
+
+		updateOp := &operation.Operation{
+			Type:         operation.TypeCreate,
+			UniqueSuffix: "suffix",
+		}
+
+		op, err := decorator.Decorate(updateOp)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+	})
+	t.Run("success - update", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		createOp := getCreateOperation()
+
+		createOpBuffer, err := json.Marshal(createOp)
+		require.NoError(t, err)
+
+		err = store.Put(&operation.AnchoredOperation{UniqueSuffix: createOp.UniqueSuffix, Type: operation.TypeCreate, OperationRequest: createOpBuffer})
+		require.NoError(t, err)
+
+		processor := processor.New("test", store, newMockProtocolClient())
+
+		decorator := &defaultOperationDecorator{processor: processor}
+
+		updateOp := &operation.Operation{
+			Type:         operation.TypeUpdate,
+			UniqueSuffix: createOp.UniqueSuffix,
+		}
+
+		op, err := decorator.Decorate(updateOp)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.Equal(t, op.AnchorOrigin, createOp.AnchorOrigin)
+	})
+
+	t.Run("error - processor error", func(t *testing.T) {
+		processor := &docmocks.OperationProcessor{}
+		processor.ResolveReturns(nil, fmt.Errorf("processor error"))
+
+		decorator := &defaultOperationDecorator{processor: processor}
+
+		updateOp := &operation.Operation{
+			Type:         operation.TypeUpdate,
+			UniqueSuffix: "suffix",
+		}
+
+		op, err := decorator.Decorate(updateOp)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "processor error")
+	})
+
+	t.Run("error - document has been deactivated, no further operations allowed", func(t *testing.T) {
+		rm := &protocol.ResolutionModel{
+			Deactivated: true,
+		}
+
+		processor := &docmocks.OperationProcessor{}
+		processor.ResolveReturns(rm, nil)
+
+		decorator := &defaultOperationDecorator{processor: processor}
+
+		updateOp := &operation.Operation{
+			Type:         operation.TypeUpdate,
+			UniqueSuffix: "suffix",
+		}
+
+		op, err := decorator.Decorate(updateOp)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "document has been deactivated, no further operations are allowed")
+	})
+}
+
 func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
