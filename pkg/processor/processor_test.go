@@ -84,7 +84,7 @@ func TestResolve(t *testing.T) {
 		doc, err := op.Resolve(dummyUniqueSuffix)
 		require.Nil(t, doc)
 		require.Error(t, err)
-		require.Equal(t, "uniqueSuffix not found in the store", err.Error())
+		require.Equal(t, "create operation not found", err.Error())
 	})
 
 	t.Run("store error", func(t *testing.T) {
@@ -390,7 +390,7 @@ func TestProcessOperation(t *testing.T) {
 		doc, err := p.Resolve(uniqueSuffix)
 		require.Error(t, err)
 		require.Nil(t, doc)
-		require.Equal(t, "missing create operation", err.Error())
+		require.Equal(t, "create operation not found", err.Error())
 	})
 
 	t.Run("create is second operation error", func(t *testing.T) {
@@ -862,24 +862,26 @@ func TestGetNextOperationCommitment(t *testing.T) {
 
 func TestOpsWithTxnGreaterThan(t *testing.T) {
 	op1 := &operation.AnchoredOperation{
-		TransactionTime:   1,
-		TransactionNumber: 1,
+		TransactionTime:    1,
+		TransactionNumber:  1,
+		CanonicalReference: "ref",
 	}
 
 	op2 := &operation.AnchoredOperation{
-		TransactionTime:   1,
-		TransactionNumber: 2,
+		TransactionTime:    1,
+		TransactionNumber:  2,
+		CanonicalReference: "ref",
 	}
 
 	ops := []*operation.AnchoredOperation{op1, op2}
 
-	txns := getOpsWithTxnGreaterThan(ops, 0, 0)
+	txns := getOpsWithTxnGreaterThanOrUnpublished(ops, 0, 0)
 	require.Equal(t, 2, len(txns))
 
-	txns = getOpsWithTxnGreaterThan(ops, 2, 1)
+	txns = getOpsWithTxnGreaterThanOrUnpublished(ops, 2, 1)
 	require.Equal(t, 0, len(txns))
 
-	txns = getOpsWithTxnGreaterThan(ops, 1, 1)
+	txns = getOpsWithTxnGreaterThanOrUnpublished(ops, 1, 1)
 	require.Equal(t, 1, len(txns))
 }
 

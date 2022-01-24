@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
@@ -68,7 +69,7 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
 func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error) {
 	publishedOps, err := s.store.Get(uniqueSuffix)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return nil, err
 	}
 
@@ -94,7 +95,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*oper
 	// split operations into 'create', 'update' and 'full' operations
 	createOps, updateOps, fullOps := splitOperations(ops)
 	if len(createOps) == 0 {
-		return nil, errors.New("missing create operation")
+		return nil, fmt.Errorf("create operation not found")
 	}
 
 	// apply 'create' operations first
@@ -115,7 +116,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*oper
 	}
 
 	// next apply update ops since last 'full' transaction
-	filteredUpdateOps := getOpsWithTxnGreaterThan(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber)
+	filteredUpdateOps := getOpsWithTxnGreaterThanOrUnpublished(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber)
 	if len(filteredUpdateOps) > 0 {
 		logger.Debugf("[%s] Applying %d update operations after last full operation for unique suffix [%s]", s.name, len(filteredUpdateOps), uniqueSuffix)
 		rm = s.applyOperations(filteredUpdateOps, rm, getUpdateCommitment)
@@ -192,23 +193,36 @@ func splitOperations(ops []*operation.AnchoredOperation) (createOps, updateOps, 
 	return createOps, updateOps, fullOps
 }
 
-// pre-condition: operations have to be sorted.
-func getOpsWithTxnGreaterThan(ops []*operation.AnchoredOperation, txnTime, txnNumber uint64) []*operation.AnchoredOperation {
-	for index, op := range ops {
-		if op.TransactionTime < txnTime {
-			continue
-		}
+func getOpsWithTxnGreaterThanOrUnpublished(ops []*operation.AnchoredOperation, txnTime, txnNumber uint64) []*operation.AnchoredOperation {
+	var selection []*operation.AnchoredOperation
 
-		if op.TransactionTime > txnTime {
-			return ops[index:]
-		}
-
-		if op.TransactionNumber > txnNumber {
-			return ops[index:]
+	for _, op := range ops {
+		if isOpWithTxnGreaterThanOrUnpublished(op, txnTime, txnNumber) {
+			selection = append(selection, op)
 		}
 	}
 
-	return nil
+	return selection
+}
+
+func isOpWithTxnGreaterThanOrUnpublished(op *operation.AnchoredOperation, txnTime, txnNumber uint64) bool {
+	if op.CanonicalReference == "" {
+		return true
+	}
+
+	if op.TransactionTime < txnTime {
+		return false
+	}
+
+	if op.TransactionTime > txnTime {
+		return true
+	}
+
+	if op.TransactionNumber > txnNumber {
+		return true
+	}
+
+	return false
 }
 
 func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel {
@@ -328,7 +342,7 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 			continue
 		}
 
-		logger.Debugf("[%s] After applying op %+v, recover commitment[%s], update commitment[%s], New doc: %s", s.name, op, state.RecoveryCommitment, state.UpdateCommitment, state.Doc)
+		logger.Debugf("[%s] After applying op %+v, recover commitment[%s], update commitment[%s], deactivated[%d] New doc: %s", s.name, op, state.RecoveryCommitment, state.UpdateCommitment, state.Deactivated, state.Doc)
 
 		return state
 	}
