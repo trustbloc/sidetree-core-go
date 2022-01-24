@@ -339,7 +339,11 @@ func GetTransformationInfoForUnpublished(namespace, domain, label, suffix string
 
 	// Also, if optional domain is specified, we should set equivalent id with domain hint
 	if label != "" && domain != "" {
-		equivalentID := fmt.Sprintf("%s:%s:%s:%s", namespace, domain, label, suffix)
+		equivalentID := id
+		if !strings.Contains(label, domain) {
+			equivalentID = fmt.Sprintf("%s:%s:%s:%s", namespace, domain, label, suffix)
+		}
+
 		equivalentIDs = append(equivalentIDs, equivalentID)
 	}
 
@@ -427,9 +431,36 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 		return nil, err
 	}
 
-	ti := GetTransformationInfoForPublished(r.namespace, shortFormDid, uniquePortion, internalResult)
+	var ti protocol.TransformationInfo
+
+	if len(internalResult.PublishedOperations) == 0 {
+		hint, err := GetHint(shortFormDid, r.namespace, uniquePortion)
+		if err != nil {
+			return nil, err
+		}
+
+		ti = GetTransformationInfoForUnpublished(r.namespace, r.domain, hint, uniquePortion, "")
+	} else {
+		ti = GetTransformationInfoForPublished(r.namespace, shortFormDid, uniquePortion, internalResult)
+	}
 
 	return pv.DocumentTransformer().TransformDocument(internalResult, ti)
+}
+
+// GetHint returns hint from id.
+func GetHint(id, namespace, suffix string) (string, error) {
+	posSuffix := strings.LastIndex(id, suffix)
+	if posSuffix == -1 {
+		return "", fmt.Errorf("invalid ID [%s]", id)
+	}
+
+	if len(namespace)+1 > posSuffix-1 {
+		return "", nil
+	}
+
+	hint := id[len(namespace)+1 : posSuffix-1]
+
+	return hint, nil
 }
 
 // GetTransformationInfoForPublished will create transformation info object for published document.

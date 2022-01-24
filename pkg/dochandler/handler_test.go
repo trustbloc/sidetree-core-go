@@ -201,7 +201,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 	t.Run("success - unpublished operation store option", func(t *testing.T) {
 		store := mocks.NewMockOperationStore(nil)
 
-		opt := WithUnpublishedOperationStore(&noopUnpublishedOpsStore{}, []operation.Type{operation.TypeUpdate})
+		opt := WithUnpublishedOperationStore(&mockUnpublishedOpsStore{}, []operation.Type{operation.TypeUpdate})
 
 		dochandler, cleanup := getDocumentHandler(store, opt)
 		require.NotNil(t, dochandler)
@@ -221,6 +221,100 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 		doc, err := dochandler.ProcessOperation(updateOp, 0)
 		require.NoError(t, err)
 		require.Nil(t, doc)
+	})
+
+	t.Run("success - unpublished operation store option(create and update)", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		createOp := getCreateOperation()
+
+		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
+		require.NoError(t, err)
+
+		unpublishedOperationStore := &mockUnpublishedOpsStore{
+			Ops: []*operation.AnchoredOperation{
+				{
+					Type:             "create",
+					OperationRequest: createOp.OperationRequest,
+					UniqueSuffix:     createOp.UniqueSuffix,
+				},
+			},
+		}
+
+		protocol := newMockProtocolClient()
+
+		processor := processor.New("test", store, protocol, processor.WithUnpublishedOperationStore(unpublishedOperationStore))
+
+		ctx := &BatchContext{
+			ProtocolClient: protocol,
+			CasClient:      mocks.NewMockCasClient(nil),
+			AnchorWriter:   mocks.NewMockAnchorWriter(nil),
+			OpQueue:        &opqueue.MemQueue{},
+		}
+		writer, err := batch.New("test", ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		// start go routine for cutting batches
+		writer.Start()
+
+		dochandler, cleanup := New(namespace, []string{alias}, protocol, writer, processor, &mocks.MetricsProvider{},
+			WithUnpublishedOperationStore(unpublishedOperationStore, []operation.Type{operation.TypeCreate, operation.TypeUpdate})), func() { writer.Stop() }
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.NoError(t, err)
+		require.Nil(t, doc)
+
+		doc, err = dochandler.ResolveDocument(createOp.ID)
+		require.NoError(t, err)
+		fmt.Printf("%+v", doc)
+
+		idWithHint := namespace + ":domain.com" + createOp.UniqueSuffix
+
+		doc, err = dochandler.ResolveDocument(idWithHint)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - update without unpublished/published create", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+
+		createOp := getCreateOperation()
+
+		updateOp, err := generateUpdateOperation(createOp.UniqueSuffix)
+		require.NoError(t, err)
+
+		unpublishedOperationStore := &mockUnpublishedOpsStore{}
+
+		protocol := newMockProtocolClient()
+
+		processor := processor.New("test", store, protocol, processor.WithUnpublishedOperationStore(unpublishedOperationStore))
+
+		ctx := &BatchContext{
+			ProtocolClient: protocol,
+			CasClient:      mocks.NewMockCasClient(nil),
+			AnchorWriter:   mocks.NewMockAnchorWriter(nil),
+			OpQueue:        &opqueue.MemQueue{},
+		}
+		writer, err := batch.New("test", ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		// start go routine for cutting batches
+		writer.Start()
+
+		dochandler, cleanup := New(namespace, []string{alias}, protocol, writer, processor, &mocks.MetricsProvider{},
+			WithUnpublishedOperationStore(unpublishedOperationStore, []operation.Type{operation.TypeCreate, operation.TypeUpdate})), func() { writer.Stop() }
+		require.NotNil(t, dochandler)
+		defer cleanup()
+
+		doc, err := dochandler.ProcessOperation(updateOp, 0)
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "bad request: create operation not found")
 	})
 
 	t.Run("error - batch writer error (unpublished operation store option)", func(t *testing.T) {
@@ -676,6 +770,33 @@ func TestProcessOperation_ParseOperationError(t *testing.T) {
 	require.Contains(t, err.Error(), "bad request: missing signed data")
 }
 
+func TestGetHint(t *testing.T) {
+	const namespace = "did:sidetree"
+	const testID = "did:sidetree:unique"
+
+	t.Run("success", func(t *testing.T) {
+		hint, err := GetHint("did:sidetree:hint:unique", namespace, "unique")
+		require.NoError(t, err)
+		require.Equal(t, "hint", hint)
+	})
+
+	t.Run("success - no hint", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			hint, err := GetHint(testID, namespace, "unique")
+			require.NoError(t, err)
+			require.Empty(t, hint)
+		})
+	})
+
+	t.Run("error - wrong suffix", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			hint, err := GetHint(testID, namespace, "other")
+			require.Error(t, err)
+			require.Empty(t, hint)
+		})
+	})
+}
+
 // BatchContext implements batch writer context.
 type BatchContext struct {
 	ProtocolClient *mocks.MockProtocolClient
@@ -1024,8 +1145,10 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 }
 
 type mockUnpublishedOpsStore struct {
+	Ops       []*operation.AnchoredOperation
 	PutErr    error
 	DeleteErr error
+	GetErr    error
 }
 
 func (m *mockUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
@@ -1034,6 +1157,14 @@ func (m *mockUnpublishedOpsStore) Put(_ *operation.AnchoredOperation) error {
 
 func (m *mockUnpublishedOpsStore) Delete(_ *operation.AnchoredOperation) error {
 	return m.DeleteErr
+}
+
+func (m *mockUnpublishedOpsStore) Get(uniqueSuffix string) ([]*operation.AnchoredOperation, error) {
+	if m.GetErr != nil {
+		return nil, m.GetErr
+	}
+
+	return m.Ops, nil
 }
 
 type mockOperationDecorator struct {
