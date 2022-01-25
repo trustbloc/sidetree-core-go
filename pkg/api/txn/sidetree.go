@@ -15,4 +15,5 @@ type SidetreeTxn struct {
 	ProtocolVersion      uint64
 	CanonicalReference   string
 	EquivalentReferences []string
+	AlternateSources     []string
 }
