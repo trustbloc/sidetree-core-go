@@ -9,6 +9,7 @@ package txnprovider
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -842,6 +843,28 @@ func TestHandler_readFromCAS(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, file)
 		require.Contains(t, err.Error(), "compression algorithm 'alg' not supported")
+	})
+
+	t.Run("alternate sources", func(t *testing.T) {
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp,
+			WithSourceCASURIFormatter(func(uri, domain string) (string, error) {
+				return fmt.Sprintf("%s:%s", domain, uri), nil
+			}),
+		)
+
+		_, err := provider.readFromCAS("address", maxFileSize,
+			"https:orb.domain1.com", "https:orb.domain2.com")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("alternate sources - no formatter", func(t *testing.T) {
+		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
+
+		_, err := provider.readFromCAS("address", maxFileSize,
+			"https:orb.domain1.com", "https:orb.domain2.com")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not found")
 	})
 }
 

@@ -30,8 +30,27 @@ type decompressionProvider interface {
 	Decompress(alg string, data []byte) ([]byte, error)
 }
 
+type sourceURIFormatter func(casURI, source string) (string, error)
+
+type options struct {
+	formatCASURIForSource sourceURIFormatter
+}
+
+// Opt is an OperationProvider option.
+type Opt func(ops *options)
+
+// WithSourceCASURIFormatter sets the formatter to use when converting an alternate source to a
+// CAS URI.
+func WithSourceCASURIFormatter(formatter sourceURIFormatter) Opt {
+	return func(ops *options) {
+		ops.formatCASURIForSource = formatter
+	}
+}
+
 // OperationProvider is an operation provider.
 type OperationProvider struct {
+	*options
+
 	protocol.Protocol
 	parser OperationParser
 	cas    DCAS
@@ -49,8 +68,20 @@ type OperationParser interface {
 }
 
 // NewOperationProvider returns a new operation provider.
-func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS, dp decompressionProvider) *OperationProvider {
+func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS,
+	dp decompressionProvider, opts ...Opt) *OperationProvider {
+	o := &options{
+		formatCASURIForSource: func(_, _ string) (string, error) {
+			return "", errors.New("CAS URI formatter not defined")
+		},
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
 	return &OperationProvider{
+		options:  o,
 		Protocol: p,
 		parser:   parser,
 		cas:      cas,
@@ -67,12 +98,12 @@ func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation
 		return nil, err
 	}
 
-	cif, err := h.getCoreIndexFile(anchorData.CoreIndexFileURI)
+	cif, err := h.getCoreIndexFile(anchorData.CoreIndexFileURI, txn.AlternateSources...)
 	if err != nil {
 		return nil, err
 	}
 
-	batchFiles, err := h.getBatchFiles(cif)
+	batchFiles, err := h.getBatchFiles(cif, txn.AlternateSources...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,21 +136,21 @@ type provisionalFiles struct {
 }
 
 // getBatchFiles retrieves all batch files that are referenced in core index file.
-func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFiles, error) {
+func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile, alternateSources ...string) (*batchFiles, error) {
 	var err error
 
 	files := &batchFiles{CoreIndex: cif}
 
 	// core proof file will not exist if we have only update operations in the batch
 	if cif.CoreProofFileURI != "" {
-		files.CoreProof, err = h.getCoreProofFile(cif.CoreProofFileURI)
+		files.CoreProof, err = h.getCoreProofFile(cif.CoreProofFileURI, alternateSources...)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if cif.ProvisionalIndexFileURI != "" {
-		provisionalFiles, innerErr := h.getProvisionalFiles(cif.ProvisionalIndexFileURI)
+		provisionalFiles, innerErr := h.getProvisionalFiles(cif.ProvisionalIndexFileURI, alternateSources...)
 		if innerErr != nil {
 			return nil, innerErr
 		}
@@ -140,18 +171,18 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile) (*batchFile
 	return files, nil
 }
 
-func (h *OperationProvider) getProvisionalFiles(provisionalIndexURI string) (*provisionalFiles, error) {
+func (h *OperationProvider) getProvisionalFiles(provisionalIndexURI string, alternateSources ...string) (*provisionalFiles, error) {
 	var err error
 	files := &provisionalFiles{}
 
-	files.ProvisionalIndex, err = h.getProvisionalIndexFile(provisionalIndexURI)
+	files.ProvisionalIndex, err = h.getProvisionalIndexFile(provisionalIndexURI, alternateSources...)
 	if err != nil {
 		return nil, err
 	}
 
 	// provisional proof file will not exist if we don't have any update operations in the batch
 	if files.ProvisionalIndex.ProvisionalProofFileURI != "" {
-		files.ProvisionalProof, err = h.getProvisionalProofFile(files.ProvisionalIndex.ProvisionalProofFileURI)
+		files.ProvisionalProof, err = h.getProvisionalProofFile(files.ProvisionalIndex.ProvisionalProofFileURI, alternateSources...)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +193,7 @@ func (h *OperationProvider) getProvisionalFiles(provisionalIndexURI string) (*pr
 	}
 
 	chunkURI := files.ProvisionalIndex.Chunks[0].ChunkFileURI
-	files.Chunk, err = h.getChunkFile(chunkURI)
+	files.Chunk, err = h.getChunkFile(chunkURI, alternateSources...)
 	if err != nil {
 		return nil, err
 	}
@@ -327,8 +358,8 @@ func checkForDuplicates(values []string) error {
 }
 
 // getCoreIndexFile will download core index file from cas and parse it into core index file model.
-func (h *OperationProvider) getCoreIndexFile(uri string) (*models.CoreIndexFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.MaxCoreIndexFileSize)
+func (h *OperationProvider) getCoreIndexFile(uri string, alternateSources ...string) (*models.CoreIndexFile, error) { //nolint:dupl
+	content, err := h.readFromCAS(uri, h.MaxCoreIndexFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading core index file")
 	}
@@ -435,8 +466,8 @@ func (h *OperationProvider) validateRequiredMultihash(mh, alias string) error {
 }
 
 // getCoreProofFile will download core proof file from cas and parse it into core proof file model.
-func (h *OperationProvider) getCoreProofFile(uri string) (*models.CoreProofFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.MaxProofFileSize)
+func (h *OperationProvider) getCoreProofFile(uri string, alternateSources ...string) (*models.CoreProofFile, error) { //nolint:dupl
+	content, err := h.readFromCAS(uri, h.MaxProofFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading core proof file")
 	}
@@ -475,8 +506,8 @@ func (h *OperationProvider) validateCoreProofFile(cpf *models.CoreProofFile) err
 }
 
 // getProvisionalProofFile will download provisional proof file from cas and parse it into provisional proof file model.
-func (h *OperationProvider) getProvisionalProofFile(uri string) (*models.ProvisionalProofFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.MaxProofFileSize)
+func (h *OperationProvider) getProvisionalProofFile(uri string, alternateSources ...string) (*models.ProvisionalProofFile, error) { //nolint:dupl
+	content, err := h.readFromCAS(uri, h.MaxProofFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional proof file")
 	}
@@ -508,8 +539,8 @@ func (h *OperationProvider) validateProvisionalProofFile(ppf *models.Provisional
 }
 
 // getProvisionalIndexFile will download provisional index file from cas and parse it into provisional index file model.
-func (h *OperationProvider) getProvisionalIndexFile(uri string) (*models.ProvisionalIndexFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.MaxProvisionalIndexFileSize)
+func (h *OperationProvider) getProvisionalIndexFile(uri string, alternateSources ...string) (*models.ProvisionalIndexFile, error) { //nolint:dupl
+	content, err := h.readFromCAS(uri, h.MaxProvisionalIndexFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional index file")
 	}
@@ -582,8 +613,8 @@ func (h *OperationProvider) validateProvisionalIndexOperations(ops *models.Provi
 }
 
 // getChunkFile will download chunk file from cas and parse it into chunk file model.
-func (h *OperationProvider) getChunkFile(uri string) (*models.ChunkFile, error) { //nolint:dupl
-	content, err := h.readFromCAS(uri, h.MaxChunkFileSize)
+func (h *OperationProvider) getChunkFile(uri string, alternateSources ...string) (*models.ChunkFile, error) { //nolint:dupl
+	content, err := h.readFromCAS(uri, h.MaxChunkFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading chunk file")
 	}
@@ -614,10 +645,19 @@ func (h *OperationProvider) validateChunkFile(cf *models.ChunkFile) error {
 	return nil
 }
 
-func (h *OperationProvider) readFromCAS(uri string, maxSize uint) ([]byte, error) {
+func (h *OperationProvider) readFromCAS(uri string, maxSize uint, alternateSources ...string) ([]byte, error) {
 	bytes, err := h.cas.Read(uri)
 	if err != nil {
-		return nil, errors.Wrapf(err, "retrieve CAS content at uri[%s]", uri)
+		if len(alternateSources) == 0 {
+			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
+		}
+
+		b, e := h.readFromAlternateCASSources(uri, alternateSources)
+		if e != nil {
+			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
+		}
+
+		bytes = b
 	}
 
 	if len(bytes) > int(maxSize) {
@@ -743,4 +783,28 @@ func (h *OperationProvider) validateURI(uri string) error {
 	}
 
 	return nil
+}
+
+// readFromAlternateCASSources reads the URI from alternate CAS sources. The URI of the alternate source
+// is composed using a provided CAS URI formatter, since the format of the URI is implementation-specific.
+func (h *OperationProvider) readFromAlternateCASSources(casURI string, sources []string) ([]byte, error) {
+	for _, source := range sources {
+		casURIForSource, e := h.formatCASURIForSource(casURI, source)
+		if e != nil {
+			logger.Infof("Error formatting CAS reference for alternate source [%s]: %s", casURIForSource, e)
+
+			continue
+		}
+
+		b, e := h.cas.Read(casURIForSource)
+		if e == nil {
+			logger.Debugf("Successfully retrieved CAS content from alternate source [%s]", casURIForSource)
+
+			return b, nil
+		}
+
+		logger.Infof("Error retrieving CAS content from alternate source [%s]: %s", casURIForSource, e)
+	}
+
+	return nil, fmt.Errorf("retrieve CAS content from alternate source failed")
 }
