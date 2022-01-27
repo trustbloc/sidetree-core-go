@@ -652,10 +652,19 @@ func (h *OperationProvider) readFromCAS(uri string, maxSize uint, alternateSourc
 			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
 		}
 
+		logger.Infof("Failed to retrieve CAS content [%s]: %s. Trying alternate sources %s.",
+			uri, err, alternateSources)
+
 		b, e := h.readFromAlternateCASSources(uri, alternateSources)
 		if e != nil {
+			logger.Infof("Failed to retrieve CAS content [%s] from alternate sources %s: %s.",
+				uri, alternateSources, err)
+
 			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
 		}
+
+		logger.Infof("Successfully retrieved CAS content [%s] from alternate sources %s.",
+			uri, alternateSources)
 
 		bytes = b
 	}
@@ -686,7 +695,8 @@ type coreOperations struct {
 }
 
 func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*coreOperations, error) { //nolint:funlen
-	if cif.Operations == nil { // nothing to do
+	if cif.Operations == nil {
+		// nothing to do
 		return &coreOperations{}, nil
 	}
 
