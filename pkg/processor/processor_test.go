@@ -180,8 +180,15 @@ func TestUpdateDocument(t *testing.T) {
 		updateOp, _, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
+		// Add an unpublished 'create' operation to test a race condition that may occur if
+		// both a published and unpublished 'create' is retrieved.
+		unpublishedCreateOp, err := getAnchoredCreateOperation(recoveryKey, updateKey)
+		require.NoError(t, err)
+
+		unpublishedCreateOp.CanonicalReference = ""
+
 		p := New("test", store, pc,
-			WithUnpublishedOperationStore(&mockUnpublishedOpsStore{AnchoredOps: []*operation.AnchoredOperation{updateOp}}))
+			WithUnpublishedOperationStore(&mockUnpublishedOpsStore{AnchoredOps: []*operation.AnchoredOperation{unpublishedCreateOp, updateOp}}))
 		result, err := p.Resolve(uniqueSuffix)
 		require.Nil(t, err)
 
