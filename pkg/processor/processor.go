@@ -67,6 +67,7 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
 // Resolve document based on the given unique suffix.
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
+//nolint:funlen
 func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error) {
 	publishedOps, err := s.store.Get(uniqueSuffix)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
@@ -97,6 +98,12 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*oper
 	if len(createOps) == 0 {
 		return nil, fmt.Errorf("create operation not found")
 	}
+
+	// Ensure that all published 'create' operations are processed first (in case there are
+	// unpublished 'create' operations in the collection due to race condition).
+	sort.SliceStable(createOps, func(i, j int) bool {
+		return createOps[i].CanonicalReference != ""
+	})
 
 	// apply 'create' operations first
 	rm = s.applyFirstValidCreateOperation(createOps, rm)
