@@ -72,18 +72,18 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore, opTypes []op
 }
 
 // Process persists all of the operations for the given anchor.
-func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) error {
+func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) (int, error) {
 	logger.Debugf("processing sidetree txn:%+v, suffixes: %s", sidetreeTxn, suffixes)
 
 	txnOps, err := p.OperationProtocolProvider.GetTxnOperations(&sidetreeTxn)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve operations for anchor string[%s]: %s", sidetreeTxn.AnchorString, err)
+		return 0, fmt.Errorf("failed to retrieve operations for anchor string[%s]: %s", sidetreeTxn.AnchorString, err)
 	}
 
 	return p.processTxnOperations(txnOps, sidetreeTxn)
 }
 
-func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) error {
+func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) (int, error) {
 	logger.Debugf("processing %d transaction operations", len(txnOps))
 
 	batchSuffixes := make(map[string]bool)
@@ -113,15 +113,15 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperatio
 
 	err := p.OpStore.Put(ops)
 	if err != nil {
-		return errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorString)
+		return 0, errors.Wrapf(err, "failed to store operation from anchor string[%s]", sidetreeTxn.AnchorString)
 	}
 
 	err = p.unpublishedOperationStore.DeleteAll(unpublishedOps)
 	if err != nil {
-		return fmt.Errorf("failed to delete unpublished operations for anchor string[%s]: %w", sidetreeTxn.AnchorString, err)
+		return 0, fmt.Errorf("failed to delete unpublished operations for anchor string[%s]: %w", sidetreeTxn.AnchorString, err)
 	}
 
-	return nil
+	return len(ops), nil
 }
 
 func updateAnchoredOperation(op *operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) *operation.AnchoredOperation {
