@@ -98,7 +98,7 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 			continue
 		}
 
-		err = v.TransactionProcessor().Process(txn)
+		_, err = v.TransactionProcessor().Process(txn)
 		if err != nil {
 			logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorString, err.Error())
 

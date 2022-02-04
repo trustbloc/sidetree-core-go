@@ -32,7 +32,7 @@ func TestTxnProcessor_Process(t *testing.T) {
 		}
 
 		p := New(providers)
-		err := p.Process(txn.SidetreeTxn{})
+		_, err := p.Process(txn.SidetreeTxn{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), errExpected.Error())
 	})
@@ -47,7 +47,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := New(providers)
-		err := p.processTxnOperations([]*operation.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err := p.processTxnOperations([]*operation.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to store operation from anchor string")
 	})
@@ -62,8 +62,9 @@ func TestProcessTxnOperations(t *testing.T) {
 		batchOps, err := p.OperationProtocolProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		numProcessed, err := p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
+		require.Equal(t, 1, numProcessed)
 	})
 
 	t.Run("success - with unpublished operation store option", func(t *testing.T) {
@@ -78,7 +79,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		batchOps, err := p.OperationProtocolProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 	})
 
@@ -96,7 +97,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		batchOps, err := p.OperationProtocolProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to delete unpublished operations for anchor string[1.coreIndexURI]: delete all error")
 	})
@@ -115,7 +116,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		// only first operation will be processed, subsequent operations will be discarded
 		batchOps = append(batchOps, batchOps...)
 
-		err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 	})
 }
