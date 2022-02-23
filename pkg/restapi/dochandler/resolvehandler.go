@@ -21,9 +21,11 @@ import (
 
 var logger = log.New("sidetree-core-restapi-dochandler")
 
+const versionIDParam = "versionId"
+
 // Resolver resolves documents.
 type Resolver interface {
-	ResolveDocument(idOrDocument string) (*document.ResolutionResult, error)
+	ResolveDocument(idOrDocument string, opts ...document.ResolutionOption) (*document.ResolutionResult, error)
 }
 
 type metricsResolveProvider interface {
@@ -53,8 +55,10 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 	}()
 
 	id := getID(req)
+	opts := getResolutionOptions(req)
+
 	logger.Debugf("Resolving DID document for ID [%s]", id)
-	response, err := o.doResolve(id)
+	response, err := o.doResolve(id, opts...)
 	if err != nil {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)
 
@@ -65,8 +69,8 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
-func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error) {
-	resolutionResult, err := o.resolver.ResolveDocument(id)
+func (o *ResolveHandler) doResolve(id string, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
+	resolutionResult, err := o.resolver.ResolveDocument(id, opts...)
 	if err != nil {
 		if strings.Contains(err.Error(), "bad request") {
 			return nil, common.NewHTTPError(http.StatusBadRequest, err)
@@ -85,4 +89,15 @@ func (o *ResolveHandler) doResolve(id string) (*document.ResolutionResult, error
 
 var getID = func(req *http.Request) string {
 	return mux.Vars(req)["id"]
+}
+
+func getResolutionOptions(req *http.Request) []document.ResolutionOption {
+	var resolutionOpts []document.ResolutionOption
+
+	versionID := req.URL.Query().Get(versionIDParam)
+	if versionID != "" {
+		resolutionOpts = append(resolutionOpts, document.WithVersionID(versionID))
+	}
+
+	return resolutionOpts
 }

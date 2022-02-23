@@ -17,6 +17,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
+	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
 var logger = log.New("sidetree-core-processor")
@@ -68,7 +69,7 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
 //nolint:funlen
-func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error) {
+func (s *OperationProcessor) Resolve(uniqueSuffix string, opts ...document.ResolutionOption) (*protocol.ResolutionModel, error) {
 	var unpublishedOps []*operation.AnchoredOperation
 
 	unpubOps, err := s.unpublishedOperationStore.Get(uniqueSuffix)
@@ -83,18 +84,16 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*oper
 		return nil, err
 	}
 
-	publishedOps, unpublishedOps = addAdditionalOperations(publishedOps, unpublishedOps, additionalOps)
+	publishedOps, unpublishedOps, filteredOps, err := processOperations(publishedOps, unpublishedOps, uniqueSuffix, opts...)
+	if err != nil {
+		return nil, err
+	}
 
-	ops := append(publishedOps, unpublishedOps...)
-
-	sortOperations(ops)
-
-	logger.Debugf("[%s] Found %d operations for unique suffix [%s]: %+v", s.name, len(ops), uniqueSuffix, ops)
-
+	// TODO: Should we return all operations and versionId is considered just like view of information
 	rm := &protocol.ResolutionModel{PublishedOperations: publishedOps, UnpublishedOperations: unpublishedOps}
 
 	// split operations into 'create', 'update' and 'full' operations
-	createOps, updateOps, fullOps := splitOperations(ops)
+	createOps, updateOps, fullOps := splitOperations(filteredOps)
 	if len(createOps) == 0 {
 		return nil, fmt.Errorf("create operation not found")
 	}
@@ -130,6 +129,53 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, additionalOps ...*oper
 	}
 
 	return rm, nil
+}
+
+func processOperations(
+	publishedOps []*operation.AnchoredOperation,
+	unpublishedOps []*operation.AnchoredOperation,
+	uniqueSuffix string,
+	opts ...document.ResolutionOption,
+) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation, []*operation.AnchoredOperation, error) {
+	resOpts, err := document.GetResolutionOptions(opts...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	publishedOps, unpublishedOps = addAdditionalOperations(publishedOps, unpublishedOps, resOpts.AdditionalOperations)
+
+	ops := append(publishedOps, unpublishedOps...)
+
+	sortOperations(ops)
+
+	logger.Debugf("Found %d operations for unique suffix [%s]: %+v", len(ops), uniqueSuffix, ops)
+
+	filteredOps, err := filterOps(ops, resOpts, uniqueSuffix)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to filter document id[%s] operations: %s", uniqueSuffix, err.Error())
+	}
+
+	return publishedOps, unpublishedOps, filteredOps, nil
+}
+
+func filterOps(ops []*operation.AnchoredOperation, opts document.ResolutionOptions, uniqueSuffx string) ([]*operation.AnchoredOperation, error) {
+	if opts.VersionID != "" {
+		logger.Debugf("filtering operations for unique suffix[%s] by versionID[%s]", uniqueSuffx, opts.VersionID)
+
+		return filterOpsByVersionID(ops, opts.VersionID)
+	}
+
+	return ops, nil
+}
+
+func filterOpsByVersionID(ops []*operation.AnchoredOperation, versionID string) ([]*operation.AnchoredOperation, error) {
+	for index, op := range ops {
+		if op.CanonicalReference == versionID {
+			return ops[:index+1], nil
+		}
+	}
+
+	return nil, fmt.Errorf("'%s' is not a valid versionId", versionID)
 }
 
 func addAdditionalOperations(published, unpublished, additional []*operation.AnchoredOperation) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation) {

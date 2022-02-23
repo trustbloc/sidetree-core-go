@@ -72,9 +72,42 @@ func TestResolve(t *testing.T) {
 			{Type: operation.TypeUpdate, CanonicalReference: "abc"}, // published operation
 		}
 
-		doc, err := op.Resolve(uniqueSuffix, additionalOps...)
+		doc, err := op.Resolve(uniqueSuffix, document.WithAdditionalOperations(additionalOps))
 		require.Nil(t, err)
 		require.NotNil(t, doc)
+	})
+
+	t.Run("success - with version id", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pc)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{Type: operation.TypeUpdate},                            // unpublished operation
+			{Type: operation.TypeUpdate, CanonicalReference: "abc"}, // published operation
+		}
+
+		doc, err := op.Resolve(uniqueSuffix,
+			document.WithAdditionalOperations(additionalOps),
+			document.WithVersionID("abc"))
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+	})
+
+	t.Run("error - invalid version id", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pc)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{Type: operation.TypeUpdate},                            // unpublished operation
+			{Type: operation.TypeUpdate, CanonicalReference: "abc"}, // published operation
+		}
+
+		doc, err := op.Resolve(uniqueSuffix,
+			document.WithAdditionalOperations(additionalOps),
+			document.WithVersionID("invalid"))
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "'invalid' is not a valid versionId")
 	})
 
 	t.Run("document not found error", func(t *testing.T) {

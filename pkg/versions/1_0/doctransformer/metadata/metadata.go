@@ -105,6 +105,10 @@ func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info pro
 		docMetadata[document.EquivalentIDProperty] = equivalentID
 	}
 
+	if rm.VersionID != "" {
+		docMetadata[document.VersionIDProperty] = rm.VersionID
+	}
+
 	return docMetadata, nil
 }
 

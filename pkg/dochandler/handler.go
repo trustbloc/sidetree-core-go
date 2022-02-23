@@ -72,7 +72,7 @@ type operationDecorator interface {
 
 // operationProcessor is an interface which resolves the document based on the unique suffix.
 type operationProcessor interface {
-	Resolve(uniqueSuffix string, additionalOps ...*operation.AnchoredOperation) (*protocol.ResolutionModel, error)
+	Resolve(uniqueSuffix string, opts ...document.ResolutionOption) (*protocol.ResolutionModel, error)
 }
 
 // batchWriter is an interface to add an operation to the batch.
@@ -371,7 +371,7 @@ func GetTransformationInfoForUnpublished(namespace, domain, label, suffix string
 // If the DID Document cannot be found, the <suffix-data-object> and <delta-object> are used
 // to generate and return resolved DID Document. In this case the supplied delta and suffix objects
 // are subject to the same validation as during processing create operation.
-func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string, additionalOps ...*operation.AnchoredOperation) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
 	ns, err := r.getNamespace(shortOrLongFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
@@ -394,7 +394,7 @@ func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string, additionalO
 	}
 
 	// resolve document from the blockchain
-	doc, err := r.resolveRequestWithID(shortFormDID, uniquePortion, pv, additionalOps...)
+	doc, err := r.resolveRequestWithID(shortFormDID, uniquePortion, pv, opts...)
 	if err == nil {
 		return doc, nil
 	}
@@ -423,8 +423,8 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
 }
 
-func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version, additionalOps ...*operation.AnchoredOperation) (*document.ResolutionResult, error) {
-	internalResult, err := r.processor.Resolve(uniquePortion, additionalOps...)
+func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
+	internalResult, err := r.processor.Resolve(uniquePortion, opts...)
 	if err != nil {
 		logger.Debugf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
 

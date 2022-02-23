@@ -108,6 +108,7 @@ type ResolutionModel struct {
 	AnchorOrigin                   interface{}
 	EquivalentReferences           []string
 	CanonicalReference             string
+	VersionID                      string
 	PublishedOperations            []*operation.AnchoredOperation
 	UnpublishedOperations          []*operation.AnchoredOperation
 }
