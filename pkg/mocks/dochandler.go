@@ -142,7 +142,7 @@ func (m *MockDocumentHandler) ProcessOperation(operationBuffer []byte, _ uint64)
 }
 
 // ResolveDocument mocks resolve document.
-func (m *MockDocumentHandler) ResolveDocument(didOrDocument string) (*document.ResolutionResult, error) {
+func (m *MockDocumentHandler) ResolveDocument(didOrDocument string, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
