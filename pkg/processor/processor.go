@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/trustbloc/edge-core/pkg/log"
 
@@ -89,7 +90,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, opts ...document.Resol
 		return nil, err
 	}
 
-	// TODO: Should we return all operations and versionId is considered just like view of information
+	// return all operations in response - versionId is considered just like view of information
 	rm := &protocol.ResolutionModel{PublishedOperations: publishedOps, UnpublishedOperations: unpublishedOps}
 
 	// split operations into 'create', 'update' and 'full' operations
@@ -165,6 +166,12 @@ func filterOps(ops []*operation.AnchoredOperation, opts document.ResolutionOptio
 		return filterOpsByVersionID(ops, opts.VersionID)
 	}
 
+	if opts.VersionTime != "" {
+		logger.Debugf("filtering operations for unique suffix[%s] by versionTime[%s]", uniqueSuffx, opts.VersionTime)
+
+		return filterOpsByVersionTime(ops, opts.VersionTime)
+	}
+
 	return ops, nil
 }
 
@@ -176,6 +183,27 @@ func filterOpsByVersionID(ops []*operation.AnchoredOperation, versionID string) 
 	}
 
 	return nil, fmt.Errorf("'%s' is not a valid versionId", versionID)
+}
+
+func filterOpsByVersionTime(ops []*operation.AnchoredOperation, timeStr string) ([]*operation.AnchoredOperation, error) {
+	var filteredOps []*operation.AnchoredOperation
+
+	vt, err := time.Parse(time.RFC3339, timeStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse version time[%s]: %w", timeStr, err)
+	}
+
+	for _, op := range ops {
+		if op.TransactionTime <= uint64(vt.Unix()) {
+			filteredOps = append(filteredOps, op)
+		}
+	}
+
+	if len(filteredOps) == 0 {
+		return nil, fmt.Errorf("no operations found for version time %s", timeStr)
+	}
+
+	return filteredOps, nil
 }
 
 func addAdditionalOperations(published, unpublished, additional []*operation.AnchoredOperation) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation) {

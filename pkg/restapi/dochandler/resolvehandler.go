@@ -21,7 +21,10 @@ import (
 
 var logger = log.New("sidetree-core-restapi-dochandler")
 
-const versionIDParam = "versionId"
+const (
+	versionIDParam   = "versionId"
+	versionTimeParam = "versionTime"
+)
 
 // Resolver resolves documents.
 type Resolver interface {
@@ -97,6 +100,11 @@ func getResolutionOptions(req *http.Request) []document.ResolutionOption {
 	versionID := req.URL.Query().Get(versionIDParam)
 	if versionID != "" {
 		resolutionOpts = append(resolutionOpts, document.WithVersionID(versionID))
+	}
+
+	versionTime := req.URL.Query().Get(versionTimeParam)
+	if versionTime != "" {
+		resolutionOpts = append(resolutionOpts, document.WithVersionTime(versionTime))
 	}
 
 	return resolutionOpts
