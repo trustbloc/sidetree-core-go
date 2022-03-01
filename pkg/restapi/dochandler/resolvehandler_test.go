@@ -94,6 +94,27 @@ func TestResolveHandler_Resolve(t *testing.T) {
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 	})
+	t.Run("success - with versionTime parameter", func(t *testing.T) {
+		docHandler := mocks.NewMockDocumentHandler().
+			WithNamespace(namespace)
+
+		create, err := getCreateRequest()
+		require.NoError(t, err)
+
+		bytes, err := canonicalizer.MarshalCanonical(create)
+		require.NoError(t, err)
+
+		result, err := docHandler.ProcessOperation(bytes, 0)
+		require.NoError(t, err)
+
+		getID = func(req *http.Request) string { return result.Document.ID() }
+		handler := NewResolveHandler(docHandler, &mocks.MetricsProvider{})
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/document/"+result.Document.ID()+"?versionTime=2021-05-10T17:00:00Z", nil)
+		handler.Resolve(rw, req)
+		require.Equal(t, http.StatusOK, rw.Code)
+		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
+	})
 	t.Run("Invalid ID", func(t *testing.T) {
 		getID = func(req *http.Request) string { return "someid" }
 		docHandler := mocks.NewMockDocumentHandler().WithNamespace(namespace)

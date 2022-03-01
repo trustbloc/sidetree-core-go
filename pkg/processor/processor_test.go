@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -82,8 +83,15 @@ func TestResolve(t *testing.T) {
 		op := New("test", store, pc)
 
 		additionalOps := []*operation.AnchoredOperation{
-			{Type: operation.TypeUpdate},                            // unpublished operation
-			{Type: operation.TypeUpdate, CanonicalReference: "abc"}, // published operation
+			{ // unpublished operation
+				Type:            operation.TypeUpdate,
+				TransactionTime: uint64(time.Now().Unix()),
+			},
+			{ // published operation
+				Type:               operation.TypeUpdate,
+				CanonicalReference: "abc",
+				TransactionTime:    uint64(time.Now().Unix() - 60),
+			},
 		}
 
 		doc, err := op.Resolve(uniqueSuffix,
@@ -108,6 +116,70 @@ func TestResolve(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, doc)
 		require.Contains(t, err.Error(), "'invalid' is not a valid versionId")
+	})
+
+	t.Run("success - with version time", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pc)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{ // unpublished operation
+				Type:            operation.TypeUpdate,
+				TransactionTime: uint64(time.Now().Unix() - 5),
+			},
+			{ // published operation
+				Type:               operation.TypeCreate,
+				CanonicalReference: "abc",
+				TransactionTime:    uint64(time.Now().Unix() - 10),
+			},
+		}
+
+		doc, err := op.Resolve(uniqueSuffix,
+			document.WithAdditionalOperations(additionalOps),
+			document.WithVersionTime(time.Now().UTC().Format(time.RFC3339)))
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+	})
+
+	t.Run("success - no ops with version time", func(t *testing.T) {
+		store := mocks.NewMockOperationStore(nil)
+		op := New("test", store, pc)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{ // unpublished operation
+				Type:            operation.TypeUpdate,
+				TransactionTime: uint64(time.Now().Unix()),
+			},
+			{ // published operation
+				Type:               operation.TypeCreate,
+				CanonicalReference: "abc",
+				TransactionTime:    uint64(time.Now().Unix() - 10),
+			},
+		}
+
+		doc, err := op.Resolve("uniqueSuffix",
+			document.WithAdditionalOperations(additionalOps),
+			document.WithVersionTime("2020-12-20T19:17:47Z"))
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "no operations found for version time 2020-12-20T19:17:47Z")
+	})
+
+	t.Run("error - with invalid version time", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pc)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{Type: operation.TypeUpdate},                            // unpublished operation
+			{Type: operation.TypeUpdate, CanonicalReference: "abc"}, // published operation
+		}
+
+		doc, err := op.Resolve(uniqueSuffix,
+			document.WithAdditionalOperations(additionalOps),
+			document.WithVersionTime("invalid"))
+		require.Error(t, err)
+		require.Nil(t, doc)
+		require.Contains(t, err.Error(), "failed to parse version time[invalid]")
 	})
 
 	t.Run("document not found error", func(t *testing.T) {

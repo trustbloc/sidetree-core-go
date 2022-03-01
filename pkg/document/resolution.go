@@ -60,6 +60,7 @@ type ResolutionOption func(opts *ResolutionOptions)
 type ResolutionOptions struct {
 	AdditionalOperations []*operation.AnchoredOperation
 	VersionID            string
+	VersionTime          string
 }
 
 // WithAdditionalOperations sets the additional operations to be used in a Resolve call.
@@ -75,6 +76,13 @@ func WithAdditionalOperations(additionalOperations []*operation.AnchoredOperatio
 func WithVersionID(versionID string) ResolutionOption {
 	return func(opts *ResolutionOptions) {
 		opts.VersionID = versionID
+	}
+}
+
+// WithVersionTime sets the version time to be used in a Resolve call.
+func WithVersionTime(versionTime string) ResolutionOption {
+	return func(opts *ResolutionOptions) {
+		opts.VersionTime = versionTime
 	}
 }
 
