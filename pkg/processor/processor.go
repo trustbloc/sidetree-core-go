@@ -143,20 +143,12 @@ func processOperations(
 		return nil, nil, nil, err
 	}
 
-	publishedOps, unpublishedOps = addAdditionalOperations(publishedOps, unpublishedOps, resOpts.AdditionalOperations)
-
-	ops := append(publishedOps, unpublishedOps...)
-
-	sortOperations(ops)
-
-	logger.Debugf("Found %d operations for unique suffix [%s]: %+v", len(ops), uniqueSuffix, ops)
-
-	filteredOps, err := filterOps(ops, resOpts, uniqueSuffix)
+	pubOps, unpubOps, ops, err := applyResolutionOptions(uniqueSuffix, publishedOps, unpublishedOps, resOpts)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to filter document id[%s] operations: %s", uniqueSuffix, err.Error())
+		return nil, nil, nil, fmt.Errorf("failed to apply resolution options for document id[%s]: %s", uniqueSuffix, err.Error())
 	}
 
-	return publishedOps, unpublishedOps, filteredOps, nil
+	return pubOps, unpubOps, ops, nil
 }
 
 func filterOps(ops []*operation.AnchoredOperation, opts document.ResolutionOptions, uniqueSuffx string) ([]*operation.AnchoredOperation, error) {
@@ -206,10 +198,10 @@ func filterOpsByVersionTime(ops []*operation.AnchoredOperation, timeStr string) 
 	return filteredOps, nil
 }
 
-func addAdditionalOperations(published, unpublished, additional []*operation.AnchoredOperation) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation) {
+func applyResolutionOptions(uniqueSuffix string, published, unpublished []*operation.AnchoredOperation, opts document.ResolutionOptions) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation, []*operation.AnchoredOperation, error) {
 	canonicalIds := getCanonicalMap(published)
 
-	for _, op := range additional {
+	for _, op := range opts.AdditionalOperations {
 		if op.CanonicalReference == "" {
 			unpublished = append(unpublished, op)
 		} else if _, ok := canonicalIds[op.CanonicalReference]; !ok {
@@ -220,7 +212,32 @@ func addAdditionalOperations(published, unpublished, additional []*operation.Anc
 	sortOperations(published)
 	sortOperations(unpublished)
 
-	return published, unpublished
+	ops := append(published, unpublished...)
+
+	logger.Debugf("Found %d operations for unique suffix [%s]: %+v", len(ops), uniqueSuffix, ops)
+
+	filteredOps, err := filterOps(ops, opts, uniqueSuffix)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to filter document id[%s] operations: %s", uniqueSuffix, err.Error())
+	}
+
+	if len(filteredOps) == len(ops) {
+		// base case : nothing got filtered
+		return published, unpublished, ops, nil
+	}
+
+	var filteredPublishedOps []*operation.AnchoredOperation
+	var filteredUnpublishedOps []*operation.AnchoredOperation
+
+	for _, op := range filteredOps {
+		if op.CanonicalReference == "" {
+			filteredUnpublishedOps = append(filteredUnpublishedOps, op)
+		} else if _, ok := canonicalIds[op.CanonicalReference]; !ok {
+			filteredPublishedOps = append(filteredPublishedOps, op)
+		}
+	}
+
+	return filteredPublishedOps, filteredUnpublishedOps, filteredOps, nil
 }
 
 func getCanonicalMap(published []*operation.AnchoredOperation) map[string]bool {
