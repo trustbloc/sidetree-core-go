@@ -232,7 +232,7 @@ func applyResolutionOptions(uniqueSuffix string, published, unpublished []*opera
 	for _, op := range filteredOps {
 		if op.CanonicalReference == "" {
 			filteredUnpublishedOps = append(filteredUnpublishedOps, op)
-		} else if _, ok := canonicalIds[op.CanonicalReference]; !ok {
+		} else {
 			filteredPublishedOps = append(filteredPublishedOps, op)
 		}
 	}
