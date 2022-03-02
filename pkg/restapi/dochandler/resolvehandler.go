@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -58,7 +59,12 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 	}()
 
 	id := getID(req)
-	opts := getResolutionOptions(req)
+	opts, err := getResolutionOptions(req)
+	if err != nil {
+		common.WriteError(rw, http.StatusBadRequest, err)
+
+		return
+	}
 
 	logger.Debugf("Resolving DID document for ID [%s]", id)
 	response, err := o.doResolve(id, opts...)
@@ -94,7 +100,7 @@ var getID = func(req *http.Request) string {
 	return mux.Vars(req)["id"]
 }
 
-func getResolutionOptions(req *http.Request) []document.ResolutionOption {
+func getResolutionOptions(req *http.Request) ([]document.ResolutionOption, error) {
 	var resolutionOpts []document.ResolutionOption
 
 	versionID := req.URL.Query().Get(versionIDParam)
@@ -107,5 +113,9 @@ func getResolutionOptions(req *http.Request) []document.ResolutionOption {
 		resolutionOpts = append(resolutionOpts, document.WithVersionTime(versionTime))
 	}
 
-	return resolutionOpts
+	if versionID != "" && versionTime != "" {
+		return nil, fmt.Errorf("cannot specify both '%s' and '%s'", versionIDParam, versionTimeParam)
+	}
+
+	return resolutionOpts, nil
 }
