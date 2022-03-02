@@ -82,15 +82,17 @@ func TestResolve(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		op := New("test", store, pc)
 
+		now := uint64(time.Now().Unix())
+
 		additionalOps := []*operation.AnchoredOperation{
 			{ // unpublished operation
 				Type:            operation.TypeUpdate,
-				TransactionTime: uint64(time.Now().Unix()),
+				TransactionTime: now,
 			},
 			{ // published operation
 				Type:               operation.TypeUpdate,
 				CanonicalReference: "abc",
-				TransactionTime:    uint64(time.Now().Unix() - 60),
+				TransactionTime:    now - 60,
 			},
 		}
 
@@ -99,6 +101,8 @@ func TestResolve(t *testing.T) {
 			document.WithVersionID("abc"))
 		require.NoError(t, err)
 		require.NotNil(t, doc)
+		require.Len(t, doc.PublishedOperations, 2)
+		require.Len(t, doc.UnpublishedOperations, 0)
 	})
 
 	t.Run("error - invalid version id", func(t *testing.T) {
@@ -122,23 +126,62 @@ func TestResolve(t *testing.T) {
 		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
 		op := New("test", store, pc)
 
+		now := uint64(time.Now().Unix())
+
+		nowStr := time.Now().UTC().Format(time.RFC3339)
+
 		additionalOps := []*operation.AnchoredOperation{
 			{ // unpublished operation
 				Type:            operation.TypeUpdate,
-				TransactionTime: uint64(time.Now().Unix() - 5),
+				TransactionTime: now + 5,
 			},
 			{ // published operation
-				Type:               operation.TypeCreate,
+				Type:               operation.TypeUpdate,
 				CanonicalReference: "abc",
-				TransactionTime:    uint64(time.Now().Unix() - 10),
+				TransactionTime:    now + 10,
 			},
 		}
 
 		doc, err := op.Resolve(uniqueSuffix,
 			document.WithAdditionalOperations(additionalOps),
-			document.WithVersionTime(time.Now().UTC().Format(time.RFC3339)))
+			document.WithVersionTime(nowStr))
 		require.NoError(t, err)
 		require.NotNil(t, doc)
+		require.Len(t, doc.PublishedOperations, 1)
+		require.Len(t, doc.UnpublishedOperations, 0)
+	})
+
+	t.Run("success - with version time (includes unpublished)", func(t *testing.T) {
+		store, uniqueSuffix := getDefaultStore(recoveryKey, updateKey)
+		op := New("test", store, pc)
+
+		now := uint64(time.Now().Unix())
+
+		nowStr := time.Now().UTC().Format(time.RFC3339)
+
+		additionalOps := []*operation.AnchoredOperation{
+			{ // unpublished operation
+				Type:            operation.TypeUpdate,
+				TransactionTime: now + 5,
+			},
+			{ // unpublished operation
+				Type:            operation.TypeUpdate,
+				TransactionTime: now - 5,
+			},
+			{ // published operation
+				Type:               operation.TypeUpdate,
+				CanonicalReference: "abc",
+				TransactionTime:    now - 10,
+			},
+		}
+
+		doc, err := op.Resolve(uniqueSuffix,
+			document.WithAdditionalOperations(additionalOps),
+			document.WithVersionTime(nowStr))
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+		require.Len(t, doc.PublishedOperations, 2)
+		require.Len(t, doc.UnpublishedOperations, 1)
 	})
 
 	t.Run("success - no ops with version time", func(t *testing.T) {
@@ -1329,6 +1372,7 @@ func getAnchoredOperation(op *model.Operation, blockNum uint64) *operation.Ancho
 		panic(err)
 	}
 
+	anchoredOp.CanonicalReference = "ref"
 	anchoredOp.TransactionTime = blockNum
 	anchoredOp.ProtocolVersion = getProtocol(blockNum).GenesisTime
 
