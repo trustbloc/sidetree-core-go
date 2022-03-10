@@ -22,6 +22,9 @@ const (
 
 	// PublicKeyBase58Property defines base 58 encoding for public key.
 	PublicKeyBase58Property = "publicKeyBase58"
+
+	// PublicKeyMultibaseProperty defines base multibase for public key.
+	PublicKeyMultibaseProperty = "publicKeyMultibase"
 )
 
 // KeyPurpose defines key purpose.
@@ -81,6 +84,11 @@ func (pk PublicKey) PublicKeyJwk() JWK {
 // PublicKeyBase58 is base58 encoded public key.
 func (pk PublicKey) PublicKeyBase58() string {
 	return stringEntry(pk[PublicKeyBase58Property])
+}
+
+// PublicKeyMultibase is multibase public key.
+func (pk PublicKey) PublicKeyMultibase() string {
+	return stringEntry(pk[PublicKeyMultibaseProperty])
 }
 
 // Purpose describes key purpose.
