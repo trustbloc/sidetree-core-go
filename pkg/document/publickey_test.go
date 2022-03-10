@@ -29,6 +29,7 @@ func TestPublicKey(t *testing.T) {
 	require.Empty(t, pk.Purpose())
 	require.Empty(t, pk.PublicKeyJwk())
 	require.Empty(t, pk.PublicKeyBase58())
+	require.Empty(t, pk.PublicKeyMultibase())
 
 	require.NotEmpty(t, pk.JSONLdObject())
 }

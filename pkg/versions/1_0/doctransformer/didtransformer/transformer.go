@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/multiformats/go-multibase"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -27,6 +28,9 @@ const (
 	// ed25519VerificationKey2018 requires special handling (convert to base58).
 	ed25519VerificationKey2018 = "Ed25519VerificationKey2018"
 
+	// ed25519VerificationKey202p requires special handling (convert to multibase).
+	ed25519VerificationKey2020 = "Ed25519VerificationKey2020"
+
 	bls12381G2Key2020                 = "Bls12381G2Key2020"
 	jsonWebKey2020                    = "JsonWebKey2020"
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
@@ -36,6 +40,7 @@ const (
 	jsonWebKey2020Ctx                    = "https://w3id.org/security/suites/jws-2020/v1"
 	ecdsaSecp256k1VerificationKey2019Ctx = "https://w3id.org/security/suites/secp256k1-2019/v1"
 	ed25519VerificationKey2018Ctx        = "https://w3id.org/security/suites/ed25519-2018/v1"
+	ed25519VerificationKey2020Ctx        = "https://w3id.org/security/suites/ed25519-2020/v1"
 	x25519KeyAgreementKey2019Ctx         = "https://w3id.org/security/suites/x25519-2019/v1"
 )
 
@@ -46,6 +51,7 @@ var defaultKeyContextMap = keyContextMap{
 	jsonWebKey2020:                    jsonWebKey2020Ctx,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019Ctx,
 	ed25519VerificationKey2018:        ed25519VerificationKey2018Ctx,
+	ed25519VerificationKey2020:        ed25519VerificationKey2020Ctx,
 	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019Ctx,
 }
 
@@ -242,11 +248,25 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 					return err
 				}
 				externalPK[document.PublicKeyBase58Property] = base58.Encode(ed25519PubKey)
+			} else if pk.Type() == ed25519VerificationKey2020 {
+				ed25519PubKey, err := getED2519PublicKey(pkJwk)
+				if err != nil {
+					return err
+				}
+
+				multibaseEncode, err := multibase.Encode(multibase.Base58BTC, ed25519PubKey)
+				if err != nil {
+					return err
+				}
+
+				externalPK[document.PublicKeyMultibaseProperty] = multibaseEncode
 			} else {
 				externalPK[document.PublicKeyJwkProperty] = pkJwk
 			}
 		} else if pkb58 := pk.PublicKeyBase58(); pkb58 != "" {
 			externalPK[document.PublicKeyBase58Property] = pkb58
+		} else if pkMultibase := pk.PublicKeyMultibase(); pkMultibase != "" {
+			externalPK[document.PublicKeyMultibaseProperty] = pkMultibase
 		} else {
 			externalPK[document.PublicKeyJwkProperty] = nil // if key missing, default to adding nil jwk
 		}

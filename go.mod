@@ -9,6 +9,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/evanphx/json-patch v4.1.0+incompatible
 	github.com/gorilla/mux v1.8.0
+	github.com/multiformats/go-multibase v0.0.1
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/pkg/errors v0.9.1
 	github.com/square/go-jose/v3 v3.0.0-20200630053402-0a67ce9b0693
@@ -23,6 +24,7 @@ require (
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/multiformats/go-base32 v0.0.3 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

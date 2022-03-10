@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
@@ -191,13 +192,14 @@ func TestTransformDocument(t *testing.T) {
 
 		didDoc := result.Document
 
-		require.Equal(t, 6, len(didDoc.Context()))
+		require.Equal(t, 7, len(didDoc.Context()))
 		require.Equal(t, didContext, didDoc.Context()[0])
 		require.Equal(t, bls12381G2Key2020Ctx, didDoc.Context()[1])
 		require.Equal(t, jsonWebKey2020Ctx, didDoc.Context()[2])
 		require.Equal(t, ecdsaSecp256k1VerificationKey2019Ctx, didDoc.Context()[3])
 		require.Equal(t, ed25519VerificationKey2018Ctx, didDoc.Context()[4])
 		require.Equal(t, x25519KeyAgreementKey2019Ctx, didDoc.Context()[5])
+		require.Equal(t, ed25519VerificationKey2020Ctx, didDoc.Context()[6])
 	})
 
 	t.Run("success - override contexts for key type", func(t *testing.T) {
@@ -207,6 +209,7 @@ func TestTransformDocument(t *testing.T) {
 			ecdsaSecp256k1VerificationKey2019: "context-3",
 			ed25519VerificationKey2018:        "context-4",
 			x25519KeyAgreementKey2019:         "context-5",
+			ed25519VerificationKey2020:        "context-6",
 		}
 
 		d, err := document.FromBytes([]byte(allKeyTypes))
@@ -226,13 +229,14 @@ func TestTransformDocument(t *testing.T) {
 
 		didDoc := result.Document
 
-		require.Equal(t, 6, len(didDoc.Context()))
+		require.Equal(t, 7, len(didDoc.Context()))
 		require.Equal(t, didContext, didDoc.Context()[0])
 		require.Equal(t, "context-1", didDoc.Context()[1])
 		require.Equal(t, "context-2", didDoc.Context()[2])
 		require.Equal(t, "context-3", didDoc.Context()[3])
 		require.Equal(t, "context-4", didDoc.Context()[4])
 		require.Equal(t, "context-5", didDoc.Context()[5])
+		require.Equal(t, "context-6", didDoc.Context()[6])
 	})
 
 	t.Run("success - include operations (published/unpublished)", func(t *testing.T) {
@@ -451,8 +455,89 @@ func TestEd25519VerificationKey2018(t *testing.T) {
 	require.Equal(t, 0, len(didDoc.AgreementKeys()))
 }
 
+func TestEd25519VerificationKey2020(t *testing.T) {
+	publicKey, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	jwk, err := pubkey.GetPublicKeyJWK(publicKey)
+	require.NoError(t, err)
+
+	publicKeyBytes, err := json.Marshal(jwk)
+	require.NoError(t, err)
+
+	data := fmt.Sprintf(ed25519VerificationKey2020DocTemplate, string(publicKeyBytes))
+
+	doc, err := document.FromBytes([]byte(data))
+	require.NoError(t, err)
+
+	transformer := New()
+
+	internal := &protocol.ResolutionModel{Doc: doc}
+
+	info := make(protocol.TransformationInfo)
+	info[document.IDProperty] = testID
+	info[document.PublishedProperty] = true
+
+	result, err := transformer.TransformDocument(internal, info)
+	require.NoError(t, err)
+
+	jsonTransformed, err := json.Marshal(result.Document)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
+	require.Equal(t, didDoc.VerificationMethods()[0].Controller(), didDoc.ID())
+	require.Equal(t, didContext, didDoc.Context()[0])
+
+	// validate service
+	service := didDoc.Services()[0]
+	require.Contains(t, service.ID(), testID)
+	require.NotEmpty(t, service.ServiceEndpoint())
+	require.Equal(t, "OpenIdConnectVersion1.0Service", service.Type())
+
+	// validate public key
+	pk := didDoc.VerificationMethods()[0]
+	require.Contains(t, pk.ID(), testID)
+	require.Equal(t, "Ed25519VerificationKey2020", pk.Type())
+	require.Empty(t, pk.PublicKeyJwk())
+
+	// test base58 encoding
+	multibaseEncode, err := multibase.Encode(multibase.Base58BTC, publicKey)
+	require.NoError(t, err)
+
+	require.Equal(t, multibaseEncode, pk.PublicKeyMultibase())
+
+	// validate length of expected keys
+	expectedPublicKeys := []string{"assertion"}
+	require.Equal(t, len(expectedPublicKeys), len(didDoc.VerificationMethods()))
+
+	expectedAssertionMethodKeys := []string{"assertion"}
+	require.Equal(t, len(expectedAssertionMethodKeys), len(didDoc.AssertionMethods()))
+
+	require.Equal(t, 0, len(didDoc.Authentications()))
+	require.Equal(t, 0, len(didDoc.AgreementKeys()))
+}
+
 func TestEd25519VerificationKey2018_Error(t *testing.T) {
 	doc, err := document.FromBytes([]byte(ed25519Invalid))
+	require.NoError(t, err)
+
+	transformer := New()
+
+	internal := &protocol.ResolutionModel{Doc: doc}
+
+	info := make(protocol.TransformationInfo)
+	info[document.IDProperty] = testID
+	info[document.PublishedProperty] = true
+
+	result, err := transformer.TransformDocument(internal, info)
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "unknown curve")
+}
+
+func TestEd25519VerificationKey2020_Error(t *testing.T) {
+	doc, err := document.FromBytes([]byte(ed25519VerificationKey2020DocInvalid))
 	require.NoError(t, err)
 
 	transformer := New()
@@ -502,6 +587,39 @@ func TestPublicKeyBase58(t *testing.T) {
 	require.Equal(t, pkB58, pk.PublicKeyBase58())
 }
 
+func TestPublicKeyMultibase(t *testing.T) {
+	pkMultibase := "z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP"
+
+	doc, err := document.FromBytes([]byte(fmt.Sprintf(publicKeyMultibaseTemplate, pkMultibase)))
+	require.NoError(t, err)
+
+	transformer := New()
+
+	internal := &protocol.ResolutionModel{Doc: doc}
+
+	info := make(protocol.TransformationInfo)
+	info[document.IDProperty] = testID
+	info[document.PublishedProperty] = true
+
+	result, err := transformer.TransformDocument(internal, info)
+	require.NoError(t, err)
+
+	jsonTransformed, err := json.Marshal(result.Document)
+	require.NoError(t, err)
+
+	didDoc, err := document.DidDocumentFromBytes(jsonTransformed)
+	require.NoError(t, err)
+	require.Equal(t, didDoc.VerificationMethods()[0].Controller(), didDoc.ID())
+	require.Equal(t, didContext, didDoc.Context()[0])
+
+	pk := didDoc.VerificationMethods()[0]
+	require.Contains(t, pk.ID(), testID)
+	require.Equal(t, "Ed25519VerificationKey2020", pk.Type())
+	require.Empty(t, pk.PublicKeyJwk())
+
+	require.Equal(t, pkMultibase, pk.PublicKeyMultibase())
+}
+
 func reader(t *testing.T, filename string) io.Reader {
 	f, err := os.Open(filename)
 	require.NoError(t, err)
@@ -514,6 +632,24 @@ const ed25519DocTemplate = `{
 	{
   		"id": "assertion",
   		"type": "Ed25519VerificationKey2018",
+		"purposes": ["assertionMethod"],
+  		"publicKeyJwk": %s
+	}
+  ],
+  "service": [
+	{
+	   "id": "oidc",
+	   "type": "OpenIdConnectVersion1.0Service",
+	   "serviceEndpoint": "https://openid.example.com/"
+	}
+  ]
+}`
+
+const ed25519VerificationKey2020DocTemplate = `{
+  "publicKey": [
+	{
+  		"id": "assertion",
+  		"type": "Ed25519VerificationKey2020",
 		"purposes": ["assertionMethod"],
   		"publicKeyJwk": %s
 	}
@@ -545,11 +681,45 @@ const publicKeyBase58Template = `{
   ]
 }`
 
+const publicKeyMultibaseTemplate = `{
+  "publicKey": [
+	{
+  		"id": "assertion",
+  		"type": "Ed25519VerificationKey2020",
+		"purposes": ["assertionMethod"],
+  		"publicKeyMultibase": "%s"
+	}
+  ],
+  "service": [
+	{
+	   "id": "oidc",
+	   "type": "OpenIdConnectVersion1.0Service",
+	   "serviceEndpoint": "https://openid.example.com/"
+	}
+  ]
+}`
+
 const ed25519Invalid = `{
   "publicKey": [
 	{
   		"id": "assertion",
   		"type": "Ed25519VerificationKey2018",
+		"purposes": ["assertionMethod"],
+      	"publicKeyJwk": {
+        	"kty": "OKP",
+        	"crv": "curve",
+        	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+        	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+      	}
+	}
+  ]
+}`
+
+const ed25519VerificationKey2020DocInvalid = `{
+  "publicKey": [
+	{
+  		"id": "assertion",
+  		"type": "Ed25519VerificationKey2020",
 		"purposes": ["assertionMethod"],
       	"publicKeyJwk": {
         	"kty": "OKP",
@@ -632,6 +802,16 @@ const allKeyTypes = `{
         	"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
         	"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
       	}
+    },
+    {
+      	"id": "key-6",
+		"type": "Ed25519VerificationKey2020",
+		"purposes": ["assertionMethod"],
+  		"publicKeyJwk": {
+			"kty":"OKP",
+			"crv":"Ed25519",
+			"x":"K24aib_Py_D2ST8F_IiIA2SJo1EiseS0hbaa36tVSAU"
+		}
     }
   ]
 }`
