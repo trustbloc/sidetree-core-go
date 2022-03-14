@@ -27,6 +27,7 @@ const (
 	ecdsaSecp256k1VerificationKey2019 = "EcdsaSecp256k1VerificationKey2019"
 	x25519KeyAgreementKey2019         = "X25519KeyAgreementKey2019"
 	ed25519VerificationKey2018        = "Ed25519VerificationKey2018"
+	ed25519VerificationKey2020        = "Ed25519VerificationKey2020"
 
 	// public keys, services id length.
 	maxIDLength = 50
@@ -49,6 +50,7 @@ var allowedKeyTypesGeneral = existenceMap{
 	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	ed25519VerificationKey2018:        ed25519VerificationKey2018,
+	ed25519VerificationKey2020:        ed25519VerificationKey2020,
 	x25519KeyAgreementKey2019:         x25519KeyAgreementKey2019,
 }
 
@@ -57,6 +59,7 @@ var allowedKeyTypesVerification = existenceMap{
 	jsonWebKey2020:                    jsonWebKey2020,
 	ecdsaSecp256k1VerificationKey2019: ecdsaSecp256k1VerificationKey2019,
 	ed25519VerificationKey2018:        ed25519VerificationKey2018,
+	ed25519VerificationKey2020:        ed25519VerificationKey2020,
 }
 
 var allowedKeyTypesAgreement = existenceMap{
