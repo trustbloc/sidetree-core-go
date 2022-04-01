@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-name: github.ref_name
+name: Sonar
 on:
   workflow_run:
     workflows: [Build]
