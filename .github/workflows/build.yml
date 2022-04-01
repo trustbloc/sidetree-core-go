@@ -29,22 +29,32 @@ jobs:
         run: |
           make checks
 
-  UnitTest:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  unitTest:
+    name: Unit test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Go
+      - name: Setup Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: 1.17
+        id: go
+
+      - uses: actions/checkout@v2
+
       - name: Run unit test
+        timeout-minutes: 15
         run: make unit-test
+
       - name: Upload coverage to Codecov
-        run: |
-          bash <(curl https://codecov.io/bash)
-        env:
-          CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+        timeout-minutes: 10
+        if: matrix.os == 'ubuntu-latest' && github.repository == 'trustbloc/sidetree-core-go'
+        uses: codecov/codecov-action@v1.3.1
+        with:
+          file: ./coverage.txt
 
   sonarcloud:
     runs-on: ubuntu-latest
@@ -58,7 +68,7 @@ jobs:
         with:
           args: >
             -Dsonar.organization=trustbloc
-            -Dsonar.projectKey=trustbloc_vct
+            -Dsonar.projectKey=trustbloc_sidetree-core-go
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: 82580866f1b5a5040e9d015d26bed102e7ca42f3
