@@ -201,7 +201,9 @@ func TestUpdateDocument(t *testing.T) {
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
-		require.NotZero(t, rm.CreatedTime)
+		createdTime := rm.CreatedTime
+
+		require.NotZero(t, createdTime)
 		require.Zero(t, rm.UpdatedTime)
 
 		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
@@ -221,8 +223,7 @@ func TestUpdateDocument(t *testing.T) {
 		result, err = applier.Apply(updateOp, result)
 		require.Nil(t, err)
 
-		require.NotZero(t, rm.CreatedTime)
-		require.Zero(t, rm.UpdatedTime)
+		require.Equal(t, createdTime, result.CreatedTime)
 
 		// check if service type value is updated again (done via json patch)
 		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
@@ -458,15 +459,17 @@ func TestDeactivate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		created, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
 		deactivateOp, err := getAnchoredDeactivateOperation(recoveryKey, uniqueSuffix)
 		require.NoError(t, err)
 
-		doc, err := applier.Apply(deactivateOp, rm)
+		deactivated, err := applier.Apply(deactivateOp, created)
 		require.NoError(t, err)
-		require.NotNil(t, doc)
+		require.NotNil(t, deactivated)
+
+		require.Equal(t, created.CreatedTime, deactivated.CreatedTime)
 	})
 
 	t.Run("success - anchor until time defaulted based on protocol parameter", func(t *testing.T) {
@@ -686,17 +689,17 @@ func TestRecover(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		applier := New(p, parser, dc)
 
-		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
+		created, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
 		recoverOp, nextRecoveryKey, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 1)
 		require.NoError(t, err)
 
-		rm, err = applier.Apply(recoverOp, rm)
+		created, err = applier.Apply(recoverOp, created)
 		require.NoError(t, err)
 
 		// test for recovered key
-		docBytes, err := rm.Doc.Bytes()
+		docBytes, err := created.Doc.Bytes()
 		require.NoError(t, err)
 		require.Contains(t, string(docBytes), "recovered")
 
@@ -704,9 +707,11 @@ func TestRecover(t *testing.T) {
 		recoverOp, _, err = getAnchoredRecoverOperation(nextRecoveryKey, updateKey, uniqueSuffix, 2)
 		require.NoError(t, err)
 
-		doc, err := applier.Apply(recoverOp, rm)
+		recovered, err := applier.Apply(recoverOp, created)
 		require.NoError(t, err)
-		require.NotNil(t, doc)
+		require.NotNil(t, recovered)
+
+		require.Equal(t, created.CreatedTime, recovered.CreatedTime)
 	})
 
 	t.Run("success - operation with invalid signature rejected", func(t *testing.T) {
