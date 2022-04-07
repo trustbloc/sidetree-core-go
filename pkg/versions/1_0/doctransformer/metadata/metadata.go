@@ -9,6 +9,7 @@ package metadata
 import (
 	"errors"
 	"sort"
+	"time"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
@@ -51,7 +52,7 @@ func WithIncludeUnpublishedOperations(enabled bool) Option {
 }
 
 // CreateDocumentMetadata will create document metadata.
-func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (document.Metadata, error) { // nolint: gocyclo
+func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (document.Metadata, error) { // nolint: funlen,gocyclo
 	if rm == nil || rm.Doc == nil {
 		return nil, errors.New("resolution model is required for creating document metadata")
 	}
@@ -105,8 +106,13 @@ func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info pro
 		docMetadata[document.EquivalentIDProperty] = equivalentID
 	}
 
+	if published.(bool) {
+		docMetadata[document.CreatedProperty] = time.Unix(int64(rm.CreatedTime), 0).UTC().Format(time.RFC3339)
+	}
+
 	if rm.VersionID != "" {
 		docMetadata[document.VersionIDProperty] = rm.VersionID
+		docMetadata[document.UpdatedProperty] = time.Unix(int64(rm.UpdatedTime), 0).UTC().Format(time.RFC3339)
 	}
 
 	return docMetadata, nil

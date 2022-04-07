@@ -84,8 +84,9 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
 		Doc:                            make(document.Document),
+		CreatedTime:                    anchoredOp.TransactionTime,
 		LastOperationTransactionTime:   anchoredOp.TransactionTime,
-		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionNumber,
 		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
 		VersionID:                      anchoredOp.CanonicalReference,
 		CanonicalReference:             anchoredOp.CanonicalReference,
@@ -162,8 +163,9 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 	// delta is valid so advance update commitment
 	result := &protocol.ResolutionModel{
 		Doc:                            rm.Doc,
+		UpdatedTime:                    anchoredOp.TransactionTime,
 		LastOperationTransactionTime:   anchoredOp.TransactionTime,
-		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionNumber,
 		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
 		VersionID:                      anchoredOp.CanonicalReference,
 		CanonicalReference:             rm.CanonicalReference,
@@ -233,7 +235,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 	return &protocol.ResolutionModel{
 		Doc:                            make(document.Document),
 		LastOperationTransactionTime:   anchoredOp.TransactionTime,
-		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionNumber,
 		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
 		VersionID:                      anchoredOp.CanonicalReference,
 		CanonicalReference:             rm.CanonicalReference,
@@ -273,8 +275,9 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 	// from this point any error should advance recovery commitment
 	result := &protocol.ResolutionModel{
 		Doc:                            make(document.Document),
+		UpdatedTime:                    anchoredOp.TransactionTime,
 		LastOperationTransactionTime:   anchoredOp.TransactionTime,
-		LastOperationTransactionNumber: anchoredOp.TransactionTime,
+		LastOperationTransactionNumber: anchoredOp.TransactionNumber,
 		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,
 		VersionID:                      anchoredOp.CanonicalReference,
 		CanonicalReference:             anchoredOp.CanonicalReference,
