@@ -8,6 +8,7 @@ package metadata
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +26,24 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 	doc, err := document.FromBytes(validDoc)
 	require.NoError(t, err)
 
-	internal := &protocol.ResolutionModel{Doc: doc, RecoveryCommitment: "recovery", UpdateCommitment: "update", AnchorOrigin: "origin.com"}
+	createdTimeStr := "2020-12-20T19:17:47Z"
+	updatedTimeStr := "2022-12-20T19:17:47Z"
+
+	createdTime, err := time.Parse(time.RFC3339, createdTimeStr)
+	require.NoError(t, err)
+
+	updatedTime, err := time.Parse(time.RFC3339, updatedTimeStr)
+	require.NoError(t, err)
+
+	internal := &protocol.ResolutionModel{
+		Doc:                doc,
+		RecoveryCommitment: "recovery",
+		UpdateCommitment:   "update",
+		AnchorOrigin:       "origin.com",
+		VersionID:          "version",
+		CreatedTime:        uint64(createdTime.Unix()),
+		UpdatedTime:        uint64(updatedTime.Unix()),
+	}
 
 	t.Run("success - all info present", func(t *testing.T) {
 		info := make(protocol.TransformationInfo)
@@ -43,6 +61,9 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 		require.Empty(t, documentMetadata[document.DeactivatedProperty])
 		require.Equal(t, canonicalID, documentMetadata[document.CanonicalIDProperty])
 		require.NotEmpty(t, documentMetadata[document.EquivalentIDProperty])
+
+		require.Equal(t, createdTimeStr, documentMetadata[document.CreatedProperty])
+		require.Equal(t, updatedTimeStr, documentMetadata[document.UpdatedProperty])
 
 		methodMetadataEntry, ok := documentMetadata[document.MethodProperty]
 		require.True(t, ok)

@@ -99,6 +99,8 @@ type OperationParser interface {
 // ResolutionModel contains temporary data during document resolution.
 type ResolutionModel struct {
 	Doc                            document.Document
+	CreatedTime                    uint64
+	UpdatedTime                    uint64
 	LastOperationTransactionTime   uint64
 	LastOperationTransactionNumber uint64
 	LastOperationProtocolVersion   uint64

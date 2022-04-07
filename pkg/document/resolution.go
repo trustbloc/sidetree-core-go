@@ -34,6 +34,12 @@ const (
 	// AnchorOriginProperty is anchor origin key.
 	AnchorOriginProperty = "anchorOrigin"
 
+	// CreatedProperty is the time that document was created - anchoring time of first successful create operation.
+	CreatedProperty = "created"
+
+	// UpdatedProperty is the time of last document update - anchoring time of update/recover operations.
+	UpdatedProperty = "updated"
+
 	// VersionIDProperty is version ID key.
 	VersionIDProperty = "versionId"
 

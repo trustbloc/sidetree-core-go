@@ -201,6 +201,9 @@ func TestUpdateDocument(t *testing.T) {
 		rm, err := applier.Apply(createOp, &protocol.ResolutionModel{})
 		require.NoError(t, err)
 
+		require.NotZero(t, rm.CreatedTime)
+		require.Zero(t, rm.UpdatedTime)
+
 		updateOp, nextUpdateKey, err := getAnchoredUpdateOperation(updateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
@@ -217,6 +220,9 @@ func TestUpdateDocument(t *testing.T) {
 
 		result, err = applier.Apply(updateOp, result)
 		require.Nil(t, err)
+
+		require.NotZero(t, rm.CreatedTime)
+		require.Zero(t, rm.UpdatedTime)
 
 		// check if service type value is updated again (done via json patch)
 		didDoc = document.DidDocumentFromJSONLDObject(result.Doc)
@@ -1267,6 +1273,8 @@ func getAnchoredOperation(op *model.Operation) *operation.AnchoredOperation {
 	if err != nil {
 		panic(err)
 	}
+
+	anchoredOp.TransactionTime = uint64(time.Now().Unix())
 
 	return anchoredOp
 }
