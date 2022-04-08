@@ -112,7 +112,7 @@ func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info pro
 
 	if rm.VersionID != "" {
 		docMetadata[document.VersionIDProperty] = rm.VersionID
-		if rm.UpdatedTime > 0 {
+		if !rm.Deactivated && rm.UpdatedTime > 0 {
 			docMetadata[document.UpdatedProperty] = time.Unix(int64(rm.UpdatedTime), 0).UTC().Format(time.RFC3339)
 		}
 	}
