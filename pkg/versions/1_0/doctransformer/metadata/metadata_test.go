@@ -124,7 +124,13 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 	})
 
 	t.Run("success - deactivated, commitments empty", func(t *testing.T) {
-		internal2 := &protocol.ResolutionModel{Doc: doc, Deactivated: true}
+		internal2 := &protocol.ResolutionModel{
+			Doc:         doc,
+			Deactivated: true,
+			CreatedTime: uint64(time.Now().Unix() - 60),
+			UpdatedTime: uint64(time.Now().Unix()),
+			VersionID:   "version",
+		}
 
 		info := make(protocol.TransformationInfo)
 		info[document.IDProperty] = testDID
@@ -135,6 +141,8 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, true, documentMetadata[document.DeactivatedProperty])
+		require.Empty(t, documentMetadata[document.UpdatedProperty])
+		require.NotEmpty(t, documentMetadata[document.CreatedProperty])
 		require.Equal(t, canonicalID, documentMetadata[document.CanonicalIDProperty])
 		require.Empty(t, documentMetadata[document.EquivalentIDProperty])
 
