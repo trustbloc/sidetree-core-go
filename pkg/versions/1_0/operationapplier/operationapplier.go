@@ -236,7 +236,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 	return &protocol.ResolutionModel{
 		Doc:                            make(document.Document),
 		CreatedTime:                    rm.CreatedTime,
-		UpdatedTime:                    rm.UpdatedTime,
+		UpdatedTime:                    anchoredOp.TransactionTime,
 		LastOperationTransactionTime:   anchoredOp.TransactionTime,
 		LastOperationTransactionNumber: anchoredOp.TransactionNumber,
 		LastOperationProtocolVersion:   anchoredOp.ProtocolVersion,

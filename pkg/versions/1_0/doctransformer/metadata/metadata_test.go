@@ -141,6 +141,38 @@ func TestPopulateDocumentMetadata(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, true, documentMetadata[document.DeactivatedProperty])
+		require.NotEmpty(t, documentMetadata[document.UpdatedProperty])
+		require.NotEmpty(t, documentMetadata[document.CreatedProperty])
+		require.Equal(t, canonicalID, documentMetadata[document.CanonicalIDProperty])
+		require.Empty(t, documentMetadata[document.EquivalentIDProperty])
+
+		methodMetadataEntry, ok := documentMetadata[document.MethodProperty]
+		require.True(t, ok)
+		methodMetadata, ok := methodMetadataEntry.(document.Metadata)
+		require.True(t, ok)
+
+		require.Equal(t, true, methodMetadata[document.PublishedProperty])
+		require.Empty(t, methodMetadata[document.RecoveryCommitmentProperty])
+		require.Empty(t, methodMetadata[document.UpdateCommitmentProperty])
+	})
+
+	t.Run("success - deactivated, no version ID (unpublished)", func(t *testing.T) {
+		internal2 := &protocol.ResolutionModel{
+			Doc:         doc,
+			Deactivated: true,
+			CreatedTime: uint64(time.Now().Unix() - 60),
+			UpdatedTime: uint64(time.Now().Unix()),
+		}
+
+		info := make(protocol.TransformationInfo)
+		info[document.IDProperty] = testDID
+		info[document.PublishedProperty] = true
+		info[document.CanonicalIDProperty] = canonicalID
+
+		documentMetadata, err := New().CreateDocumentMetadata(internal2, info)
+		require.NoError(t, err)
+
+		require.Equal(t, true, documentMetadata[document.DeactivatedProperty])
 		require.Empty(t, documentMetadata[document.UpdatedProperty])
 		require.NotEmpty(t, documentMetadata[document.CreatedProperty])
 		require.Equal(t, canonicalID, documentMetadata[document.CanonicalIDProperty])
