@@ -48,7 +48,7 @@ type AnchoredOperation struct {
 	UniqueSuffix string `json:"uniqueSuffix"`
 
 	// OperationRequest is the original operation request
-	OperationRequest []byte `json:"operationRequest"`
+	OperationRequest []byte `json:"operation"`
 
 	// TransactionTime is the logical anchoring time (block number in case of blockchain) for this operation in the anchoring system (blockchain).
 	TransactionTime uint64 `json:"transactionTime"`
