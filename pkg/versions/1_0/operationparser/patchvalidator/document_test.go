@@ -209,12 +209,43 @@ func TestValidateServices(t *testing.T) {
 		err = validateServices(doc.Services())
 		require.NoError(t, err)
 	})
-	t.Run("error - service endpoint cannot be an array of objects", func(t *testing.T) {
+	t.Run("success - service endpoint is an array of objects", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointIsAnArrayOfObjects))
 		require.NoError(t, err)
 		err = validateServices(doc.Services())
+		require.NoError(t, err)
+	})
+	t.Run("success - service endpoint is an array of string objects", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointIsAnArrayOfURLStrings))
+		require.NoError(t, err)
+		err = validateServices(doc.Services())
+		require.NoError(t, err)
+	})
+	t.Run("success - service endpoint is an array of strings", func(t *testing.T) {
+		servicesMap := make(map[string]interface{})
+		servicesMap["id"] = "someID"
+		servicesMap["type"] = "someType"
+		servicesMap["serviceEndpoint"] = []string{"https://hello.com", "https://there.com"}
+
+		err := validateServices([]document.Service{document.NewService(servicesMap)})
+		require.NoError(t, err)
+	})
+	t.Run("error - service endpoint is an array of invalid strings", func(t *testing.T) {
+		servicesMap := make(map[string]interface{})
+		servicesMap["id"] = "someID"
+		servicesMap["type"] = "someType"
+		servicesMap["serviceEndpoint"] = []string{"invalid-1", "invalid-2"}
+
+		err := validateServices([]document.Service{document.NewService(servicesMap)})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "service endpoint cannot be an array of objects")
+		require.Contains(t, err.Error(), "service endpoint 'invalid-1' is not a valid URI")
+	})
+	t.Run("error - service endpoint is an array of invalid string URL objects", func(t *testing.T) {
+		doc, err := document.DidDocumentFromBytes([]byte(serviceDocEndpointIsAnArrayOfInvalidURLStrings))
+		require.NoError(t, err)
+		err = validateServices(doc.Services())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "service endpoint 'hello' is not a valid URI")
 	})
 	t.Run("error - empty service endpoint URI", func(t *testing.T) {
 		doc, err := document.DidDocumentFromBytes([]byte(serviceDocNoServiceEndpointURI))
@@ -679,7 +710,23 @@ const serviceDocEndpointIsAnArrayOfObjects = `{
 	"service": [{
 		"id": "vcs",
 		"type": "type",
-		"serviceEndpoint": ["hello"]
+		"serviceEndpoint": [{"key":"value"},{"key2":"value2"}]
+	}]
+}`
+
+const serviceDocEndpointIsAnArrayOfURLStrings = `{
+	"service": [{
+		"id": "vcs",
+		"type": "type",
+		"serviceEndpoint": ["https://hello.com", "https://there.com"]
+	}]
+}`
+
+const serviceDocEndpointIsAnArrayOfInvalidURLStrings = `{
+	"service": [{
+		"id": "vcs",
+		"type": "type",
+		"serviceEndpoint": ["hello", "there"]
 	}]
 }`
 

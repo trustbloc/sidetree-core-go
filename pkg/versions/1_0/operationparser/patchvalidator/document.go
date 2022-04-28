@@ -242,9 +242,35 @@ func validateServiceEndpoint(serviceEndpoint interface{}) error {
 		return validateURI(uri)
 	}
 
-	_, ok = serviceEndpoint.([]interface{})
+	uris, ok := serviceEndpoint.([]string)
 	if ok {
-		return errors.New("service endpoint cannot be an array of objects")
+		return validateURIs(uris)
+	}
+
+	objs, ok := serviceEndpoint.([]interface{})
+	if ok {
+		return validateServiceEndpointObjects(objs)
+	}
+
+	return nil
+}
+
+func validateServiceEndpointObjects(objs []interface{}) error {
+	for _, obj := range objs {
+		uri, ok := obj.(string)
+		if ok {
+			return validateURI(uri)
+		}
+	}
+
+	return nil
+}
+
+func validateURIs(uris []string) error {
+	for _, uri := range uris {
+		if err := validateURI(uri); err != nil {
+			return err
+		}
 	}
 
 	return nil
