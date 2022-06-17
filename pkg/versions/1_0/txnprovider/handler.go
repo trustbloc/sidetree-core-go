@@ -23,17 +23,29 @@ type compressionProvider interface {
 	Compress(alg string, data []byte) ([]byte, error)
 }
 
+type metricsProvider interface {
+	CASWriteSize(dataType string, size int)
+}
+
 // OperationHandler creates batch files(chunk, map, anchor) from batch operations.
 type OperationHandler struct {
 	cas      cas.Client
 	protocol protocol.Protocol
 	parser   OperationParser
 	cp       compressionProvider
+	metrics  metricsProvider
 }
 
 // NewOperationHandler returns new operations handler.
-func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProvider, parser OperationParser) *OperationHandler {
-	return &OperationHandler{cas: cas, protocol: p, cp: cp, parser: parser}
+func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProvider, parser OperationParser,
+	metrics metricsProvider) *OperationHandler {
+	return &OperationHandler{
+		cas:      cas,
+		protocol: p,
+		parser:   parser,
+		cp:       cp,
+		metrics:  metrics,
+	}
 }
 
 // PrepareTxnFiles will create batch files(core index, core proof, provisional index, provisional proof and chunk)
@@ -282,6 +294,8 @@ func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (str
 	if err != nil {
 		return "", fmt.Errorf("failed to store %s file: %s", alias, err.Error())
 	}
+
+	h.metrics.CASWriteSize(alias, len(compressedBytes))
 
 	return address, nil
 }

@@ -52,7 +52,8 @@ func TestNewOperationHandler(t *testing.T) {
 		protocol,
 		mocks.NewMockCasClient(nil),
 		compression.New(compression.WithDefaultAlgorithms()),
-		operationparser.New(protocol))
+		operationparser.New(protocol),
+		&mocks.MetricsProvider{})
 	require.NotNil(t, handler)
 }
 
@@ -73,7 +74,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(nil),
 			compression,
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -192,7 +194,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(nil),
 			compression,
-			operationparser.New(protocol, operationparser.WithAnchorTimeValidator(&mockTimeValidator{})))
+			operationparser.New(protocol, operationparser.WithAnchorTimeValidator(&mockTimeValidator{})),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -210,7 +213,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(nil),
 			compression,
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -270,7 +274,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(nil),
 			compression,
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(nil)
 		require.Error(t, err)
@@ -283,7 +288,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(nil),
 			compression,
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		op := &operation.QueuedOperation{
 			OperationRequest: []byte(`{"key":"value"}`),
@@ -304,7 +310,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(errors.New("CAS error")),
 			compression,
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -319,7 +326,8 @@ func TestOperationHandler_PrepareTxnFiles(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(errors.New("CAS error")),
 			compression,
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.Error(t, err)
@@ -335,7 +343,8 @@ func TestWriteModelToCAS(t *testing.T) {
 		protocol,
 		mocks.NewMockCasClient(nil),
 		compression.New(compression.WithDefaultAlgorithms()),
-		operationparser.New(protocol))
+		operationparser.New(protocol),
+		&mocks.MetricsProvider{})
 
 	t.Run("success", func(t *testing.T) {
 		address, err := handler.writeModelToCAS(&models.CoreIndexFile{}, "alias")
@@ -355,7 +364,8 @@ func TestWriteModelToCAS(t *testing.T) {
 			protocol,
 			mocks.NewMockCasClient(errors.New("CAS error")),
 			compression.New(compression.WithDefaultAlgorithms()),
-			operationparser.New(protocol))
+			operationparser.New(protocol),
+			&mocks.MetricsProvider{})
 
 		address, err := handlerWithCASError.writeModelToCAS(&models.CoreIndexFile{}, "alias")
 		require.Error(t, err)
@@ -372,6 +382,7 @@ func TestWriteModelToCAS(t *testing.T) {
 			mocks.NewMockCasClient(nil),
 			compression.New(compression.WithDefaultAlgorithms()),
 			operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{},
 		)
 
 		address, err := handlerWithProtocolError.writeModelToCAS(&models.CoreIndexFile{}, "alias")
