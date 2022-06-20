@@ -50,3 +50,7 @@ func (m *MetricsProvider) HTTPCreateUpdateTime(value time.Duration) {
 // HTTPResolveTime records the time rest call for resolve.
 func (m *MetricsProvider) HTTPResolveTime(value time.Duration) {
 }
+
+// CASWriteSize records the size of the data written to CAS.
+func (m *MetricsProvider) CASWriteSize(dataType string, size int) {
+}

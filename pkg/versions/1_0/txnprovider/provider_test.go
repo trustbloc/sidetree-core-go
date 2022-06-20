@@ -59,7 +59,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -84,7 +85,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("error - delta exceeds maximum delta size in chunk file", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -112,7 +114,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("error - number of operations doesn't match", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -159,7 +162,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 
 	t.Run("error - parse core index operations error", func(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		ops := getTestOperations(createOpsNum, updateOpsNum, deactivateOpsNum, recoverOpsNum)
 
@@ -206,7 +210,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops = append(ops, generateOperations(deactivateOpsNum, operation.TypeDeactivate)...)
 
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -237,7 +242,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops = append(ops, generateOperations(updateOpsNum, operation.TypeUpdate)...)
 
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -268,7 +274,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops = append(ops, generateOperations(createOpsNum, operation.TypeCreate)...)
 
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)
@@ -299,7 +306,8 @@ func TestHandler_GetTxnOperations(t *testing.T) {
 		ops = append(ops, generateOperations(recoverOpsNum, operation.TypeRecover)...)
 
 		cas := mocks.NewMockCasClient(nil)
-		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol))
+		handler := NewOperationHandler(pc.Protocol, cas, cp, operationparser.New(pc.Protocol),
+			&mocks.MetricsProvider{})
 
 		anchoringInfo, err := handler.PrepareTxnFiles(ops)
 		require.NoError(t, err)

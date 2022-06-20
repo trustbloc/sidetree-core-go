@@ -1131,7 +1131,7 @@ func newMockProtocolClient() *mocks.MockProtocolClient {
 
 		pc.CasClient = mocks.NewMockCasClient(nil)
 		cp := compression.New(compression.WithDefaultAlgorithms())
-		oh := txnprovider.NewOperationHandler(pc.Protocol, pc.CasClient, cp, parser)
+		oh := txnprovider.NewOperationHandler(pc.Protocol, pc.CasClient, cp, parser, &mocks.MetricsProvider{})
 
 		v.OperationParserReturns(parser)
 		v.OperationApplierReturns(oa)
