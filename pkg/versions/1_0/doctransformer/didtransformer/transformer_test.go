@@ -102,6 +102,7 @@ func TestTransformDocument(t *testing.T) {
 		// test document has 5 keys defined, two distinct key types: EcdsaSecp256k1VerificationKey2019, JsonWebKey2020
 		require.Equal(t, 3, len(didDoc.Context()))
 		require.Equal(t, didContext, didDoc.Context()[0])
+		require.NotEmpty(t, didDoc[document.AlsoKnownAs])
 		require.Equal(t, ecdsaSecp256k1VerificationKey2019Ctx, didDoc.Context()[1])
 		require.Equal(t, jsonWebKey2020Ctx, didDoc.Context()[2])
 
