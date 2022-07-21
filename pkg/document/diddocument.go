@@ -17,6 +17,9 @@ const (
 	// ContextProperty defines key for context property.
 	ContextProperty = "@context"
 
+	// AlsoKnownAs defines also known as property.
+	AlsoKnownAs = "alsoKnownAs"
+
 	// ServiceProperty defines key for service property.
 	ServiceProperty = "service"
 

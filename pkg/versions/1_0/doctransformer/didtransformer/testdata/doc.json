@@ -1,4 +1,5 @@
 {
+  "alsoKnownAs": ["https:\\somebody.com"],
   "publicKey": [
     {
       "id": "master",

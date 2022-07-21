@@ -153,6 +153,11 @@ func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info proto
 		ctx = append(ctx, getBase(id.(string)))
 	}
 
+	alsoKnownAs, ok := internal[document.AlsoKnownAs]
+	if ok {
+		external[document.AlsoKnownAs] = alsoKnownAs
+	}
+
 	external[document.ContextProperty] = ctx
 	external[document.IDProperty] = id
 
