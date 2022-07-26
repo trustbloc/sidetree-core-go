@@ -22,5 +22,6 @@
       "priority": 0
     }
   ],
-  "authentication": ["whatever"]
+  "authentication": ["whatever"],
+  "alsoKnownAs": ["identityURI"]
 }

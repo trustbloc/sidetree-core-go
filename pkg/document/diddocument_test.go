@@ -52,6 +52,12 @@ func TestValid(t *testing.T) {
 
 	require.Empty(t, doc.Context())
 	require.Equal(t, "whatever", doc.Authentications()[0])
+
+	require.Equal(t, 1, len(doc.AlsoKnownAs()))
+	require.Equal(t, "identityURI", doc.AlsoKnownAs()[0])
+
+	newDoc := DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	require.Equal(t, newDoc, doc)
 }
 
 func TestValidWithVerificationMethods(t *testing.T) {

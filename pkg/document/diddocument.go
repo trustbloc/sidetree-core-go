@@ -68,6 +68,11 @@ func (doc DIDDocument) VerificationMethods() []PublicKey {
 	return ParsePublicKeys(doc[VerificationMethodProperty])
 }
 
+// AlsoKnownAs are alternate identifiers for DID subject.
+func (doc DIDDocument) AlsoKnownAs() []string {
+	return StringArray(doc[AlsoKnownAs])
+}
+
 // ParsePublicKeys is helper function for parsing public keys.
 func ParsePublicKeys(entry interface{}) []PublicKey {
 	if entry == nil {

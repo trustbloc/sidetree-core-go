@@ -43,6 +43,20 @@ func TestValidate(t *testing.T) {
 		err = Validate(p)
 		require.NoError(t, err)
 	})
+	t.Run("success - add also known as", func(t *testing.T) {
+		p, err := patch.FromBytes([]byte(addAlsoKnownAs))
+		require.NoError(t, err)
+
+		err = Validate(p)
+		require.NoError(t, err)
+	})
+	t.Run("success - remove also known as", func(t *testing.T) {
+		p, err := patch.FromBytes([]byte(removeAlsoKnownAs))
+		require.NoError(t, err)
+
+		err = Validate(p)
+		require.NoError(t, err)
+	})
 	t.Run("success - ietf patch", func(t *testing.T) {
 		p, err := patch.FromBytes([]byte(ietfPatch))
 		require.NoError(t, err)
