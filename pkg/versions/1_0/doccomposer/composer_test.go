@@ -33,6 +33,7 @@ func TestApplyPatches(t *testing.T) {
 		require.NotNil(t, doc)
 
 		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
 		require.Equal(t, 3, len(didDoc.PublicKeys()))
 		require.Equal(t, "key1", didDoc.PublicKeys()[0].ID())
 		require.Equal(t, "key2", didDoc.PublicKeys()[1].ID())
@@ -342,6 +343,170 @@ func TestApplyPatches_RemoveServiceEndpoints(t *testing.T) {
 	})
 }
 
+func TestApplyPatches_RemoveAlsoKnownAs(t *testing.T) {
+	documentComposer := New()
+
+	t.Run("success - remove existing URIs (one by one)", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+
+		removeAlsoKnownAs, err := patch.NewRemoveAlsoKnownAs(`["https://myblog.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 1, len(didDoc.AlsoKnownAs()))
+		require.Equal(t, "https://second.example/", didDoc.AlsoKnownAs()[0])
+
+		removeAlsoKnownAs, err = patch.NewRemoveAlsoKnownAs(`["https://second.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 0, len(didDoc.AlsoKnownAs()))
+	})
+
+	t.Run("success - remove all existing URI", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+
+		removeAlsoKnownAs, err := patch.NewRemoveAlsoKnownAs(`["https://myblog.example/","https://second.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 0, len(didDoc.AlsoKnownAs()))
+	})
+
+	t.Run("success - remove one existing and one non-existing URI", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+
+		removeAlsoKnownAs, err := patch.NewRemoveAlsoKnownAs(`["https://myblog.example/","https://non-existing.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 1, len(didDoc.AlsoKnownAs()))
+		require.Equal(t, "https://second.example/", didDoc.AlsoKnownAs()[0])
+	})
+
+	t.Run("success - add and remove same uri; doc stays at two uri", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+
+		addAlsoKnowAs, err := patch.NewAddAlsoKnownAs(`["https://third.example/","https://fourth.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addAlsoKnowAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 4, len(didDoc.AlsoKnownAs()))
+		require.Equal(t, "https://myblog.example/", didDoc.AlsoKnownAs()[0])
+		require.Equal(t, "https://second.example/", didDoc.AlsoKnownAs()[1])
+		require.Equal(t, "https://third.example/", didDoc.AlsoKnownAs()[2])
+		require.Equal(t, "https://fourth.example/", didDoc.AlsoKnownAs()[3])
+
+		removeAlsoKnownAs, err := patch.NewRemoveAlsoKnownAs(`["https://third.example/","https://fourth.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{removeAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+	})
+
+	t.Run("error - uri is not a string", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+
+		addAlsoKnowAs, err := patch.NewAddAlsoKnownAs(`[123,"https://another.example/"]`)
+		require.Error(t, err)
+		require.Nil(t, addAlsoKnowAs)
+		require.Contains(t, err.Error(), "also known as uris is not string array")
+	})
+
+	t.Run("error - uri is empty", func(t *testing.T) {
+		doc, err := setupDefaultDoc()
+		require.NoError(t, err)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+
+		addAlsoKnowAs, err := patch.NewAddAlsoKnownAs(`[]`)
+		require.Error(t, err)
+		require.Nil(t, addAlsoKnowAs)
+		require.Contains(t, err.Error(), "missing also known as uris")
+	})
+}
+
+func TestApplyPatches_AddAlsoKnownAs(t *testing.T) {
+	documentComposer := New()
+
+	t.Run("success - add multiple URIs, followed by same URIs", func(t *testing.T) {
+		doc := make(document.Document)
+
+		didDoc := document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 0, len(didDoc.AlsoKnownAs()))
+
+		addAlsoKnownAs, err := patch.NewAddAlsoKnownAs(`["https://myblog.example/", "https://other.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+		require.Equal(t, "https://myblog.example/", didDoc.AlsoKnownAs()[0])
+		require.Equal(t, "https://other.example/", didDoc.AlsoKnownAs()[1])
+
+		// add again same URIs - they will be ignored during applying patches
+		addAlsoKnownAs, err = patch.NewAddAlsoKnownAs(`["https://myblog.example/", "https://other.example/"]`)
+		require.NoError(t, err)
+
+		doc, err = documentComposer.ApplyPatches(doc, []patch.Patch{addAlsoKnownAs})
+		require.NoError(t, err)
+		require.NotNil(t, doc)
+
+		didDoc = document.DidDocumentFromJSONLDObject(doc)
+		require.Equal(t, 2, len(didDoc.AlsoKnownAs()))
+		require.Equal(t, "https://myblog.example/", didDoc.AlsoKnownAs()[0])
+		require.Equal(t, "https://other.example/", didDoc.AlsoKnownAs()[1])
+	})
+}
+
 func setupDefaultDoc() (document.Document, error) {
 	documentComposer := New()
 
@@ -370,6 +535,7 @@ const patches = `[
 ]`
 
 const testDoc = `{
+	"alsoKnownAs": ["https://myblog.example/", "https://second.example/"],
 	"publicKey": [
 		{
 		  "id": "key1",

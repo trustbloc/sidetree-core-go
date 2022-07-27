@@ -88,11 +88,13 @@ func StringArray(entry interface{}) []string {
 	}
 
 	var result []string
-
 	for _, e := range entries {
-		if e != nil {
-			result = append(result, stringEntry(e))
+		val, ok := e.(string)
+		if !ok {
+			continue
 		}
+
+		result = append(result, val)
 	}
 
 	return result

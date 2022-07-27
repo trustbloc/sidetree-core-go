@@ -46,7 +46,7 @@ func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.P
 }
 
 // applyPatch applies a patch to the document.
-func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) {
+func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) { //nolint:gocyclo
 	action, err := p.GetAction()
 	if err != nil {
 		return nil, err
@@ -70,6 +70,10 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 		return applyAddServiceEndpoints(doc, value)
 	case patch.RemoveServiceEndpoints:
 		return applyRemoveServiceEndpoints(doc, value)
+	case patch.AddAlsoKnownAs:
+		return applyAddAlsoKnownAs(doc, value)
+	case patch.RemoveAlsoKnownAs:
+		return applyRemoveAlsoKnownAs(doc, value)
 	}
 
 	return nil, fmt.Errorf("action '%s' is not supported", action)
@@ -278,6 +282,61 @@ func sliceToMapServices(services []document.Service) map[string]document.Service
 	}
 
 	return values
+}
+
+// adds also-known-as to document.
+func applyAddAlsoKnownAs(doc document.Document, entry interface{}) (document.Document, error) {
+	logger.Debugf("applying add also-known-as patch: %v", entry)
+
+	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+
+	addURIs := document.StringArray(entry)
+	existingURIs := sliceToMap(didDoc.AlsoKnownAs())
+
+	var newURIs []string
+	newURIs = append(newURIs, didDoc.AlsoKnownAs()...)
+
+	for _, uri := range addURIs {
+		_, ok := existingURIs[uri]
+		if !ok {
+			// new URI - append it to existing URIs
+			newURIs = append(newURIs, uri)
+		}
+	}
+
+	doc[document.AlsoKnownAs] = interfaceArray(newURIs)
+
+	return doc, nil
+}
+
+func interfaceArray(values []string) []interface{} {
+	var iArr []interface{}
+	for _, v := range values {
+		iArr = append(iArr, v)
+	}
+
+	return iArr
+}
+
+func applyRemoveAlsoKnownAs(doc document.Document, entry interface{}) (document.Document, error) {
+	logger.Debugf("applying remove also-known-as patch: %v", entry)
+
+	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
+	urisToRemove := sliceToMap(document.StringArray(entry))
+
+	var newURIs []interface{}
+
+	for _, uri := range didDoc.AlsoKnownAs() {
+		_, ok := urisToRemove[uri]
+		if !ok {
+			// not in remove list so add to resulting services
+			newURIs = append(newURIs, uri)
+		}
+	}
+
+	doc[document.AlsoKnownAs] = newURIs
+
+	return doc, nil
 }
 
 // deepCopy returns deep copy of JSON object.

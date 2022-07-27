@@ -26,6 +26,8 @@ func Validate(p patch.Patch) error {
 		return NewAddServicesValidator().Validate(p)
 	case patch.RemoveServiceEndpoints:
 		return NewRemoveServicesValidator().Validate(p)
+	case patch.AddAlsoKnownAs, patch.RemoveAlsoKnownAs:
+		return NewAlsoKnownAsValidator().Validate(p)
 	}
 
 	return fmt.Errorf(" validation for action '%s' is not supported", action)

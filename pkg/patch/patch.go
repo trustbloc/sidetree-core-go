@@ -40,6 +40,12 @@ const (
 
 	// JSONPatch captures enum value "json-patch".
 	JSONPatch Action = "ietf-json-patch"
+
+	// AddAlsoKnownAs captures "-add-also-known-as".
+	AddAlsoKnownAs Action = "-add-also-known-as"
+
+	// RemoveAlsoKnownAs captures "-remove-also-known-as".
+	RemoveAlsoKnownAs Action = "-remove-also-known-as"
 )
 
 // Key defines key that will be used to get document patch information.
@@ -64,6 +70,9 @@ const (
 
 	// ActionKey captures "action" key.
 	ActionKey Key = "action"
+
+	// UrisKey captures "uris" key.
+	UrisKey Key = "uris"
 )
 
 var actionConfig = map[Action]Key{
@@ -73,6 +82,8 @@ var actionConfig = map[Action]Key{
 	RemoveServiceEndpoints: IdsKey,
 	JSONPatch:              PatchesKey,
 	Replace:                DocumentKey,
+	AddAlsoKnownAs:         UrisKey,
+	RemoveAlsoKnownAs:      UrisKey,
 }
 
 // Patch defines generic patch structure.
@@ -104,6 +115,8 @@ func PatchesFromDocument(doc string) ([]Patch, error) { //nolint:gocyclo
 			docPatch, err = NewAddPublicKeysPatch(string(jsonBytes))
 		case document.ServiceProperty:
 			docPatch, err = NewAddServiceEndpointsPatch(string(jsonBytes))
+		case document.AlsoKnownAs:
+			docPatch, err = NewAddAlsoKnownAs(string(jsonBytes))
 		default:
 			jsonPatches = append(jsonPatches, fmt.Sprintf(jsonPatchAddTemplate, key, string(jsonBytes)))
 		}
@@ -222,6 +235,42 @@ func NewRemoveServiceEndpointsPatch(serviceEndpointIds string) (Patch, error) {
 	patch := make(Patch)
 	patch[ActionKey] = RemoveServiceEndpoints
 	patch[IdsKey] = getGenericArray(ids)
+
+	return patch, nil
+}
+
+// NewAddAlsoKnownAs creates new patch for adding also-known-as property.
+func NewAddAlsoKnownAs(uris string) (Patch, error) {
+	urisToAdd, err := getStringArray(uris)
+	if err != nil {
+		return nil, fmt.Errorf("also known as uris is not string array: %s", err.Error())
+	}
+
+	if len(urisToAdd) == 0 {
+		return nil, errors.New("missing also known as uris")
+	}
+
+	patch := make(Patch)
+	patch[ActionKey] = AddAlsoKnownAs
+	patch[UrisKey] = getGenericArray(urisToAdd)
+
+	return patch, nil
+}
+
+// NewRemoveAlsoKnownAs creates new patch for removing also-known-as URI.
+func NewRemoveAlsoKnownAs(uris string) (Patch, error) {
+	urisToRemove, err := getStringArray(uris)
+	if err != nil {
+		return nil, fmt.Errorf("also known as uris is not string array: %s", err.Error())
+	}
+
+	if len(urisToRemove) == 0 {
+		return nil, errors.New("missing also known as uris")
+	}
+
+	patch := make(Patch)
+	patch[ActionKey] = RemoveAlsoKnownAs
+	patch[UrisKey] = getGenericArray(urisToRemove)
 
 	return patch, nil
 }

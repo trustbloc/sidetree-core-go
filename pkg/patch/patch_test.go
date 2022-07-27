@@ -77,6 +77,17 @@ func TestPatchesFromDocument(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 3, len(patches))
 	})
+	t.Run("success from new with also known as", func(t *testing.T) {
+		patches, err := PatchesFromDocument(testDocWithAlsoKnownAs)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(patches))
+	})
+	t.Run("error from new due to invalid uris format", func(t *testing.T) {
+		patches, err := PatchesFromDocument(testDocWithInvalidAlsoKnownAs)
+		require.Error(t, err)
+		require.Nil(t, patches)
+		require.Contains(t, err.Error(), "also known as uris is not string array")
+	})
 	t.Run("error - invalid json", func(t *testing.T) {
 		p, err := PatchesFromDocument(`invalid`)
 		require.Error(t, err)
@@ -369,6 +380,107 @@ func TestRemoveServiceEndpointsPatch(t *testing.T) {
 	})
 }
 
+func TestAddAlsoKnownAsPatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		patch, err := FromBytes([]byte(addAlsoKnownAs))
+		require.NoError(t, err)
+		require.NotNil(t, patch)
+
+		action, err := patch.GetAction()
+		require.NoError(t, err)
+		require.Equal(t, action, AddAlsoKnownAs)
+
+		value, err := patch.GetValue()
+		require.NoError(t, err)
+		require.NotEmpty(t, value)
+		require.Equal(t, value, patch[UrisKey])
+	})
+	t.Run("missing URIs", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "-add-also-known-as"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "-add-also-known-as patch is missing key: uris")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		p, err := NewAddAlsoKnownAs(`["testURI"]`)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		action, err := p.GetAction()
+		require.NoError(t, err)
+		require.Equal(t, action, AddAlsoKnownAs)
+
+		value, err := p.GetValue()
+		require.NoError(t, err)
+		require.NotEmpty(t, value)
+		require.Equal(t, value, p[UrisKey])
+	})
+	t.Run("error - empty", func(t *testing.T) {
+		p, err := NewAddAlsoKnownAs("[]")
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "missing also known as uris")
+	})
+	t.Run("error - not json", func(t *testing.T) {
+		p, err := NewAddAlsoKnownAs("not-json")
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "also known as uris is not string array")
+	})
+}
+
+func TestRemoveAlsoKnownAsPatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		p, err := FromBytes([]byte(removeAlsoKnownAs))
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		action, err := p.GetAction()
+		require.NoError(t, err)
+		require.Equal(t, action, RemoveAlsoKnownAs)
+
+		value, err := p.GetValue()
+		require.NoError(t, err)
+		require.NotEmpty(t, value)
+		require.Equal(t, value, p[UrisKey])
+	})
+	t.Run("missing public key ids", func(t *testing.T) {
+		patch, err := FromBytes([]byte(`{"action": "-remove-also-known-as"}`))
+		require.Error(t, err)
+		require.Nil(t, patch)
+		require.Contains(t, err.Error(), "-remove-also-known-as patch is missing key: uris")
+	})
+	t.Run("success from new", func(t *testing.T) {
+		const uris = `["identity1", "identity2"]`
+		p, err := NewRemoveAlsoKnownAs(uris)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		action, err := p.GetAction()
+		require.NoError(t, err)
+		require.Equal(t, action, RemoveAlsoKnownAs)
+
+		value, err := p.GetValue()
+		require.NoError(t, err)
+		require.NotEmpty(t, value)
+		require.Equal(t, value, p[UrisKey])
+	})
+	t.Run("empty uris", func(t *testing.T) {
+		const uris = `[]`
+		p, err := NewRemoveAlsoKnownAs(uris)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "missing also known as uris")
+	})
+	t.Run("error - uris not string array", func(t *testing.T) {
+		const uris = `[0, 1]`
+		p, err := NewRemoveAlsoKnownAs(uris)
+		require.Error(t, err)
+		require.Nil(t, p)
+		require.Contains(t, err.Error(), "cannot unmarshal")
+	})
+}
+
 func TestBytes(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		original, err := FromBytes([]byte(addPublicKeysPatch))
@@ -550,4 +662,33 @@ const replaceDoc = `{
 		"type": "SecureDataStore",
 		"serviceEndpoint": "http://hub.my-personal-server.com"
 	}]
+}`
+
+const addAlsoKnownAs = `{
+  "action": "-add-also-known-as",
+  "uris": ["testURI"]
+}`
+
+const removeAlsoKnownAs = `{
+  "action": "-remove-also-known-as",
+  "uris": ["testURI", "nonExistentURI"]
+}`
+
+const testDocWithAlsoKnownAs = `{
+	"alsoKnownAs": ["authentication"],
+	"publicKey": [{
+		"id": "key1",
+		"type": "JsonWebKey2020",
+		"purposes": ["authentication"],
+		"publicKeyJwk": {
+			"kty": "EC",
+			"crv": "P-256K",
+			"x": "PUymIqdtF_qxaAqPABSw-C-owT1KYYQbsMKFM-L9fJA",
+			"y": "nM84jDHCMOTGTh_ZdHq4dBBdo4Z5PkEOW9jA8z8IsGc"
+		}
+	}]
+}`
+
+const testDocWithInvalidAlsoKnownAs = `{
+	"alsoKnownAs": [123]
 }`
