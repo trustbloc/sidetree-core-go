@@ -32,7 +32,7 @@ func TestAddAlsoKnowAsValidator(t *testing.T) {
 		delete(p, patch.UrisKey)
 		err = NewAlsoKnownAsValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "-add-also-known-as patch is missing key: uris")
+		require.Contains(t, err.Error(), "add-also-known-as patch is missing key: uris")
 	})
 	t.Run("error - uris value is not expected type", func(t *testing.T) {
 		p, err := patch.FromBytes([]byte(addAlsoKnownAs))
@@ -41,7 +41,7 @@ func TestAddAlsoKnowAsValidator(t *testing.T) {
 		p[patch.UrisKey] = []int{123}
 		err = NewAlsoKnownAsValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "-add-also-known-as: expected array of interfaces")
+		require.Contains(t, err.Error(), "add-also-known-as: expected array of interfaces")
 	})
 	t.Run("error - uri is not valid", func(t *testing.T) {
 		p, err := patch.NewAddAlsoKnownAs(`[":abc"]`)
@@ -49,7 +49,7 @@ func TestAddAlsoKnowAsValidator(t *testing.T) {
 
 		err = NewAlsoKnownAsValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "-add-also-known-as: validate URIs: failed to parse URI:")
+		require.Contains(t, err.Error(), "add-also-known-as: validate URIs: failed to parse URI:")
 	})
 	t.Run("error - duplicate URI", func(t *testing.T) {
 		p, err := patch.NewAddAlsoKnownAs(`["https://abc.com", "https://abc.com"]`)
@@ -57,16 +57,16 @@ func TestAddAlsoKnowAsValidator(t *testing.T) {
 
 		err = NewAlsoKnownAsValidator().Validate(p)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "-add-also-known-as: validate URIs: duplicate uri: https://abc.com")
+		require.Contains(t, err.Error(), "add-also-known-as: validate URIs: duplicate uri: https://abc.com")
 	})
 }
 
 const addAlsoKnownAs = `{
-  "action": "-add-also-known-as",
-  "uris": ["https://blog.com", "https://other.com"]
+  "action": "add-also-known-as",
+  "uris": ["did:abc:123", "https://other.com"]
 }`
 
 const removeAlsoKnownAs = `{
-  "action": "-remove-also-known-as",
-  "uris": ["https://blog.com"]
+  "action": "remove-also-known-as",
+  "uris": ["did:abc:123"]
 }`

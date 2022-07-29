@@ -19,7 +19,7 @@ func NewAlsoKnownAsValidator() *AlsoKnownAsValidator {
 	return &AlsoKnownAsValidator{}
 }
 
-// AlsoKnownAsValidator implements validator for custom "-add-also-known-as" and "-remove-also-known-as" patches.
+// AlsoKnownAsValidator implements validator for "add-also-known-as" and "remove-also-known-as" patches.
 // Both patches take have as value URIs so the validation for both add and remove are the same.
 type AlsoKnownAsValidator struct {
 }

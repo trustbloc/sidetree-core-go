@@ -41,11 +41,11 @@ const (
 	// JSONPatch captures enum value "json-patch".
 	JSONPatch Action = "ietf-json-patch"
 
-	// AddAlsoKnownAs captures "-add-also-known-as".
-	AddAlsoKnownAs Action = "-add-also-known-as"
+	// AddAlsoKnownAs captures "add-also-known-as".
+	AddAlsoKnownAs Action = "add-also-known-as"
 
-	// RemoveAlsoKnownAs captures "-remove-also-known-as".
-	RemoveAlsoKnownAs Action = "-remove-also-known-as"
+	// RemoveAlsoKnownAs captures "remove-also-known-as".
+	RemoveAlsoKnownAs Action = "remove-also-known-as"
 )
 
 // Key defines key that will be used to get document patch information.

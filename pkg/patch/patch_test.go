@@ -396,10 +396,10 @@ func TestAddAlsoKnownAsPatch(t *testing.T) {
 		require.Equal(t, value, patch[UrisKey])
 	})
 	t.Run("missing URIs", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": "-add-also-known-as"}`))
+		patch, err := FromBytes([]byte(`{"action": "add-also-known-as"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "-add-also-known-as patch is missing key: uris")
+		require.Contains(t, err.Error(), "add-also-known-as patch is missing key: uris")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		p, err := NewAddAlsoKnownAs(`["testURI"]`)
@@ -445,10 +445,10 @@ func TestRemoveAlsoKnownAsPatch(t *testing.T) {
 		require.Equal(t, value, p[UrisKey])
 	})
 	t.Run("missing public key ids", func(t *testing.T) {
-		patch, err := FromBytes([]byte(`{"action": "-remove-also-known-as"}`))
+		patch, err := FromBytes([]byte(`{"action": "remove-also-known-as"}`))
 		require.Error(t, err)
 		require.Nil(t, patch)
-		require.Contains(t, err.Error(), "-remove-also-known-as patch is missing key: uris")
+		require.Contains(t, err.Error(), "remove-also-known-as patch is missing key: uris")
 	})
 	t.Run("success from new", func(t *testing.T) {
 		const uris = `["identity1", "identity2"]`
@@ -665,12 +665,12 @@ const replaceDoc = `{
 }`
 
 const addAlsoKnownAs = `{
-  "action": "-add-also-known-as",
+  "action": "add-also-known-as",
   "uris": ["testURI"]
 }`
 
 const removeAlsoKnownAs = `{
-  "action": "-remove-also-known-as",
+  "action": "remove-also-known-as",
   "uris": ["testURI", "nonExistentURI"]
 }`
 
