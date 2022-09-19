@@ -10,9 +10,9 @@ import "github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 
 // ResolutionResult describes resolution result.
 type ResolutionResult struct {
-	Context          string   `json:"@context"`
-	Document         Document `json:"didDocument"`
-	DocumentMetadata Metadata `json:"didDocumentMetadata,omitempty"`
+	Context          interface{} `json:"@context"`
+	Document         Document    `json:"didDocument"`
+	DocumentMetadata Metadata    `json:"didDocumentMetadata,omitempty"`
 }
 
 // Metadata can contains various metadata such as document metadata and method metadata..
