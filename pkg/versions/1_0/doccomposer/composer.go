@@ -11,9 +11,9 @@ import (
 	"fmt"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/patch"
 )
 

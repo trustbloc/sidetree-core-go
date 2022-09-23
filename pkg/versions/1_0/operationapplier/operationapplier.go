@@ -10,13 +10,13 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
 	internal "github.com/trustbloc/sidetree-core-go/pkg/internal/jws"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
 )
 
