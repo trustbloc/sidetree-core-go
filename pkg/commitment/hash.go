@@ -9,11 +9,10 @@ package commitment
 import (
 	"fmt"
 
-	"github.com/trustbloc/edge-core/pkg/log"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/encoder"
 	"github.com/trustbloc/sidetree-core-go/pkg/hashing"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/jws"
 )
 

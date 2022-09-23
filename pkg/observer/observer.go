@@ -7,11 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package observer
 
 import (
-	"github.com/trustbloc/edge-core/pkg/log"
-
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 var logger = log.New("sidetree-core-observer")
