@@ -66,7 +66,7 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.Debugf("Resolving DID document for ID [%s]", id)
+	logger.Debug("Resolving DID document for ID", log.WithID(id))
 	response, err := o.doResolve(id, opts...)
 	if err != nil {
 		common.WriteError(rw, err.(*common.HTTPError).Status(), err)
@@ -74,7 +74,8 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.Debugf("... resolved DID document for ID [%s]: %s", id, response.Document)
+	logger.Debug("... resolved DID document for ID", log.WithID(id), log.WithDocument(response.Document))
+
 	common.WriteResponse(rw, http.StatusOK, response)
 }
 
@@ -88,7 +89,7 @@ func (o *ResolveHandler) doResolve(id string, opts ...document.ResolutionOption)
 			return nil, common.NewHTTPError(http.StatusNotFound, errors.New("document not found"))
 		}
 
-		logger.Errorf("internal server error:  %s", err.Error())
+		logger.Error("Internal server error", log.WithError(err))
 
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}

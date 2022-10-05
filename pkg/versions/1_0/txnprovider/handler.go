@@ -14,6 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/txnprovider/models"
@@ -156,7 +157,8 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 		if e != nil {
 			if e == operationparser.ErrOperationExpired {
 				// stale operations should not be added to the batch; ignore operation
-				logger.Warnf("[%s] stale operation for suffix[%s] found in batch operations: discarding operation %s", queuedOperation.Namespace, queuedOperation.UniqueSuffix, queuedOperation.OperationRequest)
+				logger.Warn("Stale operation found in batch operations: discarding operation",
+					log.WithOperation(queuedOperation.Namespace))
 
 				expiredOperations = append(expiredOperations, queuedOperation)
 
@@ -170,7 +172,8 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
-			logger.Debugf("[%s] additional operation for suffix[%s] found in batch operations - adding operation to additional queue to be processed in the next batch", queuedOperation.Namespace, op.UniqueSuffix)
+			logger.Debug("Additional operation found in batch operations - adding operation to additional queue to be processed in the next batch",
+				log.WithNamespace(queuedOperation.Namespace), log.WithSuffix(op.UniqueSuffix))
 
 			additionalOperations = append(additionalOperations, queuedOperation)
 
@@ -282,7 +285,7 @@ func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (str
 		return "", fmt.Errorf("failed to marshal %s file: %s", alias, err.Error())
 	}
 
-	logger.Debugf("%s file: %s", alias, string(bytes))
+	logger.Debug("Writing file", log.WithAlias(alias), log.WithContent(bytes))
 
 	compressedBytes, err := h.cp.Compress(h.protocol.CompressionAlgorithm, bytes)
 	if err != nil {

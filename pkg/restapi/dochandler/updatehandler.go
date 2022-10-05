@@ -14,6 +14,7 @@ import (
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
+	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
@@ -58,7 +59,7 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.Debugf("processing update request: %s", string(request))
+	logger.Debug("Processing update request", log.WithRequestBody(request))
 
 	response, err := h.doUpdate(request)
 	if err != nil {
@@ -78,12 +79,12 @@ func (h *UpdateHandler) doUpdate(operation []byte) (*document.ResolutionResult, 
 	result, err := h.processor.ProcessOperation(operation, currentProtocol.Protocol().GenesisTime)
 	if err != nil {
 		if strings.Contains(err.Error(), "bad request") {
-			logger.Warnf("operation validation error: %s", err.Error())
+			logger.Warn("Operation validation error", log.WithError(err))
 
 			return nil, common.NewHTTPError(http.StatusBadRequest, err)
 		}
 
-		logger.Errorf("internal server error:  %s", err.Error())
+		logger.Error("Internal server error", log.WithError(err))
 
 		return nil, common.NewHTTPError(http.StatusInternalServerError, err)
 	}

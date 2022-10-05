@@ -166,7 +166,7 @@ func (h *OperationProvider) getBatchFiles(cif *models.CoreIndexFile, alternateSo
 		return nil, err
 	}
 
-	logger.Debugf("successfully downloaded and validated all batch files")
+	logger.Debug("Successfully downloaded and validated all batch files")
 
 	return files, nil
 }
@@ -273,8 +273,8 @@ func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, t
 		return nil, fmt.Errorf("parse core index operations: %s", err.Error())
 	}
 
-	logger.Debugf("successfully parsed core index operations: create[%d], recover[%d], deactivate[%d]",
-		len(cifOps.Create), len(cifOps.Recover), len(cifOps.Deactivate))
+	logger.Debug("Successfully parsed core index operations", log.WithTotalCreateOperations(len(cifOps.Create)),
+		log.WithTotalRecoverOperations(len(cifOps.Recover)), log.WithTotalDeactivateOperations(len(cifOps.Deactivate)))
 
 	// add signed data from core proof file to deactivate operations
 	for i := range cifOps.Deactivate {
@@ -288,7 +288,7 @@ func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, t
 
 	pifOps := parseProvisionalIndexOperations(batchFiles.ProvisionalIndex)
 
-	logger.Debugf("successfully parsed provisional index operations: update[%d]", len(pifOps.Update))
+	logger.Debug("Successfully parsed provisional index operations", log.WithTotalUpdateOperations(len(pifOps.Update)))
 
 	// check for duplicate suffixes for this combination core/provisional index files
 	txnSuffixes := append(cifOps.Suffixes, pifOps.Suffixes...)
@@ -364,7 +364,7 @@ func (h *OperationProvider) getCoreIndexFile(uri string, alternateSources ...str
 		return nil, errors.Wrapf(err, "error reading core index file")
 	}
 
-	logger.Debugf("successfully downloaded core index file uri[%s]: %s", uri, string(content))
+	logger.Debug("Successfully downloaded core index file", log.WithURIString(uri), log.WithContent(content))
 
 	cif, err := models.ParseCoreIndexFile(content)
 	if err != nil {
@@ -472,7 +472,7 @@ func (h *OperationProvider) getCoreProofFile(uri string, alternateSources ...str
 		return nil, errors.Wrapf(err, "error reading core proof file")
 	}
 
-	logger.Debugf("successfully downloaded core proof file uri[%s]: %s", uri, string(content))
+	logger.Debug("Successfully downloaded core proof file", log.WithURIString(uri), log.WithContent(content))
 
 	cpf, err := models.ParseCoreProofFile(content)
 	if err != nil {
@@ -512,7 +512,7 @@ func (h *OperationProvider) getProvisionalProofFile(uri string, alternateSources
 		return nil, errors.Wrapf(err, "error reading provisional proof file")
 	}
 
-	logger.Debugf("successfully downloaded provisional proof file uri[%s]: %s", uri, string(content))
+	logger.Debug("Successfully downloaded provisional proof file", log.WithURIString(uri), log.WithContent(content))
 
 	ppf, err := models.ParseProvisionalProofFile(content)
 	if err != nil {
@@ -545,7 +545,7 @@ func (h *OperationProvider) getProvisionalIndexFile(uri string, alternateSources
 		return nil, errors.Wrapf(err, "error reading provisional index file")
 	}
 
-	logger.Debugf("successfully downloaded provisional index file uri[%s]: %s", uri, string(content))
+	logger.Debug("Successfully downloaded provisional index file", log.WithURIString(uri), log.WithContent(content))
 
 	pif, err := models.ParseProvisionalIndexFile(content)
 	if err != nil {
@@ -619,7 +619,7 @@ func (h *OperationProvider) getChunkFile(uri string, alternateSources ...string)
 		return nil, errors.Wrapf(err, "error reading chunk file")
 	}
 
-	logger.Debugf("successfully downloaded chunk file uri[%s]: %s", uri, string(content))
+	logger.Debug("Successfully downloaded chunk file", log.WithURIString(uri), log.WithContent(content))
 
 	cf, err := models.ParseChunkFile(content)
 	if err != nil {
@@ -652,19 +652,19 @@ func (h *OperationProvider) readFromCAS(uri string, maxSize uint, alternateSourc
 			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
 		}
 
-		logger.Infof("Failed to retrieve CAS content [%s]: %s. Trying alternate sources %s.",
-			uri, err, alternateSources)
+		logger.Info("Failed to retrieve CAS content. Trying alternate sources.",
+			log.WithURIString(uri), log.WithError(err), log.WithSources(alternateSources...))
 
 		b, e := h.readFromAlternateCASSources(uri, alternateSources)
 		if e != nil {
-			logger.Infof("Failed to retrieve CAS content [%s] from alternate sources %s: %s.",
-				uri, alternateSources, err)
+			logger.Info("Failed to retrieve CAS content from alternate sources.",
+				log.WithURIString(uri), log.WithError(err), log.WithSources(alternateSources...))
 
 			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
 		}
 
-		logger.Infof("Successfully retrieved CAS content [%s] from alternate sources %s.",
-			uri, alternateSources)
+		logger.Info("Successfully retrieved CAS content from alternate sources.",
+			log.WithURIString(uri), log.WithSources(alternateSources...))
 
 		bytes = b
 	}
@@ -700,7 +700,7 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 		return &coreOperations{}, nil
 	}
 
-	logger.Debugf("parsing core index file operations for anchor string: %s", txn.AnchorString)
+	logger.Debug("Parsing core index file operations for anchor string", log.WithAnchorString(txn.AnchorString))
 
 	var suffixes []string
 
@@ -801,19 +801,20 @@ func (h *OperationProvider) readFromAlternateCASSources(casURI string, sources [
 	for _, source := range sources {
 		casURIForSource, e := h.formatCASURIForSource(casURI, source)
 		if e != nil {
-			logger.Infof("Error formatting CAS reference for alternate source [%s]: %s", casURIForSource, e)
+			logger.Info("Error formatting CAS reference for alternate source",
+				log.WithSource(casURIForSource), log.WithError(e))
 
 			continue
 		}
 
 		b, e := h.cas.Read(casURIForSource)
 		if e == nil {
-			logger.Debugf("Successfully retrieved CAS content from alternate source [%s]", casURIForSource)
+			logger.Debug("Successfully retrieved CAS content from alternate source", log.WithSource(casURIForSource))
 
 			return b, nil
 		}
 
-		logger.Infof("Error retrieving CAS content from alternate source [%s]: %s", casURIForSource, e)
+		logger.Info("Error retrieving CAS content from alternate source", log.WithSource(casURIForSource), log.WithError(e))
 	}
 
 	return nil, fmt.Errorf("retrieve CAS content from alternate source failed")

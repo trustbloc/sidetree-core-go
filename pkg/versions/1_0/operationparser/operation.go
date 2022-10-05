@@ -131,7 +131,8 @@ func (p *Parser) ParseOperation(namespace string, operationBuffer []byte, batch 
 	}
 
 	if parseErr != nil {
-		logger.Warnf("parse '%s' operation for batch[%t]: %s", schema.Operation, batch, parseErr.Error())
+		logger.Warn("Error parsing operation for batch", log.WithOperation(schema.Operation),
+			log.WithIsBatch(batch), log.WithError(parseErr))
 
 		return nil, parseErr
 	}

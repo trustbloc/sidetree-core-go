@@ -30,9 +30,9 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
-var logger = log.New("sidetree-core-writer")
-
 const (
+	loggerModule = "sidetree-core-writer"
+
 	defaultBatchTimeout    = 2 * time.Second
 	defaultMonitorInterval = time.Second
 )
@@ -55,6 +55,7 @@ type Writer struct {
 	protocol           protocol.Client
 	monitorTicker      *time.Ticker
 	batchTimeoutTicker *time.Ticker
+	logger             *log.Log
 }
 
 // Context contains batch writer context.
@@ -110,6 +111,7 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 		protocol:           context.Protocol(),
 		batchTimeoutTicker: time.NewTicker(batchTimeout),
 		monitorTicker:      time.NewTicker(monitorInterval),
+		logger:             log.New(loggerModule, log.WithFields(log.WithNamespace(namespace))),
 	}, nil
 }
 
@@ -165,7 +167,7 @@ func (r *Writer) main() {
 			r.processAvailable(true)
 
 		case <-r.exitChan:
-			logger.Infof("[%s] exiting batch writer", r.namespace)
+			r.logger.Info("Exiting batch writer")
 
 			return
 		}
@@ -176,7 +178,8 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 	// First drain the queue of all of the operations that are ready to form a batch
 	pending, err := r.drain()
 	if err != nil {
-		logger.Warnf("[%s] Error draining operations queue: %s. Pending operations: %d.", r.namespace, err, pending)
+		r.logger.Warn("Error draining operations queue.",
+			log.WithError(err), log.WithTotalPending(pending))
 
 		return pending
 	}
@@ -185,14 +188,14 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 		return pending
 	}
 
-	logger.Debugf("[%s] Forcefully processing operations. Pending operations: %d", r.namespace, pending)
+	r.logger.Debug("Forcefully processing operations", log.WithTotalPending(pending))
 
 	// Now process the remaining operations
 	n, pending, err := r.cutAndProcess(true)
 	if err != nil {
-		logger.Warnf("[%s] Error processing operations: %s. Pending operations: %d.", r.namespace, err, pending)
+		r.logger.Warn("Error processing operations", log.WithError(err), log.WithTotalPending(pending))
 	} else {
-		logger.Infof("[%s] Successfully processed %d operations. Pending operations: %d.", r.namespace, n, pending)
+		r.logger.Info("Successfully processed operations.", log.WithTotal(n), log.WithTotalPending(pending))
 	}
 
 	return pending
@@ -203,7 +206,7 @@ func (r *Writer) drain() (pending uint, err error) {
 	for {
 		n, pending, err := r.cutAndProcess(false)
 		if err != nil {
-			logger.Errorf("[%s] Error draining operations: cutting and processing returned an error: %s", r.namespace, err)
+			r.logger.Error("Error draining operations: cutting and processing returned an error", log.WithError(err))
 
 			return pending, err
 		}
@@ -212,14 +215,14 @@ func (r *Writer) drain() (pending uint, err error) {
 			return pending, nil
 		}
 
-		logger.Infof("[%s] ... drain processed %d operations into batch. Pending operations: %d", r.namespace, n, pending)
+		r.logger.Info(" ... drain processed operations into batch.", log.WithTotal(n), log.WithTotalPending(pending))
 	}
 }
 
 func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, err error) {
 	result, err := r.batchCutter.Cut(forceCut)
 	if err != nil {
-		logger.Errorf("[%s] Error cutting batch: %s", r.namespace, err)
+		r.logger.Error("Error cutting batch", log.WithError(err))
 
 		return 0, 0, err
 	}
@@ -228,22 +231,24 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 		return 0, result.Pending, nil
 	}
 
-	logger.Infof("[%s] processing %d batch operations for protocol genesis time[%d]...", r.namespace, len(result.Operations), result.ProtocolVersion)
+	r.logger.Info("Processing batch operations for protocol genesis time...",
+		log.WithTotal(len(result.Operations)), log.WithGenesisTime(result.ProtocolVersion))
 
 	err = r.process(result.Operations, result.ProtocolVersion)
 	if err != nil {
-		logger.Errorf("[%s] Error processing %d batch operations: %s", r.namespace, len(result.Operations), err)
+		r.logger.Error("Error processing batch operations", log.WithTotal(len(result.Operations)), log.WithError(err))
 
 		result.Nack()
 
 		return 0, result.Pending + uint(len(result.Operations)), err
 	}
 
-	logger.Infof("[%s] Successfully processed %d batch operations. Committing to batch cutter ...", r.namespace, len(result.Operations))
+	r.logger.Info("Successfully processed batch operations. Committing to batch cutter ...",
+		log.WithTotal(len(result.Operations)))
 
 	pending = result.Ack()
 
-	logger.Infof("[%s] Successfully committed to batch cutter. Pending operations: %d", r.namespace, pending)
+	r.logger.Info("Successfully committed to batch cutter.", log.WithTotalPending(pending))
 
 	return len(result.Operations), pending, nil
 }
@@ -269,11 +274,12 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolVersion uint6
 		err = r.Add(op, protocolVersion)
 		if err != nil {
 			// this error should never happen since parsing of this operation has already been done for the previous batch
-			logger.Warnf("unable to add additional operation for suffix[%s] to the next batch: %s", op.UniqueSuffix, err.Error())
+			r.logger.Warn("Unable to add additional operation to the next batch",
+				log.WithSuffix(op.UniqueSuffix), log.WithError(err))
 		}
 	}
 
-	logger.Infof("[%s] writing anchor string: %s", r.namespace, anchoringInfo.AnchorString)
+	r.logger.Info("Writing anchor string", log.WithAnchorString(anchoringInfo.AnchorString))
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
 	return r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts, anchoringInfo.OperationReferences, protocolVersion)

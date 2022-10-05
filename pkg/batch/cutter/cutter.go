@@ -104,7 +104,8 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 
 	pending -= batchSize
 
-	logger.Infof("Pending Size: %d, MaxOperationsPerBatch: %d, Batch Size: %d", pending, maxOperationsPerBatch, batchSize)
+	logger.Info("Removing operations from queue.", log.WithTotalPending(pending),
+		log.WithMaxSize(int(maxOperationsPerBatch)), log.WithSize(int(batchSize)))
 
 	ops, ack, nack, err := r.pendingBatch.Remove(batchSize)
 	if err != nil {
@@ -132,7 +133,9 @@ func getOperationsAtProtocolVersion(opsAtTime []*operation.QueuedOperationAtTime
 
 		if op.ProtocolVersion != protocolVersion {
 			// This operation was added using a different transaction time so it can't go into the same batch
-			logger.Infof("Not adding operation since its protocol genesis time [%d] is different from the protocol genesis time [%d] of the existing ops in the batch", op.ProtocolVersion, protocolVersion)
+			logger.Info("Not adding operation since its protocol genesis time is different from the protocol genesis "+
+				"time of the existing ops in the batch.", log.WithOperationGenesisTime(op.ProtocolVersion),
+				log.WithGenesisTime(protocolVersion))
 
 			break
 		}
