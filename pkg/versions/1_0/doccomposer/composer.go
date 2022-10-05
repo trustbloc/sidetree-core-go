@@ -80,7 +80,7 @@ func applyPatch(doc document.Document, p patch.Patch) (document.Document, error)
 }
 
 func applyJSON(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying JSON patch: %v", entry)
+	logger.Debug("Applying JSON patch", log.WithPatch(entry))
 
 	bytes, err := json.Marshal(entry)
 	if err != nil {
@@ -106,7 +106,8 @@ func applyJSON(doc document.Document, entry interface{}) (document.Document, err
 }
 
 func applyRecover(replaceDoc interface{}) (document.Document, error) {
-	logger.Debugf("applying replace patch: %v", replaceDoc)
+	logger.Debug("Applying replace patch", log.WithPatch(replaceDoc))
+
 	docBytes, err := json.Marshal(replaceDoc)
 	if err != nil {
 		return nil, err
@@ -126,7 +127,7 @@ func applyRecover(replaceDoc interface{}) (document.Document, error) {
 
 // adds public keys to document.
 func applyAddPublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying add public keys patch: %v", entry)
+	logger.Debug("Applying add public keys patch", log.WithPatch(entry))
 
 	addPublicKeys := document.ParsePublicKeys(entry)
 	existingPublicKeysMap := sliceToMapPK(doc.PublicKeys())
@@ -169,7 +170,7 @@ func convertPublicKeys(pubKeys []document.PublicKey) []interface{} {
 
 // remove public keys from the document.
 func applyRemovePublicKeys(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying remove public keys patch: %v", entry)
+	logger.Debug("Applying remove public keys patch", log.WithPatch(entry))
 
 	keysToRemove := sliceToMap(document.StringArray(entry))
 
@@ -210,7 +211,7 @@ func sliceToMapPK(publicKeys []document.PublicKey) map[string]document.PublicKey
 
 // adds service endpoints to document.
 func applyAddServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying add service endpoints patch: %v", entry)
+	logger.Debug("Applying add service endpoints patch", log.WithPatch(entry))
 
 	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
@@ -254,7 +255,7 @@ func convertServices(services []document.Service) []interface{} {
 }
 
 func applyRemoveServiceEndpoints(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying remove service endpoints patch: %v", entry)
+	logger.Debug("Applying remove service endpoints patch", log.WithPatch(entry))
 
 	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 	servicesToRemove := sliceToMap(document.StringArray(entry))
@@ -286,7 +287,7 @@ func sliceToMapServices(services []document.Service) map[string]document.Service
 
 // adds also-known-as to document.
 func applyAddAlsoKnownAs(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying add also-known-as patch: %v", entry)
+	logger.Debug("applying add also-known-as patch", log.WithPatch(entry))
 
 	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 
@@ -319,7 +320,7 @@ func interfaceArray(values []string) []interface{} {
 }
 
 func applyRemoveAlsoKnownAs(doc document.Document, entry interface{}) (document.Document, error) {
-	logger.Debugf("applying remove also-known-as patch: %v", entry)
+	logger.Debug("Applying remove also-known-as patch", log.WithPatch(entry))
 
 	didDoc := document.DidDocumentFromJSONLDObject(doc.JSONLdObject())
 	urisToRemove := sliceToMap(document.StringArray(entry))

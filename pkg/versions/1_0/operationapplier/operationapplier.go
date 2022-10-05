@@ -70,7 +70,7 @@ func (s *Applier) Apply(op *operation.AnchoredOperation, rm *protocol.Resolution
 }
 
 func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	logger.Debugf("Applying create operation: %+v", anchoredOp)
+	logger.Debug("Applying create operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc != nil {
 		return nil, errors.New("create has to be the first operation")
@@ -100,14 +100,18 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 	// verify actual delta hash matches expected delta hash
 	err = hashing.IsValidModelMultihash(op.Delta, op.SuffixData.DeltaHash)
 	if err != nil {
-		logger.Infof("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", anchoredOp.UniqueSuffix, anchoredOp.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Delta doesn't match delta hash; set update commitment to nil and advance recovery commitment",
+			log.WithError(err), log.WithSuffix(anchoredOp.UniqueSuffix), log.WithOperationType(string(anchoredOp.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber))
 
 		return result, nil
 	}
 
 	err = s.OperationParser.ValidateDelta(op.Delta)
 	if err != nil {
-		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Parse delta failed; set update commitment to nil and advance recovery commitment",
+			log.WithError(err), log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber))
 
 		return result, nil
 	}
@@ -116,7 +120,9 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 
 	doc, err := s.ApplyPatches(make(document.Document), op.Delta.Patches)
 	if err != nil {
-		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", anchoredOp.UniqueSuffix, anchoredOp.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Apply patches failed; advance commitments",
+			log.WithError(err), log.WithSuffix(anchoredOp.UniqueSuffix), log.WithOperationType(string(anchoredOp.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber))
 
 		return result, nil
 	}
@@ -127,7 +133,7 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 }
 
 func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl,funlen
-	logger.Debugf("Applying update operation: %+v", anchoredOp)
+	logger.Debug("Applying update operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc == nil {
 		return nil, errors.New("update cannot be first operation")
@@ -181,14 +187,20 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 	// verify anchor from and until time against anchoring time
 	err = s.verifyAnchoringTimeRange(signedDataModel.AnchorFrom, signedDataModel.AnchorUntil, anchoredOp.TransactionTime)
 	if err != nil {
-		logger.Infof("invalid anchoring time range; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("invalid anchoring time range; advance commitments",
+			log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber),
+			log.WithError(err))
 
 		return result, nil
 	}
 
 	doc, err := s.ApplyPatches(rm.Doc, op.Delta.Patches)
 	if err != nil {
-		logger.Infof("Apply patches failed; advance update commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Apply patches failed; advance update commitment",
+			log.WithSuffixes(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber),
+			log.WithError(err))
 
 		return result, nil
 	}
@@ -200,7 +212,7 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 }
 
 func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
-	logger.Debugf("Applying deactivate operation: %+v", anchoredOp)
+	logger.Debug("Applying deactivate operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc == nil {
 		return nil, errors.New("deactivate can only be applied to an existing document")
@@ -253,7 +265,7 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 }
 
 func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl,funlen
-	logger.Debugf("Applying recover operation: %+v", anchoredOp)
+	logger.Debug("Applying recover operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc == nil {
 		return nil, errors.New("recover can only be applied to an existing document")
@@ -295,14 +307,20 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 	// verify the delta against the signed delta hash
 	err = hashing.IsValidModelMultihash(op.Delta, signedDataModel.DeltaHash)
 	if err != nil {
-		logger.Infof("Recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Recover delta doesn't match delta hash; set update commitment to nil and advance recovery commitment",
+			log.WithSuffixes(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber),
+			log.WithError(err))
 
 		return result, nil
 	}
 
 	err = s.OperationParser.ValidateDelta(op.Delta)
 	if err != nil {
-		logger.Infof("Parse delta failed; set update commitment to nil and advance recovery commitment {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Parse delta failed; set update commitment to nil and advance recovery commitment",
+			log.WithSuffixes(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber),
+			log.WithError(err))
 
 		return result, nil
 	}
@@ -312,14 +330,20 @@ func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
 	// verify anchor from and until time against anchoring time
 	err = s.verifyAnchoringTimeRange(signedDataModel.AnchorFrom, signedDataModel.AnchorUntil, anchoredOp.TransactionTime)
 	if err != nil {
-		logger.Infof("invalid anchoring time range; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Invalid anchoring time range; advance commitments",
+			log.WithSuffixes(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber),
+			log.WithError(err))
 
 		return result, nil
 	}
 
 	doc, err := s.ApplyPatches(make(document.Document), op.Delta.Patches)
 	if err != nil {
-		logger.Infof("Apply patches failed; advance commitments {UniqueSuffix: %s, Type: %s, TransactionTime: %d, TransactionNumber: %d}. Reason: %s", op.UniqueSuffix, op.Type, anchoredOp.TransactionTime, anchoredOp.TransactionTime, err)
+		logger.Info("Apply patches failed; advance commitments",
+			log.WithSuffixes(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
+			log.WithTransactionTime(anchoredOp.TransactionTime), log.WithTransactionNumber(anchoredOp.TransactionNumber),
+			log.WithError(err))
 
 		return result, nil
 	}

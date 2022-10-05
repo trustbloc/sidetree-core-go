@@ -73,7 +73,7 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore, opTypes []op
 
 // Process persists all of the operations for the given anchor.
 func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) (int, error) {
-	logger.Debugf("processing sidetree txn:%+v, suffixes: %s", sidetreeTxn, suffixes)
+	logger.Debug("Processing sidetree txn for suffixes", log.WithSidetreeTxn(sidetreeTxn), log.WithSuffixes(suffixes...))
 
 	txnOps, err := p.OperationProtocolProvider.GetTxnOperations(&sidetreeTxn)
 	if err != nil {
@@ -84,7 +84,7 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) 
 }
 
 func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) (int, error) {
-	logger.Debugf("processing %d transaction operations", len(txnOps))
+	logger.Debug("Processing transaction operations", log.WithTotal(len(txnOps)))
 
 	batchSuffixes := make(map[string]bool)
 
@@ -94,14 +94,16 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperatio
 	for _, op := range txnOps {
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
-			logger.Warnf("[%s] duplicate suffix[%s] found in transaction operations: discarding operation %v", sidetreeTxn.Namespace, op.UniqueSuffix, op)
+			logger.Warn("Duplicate suffix found in transaction operations: discarding operation",
+				log.WithNamespace(sidetreeTxn.Namespace), log.WithSuffix(op.UniqueSuffix), log.WithOperation(op))
 
 			continue
 		}
 
 		updatedOp := updateAnchoredOperation(op, sidetreeTxn)
 
-		logger.Debugf("updated operation with anchoring time: %s", updatedOp.UniqueSuffix)
+		logger.Debug("Updated operation with anchoring time", log.WithSuffix(updatedOp.UniqueSuffix))
+
 		ops = append(ops, updatedOp)
 
 		batchSuffixes[op.UniqueSuffix] = true

@@ -65,13 +65,13 @@ func (o *Observer) listen(txnsCh <-chan []txn.SidetreeTxn) {
 	for {
 		select {
 		case <-o.stopCh:
-			logger.Infof("The observer has been stopped. Exiting.")
+			logger.Info("The observer has been stopped. Exiting.")
 
 			return
 
 		case txns, ok := <-txnsCh:
 			if !ok {
-				logger.Warnf("Notification channel was closed. Exiting.")
+				logger.Warn("Notification channel was closed. Exiting.")
 
 				return
 			}
@@ -85,25 +85,26 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 	for _, txn := range txns {
 		pc, err := o.ProtocolClientProvider.ForNamespace(txn.Namespace)
 		if err != nil {
-			logger.Warnf("Failed to get protocol client for namespace [%s]: %s", txn.Namespace, err.Error())
+			logger.Warn("Failed to get protocol client for namespace", log.WithNamespace(txn.Namespace), log.WithError(err))
 
 			continue
 		}
 
 		v, err := pc.Get(txn.ProtocolVersion)
 		if err != nil {
-			logger.Warnf("Failed to get processor for transaction time [%d]: %s", txn.ProtocolVersion, err.Error())
+			logger.Warn("Failed to get processor for transaction time", log.WithGenesisTime(txn.ProtocolVersion),
+				log.WithError(err))
 
 			continue
 		}
 
 		_, err = v.TransactionProcessor().Process(txn)
 		if err != nil {
-			logger.Warnf("Failed to process anchor[%s]: %s", txn.AnchorString, err.Error())
+			logger.Warn("Failed to process anchor", log.WithAnchorString(txn.AnchorString), log.WithError(err))
 
 			continue
 		}
 
-		logger.Debugf("Successfully processed anchor[%s]", txn.AnchorString)
+		logger.Debug("Successfully processed anchor", log.WithAnchorString(txn.AnchorString))
 	}
 }

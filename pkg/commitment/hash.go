@@ -25,7 +25,7 @@ func GetCommitment(jwk *jws.JWK, multihashCode uint) (string, error) {
 		return "", err
 	}
 
-	logger.Debugf("calculating commitment from JWK: %s", string(data))
+	logger.Debug("Calculating commitment from JWK", log.WithData(data))
 
 	hash, err := hashing.GetHashFromMultihash(multihashCode)
 	if err != nil {

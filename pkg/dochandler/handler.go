@@ -210,7 +210,7 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 
 	// validated operation will be added to the batch
 	if err := r.addToBatch(op, pv.Protocol().GenesisTime); err != nil {
-		logger.Errorf("Failed to add operation to batch: %s", err.Error())
+		logger.Error("Failed to add operation to batch", log.WithError(err))
 
 		r.deleteOperationFromUnpublishedOpsStore(unpublishedOp)
 
@@ -219,7 +219,7 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 
 	r.metrics.AddOperationToBatchTime(time.Since(addToBatchStartTime))
 
-	logger.Debugf("[%s] operation added to the batch", op.ID)
+	logger.Debug("Aperation added to the batch", log.WithOperationID(op.ID))
 
 	// create operation will also return document
 	if op.Type == operation.TypeCreate {
@@ -261,7 +261,7 @@ func (r *DocumentHandler) deleteOperationFromUnpublishedOpsStore(unpublishedOp *
 
 	err := r.unpublishedOperationStore.Delete(unpublishedOp)
 	if err != nil {
-		logger.Warnf("Failed to delete operation from unpublished store: %s", err.Error())
+		logger.Warn("Failed to delete operation from unpublished store", log.WithError(err))
 	}
 }
 
@@ -425,7 +425,7 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion, opts...)
 	if err != nil {
-		logger.Debugf("Failed to resolve uniquePortion[%s]: %s", uniquePortion, err.Error())
+		logger.Debug("Failed to resolve uniquePortion", log.WithSuffix(uniquePortion), log.WithError(err))
 
 		return nil, err
 	}
@@ -601,12 +601,14 @@ func (d *defaultOperationDecorator) Decorate(op *operation.Operation) (*operatio
 	if op.Type != operation.TypeCreate {
 		internalResult, err := d.processor.Resolve(op.UniqueSuffix)
 		if err != nil {
-			logger.Debugf("Failed to resolve suffix[%s] for operation type[%s]: %s", op.UniqueSuffix, op.Type, err.Error())
+			logger.Debug("Failed to resolve suffix for operation", log.WithSuffix(op.UniqueSuffix),
+				log.WithOperationType(string(op.Type)), log.WithError(err))
 
 			return nil, err
 		}
 
-		logger.Debugf("processor returned internal result for suffix[%s] for operation type[%s]: %+v", op.UniqueSuffix, op.Type, internalResult)
+		logger.Debug("Processor returned internal result for suffix", log.WithSuffix(op.UniqueSuffix),
+			log.WithOperationType(string(op.Type)), log.WithResolutionModel(internalResult))
 
 		if internalResult.Deactivated {
 			return nil, fmt.Errorf("document has been deactivated, no further operations are allowed")
