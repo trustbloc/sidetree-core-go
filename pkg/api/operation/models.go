@@ -50,7 +50,8 @@ type AnchoredOperation struct {
 	// OperationRequest is the original operation request
 	OperationRequest []byte `json:"operation"`
 
-	// TransactionTime is the logical anchoring time (block number in case of blockchain) for this operation in the anchoring system (blockchain).
+	// TransactionTime is the logical anchoring time (block number in case of blockchain) for this operation in the
+	// anchoring system (blockchain).
 	TransactionTime uint64 `json:"transactionTime"`
 
 	// TransactionNumber is the transaction number of the transaction this operation was batched within.

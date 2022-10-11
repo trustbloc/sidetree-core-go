@@ -45,6 +45,8 @@ type OperationParser interface {
 }
 
 // New returns a new operation applier for the given protocol.
+//
+//nolint:gocritic
 func New(p protocol.Protocol, parser OperationParser, dc protocol.DocumentComposer) *Applier {
 	return &Applier{
 		Protocol:         p,
@@ -69,7 +71,8 @@ func (s *Applier) Apply(op *operation.AnchoredOperation, rm *protocol.Resolution
 	}
 }
 
-func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation,
+	rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	logger.Debug("Applying create operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc != nil {
@@ -132,7 +135,8 @@ func (s *Applier) applyCreateOperation(anchoredOp *operation.AnchoredOperation, 
 	return result, nil
 }
 
-func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl,funlen
+func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation,
+	rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	logger.Debug("Applying update operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc == nil {
@@ -211,7 +215,8 @@ func (s *Applier) applyUpdateOperation(anchoredOp *operation.AnchoredOperation, 
 	return result, nil
 }
 
-func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperation,
+	rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	logger.Debug("Applying deactivate operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc == nil {
@@ -264,7 +269,8 @@ func (s *Applier) applyDeactivateOperation(anchoredOp *operation.AnchoredOperati
 	}, nil
 }
 
-func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) { //nolint:dupl,funlen
+func (s *Applier) applyRecoverOperation(anchoredOp *operation.AnchoredOperation,
+	rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	logger.Debug("Applying recover operation", log.WithOperation(anchoredOp))
 
 	if rm.Doc == nil {

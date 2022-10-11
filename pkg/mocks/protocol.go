@@ -115,6 +115,8 @@ func (m *MockProtocolClientProvider) ForNamespace(namespace string) (protocol.Cl
 }
 
 // GetProtocolVersion returns mock protocol version.
+//
+//nolint:gocritic
 func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 	v := &ProtocolVersion{}
 	v.VersionReturns(CurrentVersion)
@@ -134,7 +136,6 @@ func GetProtocolVersion(p protocol.Protocol) *ProtocolVersion {
 
 // GetDefaultProtocolParameters returns mock protocol parameters.
 func GetDefaultProtocolParameters() protocol.Protocol {
-	//nolint:gomnd
 	return protocol.Protocol{
 		GenesisTime:                  0,
 		MultihashAlgorithms:          []uint{sha2_256},

@@ -15,7 +15,7 @@ import (
 
 // MockOperationStore mocks store for testing purposes.
 type MockOperationStore struct {
-	sync.RWMutex
+	mutex      sync.RWMutex
 	operations map[string][]*operation.AnchoredOperation
 	Err        error
 	Validate   bool
@@ -33,17 +33,17 @@ func (m *MockOperationStore) Put(op *operation.AnchoredOperation) error {
 	}
 
 	var opsSize int
-	m.RLock()
+	m.mutex.RLock()
 	opsSize = len(m.operations[op.UniqueSuffix])
-	m.RUnlock()
+	m.mutex.RUnlock()
 
 	if m.Validate && op.Type == operation.TypeCreate && opsSize > 0 {
 		// Nothing to do; already created
 		return nil
 	}
 
-	m.Lock()
-	defer m.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.operations[op.UniqueSuffix] = append(m.operations[op.UniqueSuffix], op)
 
@@ -56,8 +56,8 @@ func (m *MockOperationStore) Get(uniqueSuffix string) ([]*operation.AnchoredOper
 		return nil, m.Err
 	}
 
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	if ops, ok := m.operations[uniqueSuffix]; ok {
 		return ops, nil

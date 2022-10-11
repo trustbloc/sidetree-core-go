@@ -16,7 +16,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 )
 
-// nolint:gochecknoglobals
+//nolint:gochecknoglobals
 var (
 	asciiRegex = regexp.MustCompile("^[A-Za-z0-9_-]+$")
 )
@@ -115,11 +115,11 @@ func validatePublicKeys(pubKeys []document.PublicKey) error {
 	return nil
 }
 
-func validatePublicKeyProperties(pubKey document.PublicKey) error { // nolint:gocyclo
+func validatePublicKeyProperties(pubKey document.PublicKey) error {
 	requiredKeys := []string{document.TypeProperty, document.IDProperty}
 	optionalKeys := []string{document.PurposesProperty}
 	oneOfNKeys := [][]string{{document.PublicKeyJwkProperty, document.PublicKeyBase58Property}}
-	allowedKeys := append(requiredKeys, optionalKeys...)
+	allowedKeys := append(requiredKeys, optionalKeys...) //nolint:gocritic
 
 	for _, keyGroup := range oneOfNKeys {
 		allowedKeys = append(allowedKeys, keyGroup...)

@@ -309,7 +309,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
+		updateOp, _, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
 		require.Nil(t, err)
 		err = store.Put(updateOp)
 		require.Nil(t, err)
@@ -415,7 +415,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special500", didDoc["test"])
 
 		// test consecutive update within new protocol value
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 700)
+		updateOp, _, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 700)
 		require.Nil(t, err)
 		err = store.Put(updateOp)
 		require.Nil(t, err)
@@ -464,7 +464,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special2", didDoc["test"])
 
 		// two successful update operations - next update with reused commitment from op 1
-		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		updateOp, _, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
 		delta3 := updateOp.Delta
@@ -504,7 +504,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// update operation commitment is the same as next operation commitment
-		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		updateOp, _, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
 		delta2 := updateOp.Delta
@@ -728,7 +728,7 @@ func TestRecover(t *testing.T) {
 		require.NoError(t, err)
 
 		// hashing algorithm changed at block 100
-		op, nextRecoveryKey, err := getRecoverOperationWithBlockNum(nextRecoveryKey, updateKey, uniqueSuffix, 200)
+		op, _, err := getRecoverOperationWithBlockNum(nextRecoveryKey, updateKey, uniqueSuffix, 200)
 		require.NoError(t, err)
 
 		op.RevealValue = rv
@@ -1493,7 +1493,6 @@ func (m *mockDocComposer) ApplyPatches(doc document.Document, patches []patch.Pa
 func newMockProtocolClient() *mocks.MockProtocolClient {
 	pc := mocks.NewMockProtocolClient()
 
-	//nolint:gomnd
 	latest := protocol.Protocol{
 		GenesisTime:                 100,
 		MultihashAlgorithms:         []uint{sha2_512, sha2_256},

@@ -9,7 +9,6 @@ package document
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 )
 
 const (
@@ -156,7 +155,7 @@ func (doc DIDDocument) InvocationKeys() []interface{} {
 
 // DIDDocumentFromReader creates an instance of DIDDocument by reading a JSON document from Reader.
 func DIDDocumentFromReader(r io.Reader) (DIDDocument, error) {
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}

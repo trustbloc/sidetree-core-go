@@ -122,7 +122,8 @@ func New(opts ...Option) *Transformer {
 
 // TransformDocument takes internal resolution model and transformation info and creates
 // external representation of document (resolution result).
-func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) { //nolint:funlen,gocyclo
+func (t *Transformer) TransformDocument(rm *protocol.ResolutionModel,
+	info protocol.TransformationInfo) (*document.ResolutionResult, error) {
 	docMetadata, err := metadata.New(
 		metadata.WithIncludeUnpublishedOperations(t.includeUnpublishedOperations),
 		metadata.WithIncludePublishedOperations(t.includePublishedOperations)).
@@ -223,7 +224,10 @@ func (t *Transformer) processServices(internal document.DIDDocument, resolutionR
 // -- agreement: the key MUST be included by reference in the keyAgreement section.
 // -- delegation: the key MUST be included by reference in the capabilityDelegation section.
 // -- invocation: the key MUST be included by reference in the capabilityInvocation section.
-func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResult *document.ResolutionResult) error { //nolint:gocyclo,funlen,gocognit
+//
+//nolint:gocyclo
+func (t *Transformer) processKeys(internal document.DIDDocument,
+	resolutionResult *document.ResolutionResult) error { //nolint:gocognit
 	purposes := map[string][]interface{}{
 		document.AuthenticationProperty:  make([]interface{}, 0),
 		document.AssertionMethodProperty: make([]interface{}, 0),
@@ -246,7 +250,7 @@ func (t *Transformer) processKeys(internal document.DIDDocument, resolutionResul
 		externalPK[document.TypeProperty] = pk.Type()
 		externalPK[document.ControllerProperty] = t.getController(did)
 
-		if pkJwk := pk.PublicKeyJwk(); pkJwk != nil { // nolint: nestif
+		if pkJwk := pk.PublicKeyJwk(); pkJwk != nil { //nolint:nestif
 			if pk.Type() == ed25519VerificationKey2018 {
 				ed25519PubKey, err := getED2519PublicKey(pkJwk)
 				if err != nil {
@@ -339,7 +343,7 @@ func interfaceArray(values []string) []interface{} {
 	return iArr
 }
 
-func (t *Transformer) getObjectID(docID string, objectID string) interface{} {
+func (t *Transformer) getObjectID(docID, objectID string) interface{} {
 	relativeID := "#" + objectID
 	if t.includeBase {
 		return relativeID

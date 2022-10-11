@@ -8,7 +8,6 @@ package patchvalidator
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -21,7 +20,7 @@ func TestValidatePublicKeys(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		r := reader(t, "testdata/doc.json")
 
-		data, err := ioutil.ReadAll(r)
+		data, err := io.ReadAll(r)
 		require.Nil(t, err)
 
 		doc, err := document.DidDocumentFromBytes(data)

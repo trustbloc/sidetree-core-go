@@ -19,9 +19,9 @@ const sha2_256 = 18
 
 // MockCasClient mocks CAS for testing purposes.
 type MockCasClient struct {
-	sync.RWMutex
-	m   map[string][]byte
-	err error
+	mutex sync.RWMutex
+	m     map[string][]byte
+	err   error
 }
 
 // NewMockCasClient creates mock client.
@@ -43,8 +43,8 @@ func (m *MockCasClient) Write(content []byte) (string, error) {
 
 	key := encoder.EncodeToString(hash)
 
-	m.Lock()
-	defer m.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.m[key] = content
 
@@ -59,8 +59,8 @@ func (m *MockCasClient) Read(address string) ([]byte, error) {
 		return nil, err
 	}
 
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	value, ok := m.m[address]
 	if !ok {
@@ -87,16 +87,16 @@ func (m *MockCasClient) Read(address string) ([]byte, error) {
 
 // SetError injects an error into the mock client.
 func (m *MockCasClient) SetError(err error) {
-	m.Lock()
-	defer m.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.err = err
 }
 
 // GetError returns the injected error.
 func (m *MockCasClient) GetError() error {
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	return m.err
 }

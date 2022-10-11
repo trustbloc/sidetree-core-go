@@ -213,7 +213,7 @@ func TestAdditionalSuffixInBatchFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that first anchor has one operation per batch; second one will be processed in the next batch
-	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
+	cif, pif, _, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(cif.Operations.Create))
@@ -226,7 +226,7 @@ func TestAdditionalSuffixInBatchFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that first anchor has one operation per batch; second one has been discarded
-	cif, pif, cf, err = getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
+	cif, pif, cf, err := getBatchFiles(ctx.ProtocolClient.CasClient, ad.CoreIndexFileURI)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(cif.Operations.Create))

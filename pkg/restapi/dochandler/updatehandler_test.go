@@ -13,7 +13,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -72,7 +72,7 @@ func TestUpdateHandler_Update(t *testing.T) {
 		require.Equal(t, http.StatusOK, rw.Code)
 		require.Equal(t, "application/did+ld+json", rw.Header().Get("content-type"))
 
-		body, err := ioutil.ReadAll(rw.Body)
+		body, err := io.ReadAll(rw.Body)
 		require.NoError(t, err)
 
 		var result document.ResolutionResult

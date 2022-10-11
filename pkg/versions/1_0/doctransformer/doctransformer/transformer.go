@@ -51,7 +51,8 @@ func WithIncludeUnpublishedOperations(enabled bool) Option {
 
 // TransformDocument takes internal resolution model and transformation info and creates
 // external representation of document (resolution result).
-func (v *Transformer) TransformDocument(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) {
+func (v *Transformer) TransformDocument(rm *protocol.ResolutionModel,
+	info protocol.TransformationInfo) (*document.ResolutionResult, error) {
 	docMetadata, err := metadata.New(
 		metadata.WithIncludeUnpublishedOperations(v.includeUnpublishedOperations),
 		metadata.WithIncludePublishedOperations(v.includePublishedOperations)).

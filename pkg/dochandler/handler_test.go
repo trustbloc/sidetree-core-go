@@ -274,7 +274,7 @@ func TestDocumentHandler_ProcessOperation_Update(t *testing.T) {
 
 		idWithHint := namespace + ":domain.com" + createOp.UniqueSuffix
 
-		doc, err = dochandler.ResolveDocument(idWithHint)
+		_, err = dochandler.ResolveDocument(idWithHint)
 		require.NoError(t, err)
 	})
 
@@ -738,18 +738,18 @@ func TestGetUniquePortion(t *testing.T) {
 	const namespace = "did:sidetree"
 
 	// id doesn't contain namespace
-	uniquePortion, err := getSuffix(namespace, "invalid")
+	_, err := getSuffix(namespace, "invalid")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "did must start with configured namespace")
 
 	// id equals namespace; unique portion is empty
-	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter)
+	_, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "did suffix is empty")
 
 	// valid unique portion
 	const unique = "exKwW0HjS5y4zBtJ7vYDwglYhtckdO15JDt1j5F5Q0A"
-	uniquePortion, err = getSuffix(namespace, namespace+docutil.NamespaceDelimiter+unique)
+	uniquePortion, err := getSuffix(namespace, namespace+docutil.NamespaceDelimiter+unique)
 	require.NoError(t, err)
 	require.Equal(t, unique, uniquePortion)
 }

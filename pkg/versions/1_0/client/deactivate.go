@@ -62,7 +62,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 		AnchorUntil: info.AnchorUntil,
 	}
 
-	jws, err := signutil.SignModel(signedDataModel, info.Signer)
+	signModel, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func NewDeactivateRequest(info *DeactivateRequestInfo) ([]byte, error) {
 		Operation:   operation.TypeDeactivate,
 		DidSuffix:   info.DidSuffix,
 		RevealValue: info.RevealValue,
-		SignedData:  jws,
+		SignedData:  signModel,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)

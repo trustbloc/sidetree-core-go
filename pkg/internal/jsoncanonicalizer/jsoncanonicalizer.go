@@ -42,7 +42,6 @@ var binaryEscapes = []byte{'\\', '"', '\b', '\f', '\n', '\r', '\t'}
 var literals = []string{"true", "false", "null"}
 
 func Transform(jsonData []byte) (result []byte, e error) {
-
 	// JSON data MUST be UTF-8 encoded
 	var jsonDataLength int = len(jsonData)
 
@@ -355,9 +354,9 @@ func Transform(jsonData []byte) (result []byte, e error) {
 		return objectData.String()
 	}
 
-	/////////////////////////////////////////////////
+	// ///////////////////////////////////////////////
 	// This is where Transform actually begins...  //
-	/////////////////////////////////////////////////
+	// ///////////////////////////////////////////////
 	var transformed string
 
 	if testNextNonWhiteSpaceChar() == '[' {

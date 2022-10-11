@@ -98,7 +98,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	jws, err := signutil.SignModel(signedDataModel, info.Signer)
+	signModel, err := signutil.SignModel(signedDataModel, info.Signer)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func NewRecoverRequest(info *RecoverRequestInfo) ([]byte, error) {
 		DidSuffix:   info.DidSuffix,
 		RevealValue: info.RevealValue,
 		Delta:       delta,
-		SignedData:  jws,
+		SignedData:  signModel,
 	}
 
 	return canonicalizer.MarshalCanonical(schema)

@@ -8,7 +8,6 @@ package didvalidator
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -22,7 +21,7 @@ func TestNew(t *testing.T) {
 
 func TestIsValidOriginalDocument(t *testing.T) {
 	r := reader(t, "testdata/doc.json")
-	didDoc, err := ioutil.ReadAll(r)
+	didDoc, err := io.ReadAll(r)
 	require.Nil(t, err)
 
 	v := New()

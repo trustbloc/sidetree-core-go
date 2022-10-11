@@ -44,6 +44,8 @@ func TestParseDeactivateOperation(t *testing.T) {
 		require.Equal(t, operation.TypeDeactivate, op.Type)
 
 		signedData, err := parser.ParseSignedDataForDeactivate(op.SignedData)
+		require.NoError(t, err)
+
 		expectedRevealValue, err := commitment.GetRevealValue(signedData.RecoveryKey, sha2_256)
 		require.NoError(t, err)
 

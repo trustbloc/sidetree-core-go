@@ -124,7 +124,7 @@ type metricsProvider interface {
 
 // New creates a new document handler with the context.
 func New(namespace string, aliases []string, pc protocol.Client, writer batchWriter, processor operationProcessor,
-	metrics metricsProvider, opts ...Option) *DocumentHandler { //nolint:funlen,gocyclo
+	metrics metricsProvider, opts ...Option) *DocumentHandler {
 	dh := &DocumentHandler{
 		protocol:                  pc,
 		processor:                 processor,
@@ -151,7 +151,7 @@ func (r *DocumentHandler) Namespace() string {
 }
 
 // ProcessOperation validates operation and adds it to the batch.
-func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersion uint64) (*document.ResolutionResult, error) { //nolint:gocyclo,funlen
+func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersion uint64) (*document.ResolutionResult, error) {
 	startTime := time.Now()
 
 	defer func() {
@@ -318,7 +318,7 @@ func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol
 }
 
 // GetTransformationInfoForUnpublished will create transformation info object for unpublished document.
-func GetTransformationInfoForUnpublished(namespace, domain, label, suffix string, createRequestJCS string) protocol.TransformationInfo {
+func GetTransformationInfoForUnpublished(namespace, domain, label, suffix, createRequestJCS string) protocol.TransformationInfo {
 	ti := make(protocol.TransformationInfo)
 	ti[document.PublishedProperty] = false
 
@@ -370,7 +370,8 @@ func GetTransformationInfoForUnpublished(namespace, domain, label, suffix string
 // If the DID Document cannot be found, the <suffix-data-object> and <delta-object> are used
 // to generate and return resolved DID Document. In this case the supplied delta and suffix objects
 // are subject to the same validation as during processing create operation.
-func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) ResolveDocument(shortOrLongFormDID string,
+	opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
 	ns, err := r.getNamespace(shortOrLongFormDID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())
@@ -422,7 +423,8 @@ func (r *DocumentHandler) getNamespace(shortOrLongFormDID string) (string, error
 	return "", fmt.Errorf("did must start with configured namespace[%s] or aliases%v", r.namespace, r.aliases)
 }
 
-func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version, opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion string, pv protocol.Version,
+	opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion, opts...)
 	if err != nil {
 		logger.Debug("Failed to resolve uniquePortion", log.WithSuffix(uniquePortion), log.WithError(err))
@@ -494,7 +496,8 @@ func GetTransformationInfoForPublished(namespace, id, suffix string,
 	return ti
 }
 
-func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormDID string, initialBytes []byte, pv protocol.Version) (*document.ResolutionResult, error) {
+func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormDID string, initialBytes []byte,
+	pv protocol.Version) (*document.ResolutionResult, error) {
 	op, err := pv.OperationParser().Parse(r.namespace, initialBytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %s", badRequest, err.Error())

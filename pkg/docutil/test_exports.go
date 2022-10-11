@@ -1,4 +1,4 @@
-// +build testing
+//go:build testing
 
 /*
 Copyright SecureKey Technologies Inc. All Rights Reserved.

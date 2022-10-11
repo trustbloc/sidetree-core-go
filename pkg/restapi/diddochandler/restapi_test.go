@@ -11,7 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -122,7 +122,7 @@ func handleHTTPResp(t *testing.T, resp *http.Response) ([]byte, error) {
 }
 
 func read(t *testing.T, response *http.Response) []byte {
-	respBytes, err := ioutil.ReadAll(response.Body)
+	respBytes, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	return respBytes

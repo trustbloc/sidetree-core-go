@@ -8,7 +8,6 @@ package document
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,7 +17,7 @@ import (
 func TestFromBytes(t *testing.T) {
 	r := reader(t, "testdata/pk-doc.json")
 
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	require.Nil(t, err)
 
 	doc, err := FromBytes(data)

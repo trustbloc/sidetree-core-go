@@ -282,7 +282,8 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolVersion uint6
 	r.logger.Info("Writing anchor string", log.WithAnchorString(anchoringInfo.AnchorString))
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
-	return r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts, anchoringInfo.OperationReferences, protocolVersion)
+	return r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts,
+		anchoringInfo.OperationReferences, protocolVersion)
 }
 
 // WithBatchTimeout allows for specifying batch timeout.

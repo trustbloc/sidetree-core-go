@@ -38,6 +38,8 @@ type OperationHandler struct {
 }
 
 // NewOperationHandler returns new operations handler.
+//
+//nolint:gocritic
 func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProvider, parser OperationParser,
 	metrics metricsProvider) *OperationHandler {
 	return &OperationHandler{
@@ -51,7 +53,7 @@ func NewOperationHandler(p protocol.Protocol, cas cas.Client, cp compressionProv
 
 // PrepareTxnFiles will create batch files(core index, core proof, provisional index, provisional proof and chunk)
 // from batch operation and return anchor string, batch files information and operations.
-func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (*protocol.AnchoringInfo, error) { //nolint:funlen
+func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (*protocol.AnchoringInfo, error) {
 	parsedOps, info, err := h.parseOperations(ops)
 	if err != nil {
 		return nil, err
@@ -141,7 +143,7 @@ func (h *OperationHandler) PrepareTxnFiles(ops []*operation.QueuedOperation) (*p
 	}, nil
 }
 
-func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, *additionalAnchoringInfo, error) { // nolint:gocyclo,funlen
+func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*models.SortedOperations, *additionalAnchoringInfo, error) {
 	if len(ops) == 0 {
 		return nil, nil, errors.New("prepare txn operations called without operations, should not happen")
 	}
@@ -279,8 +281,8 @@ func (h *OperationHandler) createProvisionalIndexFile(chunks []string, provision
 	return h.writeModelToCAS(provisionalIndexFile, "provisional index")
 }
 
-func (h *OperationHandler) writeModelToCAS(model interface{}, alias string) (string, error) {
-	bytes, err := docutil.MarshalCanonical(model)
+func (h *OperationHandler) writeModelToCAS(m interface{}, alias string) (string, error) {
+	bytes, err := docutil.MarshalCanonical(m)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal %s file: %s", alias, err.Error())
 	}

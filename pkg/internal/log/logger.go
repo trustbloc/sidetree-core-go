@@ -28,6 +28,7 @@ const (
 
 // DefaultEncoding sets the default logger encoding.
 // It may be overridden at build time using the -ldflags option.
+//
 //nolint:gochecknoglobals
 var DefaultEncoding = Console
 
@@ -177,13 +178,13 @@ func GetLevel(module string) Level {
 // SetSpec sets the log levels for individual modules as well as the default log level.
 // The format of the spec is as follows:
 //
-//	  module1=level1:module2=level2:module3=level3:defaultLevel
+// module1=level1:module2=level2:module3=level3:defaultLevel
 //
 // Valid log levels are: critical, error, warning, info, debug
 //
 // Example:
-//    module1=error:module2=debug:module3=warning:info
 //
+// module1=error:module2=debug:module3=warning:info
 func SetSpec(spec string) error {
 	logLevelByModule := strings.Split(spec, ":")
 
@@ -232,11 +233,10 @@ func SetSpec(spec string) error {
 // GetSpec returns the log spec which specifies the log level of each individual module. The spec is
 // in the following format:
 //
-//	  module1=level1:module2=level2:module3=level3:defaultLevel
+// module1=level1:module2=level2:module3=level3:defaultLevel
 //
 // Example:
-//    module1=error:module2=debug:module3=warning:info
-//
+// module1=error:module2=debug:module3=warning:info
 func GetSpec() string {
 	var spec string
 

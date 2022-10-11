@@ -40,7 +40,8 @@ func (v *Validator) IsValidPayload(payload []byte) error {
 	return nil
 }
 
-// IsValidOriginalDocument verifies that the given payload is a valid Sidetree specific did document that can be accepted by the Sidetree create operation.
+// IsValidOriginalDocument verifies that the given payload is a valid Sidetree specific did document that
+// can be accepted by the Sidetree create operation.
 func (v *Validator) IsValidOriginalDocument(payload []byte) error {
 	didDoc, err := document.DidDocumentFromBytes(payload)
 	if err != nil {

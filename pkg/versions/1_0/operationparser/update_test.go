@@ -43,6 +43,8 @@ func TestParseUpdateOperation(t *testing.T) {
 		require.Equal(t, operation.TypeUpdate, op.Type)
 
 		signedData, err := parser.ParseSignedDataForUpdate(op.SignedData)
+		require.NoError(t, err)
+
 		expectedRevealValue, err := commitment.GetRevealValue(signedData.UpdateKey, sha2_256)
 		require.NoError(t, err)
 
@@ -172,6 +174,7 @@ func TestParseSignedDataForUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		compactJWS, err := signutil.SignPayload(payload, NewMockSigner())
+		require.NoError(t, err)
 
 		schema, err := parser.ParseSignedDataForUpdate(compactJWS)
 		require.Error(t, err)

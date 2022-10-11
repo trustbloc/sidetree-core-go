@@ -68,6 +68,8 @@ type OperationParser interface {
 }
 
 // NewOperationProvider returns a new operation provider.
+//
+//nolint:gocritic
 func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS,
 	dp decompressionProvider, opts ...Opt) *OperationProvider {
 	o := &options{
@@ -91,24 +93,24 @@ func NewOperationProvider(p protocol.Protocol, parser OperationParser, cas DCAS,
 
 // GetTxnOperations will read batch files(core/provisional index, proof files and chunk file)
 // and assemble batch operations from those files.
-func (h *OperationProvider) GetTxnOperations(txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+func (h *OperationProvider) GetTxnOperations(t *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
 	// parse core index file URI and number of operations from anchor string
-	anchorData, err := ParseAnchorData(txn.AnchorString)
+	anchorData, err := ParseAnchorData(t.AnchorString)
 	if err != nil {
 		return nil, err
 	}
 
-	cif, err := h.getCoreIndexFile(anchorData.CoreIndexFileURI, txn.AlternateSources...)
+	cif, err := h.getCoreIndexFile(anchorData.CoreIndexFileURI, t.AlternateSources...)
 	if err != nil {
 		return nil, err
 	}
 
-	batchFiles, err := h.getBatchFiles(cif, txn.AlternateSources...)
+	batchFiles, err := h.getBatchFiles(cif, t.AlternateSources...)
 	if err != nil {
 		return nil, err
 	}
 
-	txnOps, err := h.assembleAnchoredOperations(batchFiles, txn)
+	txnOps, err := h.assembleAnchoredOperations(batchFiles, t)
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +269,8 @@ func createAnchoredOperations(ops []*model.Operation) ([]*operation.AnchoredOper
 	return anchoredOps, nil
 }
 
-func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, txn *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) { //nolint:funlen
-	cifOps, err := h.parseCoreIndexOperations(batchFiles.CoreIndex, txn)
+func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, t *txn.SidetreeTxn) ([]*operation.AnchoredOperation, error) {
+	cifOps, err := h.parseCoreIndexOperations(batchFiles.CoreIndex, t)
 	if err != nil {
 		return nil, fmt.Errorf("parse core index operations: %s", err.Error())
 	}
@@ -291,7 +293,7 @@ func (h *OperationProvider) assembleAnchoredOperations(batchFiles *batchFiles, t
 	logger.Debug("Successfully parsed provisional index operations", log.WithTotalUpdateOperations(len(pifOps.Update)))
 
 	// check for duplicate suffixes for this combination core/provisional index files
-	txnSuffixes := append(cifOps.Suffixes, pifOps.Suffixes...)
+	txnSuffixes := append(cifOps.Suffixes, pifOps.Suffixes...) //nolint:gocritic
 	err = checkForDuplicates(txnSuffixes)
 	if err != nil {
 		return nil, fmt.Errorf("check for duplicate suffixes in core/provisional index files: %s", err.Error())
@@ -506,7 +508,9 @@ func (h *OperationProvider) validateCoreProofFile(cpf *models.CoreProofFile) err
 }
 
 // getProvisionalProofFile will download provisional proof file from cas and parse it into provisional proof file model.
-func (h *OperationProvider) getProvisionalProofFile(uri string, alternateSources ...string) (*models.ProvisionalProofFile, error) { //nolint:dupl
+//
+//nolint:dupl
+func (h *OperationProvider) getProvisionalProofFile(uri string, alternateSources ...string) (*models.ProvisionalProofFile, error) {
 	content, err := h.readFromCAS(uri, h.MaxProofFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional proof file")
@@ -539,7 +543,9 @@ func (h *OperationProvider) validateProvisionalProofFile(ppf *models.Provisional
 }
 
 // getProvisionalIndexFile will download provisional index file from cas and parse it into provisional index file model.
-func (h *OperationProvider) getProvisionalIndexFile(uri string, alternateSources ...string) (*models.ProvisionalIndexFile, error) { //nolint:dupl
+//
+//nolint:dupl
+func (h *OperationProvider) getProvisionalIndexFile(uri string, alternateSources ...string) (*models.ProvisionalIndexFile, error) {
 	content, err := h.readFromCAS(uri, h.MaxProvisionalIndexFileSize, alternateSources...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading provisional index file")
@@ -680,7 +686,8 @@ func (h *OperationProvider) readFromCAS(uri string, maxSize uint, alternateSourc
 
 	maxDecompressedSize := maxSize * h.MaxMemoryDecompressionFactor
 	if len(content) > int(maxDecompressedSize) {
-		return nil, fmt.Errorf("uri[%s]: decompressed content size %d exceeded maximum decompressed content size %d", uri, len(content), maxDecompressedSize)
+		return nil, fmt.Errorf("uri[%s]: decompressed content size %d exceeded maximum decompressed content size %d",
+			uri, len(content), maxDecompressedSize)
 	}
 
 	return content, nil
@@ -694,13 +701,13 @@ type coreOperations struct {
 	Suffixes   []string
 }
 
-func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, txn *txn.SidetreeTxn) (*coreOperations, error) { //nolint:funlen
+func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, t *txn.SidetreeTxn) (*coreOperations, error) {
 	if cif.Operations == nil {
 		// nothing to do
 		return &coreOperations{}, nil
 	}
 
-	logger.Debug("Parsing core index file operations for anchor string", log.WithAnchorString(txn.AnchorString))
+	logger.Debug("Parsing core index file operations for anchor string", log.WithAnchorString(t.AnchorString))
 
 	var suffixes []string
 
@@ -724,14 +731,14 @@ func (h *OperationProvider) parseCoreIndexOperations(cif *models.CoreIndexFile, 
 
 	var recoverOps []*model.Operation
 	for _, op := range cif.Operations.Recover {
-		recover := &model.Operation{
+		recoverOp := &model.Operation{
 			Type:         operation.TypeRecover,
 			UniqueSuffix: op.DidSuffix,
 			RevealValue:  op.RevealValue,
 		}
 
 		suffixes = append(suffixes, op.DidSuffix)
-		recoverOps = append(recoverOps, recover)
+		recoverOps = append(recoverOps, recoverOp)
 	}
 
 	var deactivateOps []*model.Operation
