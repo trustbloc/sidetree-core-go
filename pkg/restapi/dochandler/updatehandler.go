@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dochandler
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -52,7 +52,7 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 		h.metrics.HTTPCreateUpdateTime(time.Since(startTime))
 	}()
 
-	request, err := ioutil.ReadAll(req.Body)
+	request, err := io.ReadAll(req.Body)
 	if err != nil {
 		common.WriteError(rw, http.StatusBadRequest, err)
 

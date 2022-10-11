@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
+	"io"
 )
 
 const algName = "GZIP"
@@ -50,7 +50,7 @@ func (a *Algorithm) Decompress(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to create new reader: %s", err.Error())
 	}
 
-	bytes, err := ioutil.ReadAll(zr)
+	zrBytes, err := io.ReadAll(zr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read compressed data: %s", err.Error())
 	}
@@ -59,7 +59,7 @@ func (a *Algorithm) Decompress(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to close reader: %s", err.Error())
 	}
 
-	return bytes, nil
+	return zrBytes, nil
 }
 
 // Accept algorithm.

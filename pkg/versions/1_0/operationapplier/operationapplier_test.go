@@ -217,7 +217,7 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special1", didDoc["test"])
 
 		// test consecutive update
-		updateOp, nextUpdateKey, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
+		updateOp, _, err = getAnchoredUpdateOperation(nextUpdateKey, uniqueSuffix, 2)
 		require.Nil(t, err)
 
 		result, err = applier.Apply(updateOp, result)
@@ -262,14 +262,14 @@ func TestUpdateDocument(t *testing.T) {
 		require.Equal(t, "special2", didDoc["test"])
 
 		// two successful update operations - next update with reused commitment from op 1
-		updateOp, nextUpdateKey, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
+		updateOp, _, err = getUpdateOperation(nextUpdateKey, uniqueSuffix, 1)
 		require.Nil(t, err)
 
 		delta3 := updateOp.Delta
 		delta3.UpdateCommitment = delta1.UpdateCommitment
 		updateOp.Delta = delta3
 
-		rm, err = applier.Apply(getAnchoredOperation(updateOp), rm)
+		_, err = applier.Apply(getAnchoredOperation(updateOp), rm)
 		require.EqualError(t, err, "update delta doesn't match delta hash: supplied hash doesn't match original content")
 	})
 
@@ -734,6 +734,7 @@ func TestRecover(t *testing.T) {
 
 		// now generate valid recovery operation with same recoveryKey
 		recoverOp, _, err := getAnchoredRecoverOperation(recoveryKey, updateKey, uniqueSuffix, 2)
+		require.NoError(t, err)
 
 		result, err = applier.Apply(recoverOp, rm)
 		require.NoError(t, err)

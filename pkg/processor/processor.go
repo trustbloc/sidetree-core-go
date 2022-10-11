@@ -72,7 +72,6 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore) Option {
 // Resolve document based on the given unique suffix.
 // Parameters:
 // uniqueSuffix - unique portion of ID to resolve. for example "abc123" in "did:sidetree:abc123".
-//nolint:funlen
 func (s *OperationProcessor) Resolve(uniqueSuffix string, opts ...document.ResolutionOption) (*protocol.ResolutionModel, error) {
 	var unpublishedOps []*operation.AnchoredOperation
 
@@ -156,7 +155,8 @@ func (s *OperationProcessor) processOperations(
 	return pubOps, unpubOps, ops, nil
 }
 
-func (s *OperationProcessor) filterOps(ops []*operation.AnchoredOperation, opts document.ResolutionOptions, uniqueSuffx string) ([]*operation.AnchoredOperation, error) {
+func (s *OperationProcessor) filterOps(ops []*operation.AnchoredOperation, opts document.ResolutionOptions,
+	uniqueSuffx string) ([]*operation.AnchoredOperation, error) {
 	if opts.VersionID != "" {
 		s.logger.Debug("Filtering operations for unique suffix by version", log.WithSuffix(uniqueSuffx),
 			log.WithVersion(opts.VersionID))
@@ -205,7 +205,8 @@ func filterOpsByVersionTime(ops []*operation.AnchoredOperation, timeStr string) 
 	return filteredOps, nil
 }
 
-func (s *OperationProcessor) applyResolutionOptions(uniqueSuffix string, published, unpublished []*operation.AnchoredOperation, opts document.ResolutionOptions) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation, []*operation.AnchoredOperation, error) {
+func (s *OperationProcessor) applyResolutionOptions(uniqueSuffix string, published, unpublished []*operation.AnchoredOperation,
+	opts document.ResolutionOptions) ([]*operation.AnchoredOperation, []*operation.AnchoredOperation, []*operation.AnchoredOperation, error) {
 	canonicalIds := getCanonicalMap(published)
 
 	for _, op := range opts.AdditionalOperations {
@@ -219,7 +220,7 @@ func (s *OperationProcessor) applyResolutionOptions(uniqueSuffix string, publish
 	sortOperations(published)
 	sortOperations(unpublished)
 
-	ops := append(published, unpublished...)
+	ops := append(published, unpublished...) //nolint:gocritic
 
 	s.logger.Debug("Found operations for unique suffix", log.WithTotalOperations(len(ops)),
 		log.WithSuffix(uniqueSuffix), log.WithOperations(ops))
@@ -335,7 +336,8 @@ func isOpWithTxnGreaterThanOrUnpublished(op *operation.AnchoredOperation, txnTim
 	return false
 }
 
-func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel, commitmentFnc fnc) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel,
+	commitmentFnc fnc) *protocol.ResolutionModel {
 	// suffix for logging
 	uniqueSuffix := ops[0].UniqueSuffix
 
@@ -403,7 +405,8 @@ func getRecoveryCommitment(rm *protocol.ResolutionModel) string {
 	return rm.RecoveryCommitment
 }
 
-func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*operation.AnchoredOperation, rm *protocol.ResolutionModel) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*operation.AnchoredOperation,
+	rm *protocol.ResolutionModel) *protocol.ResolutionModel {
 	for _, op := range createOps {
 		var state *protocol.ResolutionModel
 		var err error
@@ -427,7 +430,8 @@ func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*operati
 }
 
 // this function should be used for update, recover and deactivate operations (create is handled differently).
-func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel, currCommitment string, processedCommitments map[string]bool) *protocol.ResolutionModel {
+func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredOperation, rm *protocol.ResolutionModel,
+	currCommitment string, processedCommitments map[string]bool) *protocol.ResolutionModel {
 	for _, op := range ops {
 		var state *protocol.ResolutionModel
 		var err error
@@ -477,7 +481,8 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 	return nil
 }
 
-func (s *OperationProcessor) applyOperation(op *operation.AnchoredOperation, rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
+func (s *OperationProcessor) applyOperation(op *operation.AnchoredOperation,
+	rm *protocol.ResolutionModel) (*protocol.ResolutionModel, error) {
 	p, err := s.pc.Get(op.ProtocolVersion)
 	if err != nil {
 		return nil, fmt.Errorf("apply '%s' operation: %s", op.Type, err.Error())

@@ -372,6 +372,7 @@ func TestHandler_GetCoreIndexFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, parser, cas, cp)
 		file, err := provider.getCoreIndexFile(address)
@@ -397,6 +398,7 @@ func TestHandler_GetCoreIndexFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, invalidCif)
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, parser, cas, cp)
 		file, err := provider.getCoreIndexFile(address)
@@ -574,7 +576,9 @@ func TestHandler_GetProvisionalIndexFile(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
+
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		parser := operationparser.New(p)
 		provider := NewOperationProvider(p, parser, cas, cp)
@@ -722,6 +726,7 @@ func TestHandler_GetChunkFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 		file, err := provider.getChunkFile(address)
@@ -743,7 +748,9 @@ func TestHandler_GetChunkFile(t *testing.T) {
 		cas := mocks.NewMockCasClient(nil)
 		content, err := cp.Compress(compressionAlgorithm, invalid)
 		require.NoError(t, err)
+
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 		file, err := provider.getChunkFile(address)
@@ -912,6 +919,7 @@ func TestHandler_GetCorePoofFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 		file, err := provider.getCoreProofFile(address)
@@ -934,6 +942,7 @@ func TestHandler_GetCorePoofFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, invalid)
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 		file, err := provider.getCoreProofFile(address)
@@ -1054,6 +1063,7 @@ func TestHandler_GetProvisionalPoofFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 		file, err := provider.getProvisionalProofFile(address)
@@ -1076,6 +1086,7 @@ func TestHandler_GetProvisionalPoofFile(t *testing.T) {
 		content, err := cp.Compress(compressionAlgorithm, invalid)
 		require.NoError(t, err)
 		address, err := cas.Write(content)
+		require.NoError(t, err)
 
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 		file, err := provider.getProvisionalProofFile(address)
@@ -1212,6 +1223,8 @@ func TestHandler_GetBatchFiles(t *testing.T) {
 		provider := NewOperationProvider(p, operationparser.New(p), cas, cp)
 
 		content, err := cp.Compress(compressionAlgorithm, []byte("invalid"))
+		require.NoError(t, err)
+
 		invalidContentURI, err := cas.Write(content)
 		require.NoError(t, err)
 

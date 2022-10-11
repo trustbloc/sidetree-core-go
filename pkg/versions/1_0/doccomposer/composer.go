@@ -46,7 +46,7 @@ func (c *DocumentComposer) ApplyPatches(doc document.Document, patches []patch.P
 }
 
 // applyPatch applies a patch to the document.
-func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) { //nolint:gocyclo
+func applyPatch(doc document.Document, p patch.Patch) (document.Document, error) {
 	action, err := p.GetAction()
 	if err != nil {
 		return nil, err

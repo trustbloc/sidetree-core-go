@@ -28,6 +28,8 @@ type Parser struct {
 }
 
 // New returns a new operation parser.
+//
+//nolint:gocritic
 func New(p protocol.Protocol, opts ...Option) *Parser {
 	parser := &Parser{
 		Protocol: p,

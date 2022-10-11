@@ -47,7 +47,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		}
 
 		p := New(providers)
-		_, err := p.processTxnOperations([]*operation.AnchoredOperation{{UniqueSuffix: "abc"}}, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err := p.processTxnOperations([]*operation.AnchoredOperation{{UniqueSuffix: "abc"}}, &txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to store operation from anchor string")
 	})
@@ -62,7 +62,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		batchOps, err := p.OperationProtocolProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		numProcessed, err := p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		numProcessed, err := p.processTxnOperations(batchOps, &txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 		require.Equal(t, 1, numProcessed)
 	})
@@ -79,7 +79,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		batchOps, err := p.OperationProtocolProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		_, err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err = p.processTxnOperations(batchOps, &txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 	})
 
@@ -97,7 +97,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		batchOps, err := p.OperationProtocolProvider.GetTxnOperations(&txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 
-		_, err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err = p.processTxnOperations(batchOps, &txn.SidetreeTxn{AnchorString: anchorString})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to delete unpublished operations for anchor string[1.coreIndexURI]: delete all error")
 	})
@@ -116,7 +116,7 @@ func TestProcessTxnOperations(t *testing.T) {
 		// only first operation will be processed, subsequent operations will be discarded
 		batchOps = append(batchOps, batchOps...)
 
-		_, err = p.processTxnOperations(batchOps, txn.SidetreeTxn{AnchorString: anchorString})
+		_, err = p.processTxnOperations(batchOps, &txn.SidetreeTxn{AnchorString: anchorString})
 		require.NoError(t, err)
 	})
 }
@@ -124,7 +124,7 @@ func TestProcessTxnOperations(t *testing.T) {
 func TestUpdateOperation(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
 		updatedOps := updateAnchoredOperation(&operation.AnchoredOperation{UniqueSuffix: "abc"},
-			txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
+			&txn.SidetreeTxn{TransactionTime: 20, TransactionNumber: 2})
 		require.Equal(t, uint64(20), updatedOps.TransactionTime)
 		require.Equal(t, uint64(2), updatedOps.TransactionNumber)
 	})

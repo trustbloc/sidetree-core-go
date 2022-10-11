@@ -13,12 +13,12 @@ import (
 
 // MarshalCanonical marshals the object into a canonical JSON format.
 func MarshalCanonical(v interface{}) ([]byte, error) {
-	bytes, err := json.Marshal(v)
+	b, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
 
-	return getCanonicalContent(bytes)
+	return getCanonicalContent(b)
 }
 
 // MarshalIndentCanonical is like MarshalCanonical but applies Indent to format the output.
@@ -48,21 +48,21 @@ func getCanonicalContent(content []byte) ([]byte, error) {
 		}
 
 		// Re-marshal it in order to ensure that the JSON fields are marshaled in a deterministic order.
-		bytes, e := marshalJSONArray(a)
+		aBytes, e := marshalJSONArray(a)
 		if e != nil {
 			return nil, e
 		}
 
-		return bytes, nil
+		return aBytes, nil
 	}
 
 	// Re-marshal it in order to ensure that the JSON fields are marshaled in a deterministic order.
-	bytes, err := marshalJSONMap(m)
+	mBytes, err := marshalJSONMap(m)
 	if err != nil {
 		return nil, err
 	}
 
-	return bytes, nil
+	return mBytes, nil
 }
 
 // marshalJSONMap marshals a JSON map. This variable may be overridden by unit tests.

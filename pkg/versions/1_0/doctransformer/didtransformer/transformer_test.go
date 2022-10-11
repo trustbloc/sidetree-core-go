@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -50,7 +49,7 @@ func TestNewTransformer(t *testing.T) {
 	transformer = New(WithBase(true))
 	require.Equal(t, true, transformer.includeBase)
 
-	var keyCtx map[string]string = map[string]string{
+	keyCtx := map[string]string{
 		"key-1": "value-1",
 		"key-2": "value-2",
 	}
@@ -65,7 +64,7 @@ func TestNewTransformer(t *testing.T) {
 
 func TestTransformDocument(t *testing.T) {
 	r := reader(t, "testdata/doc.json")
-	docBytes, err := ioutil.ReadAll(r)
+	docBytes, err := io.ReadAll(r)
 	require.NoError(t, err)
 	doc, err := document.FromBytes(docBytes)
 	require.NoError(t, err)
@@ -357,7 +356,7 @@ func TestWithMethodContext(t *testing.T) {
 
 func TestWithBase(t *testing.T) {
 	r := reader(t, "testdata/doc.json")
-	docBytes, err := ioutil.ReadAll(r)
+	docBytes, err := io.ReadAll(r)
 	require.NoError(t, err)
 	doc, err := document.FromBytes(docBytes)
 	require.NoError(t, err)

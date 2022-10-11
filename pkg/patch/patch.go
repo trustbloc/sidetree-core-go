@@ -90,7 +90,7 @@ var actionConfig = map[Action]Key{
 type Patch map[Key]interface{}
 
 // PatchesFromDocument creates patches from opaque document.
-func PatchesFromDocument(doc string) ([]Patch, error) { //nolint:gocyclo
+func PatchesFromDocument(doc string) ([]Patch, error) {
 	parsed, err := document.FromBytes([]byte(doc))
 	if err != nil {
 		return nil, err
@@ -395,7 +395,7 @@ func validateDocument(doc document.Document) error {
 
 func getPublicKeys(publicKeys string) (interface{}, error) {
 	// create an empty did document with public keys
-	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{"%s":%s}`, document.PublicKeyProperty, publicKeys)))
+	pkDoc, err := document.DidDocumentFromBytes([]byte(fmt.Sprintf(`{%q:%s}`, document.PublicKeyProperty, publicKeys)))
 	if err != nil {
 		return nil, fmt.Errorf("public keys invalid: %s", err.Error())
 	}
@@ -405,7 +405,7 @@ func getPublicKeys(publicKeys string) (interface{}, error) {
 
 func getServices(serviceEndpoints string) (interface{}, error) {
 	// create an empty did document with service endpoints
-	svcDocStr := fmt.Sprintf(`{"%s":%s}`, document.ServiceProperty, serviceEndpoints)
+	svcDocStr := fmt.Sprintf(`{%q:%s}`, document.ServiceProperty, serviceEndpoints)
 	svcDoc, err := document.DidDocumentFromBytes([]byte(svcDocStr))
 	if err != nil {
 		return nil, fmt.Errorf("services invalid: %s", err.Error())

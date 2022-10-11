@@ -18,7 +18,7 @@ const (
 	allowedParts = 2
 )
 
-// nolint:gochecknoglobals
+//nolint:gochecknoglobals
 var (
 	integerRegex = regexp.MustCompile(`^[1-9]\d*$`)
 )

@@ -131,6 +131,7 @@ func TestParseCreateOperation(t *testing.T) {
 		require.NoError(t, err)
 
 		delta, err := getDelta()
+		require.NoError(t, err)
 		delta.UpdateCommitment = computeMultihash([]byte("different"))
 
 		create.Delta = delta

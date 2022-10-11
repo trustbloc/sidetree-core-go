@@ -88,13 +88,13 @@ func (p *Parser) parseRecoverRequest(payload []byte) (*model.RecoverRequest, err
 
 // ParseSignedDataForRecover will parse and validate signed data for recover.
 func (p *Parser) ParseSignedDataForRecover(compactJWS string) (*model.RecoverSignedDataModel, error) {
-	jws, err := p.parseSignedData(compactJWS)
+	signedData, err := p.parseSignedData(compactJWS)
 	if err != nil {
 		return nil, err
 	}
 
 	schema := &model.RecoverSignedDataModel{}
-	err = json.Unmarshal(jws.Payload, schema)
+	err = json.Unmarshal(signedData.Payload, schema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal signed data model for recover: %s", err.Error())
 	}
@@ -127,17 +127,17 @@ func (p *Parser) parseSignedData(compactJWS string) (*internal.JSONWebSignature,
 		return nil, errors.New("missing signed data")
 	}
 
-	jws, err := internal.ParseJWS(compactJWS)
+	sig, err := internal.ParseJWS(compactJWS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())
 	}
 
-	err = p.validateProtectedHeaders(jws.ProtectedHeaders, p.SignatureAlgorithms)
+	err = p.validateProtectedHeaders(sig.ProtectedHeaders, p.SignatureAlgorithms)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse signed data: %s", err.Error())
 	}
 
-	return jws, nil
+	return sig, nil
 }
 
 func (p *Parser) validateProtectedHeaders(headers jws.Headers, allowedAlgorithms []string) error {
@@ -176,16 +176,16 @@ func (p *Parser) validateProtectedHeaders(headers jws.Headers, allowedAlgorithms
 	return nil
 }
 
-func (p *Parser) validateRecoverRequest(recover *model.RecoverRequest) error {
-	if recover.DidSuffix == "" {
+func (p *Parser) validateRecoverRequest(req *model.RecoverRequest) error {
+	if req.DidSuffix == "" {
 		return errors.New("missing did suffix")
 	}
 
-	if recover.SignedData == "" {
+	if req.SignedData == "" {
 		return errors.New("missing signed data")
 	}
 
-	return p.validateMultihash(recover.RevealValue, "reveal value")
+	return p.validateMultihash(req.RevealValue, "reveal value")
 }
 
 func (p *Parser) validateSigningKey(key *jws.JWK) error {

@@ -9,7 +9,7 @@ package diddochandler
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,8 +31,8 @@ import (
 )
 
 const (
-	namespace string = "did:sidetree"
-	sha2_256         = 18
+	namespace = "did:sidetree"
+	sha2_256  = 18
 )
 
 func TestUpdateHandler_Update(t *testing.T) {
@@ -57,11 +57,11 @@ func TestUpdateHandler_Update(t *testing.T) {
 		id, err := getID(createRequest.SuffixData)
 		require.NoError(t, err)
 
-		body, err := ioutil.ReadAll(rw.Body)
+		body, err := io.ReadAll(rw.Body)
 		require.NoError(t, err)
 
 		var result document.ResolutionResult
-		err = json.Unmarshal(body, &result)
+		require.NoError(t, json.Unmarshal(body, &result))
 
 		require.Contains(t, result.Document.ID(), id)
 	})
@@ -87,7 +87,7 @@ func TestUpdateHandler_Update_Error(t *testing.T) {
 		handler.Handler()(rw, req)
 		require.Equal(t, http.StatusBadRequest, rw.Code)
 
-		body, err := ioutil.ReadAll(rw.Body)
+		body, err := io.ReadAll(rw.Body)
 		require.NoError(t, err)
 		require.Contains(t, string(body), "bad request: operation type [other] not supported")
 	})

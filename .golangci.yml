@@ -1,4 +1,5 @@
 #
+#
 # Copyright SecureKey Technologies Inc. All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -18,108 +19,165 @@ output:
   print-linter-name: true
 
 linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-    ignore: fmt:.*,io/ioutil:^Read.*
+  depguard:
+    list-type: denylist
+    packages:
+      # logging is allowed only by logutils.Log, logrus
+      # is allowed to use only in logutils package
+      - github.com/sirupsen/logrus
+    packages-with-error-message:
+      - github.com/sirupsen/logrus: "logging is allowed only by logutils.Log"
+  dupl:
+    threshold: 100
+  funlen:
+    lines: 100
+    statements: 50
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - unnamedResult
+  gocyclo:
+    min-complexity: 15
+  goimports:
+    local-prefixes: github.com/golangci/golangci-lint
+  gomnd:
+    # don't include the "operation" and "assign"
+    checks:
+      - argument
+      - case
+      - condition
+      - return
+    ignored-numbers:
+      - '0'
+      - '1'
+      - '2'
+      - '3'
+    ignored-functions:
+      - strings.SplitN
+
   govet:
     check-shadowing: true
     settings:
       printf:
         funcs:
-  golint:
-    min-confidence: 0.6
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/trustbloc/sidetree-core-go
-  gocyclo:
-    min-complexity: 10
-  maligned:
-    suggest-new: true
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-  misspell:
-    # default locale is a neutral variety of English.
-    locale:
-    ignore-words: []
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
   lll:
-    line-length: 120
-    tab-width: 1
-  unused:
-    check-exported: false
-  unparam:
-    check-exported: false
-  nakedret:
-    max-func-lines: 0
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
-      - opinionated
-    disabled-checks:
-      - unnamedResult
-  funlen:
-    lines: 60
-    statements: 40
-  wsl:
-    strict-append: true
-    allow-assign-and-call: true
-    allow-multiline-assign: true
-    allow-case-traling-whitespace: true
-    allow-cuddle-declarations: false
-  godot:
-    check-all: false
+    line-length: 140
+  misspell:
+    locale: US
+  nolintlint:
+    allow-unused: false # report any unused nolint directives
+    require-explanation: false # don't require an explanation for nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+    machine: false # don't require //nolint instead of // nolint
+    explain: false # don't require //nolint // my explanation instead of just //nolint
 
 linters:
-  enable-all: true
-  disable:
-    - testpackage
-    - maligned
-    - prealloc
-    - goerr113 # TODO enable
-    - gochecknoglobals # TODO enable
-    - wsl # TODO enable
-    - lll # TODO enable
-    - gocritic # TODO enable
-    - noctx # TODO enable
+  disable-all: true
+  enable:
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - exportloopref
+    - funlen
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - goimports
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - nakedret
+    - noctx
+    - nolintlint
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+  # don't enable:
+  # - asciicheck
+  # - scopelint
+  # - gochecknoglobals
+  # - gocognit
+  # - godot
+  # - godox
+  # - goerr113
+  # - interfacer
+  # - maligned
+  # - nestif
+  # - prealloc
+  # - testpackage
+  # - revive
+  # - wsl
 
 issues:
-  exclude-use-default: false
+  # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
     - path: _test\.go
       linters:
+        - gomnd
         - dupl
         - funlen
-        - gomnd
-        - gosec # TODO enable
-        - ineffassign # TODO enable        
-        - errcheck # TODO enable
-        - nakedret # TODO enable
-        - staticcheck # TODO enable
-    - path: jsoncanonicalizer
-      linters:
-        - golint
-        - funlen
-        - gomnd
+        - bodyclose
+        - dupl
+        - goconst
         - gosec
-        - errcheck
+        - noctx
+        - wrapcheck
+        - lll
+        - gocritic
+
+    - path: pkg/internal/jsoncanonicalizer/
+      linters:
+        - funlen
         - gocyclo
-        - gocognit
-        - whitespace
-        - nlreturn
-        - godot
-        - nestif
-        - gofumpt
+        - gomnd
+        - stylecheck
+
+    - path: pkg/golinters/errcheck.go
+      text: "SA1019: errCfg.Exclude is deprecated: use ExcludeFunctions instead"
+    - path: pkg/commands/run.go
+      text: "SA1019: lsc.Errcheck.Exclude is deprecated: use ExcludeFunctions instead"
+    - path: pkg/commands/run.go
+      text: "SA1019: e.cfg.Run.Deadline is deprecated: Deadline exists for historical compatibility and should not be used."
+
+    - path: pkg/golinters/gofumpt.go
+      text: "SA1019: settings.LangVersion is deprecated: use the global `run.go` instead."
+    - path: pkg/golinters/staticcheck_common.go
+      text: "SA1019: settings.GoVersion is deprecated: use the global `run.go` instead."
+    - path: pkg/lint/lintersdb/manager.go
+      text: "SA1019: (.+).(GoVersion|LangVersion) is deprecated: use the global `run.go` instead."
+
   exclude:
-    # Allow package logger variables (for now)
-    - \`logger\` is a global variable
+    - \`config\` is a global variable
     -  Line contains TODO/BUG/FIXME
     # Add comments for package
     -  at least one file in a package should have a package comment
-    # Allow magic number 1
-    - Magic number[:] 1[^\d]
+    # Allow package logger variables (for now)
+    - logger is a global variable

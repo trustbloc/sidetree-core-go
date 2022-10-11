@@ -52,7 +52,9 @@ func WithIncludeUnpublishedOperations(enabled bool) Option {
 }
 
 // CreateDocumentMetadata will create document metadata.
-func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (document.Metadata, error) { // nolint: funlen,gocyclo
+//
+//nolint:gocyclo
+func (t *Metadata) CreateDocumentMetadata(rm *protocol.ResolutionModel, info protocol.TransformationInfo) (document.Metadata, error) {
 	if rm == nil || rm.Doc == nil {
 		return nil, errors.New("resolution model is required for creating document metadata")
 	}

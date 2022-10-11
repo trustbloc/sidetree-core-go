@@ -49,6 +49,8 @@ func TestParseRecoverOperation(t *testing.T) {
 		require.Equal(t, operation.TypeRecover, op.Type)
 
 		signedData, err := parser.ParseSignedDataForRecover(op.SignedData)
+		require.NoError(t, err)
+
 		expectedRevealValue, err := commitment.GetRevealValue(signedData.RecoveryKey, sha2_256)
 		require.NoError(t, err)
 

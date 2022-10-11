@@ -23,7 +23,8 @@ func (m *MockDocumentValidator) IsValidPayload(payload []byte) error {
 	return m.IsValidPayloadErr
 }
 
-// IsValidOriginalDocument  mocks check that the given payload is a valid Sidetree specific document that can be accepted by the Sidetree create operation.
+// IsValidOriginalDocument  mocks check that the given payload is a valid Sidetree specific document that can
+// be accepted by the Sidetree create operation.
 func (m *MockDocumentValidator) IsValidOriginalDocument(payload []byte) error {
 	return m.IsValidOriginalDocumentErr
 }

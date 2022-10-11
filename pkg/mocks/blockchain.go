@@ -16,7 +16,7 @@ import (
 
 // MockAnchorWriter mocks anchor writer for testing purposes.
 type MockAnchorWriter struct {
-	sync.RWMutex
+	mutex     sync.RWMutex
 	namespace string
 	anchors   []string
 	err       error
@@ -33,8 +33,8 @@ func (m *MockAnchorWriter) WriteAnchor(anchor string, _ []*protocol.AnchorDocume
 		return m.err
 	}
 
-	m.Lock()
-	defer m.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.anchors = append(m.anchors, anchor)
 
@@ -43,8 +43,9 @@ func (m *MockAnchorWriter) WriteAnchor(anchor string, _ []*protocol.AnchorDocume
 
 // Read reads transactions since transaction number.
 func (m *MockAnchorWriter) Read(sinceTransactionNumber int) (bool, *txn.SidetreeTxn) {
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
 	moreTransactions := false
 	if len(m.anchors) > 0 && sinceTransactionNumber < len(m.anchors)-2 {
 		moreTransactions = true
@@ -53,14 +54,14 @@ func (m *MockAnchorWriter) Read(sinceTransactionNumber int) (bool, *txn.Sidetree
 	if len(m.anchors) > 0 && sinceTransactionNumber < len(m.anchors)-1 {
 		hashIndex := sinceTransactionNumber + 1
 
-		txn := &txn.SidetreeTxn{
+		t := &txn.SidetreeTxn{
 			Namespace:         m.namespace,
 			TransactionTime:   uint64(hashIndex),
 			TransactionNumber: uint64(hashIndex),
 			AnchorString:      m.anchors[hashIndex],
 		}
 
-		return moreTransactions, txn
+		return moreTransactions, t
 	}
 
 	return moreTransactions, nil
@@ -68,8 +69,8 @@ func (m *MockAnchorWriter) Read(sinceTransactionNumber int) (bool, *txn.Sidetree
 
 // GetAnchors returns anchors.
 func (m *MockAnchorWriter) GetAnchors() []string {
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	return m.anchors
 }

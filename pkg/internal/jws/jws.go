@@ -46,21 +46,21 @@ type Signer interface {
 // NewJWS creates JSON Web Signature.
 func NewJWS(protectedHeaders, unprotectedHeaders jws.Headers, payload []byte, signer Signer) (*JSONWebSignature, error) {
 	headers := mergeHeaders(protectedHeaders, signer.Headers())
-	jws := &JSONWebSignature{
+	s := &JSONWebSignature{
 		ProtectedHeaders:   headers,
 		UnprotectedHeaders: unprotectedHeaders,
 		Payload:            payload,
 		joseHeaders:        headers,
 	}
 
-	signature, err := sign(jws.joseHeaders, payload, signer)
+	signature, err := sign(s.joseHeaders, payload, signer)
 	if err != nil {
 		return nil, fmt.Errorf("sign JWS: %w", err)
 	}
 
-	jws.signature = signature
+	s.signature = signature
 
-	return jws, nil
+	return s, nil
 }
 
 // SerializeCompact makes JWS Compact Serialization (https://tools.ietf.org/html/rfc7515#section-7.1)
@@ -146,25 +146,25 @@ func WithJWSDetachedPayload(payload []byte) ParseOpt {
 }
 
 // ParseJWS parses serialized JWS. Currently only JWS Compact Serialization parsing is supported.
-func ParseJWS(jws string, opts ...ParseOpt) (*JSONWebSignature, error) {
+func ParseJWS(jwsStr string, opts ...ParseOpt) (*JSONWebSignature, error) {
 	pOpts := &jwsParseOpts{}
 
 	for _, opt := range opts {
 		opt(pOpts)
 	}
 
-	if strings.HasPrefix(jws, "{") {
+	if strings.HasPrefix(jwsStr, "{") {
 		// TODO support JWS JSON serialization format
 		//  https://github.com/hyperledger/aries-framework-go/issues/1331
 		return nil, errors.New("JWS JSON serialization is not supported")
 	}
 
-	return parseCompacted(jws, pOpts)
+	return parseCompacted(jwsStr, pOpts)
 }
 
 // VerifyJWS parses and validates serialized JWS. Currently only JWS Compact Serialization parsing is supported.
-func VerifyJWS(jws string, jwk *jws.JWK, opts ...ParseOpt) (*JSONWebSignature, error) {
-	parsedJWS, err := ParseJWS(jws, opts...)
+func VerifyJWS(jwsStr string, jwk *jws.JWK, opts ...ParseOpt) (*JSONWebSignature, error) {
+	parsedJWS, err := ParseJWS(jwsStr, opts...)
 	if err != nil {
 		return nil, err
 	}

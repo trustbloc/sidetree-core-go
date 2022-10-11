@@ -22,7 +22,8 @@ func NewDocumentTransformer() *MockDocumentTransformer {
 }
 
 // TransformDocument mocks transformation from internal to external document.
-func (m *MockDocumentTransformer) TransformDocument(internal *protocol.ResolutionModel, info protocol.TransformationInfo) (*document.ResolutionResult, error) {
+func (m *MockDocumentTransformer) TransformDocument(internal *protocol.ResolutionModel,
+	info protocol.TransformationInfo) (*document.ResolutionResult, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}

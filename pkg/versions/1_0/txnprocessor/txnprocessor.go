@@ -71,7 +71,9 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore, opTypes []op
 	}
 }
 
-// Process persists all of the operations for the given anchor.
+// Process persists all the operations for the given anchor.
+//
+//nolint:gocritic
 func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) (int, error) {
 	logger.Debug("Processing sidetree txn for suffixes", log.WithSidetreeTxn(sidetreeTxn), log.WithSuffixes(suffixes...))
 
@@ -80,10 +82,10 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) 
 		return 0, fmt.Errorf("failed to retrieve operations for anchor string[%s]: %s", sidetreeTxn.AnchorString, err)
 	}
 
-	return p.processTxnOperations(txnOps, sidetreeTxn)
+	return p.processTxnOperations(txnOps, &sidetreeTxn)
 }
 
-func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) (int, error) {
+func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn *txn.SidetreeTxn) (int, error) {
 	logger.Debug("Processing transaction operations", log.WithTotal(len(txnOps)))
 
 	batchSuffixes := make(map[string]bool)
@@ -126,7 +128,7 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperatio
 	return len(ops), nil
 }
 
-func updateAnchoredOperation(op *operation.AnchoredOperation, sidetreeTxn txn.SidetreeTxn) *operation.AnchoredOperation {
+func updateAnchoredOperation(op *operation.AnchoredOperation, sidetreeTxn *txn.SidetreeTxn) *operation.AnchoredOperation {
 	//  The logical anchoring time that this operation was anchored on
 	op.TransactionTime = sidetreeTxn.TransactionTime
 	// The transaction number of the transaction this operation was batched within
