@@ -248,7 +248,7 @@ func (t *Transformer) processKeys(internal document.DIDDocument,
 		externalPK := make(document.PublicKey)
 		externalPK[document.IDProperty] = id
 		externalPK[document.TypeProperty] = pk.Type()
-		externalPK[document.ControllerProperty] = t.getController(did)
+		externalPK[document.ControllerProperty] = did
 
 		if pkJwk := pk.PublicKeyJwk(); pkJwk != nil { //nolint:nestif
 			if pk.Type() == ed25519VerificationKey2018 {
@@ -350,14 +350,6 @@ func (t *Transformer) getObjectID(docID, objectID string) interface{} {
 	}
 
 	return docID + relativeID
-}
-
-func (t *Transformer) getController(docID string) interface{} {
-	if t.includeBase {
-		return ""
-	}
-
-	return docID
 }
 
 func getED2519PublicKey(pkJWK document.JWK) ([]byte, error) {
