@@ -275,7 +275,7 @@ func contains(values []operation.Type, value operation.Type) bool {
 	return false
 }
 
-func (r *DocumentHandler) getCreateResult(op *operation.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
+func GetCreateResult(op *operation.Operation, pv protocol.Version) (*protocol.ResolutionModel, error) {
 	// we can use operation applier to generate create response even though operation is not anchored yet
 	anchored := &operation.AnchoredOperation{
 		Type:             op.Type,
@@ -307,7 +307,7 @@ func (r *DocumentHandler) getCreateResponse(op *operation.Operation, pv protocol
 		r.metrics.GetCreateOperationResultTime(time.Since(startTime))
 	}()
 
-	rm, err := r.getCreateResult(op, pv)
+	rm, err := GetCreateResult(op, pv)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +507,7 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 		return nil, fmt.Errorf("%s: provided did doesn't match did created from initial state", badRequest)
 	}
 
-	rm, err := r.getCreateResult(op, pv)
+	rm, err := GetCreateResult(op, pv)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +554,7 @@ func (r *DocumentHandler) validateOperation(op *operation.Operation, pv protocol
 }
 
 func (r *DocumentHandler) validateCreateDocument(op *operation.Operation, pv protocol.Version) error {
-	rm, err := r.getCreateResult(op, pv)
+	rm, err := GetCreateResult(op, pv)
 	if err != nil {
 		return err
 	}
