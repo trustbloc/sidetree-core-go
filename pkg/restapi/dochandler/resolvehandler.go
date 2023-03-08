@@ -14,9 +14,10 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"github.com/trustbloc/logutil-go/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
@@ -74,7 +75,7 @@ func (o *ResolveHandler) Resolve(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.Debug("... resolved DID document for ID", log.WithID(id), log.WithDocument(response.Document))
+	logger.Debug("... resolved DID document for ID", log.WithID(id), logfields.WithDocument(response.Document))
 
 	common.WriteResponse(rw, http.StatusOK, response)
 }

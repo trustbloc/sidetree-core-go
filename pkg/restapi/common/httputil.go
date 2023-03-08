@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	"github.com/trustbloc/logutil-go/pkg/log"
 )
 
 // WriteResponse writes a response to the response writer.

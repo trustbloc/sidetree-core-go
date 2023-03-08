@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package observer
 
 import (
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 var logger = log.New("sidetree-core-observer")
@@ -85,14 +87,14 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 	for _, txn := range txns {
 		pc, err := o.ProtocolClientProvider.ForNamespace(txn.Namespace)
 		if err != nil {
-			logger.Warn("Failed to get protocol client for namespace", log.WithNamespace(txn.Namespace), log.WithError(err))
+			logger.Warn("Failed to get protocol client for namespace", logfields.WithNamespace(txn.Namespace), log.WithError(err))
 
 			continue
 		}
 
 		v, err := pc.Get(txn.ProtocolVersion)
 		if err != nil {
-			logger.Warn("Failed to get processor for transaction time", log.WithGenesisTime(txn.ProtocolVersion),
+			logger.Warn("Failed to get processor for transaction time", logfields.WithGenesisTime(txn.ProtocolVersion),
 				log.WithError(err))
 
 			continue
@@ -100,11 +102,11 @@ func (o *Observer) process(txns []txn.SidetreeTxn) {
 
 		_, err = v.TransactionProcessor().Process(txn)
 		if err != nil {
-			logger.Warn("Failed to process anchor", log.WithAnchorString(txn.AnchorString), log.WithError(err))
+			logger.Warn("Failed to process anchor", logfields.WithAnchorString(txn.AnchorString), log.WithError(err))
 
 			continue
 		}
 
-		logger.Debug("Successfully processed anchor", log.WithAnchorString(txn.AnchorString))
+		logger.Debug("Successfully processed anchor", logfields.WithAnchorString(txn.AnchorString))
 	}
 }

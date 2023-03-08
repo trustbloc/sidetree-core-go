@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package log
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
-	"net/http"
 	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/trustbloc/logutil-go/pkg/log"
 )
 
 func TestStandardFields(t *testing.T) {
@@ -21,50 +21,17 @@ func TestStandardFields(t *testing.T) {
 
 	u1 := parseURL(t, "https://example1.com")
 
-	t.Run("console error", func(t *testing.T) {
-		stdErr := newMockWriter()
-
-		logger := New(module,
-			WithStdErr(stdErr),
-			WithFields(WithServiceName("myservice")),
-		)
-
-		logger.Error("Sample error", WithError(errors.New("some error")))
-
-		require.Contains(t, stdErr.Buffer.String(), `Sample error	{"service": "myservice", "error": "some error"}`)
-	})
-
-	t.Run("json error", func(t *testing.T) {
-		stdErr := newMockWriter()
-
-		logger := New(module,
-			WithStdErr(stdErr), WithEncoding(JSON),
-			WithFields(WithServiceName("myservice")),
-		)
-
-		logger.Error("Sample error", WithError(errors.New("some error")))
-
-		l := unmarshalLogData(t, stdErr.Bytes())
-
-		require.Equal(t, "myservice", l.Service)
-		require.Equal(t, "test_module", l.Logger)
-		require.Equal(t, "Sample error", l.Msg)
-		require.Contains(t, l.Caller, "log/fields_test.go")
-		require.Equal(t, "some error", l.Error)
-		require.Equal(t, "error", l.Level)
-	})
-
 	t.Run("json fields 1", func(t *testing.T) {
 		stdOut := newMockWriter()
 
-		logger := New(module, WithStdOut(stdOut), WithEncoding(JSON))
+		logger := log.New(module, log.WithStdOut(stdOut), log.WithEncoding(log.JSON))
 
 		rm := &mockObject{Field1: "value33", Field2: 888}
 
 		logger.Info("Some message",
 			WithData([]byte(`{"field":"value"}`)), WithServiceName("service1"), WithSize(1234),
-			WithHTTPStatus(http.StatusNotFound), WithParameter("param1"), WithRequestBody([]byte(`request body`)),
-			WithResponse([]byte(`response body`)), WithTotal(12), WithSuffix("1234"), WithOperationType("Create"),
+			WithParameter("param1"), WithRequestBody([]byte(`request body`)),
+			WithTotal(12), WithSuffix("1234"), WithOperationType("Create"),
 			WithURIString(u1.String()), WithOperationID("op1"), WithGenesisTime(1233),
 			WithOperationGenesisTime(3321), WithID("id1"), WithResolutionModel(rm),
 		)
@@ -76,10 +43,8 @@ func TestStandardFields(t *testing.T) {
 		require.Equal(t, `{"field":"value"}`, l.Data)
 		require.Equal(t, `service1`, l.Service)
 		require.Equal(t, 1234, l.Size)
-		require.Equal(t, 404, l.HTTPStatus)
 		require.Equal(t, `param1`, l.Parameter)
 		require.Equal(t, `request body`, l.RequestBody)
-		require.Equal(t, `response body`, l.Response)
 		require.Equal(t, 12, l.Total)
 		require.Equal(t, "1234", l.Suffix)
 		require.Equal(t, "Create", l.OperationType)
@@ -96,7 +61,7 @@ func TestStandardFields(t *testing.T) {
 	t.Run("json fields 2", func(t *testing.T) {
 		stdOut := newMockWriter()
 
-		logger := New(module, WithStdOut(stdOut), WithEncoding(JSON))
+		logger := log.New(module, log.WithStdOut(stdOut), log.WithEncoding(log.JSON))
 
 		op := &mockObject{Field1: "op1", Field2: 9486}
 		txn := &mockObject{Field1: "txn1", Field2: 5967}
@@ -164,11 +129,9 @@ type logData struct {
 	Data                      string        `json:"data"`
 	Service                   string        `json:"service"`
 	Size                      int           `json:"size"`
-	HTTPStatus                int           `json:"httpStatus"`
 	Parameter                 string        `json:"parameter"`
 	URI                       string        `json:"uri"`
 	RequestBody               string        `json:"requestBody"`
-	Response                  string        `json:"response"`
 	Total                     int           `json:"total"`
 	Suffix                    string        `json:"suffix"`
 	OperationType             string        `json:"operationType"`
@@ -225,4 +188,16 @@ func parseURL(t *testing.T, raw string) *url.URL {
 	require.NoError(t, err)
 
 	return u
+}
+
+type mockWriter struct {
+	*bytes.Buffer
+}
+
+func (m *mockWriter) Sync() error {
+	return nil
+}
+
+func newMockWriter() *mockWriter {
+	return &mockWriter{Buffer: bytes.NewBuffer(nil)}
 }

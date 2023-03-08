@@ -22,12 +22,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/trustbloc/logutil-go/pkg/log"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
 	"github.com/trustbloc/sidetree-core-go/pkg/batch/cutter"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 const (
@@ -111,7 +112,7 @@ func New(namespace string, context Context, options ...Option) (*Writer, error) 
 		protocol:           context.Protocol(),
 		batchTimeoutTicker: time.NewTicker(batchTimeout),
 		monitorTicker:      time.NewTicker(monitorInterval),
-		logger:             log.New(loggerModule, log.WithFields(log.WithNamespace(namespace))),
+		logger:             log.New(loggerModule, log.WithFields(logfields.WithNamespace(namespace))),
 	}, nil
 }
 
@@ -179,7 +180,7 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 	pending, err := r.drain()
 	if err != nil {
 		r.logger.Warn("Error draining operations queue.",
-			log.WithError(err), log.WithTotalPending(pending))
+			log.WithError(err), logfields.WithTotalPending(pending))
 
 		return pending
 	}
@@ -188,14 +189,14 @@ func (r *Writer) processAvailable(forceCut bool) uint {
 		return pending
 	}
 
-	r.logger.Debug("Forcefully processing operations", log.WithTotalPending(pending))
+	r.logger.Debug("Forcefully processing operations", logfields.WithTotalPending(pending))
 
 	// Now process the remaining operations
 	n, pending, err := r.cutAndProcess(true)
 	if err != nil {
-		r.logger.Warn("Error processing operations", log.WithError(err), log.WithTotalPending(pending))
+		r.logger.Warn("Error processing operations", log.WithError(err), logfields.WithTotalPending(pending))
 	} else {
-		r.logger.Info("Successfully processed operations.", log.WithTotal(n), log.WithTotalPending(pending))
+		r.logger.Info("Successfully processed operations.", logfields.WithTotal(n), logfields.WithTotalPending(pending))
 	}
 
 	return pending
@@ -215,7 +216,7 @@ func (r *Writer) drain() (pending uint, err error) {
 			return pending, nil
 		}
 
-		r.logger.Info(" ... drain processed operations into batch.", log.WithTotal(n), log.WithTotalPending(pending))
+		r.logger.Info(" ... drain processed operations into batch.", logfields.WithTotal(n), logfields.WithTotalPending(pending))
 	}
 }
 
@@ -232,11 +233,11 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	}
 
 	r.logger.Info("Processing batch operations for protocol genesis time...",
-		log.WithTotal(len(result.Operations)), log.WithGenesisTime(result.ProtocolVersion))
+		logfields.WithTotal(len(result.Operations)), logfields.WithGenesisTime(result.ProtocolVersion))
 
 	err = r.process(result.Operations, result.ProtocolVersion)
 	if err != nil {
-		r.logger.Error("Error processing batch operations", log.WithTotal(len(result.Operations)), log.WithError(err))
+		r.logger.Error("Error processing batch operations", logfields.WithTotal(len(result.Operations)), log.WithError(err))
 
 		result.Nack()
 
@@ -244,11 +245,11 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	}
 
 	r.logger.Info("Successfully processed batch operations. Committing to batch cutter ...",
-		log.WithTotal(len(result.Operations)))
+		logfields.WithTotal(len(result.Operations)))
 
 	pending = result.Ack()
 
-	r.logger.Info("Successfully committed to batch cutter.", log.WithTotalPending(pending))
+	r.logger.Info("Successfully committed to batch cutter.", logfields.WithTotalPending(pending))
 
 	return len(result.Operations), pending, nil
 }
@@ -275,11 +276,11 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolVersion uint6
 		if err != nil {
 			// this error should never happen since parsing of this operation has already been done for the previous batch
 			r.logger.Warn("Unable to add additional operation to the next batch",
-				log.WithSuffix(op.UniqueSuffix), log.WithError(err))
+				logfields.WithSuffix(op.UniqueSuffix), log.WithError(err))
 		}
 	}
 
-	r.logger.Info("Writing anchor string", log.WithAnchorString(anchoringInfo.AnchorString))
+	r.logger.Info("Writing anchor string", logfields.WithAnchorString(anchoringInfo.AnchorString))
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
 	return r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts,

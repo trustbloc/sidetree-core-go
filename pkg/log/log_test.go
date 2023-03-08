@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	"github.com/trustbloc/logutil-go/pkg/log"
 )
 
 func TestDefaultLevel(t *testing.T) {

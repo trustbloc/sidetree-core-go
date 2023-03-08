@@ -13,11 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/commitment"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 const loggerModule = "sidetree-core-processor"
@@ -48,7 +50,7 @@ func New(name string, store OperationStoreClient, pc protocol.Client, opts ...Op
 	op := &OperationProcessor{
 		store: store,
 		pc:    pc, unpublishedOperationStore: &noopUnpublishedOpsStore{},
-		logger: log.New(loggerModule, log.WithFields(log.WithNamespace(name))),
+		logger: log.New(loggerModule, log.WithFields(logfields.WithNamespace(name))),
 	}
 
 	// apply options
@@ -78,7 +80,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, opts ...document.Resol
 	unpubOps, err := s.unpublishedOperationStore.Get(uniqueSuffix)
 	if err == nil {
 		s.logger.Debug("Found unpublished operations for unique suffix",
-			log.WithTotal(len(unpubOps)), log.WithSuffix(uniqueSuffix))
+			logfields.WithTotal(len(unpubOps)), logfields.WithSuffix(uniqueSuffix))
 
 		unpublishedOps = append(unpublishedOps, unpubOps...)
 	}
@@ -116,7 +118,7 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, opts ...document.Resol
 
 	// apply 'full' operations first
 	if len(fullOps) > 0 {
-		s.logger.Debug("Applying full operations", log.WithTotal(len(fullOps)), log.WithSuffix(uniqueSuffix))
+		s.logger.Debug("Applying full operations", logfields.WithTotal(len(fullOps)), logfields.WithSuffix(uniqueSuffix))
 
 		rm = s.applyOperations(fullOps, rm, getRecoveryCommitment)
 		if rm.Deactivated {
@@ -128,8 +130,8 @@ func (s *OperationProcessor) Resolve(uniqueSuffix string, opts ...document.Resol
 	// next apply update ops since last 'full' transaction
 	filteredUpdateOps := getOpsWithTxnGreaterThanOrUnpublished(updateOps, rm.LastOperationTransactionTime, rm.LastOperationTransactionNumber)
 	if len(filteredUpdateOps) > 0 {
-		s.logger.Debug("Applying update operations after last full operation", log.WithTotal(len(filteredUpdateOps)),
-			log.WithSuffix(uniqueSuffix))
+		s.logger.Debug("Applying update operations after last full operation", logfields.WithTotal(len(filteredUpdateOps)),
+			logfields.WithSuffix(uniqueSuffix))
 		rm = s.applyOperations(filteredUpdateOps, rm, getUpdateCommitment)
 	}
 
@@ -158,15 +160,15 @@ func (s *OperationProcessor) processOperations(
 func (s *OperationProcessor) filterOps(ops []*operation.AnchoredOperation, opts document.ResolutionOptions,
 	uniqueSuffx string) ([]*operation.AnchoredOperation, error) {
 	if opts.VersionID != "" {
-		s.logger.Debug("Filtering operations for unique suffix by version", log.WithSuffix(uniqueSuffx),
-			log.WithVersion(opts.VersionID))
+		s.logger.Debug("Filtering operations for unique suffix by version", logfields.WithSuffix(uniqueSuffx),
+			logfields.WithVersion(opts.VersionID))
 
 		return filterOpsByVersionID(ops, opts.VersionID)
 	}
 
 	if opts.VersionTime != "" {
-		s.logger.Debug("Filtering operations for unique suffix by versionTime", log.WithSuffix(uniqueSuffx),
-			log.WithVersionTime(opts.VersionTime))
+		s.logger.Debug("Filtering operations for unique suffix by versionTime", logfields.WithSuffix(uniqueSuffx),
+			logfields.WithVersionTime(opts.VersionTime))
 
 		return filterOpsByVersionTime(ops, opts.VersionTime)
 	}
@@ -222,8 +224,8 @@ func (s *OperationProcessor) applyResolutionOptions(uniqueSuffix string, publish
 
 	ops := append(published, unpublished...) //nolint:gocritic
 
-	s.logger.Debug("Found operations for unique suffix", log.WithTotalOperations(len(ops)),
-		log.WithSuffix(uniqueSuffix), log.WithOperations(ops))
+	s.logger.Debug("Found operations for unique suffix", logfields.WithTotalOperations(len(ops)),
+		logfields.WithSuffix(uniqueSuffix), logfields.WithOperations(ops))
 
 	filteredOps, err := s.filterOps(ops, opts, uniqueSuffix)
 	if err != nil {
@@ -265,18 +267,18 @@ func (s *OperationProcessor) createOperationHashMap(ops []*operation.AnchoredOpe
 	for _, op := range ops {
 		rv, err := s.getRevealValue(op)
 		if err != nil {
-			s.logger.Info("Skipped bad operation while creating operation hash map", log.WithSuffix(op.UniqueSuffix),
-				log.WithOperationType(string(op.Type)), log.WithTransactionTime(op.TransactionTime),
-				log.WithTransactionNumber(op.TransactionNumber), log.WithError(err))
+			s.logger.Info("Skipped bad operation while creating operation hash map", logfields.WithSuffix(op.UniqueSuffix),
+				logfields.WithOperationType(string(op.Type)), logfields.WithTransactionTime(op.TransactionTime),
+				logfields.WithTransactionNumber(op.TransactionNumber), log.WithError(err))
 
 			continue
 		}
 
 		c, err := commitment.GetCommitmentFromRevealValue(rv)
 		if err != nil {
-			s.logger.Info("Skipped calculating commitment while creating operation hash map", log.WithSuffix(op.UniqueSuffix),
-				log.WithOperationType(string(op.Type)), log.WithTransactionTime(op.TransactionTime),
-				log.WithTransactionNumber(op.TransactionNumber), log.WithError(err))
+			s.logger.Info("Skipped calculating commitment while creating operation hash map", logfields.WithSuffix(op.UniqueSuffix),
+				logfields.WithOperationType(string(op.Type)), logfields.WithTransactionTime(op.TransactionTime),
+				logfields.WithTransactionNumber(op.TransactionNumber), log.WithError(err))
 
 			continue
 		}
@@ -350,19 +352,19 @@ func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation,
 
 	c := commitmentFnc(state)
 
-	s.logger.Debug("Processing commitment", log.WithCommitment(c), log.WithSuffix(uniqueSuffix))
+	s.logger.Debug("Processing commitment", logfields.WithCommitment(c), logfields.WithSuffix(uniqueSuffix))
 
 	commitmentOps, ok := opMap[c]
 	for ok {
-		s.logger.Debug("Found operation(s) for commitment", log.WithTotal(len(commitmentOps)),
-			log.WithCommitment(c), log.WithSuffix(uniqueSuffix))
+		s.logger.Debug("Found operation(s) for commitment", logfields.WithTotal(len(commitmentOps)),
+			logfields.WithCommitment(c), logfields.WithSuffix(uniqueSuffix))
 
 		newState := s.applyFirstValidOperation(commitmentOps, state, c, commitmentMap)
 
 		// can't find a valid operation to apply
 		if newState == nil {
-			s.logger.Info("Unable to apply valid operation for commitment", log.WithCommitment(c),
-				log.WithSuffixes(uniqueSuffix))
+			s.logger.Info("Unable to apply valid operation for commitment", logfields.WithCommitment(c),
+				logfields.WithSuffixes(uniqueSuffix))
 
 			break
 		}
@@ -371,12 +373,12 @@ func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation,
 		commitmentMap[c] = true
 		state = newState
 
-		s.logger.Debug("Successfully processed commitment", log.WithCommitment(c), log.WithSuffix(uniqueSuffix))
+		s.logger.Debug("Successfully processed commitment", logfields.WithCommitment(c), logfields.WithSuffix(uniqueSuffix))
 
 		// get next commitment to be processed
 		c = commitmentFnc(state)
 
-		s.logger.Debug("Next commitment to process", log.WithCommitment(c), log.WithSuffix(uniqueSuffix))
+		s.logger.Debug("Next commitment to process", logfields.WithCommitment(c), logfields.WithSuffix(uniqueSuffix))
 
 		// stop if there is no next commitment
 		if c == "" {
@@ -388,8 +390,8 @@ func (s *OperationProcessor) applyOperations(ops []*operation.AnchoredOperation,
 
 	if len(commitmentMap) != len(ops) {
 		s.logger.Debug("Number of commitments applied doesn't match number of operations",
-			log.WithTotalCommitments(len(commitmentMap)), log.WithTotalOperations(len(ops)),
-			log.WithSuffix(uniqueSuffix))
+			logfields.WithTotalCommitments(len(commitmentMap)), logfields.WithTotalOperations(len(ops)),
+			logfields.WithSuffix(uniqueSuffix))
 	}
 
 	return state
@@ -412,16 +414,16 @@ func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*operati
 		var err error
 
 		if state, err = s.applyOperation(op, rm); err != nil {
-			s.logger.Info("Skipped bad operation", log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
-				log.WithTransactionTime(op.TransactionTime), log.WithTransactionNumber(op.TransactionNumber),
+			s.logger.Info("Skipped bad operation", logfields.WithSuffix(op.UniqueSuffix), logfields.WithOperationType(string(op.Type)),
+				logfields.WithTransactionTime(op.TransactionTime), logfields.WithTransactionNumber(op.TransactionNumber),
 				log.WithError(err))
 
 			continue
 		}
 
 		s.logger.Debug("After applying create op %+v, recover commitment[%s], update commitment[%s], New doc: %s",
-			log.WithOperation(op), log.WithRecoveryCommitment(state.RecoveryCommitment),
-			log.WithUpdateCommitment(state.UpdateCommitment), log.WithDocument(state.Doc))
+			logfields.WithOperation(op), logfields.WithRecoveryCommitment(state.RecoveryCommitment),
+			logfields.WithUpdateCommitment(state.UpdateCommitment), logfields.WithDocument(state.Doc))
 
 		return state
 	}
@@ -438,16 +440,16 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 
 		nextCommitment, err := s.getCommitment(op)
 		if err != nil {
-			s.logger.Info("Skipped bad operation", log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
-				log.WithTransactionTime(op.TransactionTime), log.WithTransactionNumber(op.TransactionNumber), log.WithError(err))
+			s.logger.Info("Skipped bad operation", logfields.WithSuffix(op.UniqueSuffix), logfields.WithOperationType(string(op.Type)),
+				logfields.WithTransactionTime(op.TransactionTime), logfields.WithTransactionNumber(op.TransactionNumber), log.WithError(err))
 
 			continue
 		}
 
 		if currCommitment == nextCommitment {
 			s.logger.Info("Skipped bad operatio. Reason: operation commitment(key) equals next operation commitment(key)",
-				log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
-				log.WithTransactionTime(op.TransactionTime), log.WithTransactionNumber(op.TransactionNumber))
+				logfields.WithSuffix(op.UniqueSuffix), logfields.WithOperationType(string(op.Type)),
+				logfields.WithTransactionTime(op.TransactionTime), logfields.WithTransactionNumber(op.TransactionNumber))
 
 			continue
 		}
@@ -457,23 +459,23 @@ func (s *OperationProcessor) applyFirstValidOperation(ops []*operation.AnchoredO
 			_, processed := processedCommitments[nextCommitment]
 			if processed {
 				s.logger.Info("Skipped bad operation. Reason: next operation commitment(key) has already been used",
-					log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
-					log.WithTransactionTime(op.TransactionTime), log.WithTransactionNumber(op.TransactionNumber))
+					logfields.WithSuffix(op.UniqueSuffix), logfields.WithOperationType(string(op.Type)),
+					logfields.WithTransactionTime(op.TransactionTime), logfields.WithTransactionNumber(op.TransactionNumber))
 
 				continue
 			}
 		}
 
 		if state, err = s.applyOperation(op, rm); err != nil {
-			s.logger.Info("Skipped bad operation", log.WithSuffix(op.UniqueSuffix), log.WithOperationType(string(op.Type)),
-				log.WithTransactionTime(op.TransactionTime), log.WithTransactionNumber(op.TransactionNumber),
+			s.logger.Info("Skipped bad operation", logfields.WithSuffix(op.UniqueSuffix), logfields.WithOperationType(string(op.Type)),
+				logfields.WithTransactionTime(op.TransactionTime), logfields.WithTransactionNumber(op.TransactionNumber),
 				log.WithError(err))
 
 			continue
 		}
 
-		s.logger.Debug("Applyied operation.", log.WithOperation(op), log.WithRecoveryCommitment(state.RecoveryCommitment),
-			log.WithUpdateCommitment(state.UpdateCommitment), log.WithDeactivated(state.Deactivated), log.WithDocument(state.Doc))
+		s.logger.Debug("Applyied operation.", logfields.WithOperation(op), logfields.WithRecoveryCommitment(state.RecoveryCommitment),
+			logfields.WithUpdateCommitment(state.UpdateCommitment), logfields.WithDeactivated(state.Deactivated), logfields.WithDocument(state.Doc))
 
 		return state
 	}
