@@ -9,7 +9,7 @@ package common
 import (
 	"net/http"
 
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	"github.com/trustbloc/logutil-go/pkg/log"
 )
 
 var logger = log.New("sidetree-core-restapi-common")

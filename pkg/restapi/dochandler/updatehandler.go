@@ -12,9 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/restapi/common"
 )
 
@@ -59,7 +61,7 @@ func (h *UpdateHandler) Update(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.Debug("Processing update request", log.WithRequestBody(request))
+	logger.Debug("Processing update request", logfields.WithRequestBody(request))
 
 	response, err := h.doUpdate(request)
 	if err != nil {

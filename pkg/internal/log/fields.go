@@ -20,10 +20,8 @@ const (
 	FieldServiceName               = "service"
 	FieldData                      = "data"
 	FieldRequestBody               = "requestBody"
-	FieldResponse                  = "response"
 	FieldSize                      = "size"
 	FieldMaxSize                   = "maxSize"
-	FieldHTTPStatus                = "httpStatus"
 	FieldParameter                 = "parameter"
 	FieldTotal                     = "total"
 	FieldSuffix                    = "suffix"
@@ -63,11 +61,6 @@ const (
 	FieldAlias                     = "alias"
 )
 
-// WithError sets the error field.
-func WithError(err error) zap.Field {
-	return zap.Error(err)
-}
-
 // WithURIString sets the uri field.
 func WithURIString(value string) zap.Field {
 	return zap.String(FieldURI, value)
@@ -83,11 +76,6 @@ func WithRequestBody(value []byte) zap.Field {
 	return zap.String(FieldRequestBody, string(value))
 }
 
-// WithResponse sets the response field.
-func WithResponse(value []byte) zap.Field {
-	return zap.String(FieldResponse, string(value))
-}
-
 // WithServiceName sets the service field.
 func WithServiceName(value string) zap.Field {
 	return zap.String(FieldServiceName, value)
@@ -101,11 +89,6 @@ func WithSize(value int) zap.Field {
 // WithMaxSize sets the max-size field.
 func WithMaxSize(value int) zap.Field {
 	return zap.Int(FieldMaxSize, value)
-}
-
-// WithHTTPStatus sets the http-status field.
-func WithHTTPStatus(value int) zap.Field {
-	return zap.Int(FieldHTTPStatus, value)
 }
 
 // WithParameter sets the parameter field.

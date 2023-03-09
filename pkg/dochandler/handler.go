@@ -24,12 +24,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/canonicalizer"
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 var logger = log.New("sidetree-core-dochandler")
@@ -219,7 +221,7 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 
 	r.metrics.AddOperationToBatchTime(time.Since(addToBatchStartTime))
 
-	logger.Debug("Aperation added to the batch", log.WithOperationID(op.ID))
+	logger.Debug("Aperation added to the batch", logfields.WithOperationID(op.ID))
 
 	// create operation will also return document
 	if op.Type == operation.TypeCreate {
@@ -427,7 +429,7 @@ func (r *DocumentHandler) resolveRequestWithID(shortFormDid, uniquePortion strin
 	opts ...document.ResolutionOption) (*document.ResolutionResult, error) {
 	internalResult, err := r.processor.Resolve(uniquePortion, opts...)
 	if err != nil {
-		logger.Debug("Failed to resolve uniquePortion", log.WithSuffix(uniquePortion), log.WithError(err))
+		logger.Debug("Failed to resolve uniquePortion", logfields.WithSuffix(uniquePortion), log.WithError(err))
 
 		return nil, err
 	}
@@ -604,14 +606,14 @@ func (d *defaultOperationDecorator) Decorate(op *operation.Operation) (*operatio
 	if op.Type != operation.TypeCreate {
 		internalResult, err := d.processor.Resolve(op.UniqueSuffix)
 		if err != nil {
-			logger.Debug("Failed to resolve suffix for operation", log.WithSuffix(op.UniqueSuffix),
-				log.WithOperationType(string(op.Type)), log.WithError(err))
+			logger.Debug("Failed to resolve suffix for operation", logfields.WithSuffix(op.UniqueSuffix),
+				logfields.WithOperationType(string(op.Type)), log.WithError(err))
 
 			return nil, err
 		}
 
-		logger.Debug("Processor returned internal result for suffix", log.WithSuffix(op.UniqueSuffix),
-			log.WithOperationType(string(op.Type)), log.WithResolutionModel(internalResult))
+		logger.Debug("Processor returned internal result for suffix", logfields.WithSuffix(op.UniqueSuffix),
+			logfields.WithOperationType(string(op.Type)), logfields.WithResolutionModel(internalResult))
 
 		if internalResult.Deactivated {
 			return nil, fmt.Errorf("document has been deactivated, no further operations are allowed")

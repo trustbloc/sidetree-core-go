@@ -9,9 +9,11 @@ package cutter
 import (
 	"fmt"
 
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 var logger = log.New("sidetree-core-cutter")
@@ -104,8 +106,8 @@ func (r *BatchCutter) Cut(force bool) (Result, error) {
 
 	pending -= batchSize
 
-	logger.Info("Removing operations from queue.", log.WithTotalPending(pending),
-		log.WithMaxSize(int(maxOperationsPerBatch)), log.WithSize(int(batchSize)))
+	logger.Info("Removing operations from queue.", logfields.WithTotalPending(pending),
+		logfields.WithMaxSize(int(maxOperationsPerBatch)), logfields.WithSize(int(batchSize)))
 
 	ops, ack, nack, err := r.pendingBatch.Remove(batchSize)
 	if err != nil {
@@ -134,8 +136,8 @@ func getOperationsAtProtocolVersion(opsAtTime []*operation.QueuedOperationAtTime
 		if op.ProtocolVersion != protocolVersion {
 			// This operation was added using a different transaction time so it can't go into the same batch
 			logger.Info("Not adding operation since its protocol genesis time is different from the protocol genesis "+
-				"time of the existing ops in the batch.", log.WithOperationGenesisTime(op.ProtocolVersion),
-				log.WithGenesisTime(protocolVersion))
+				"time of the existing ops in the batch.", logfields.WithOperationGenesisTime(op.ProtocolVersion),
+				logfields.WithGenesisTime(protocolVersion))
 
 			break
 		}

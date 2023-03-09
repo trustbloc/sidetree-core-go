@@ -11,10 +11,12 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/txn"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 )
 
 var logger = log.New("sidetree-core-observer")
@@ -75,7 +77,7 @@ func WithUnpublishedOperationStore(store unpublishedOperationStore, opTypes []op
 //
 //nolint:gocritic
 func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) (int, error) {
-	logger.Debug("Processing sidetree txn for suffixes", log.WithSidetreeTxn(sidetreeTxn), log.WithSuffixes(suffixes...))
+	logger.Debug("Processing sidetree txn for suffixes", logfields.WithSidetreeTxn(sidetreeTxn), logfields.WithSuffixes(suffixes...))
 
 	txnOps, err := p.OperationProtocolProvider.GetTxnOperations(&sidetreeTxn)
 	if err != nil {
@@ -86,7 +88,7 @@ func (p *TxnProcessor) Process(sidetreeTxn txn.SidetreeTxn, suffixes ...string) 
 }
 
 func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperation, sidetreeTxn *txn.SidetreeTxn) (int, error) {
-	logger.Debug("Processing transaction operations", log.WithTotal(len(txnOps)))
+	logger.Debug("Processing transaction operations", logfields.WithTotal(len(txnOps)))
 
 	batchSuffixes := make(map[string]bool)
 
@@ -97,14 +99,14 @@ func (p *TxnProcessor) processTxnOperations(txnOps []*operation.AnchoredOperatio
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
 			logger.Warn("Duplicate suffix found in transaction operations: discarding operation",
-				log.WithNamespace(sidetreeTxn.Namespace), log.WithSuffix(op.UniqueSuffix), log.WithOperation(op))
+				logfields.WithNamespace(sidetreeTxn.Namespace), logfields.WithSuffix(op.UniqueSuffix), logfields.WithOperation(op))
 
 			continue
 		}
 
 		updatedOp := updateAnchoredOperation(op, sidetreeTxn)
 
-		logger.Debug("Updated operation with anchoring time", log.WithSuffix(updatedOp.UniqueSuffix))
+		logger.Debug("Updated operation with anchoring time", logfields.WithSuffix(updatedOp.UniqueSuffix))
 
 		ops = append(ops, updatedOp)
 

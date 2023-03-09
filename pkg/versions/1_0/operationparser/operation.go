@@ -11,10 +11,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/trustbloc/logutil-go/pkg/log"
+
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
 )
 
@@ -133,8 +135,8 @@ func (p *Parser) ParseOperation(namespace string, operationBuffer []byte, batch 
 	}
 
 	if parseErr != nil {
-		logger.Warn("Error parsing operation for batch", log.WithOperation(schema.Operation),
-			log.WithIsBatch(batch), log.WithError(parseErr))
+		logger.Warn("Error parsing operation for batch", logfields.WithOperation(schema.Operation),
+			logfields.WithIsBatch(batch), log.WithError(parseErr))
 
 		return nil, parseErr
 	}

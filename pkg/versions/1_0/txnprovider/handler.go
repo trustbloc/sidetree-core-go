@@ -14,7 +14,7 @@ import (
 	"github.com/trustbloc/sidetree-core-go/pkg/api/operation"
 	"github.com/trustbloc/sidetree-core-go/pkg/api/protocol"
 	"github.com/trustbloc/sidetree-core-go/pkg/docutil"
-	"github.com/trustbloc/sidetree-core-go/pkg/internal/log"
+	logfields "github.com/trustbloc/sidetree-core-go/pkg/internal/log"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/model"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/operationparser"
 	"github.com/trustbloc/sidetree-core-go/pkg/versions/1_0/txnprovider/models"
@@ -160,7 +160,7 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 			if e == operationparser.ErrOperationExpired {
 				// stale operations should not be added to the batch; ignore operation
 				logger.Warn("Stale operation found in batch operations: discarding operation",
-					log.WithOperation(queuedOperation.Namespace))
+					logfields.WithOperation(queuedOperation.Namespace))
 
 				expiredOperations = append(expiredOperations, queuedOperation)
 
@@ -175,7 +175,7 @@ func (h *OperationHandler) parseOperations(ops []*operation.QueuedOperation) (*m
 		_, ok := batchSuffixes[op.UniqueSuffix]
 		if ok {
 			logger.Debug("Additional operation found in batch operations - adding operation to additional queue to be processed in the next batch",
-				log.WithNamespace(queuedOperation.Namespace), log.WithSuffix(op.UniqueSuffix))
+				logfields.WithNamespace(queuedOperation.Namespace), logfields.WithSuffix(op.UniqueSuffix))
 
 			additionalOperations = append(additionalOperations, queuedOperation)
 
@@ -287,7 +287,7 @@ func (h *OperationHandler) writeModelToCAS(m interface{}, alias string) (string,
 		return "", fmt.Errorf("failed to marshal %s file: %s", alias, err.Error())
 	}
 
-	logger.Debug("Writing file", log.WithAlias(alias), log.WithContent(bytes))
+	logger.Debug("Writing file", logfields.WithAlias(alias), logfields.WithContent(bytes))
 
 	compressedBytes, err := h.cp.Compress(h.protocol.CompressionAlgorithm, bytes)
 	if err != nil {
