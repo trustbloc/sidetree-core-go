@@ -665,8 +665,8 @@ func (h *OperationProvider) readFromCAS(uri string, maxSize uint, alternateSourc
 
 		b, e := h.readFromAlternateCASSources(uri, alternateSources)
 		if e != nil {
-			logger.Info("Failed to retrieve CAS content from alternate sources.",
-				logfields.WithURIString(uri), log.WithError(err), logfields.WithSources(alternateSources...))
+			logger.Warn("Failed to retrieve CAS content from alternate sources.",
+				logfields.WithURIString(uri), log.WithError(e), logfields.WithSources(alternateSources...))
 
 			return nil, fmt.Errorf("retrieve CAS content at uri[%s]: %w", uri, err)
 		}
@@ -808,22 +808,22 @@ func (h *OperationProvider) validateURI(uri string) error {
 // is composed using a provided CAS URI formatter, since the format of the URI is implementation-specific.
 func (h *OperationProvider) readFromAlternateCASSources(casURI string, sources []string) ([]byte, error) {
 	for _, source := range sources {
-		casURIForSource, e := h.formatCASURIForSource(casURI, source)
-		if e != nil {
-			logger.Info("Error formatting CAS reference for alternate source",
-				logfields.WithSource(casURIForSource), log.WithError(e))
+		casURIForSource, err := h.formatCASURIForSource(casURI, source)
+		if err != nil {
+			logger.Warn("Error formatting CAS reference for alternate source",
+				logfields.WithSource(source), log.WithError(err))
 
 			continue
 		}
 
-		b, e := h.cas.Read(casURIForSource)
-		if e == nil {
+		b, err := h.cas.Read(casURIForSource)
+		if err == nil {
 			logger.Debug("Successfully retrieved CAS content from alternate source", logfields.WithSource(casURIForSource))
 
 			return b, nil
 		}
 
-		logger.Info("Error retrieving CAS content from alternate source", logfields.WithSource(casURIForSource), log.WithError(e))
+		logger.Warn("Error retrieving CAS content from alternate source", logfields.WithSource(casURIForSource), log.WithError(err))
 	}
 
 	return nil, fmt.Errorf("retrieve CAS content from alternate source failed")
