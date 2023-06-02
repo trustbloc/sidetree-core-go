@@ -221,7 +221,7 @@ func (r *DocumentHandler) ProcessOperation(operationBuffer []byte, protocolVersi
 
 	r.metrics.AddOperationToBatchTime(time.Since(addToBatchStartTime))
 
-	logger.Debug("Aperation added to the batch", logfields.WithOperationID(op.ID))
+	logger.Debug("Operation added to the batch", logfields.WithOperationID(op.ID))
 
 	// create operation will also return document
 	if op.Type == operation.TypeCreate {

@@ -421,7 +421,7 @@ func (s *OperationProcessor) applyFirstValidCreateOperation(createOps []*operati
 			continue
 		}
 
-		s.logger.Debug("After applying create op %+v, recover commitment[%s], update commitment[%s], New doc: %s",
+		s.logger.Debug("Applied create operation, recover commitment, update commitment which results in new document",
 			logfields.WithOperation(op), logfields.WithRecoveryCommitment(state.RecoveryCommitment),
 			logfields.WithUpdateCommitment(state.UpdateCommitment), logfields.WithDocument(state.Doc))
 
