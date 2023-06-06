@@ -269,22 +269,26 @@ func (r *Writer) process(ops []*operation.QueuedOperation, protocolVersion uint6
 		return err
 	}
 
-	// Sidetree spec allows for one operation per suffix in the batch
-	// Process additional operations for suffix in the next batch
-	for _, op := range anchoringInfo.AdditionalOperations {
-		err = r.Add(op, protocolVersion)
-		if err != nil {
-			// this error should never happen since parsing of this operation has already been done for the previous batch
-			r.logger.Warn("Unable to add additional operation to the next batch",
-				logfields.WithSuffix(op.UniqueSuffix), log.WithError(err))
-		}
-	}
-
 	r.logger.Info("Writing anchor string", logfields.WithAnchorString(anchoringInfo.AnchorString))
 
 	// Create Sidetree transaction in anchoring system (write anchor string)
-	return r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts,
+	err = r.context.Anchor().WriteAnchor(anchoringInfo.AnchorString, anchoringInfo.Artifacts,
 		anchoringInfo.OperationReferences, protocolVersion)
+	if err != nil {
+		return fmt.Errorf("write anchor [%s]: %w", anchoringInfo.AnchorString, err)
+	}
+
+	// Sidetree spec allows for one operation per suffix in the batch
+	// Process additional operations for suffix in the next batch
+	for _, op := range anchoringInfo.AdditionalOperations {
+		if e := r.Add(op, protocolVersion); e != nil {
+			// this error should never happen since parsing of this operation has already been done for the previous batch
+			r.logger.Warn("Unable to add additional operation to the next batch",
+				logfields.WithSuffix(op.UniqueSuffix), log.WithError(e))
+		}
+	}
+
+	return nil
 }
 
 // WithBatchTimeout allows for specifying batch timeout.
