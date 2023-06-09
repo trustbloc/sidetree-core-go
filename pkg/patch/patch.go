@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/trustbloc/sidetree-core-go/pkg/document"
@@ -103,8 +104,8 @@ func PatchesFromDocument(doc string) ([]Patch, error) {
 	var docPatches []Patch
 	var jsonPatches []string
 
-	for key, value := range parsed {
-		jsonBytes, err := json.Marshal(value)
+	for _, key := range sortedKeys(parsed) {
+		jsonBytes, err := json.Marshal(parsed[key])
 		if err != nil {
 			return nil, err
 		}
@@ -431,4 +432,19 @@ func getGenericArray(arr []string) []interface{} {
 	}
 
 	return values
+}
+
+func sortedKeys(m map[string]interface{}) []string {
+	keys := make([]string, len(m))
+
+	i := 0
+
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }
