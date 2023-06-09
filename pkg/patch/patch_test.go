@@ -100,6 +100,20 @@ func TestPatchesFromDocument(t *testing.T) {
 		require.Nil(t, p)
 		require.Contains(t, err.Error(), "document must NOT have the id property")
 	})
+	t.Run("patches array is always in the same order", func(t *testing.T) {
+		var prev []Patch
+
+		for i := 1; i <= 100; i++ {
+			patches, err := PatchesFromDocument(testDoc)
+			require.NoError(t, err)
+
+			if prev != nil {
+				require.Equalf(t, prev, patches, "expecting the patches array to be in the same order")
+			}
+
+			prev = patches
+		}
+	})
 }
 
 func TestReplacePatch(t *testing.T) {
