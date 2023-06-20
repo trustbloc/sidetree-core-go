@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package opqueue
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -76,7 +77,7 @@ func TestMemQueue(t *testing.T) {
 	require.Equal(t, *op2, ops[0].QueuedOperation)
 	require.Equal(t, *op3, ops[1].QueuedOperation)
 
-	nack()
+	nack(errors.New("injected error"))
 
 	ops, ack, _, err = q.Remove(5)
 	require.NoError(t, err)
