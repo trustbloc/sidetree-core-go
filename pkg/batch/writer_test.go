@@ -377,7 +377,7 @@ func TestProcessError(t *testing.T) {
 
 		q.LenReturns(1)
 		q.PeekReturns(invalidQueue, nil)
-		q.RemoveReturns(nil, func() uint { return 0 }, func() {}, nil)
+		q.RemoveReturns(nil, func() uint { return 0 }, func(error) {}, nil)
 
 		ctx := newMockContext()
 		ctx.ProtocolClient.Protocol.MaxOperationCount = 1

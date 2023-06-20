@@ -45,7 +45,7 @@ func (q *MemQueue) Peek(num uint) (operation.QueuedOperationsAtTime, error) {
 }
 
 // Remove removes (up to) the given number of items from the head of the queue.
-func (q *MemQueue) Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(), err error) {
+func (q *MemQueue) Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(error), err error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -64,7 +64,7 @@ func (q *MemQueue) Remove(num uint) (ops operation.QueuedOperationsAtTime, ack f
 
 			return uint(len(q.items))
 		},
-		func() {
+		func(error) {
 			q.mutex.Lock()
 			defer q.mutex.Unlock()
 

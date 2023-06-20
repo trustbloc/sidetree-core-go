@@ -26,7 +26,7 @@ type OperationQueue interface {
 	// - The operations that are to be removed.
 	// - The 'Ack' function that must be called to commit the remove.
 	// - The 'Nack' function that must be called to roll back the remove.
-	Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(), err error)
+	Remove(num uint) (ops operation.QueuedOperationsAtTime, ack func() uint, nack func(error), err error)
 	// Peek returns (up to) the given number of operations from the head of the queue but does not remove them.
 	Peek(num uint) (operation.QueuedOperationsAtTime, error)
 	// Len returns the number of operation in the queue.
@@ -48,7 +48,7 @@ type Result struct {
 	// Ack commits the remove from the queue and returns the number of pending operations.
 	Ack func() uint
 	// Nack rolls back the remove so that a retry may occur.
-	Nack func()
+	Nack func(error)
 }
 
 // BatchCutter implements batch cutting.

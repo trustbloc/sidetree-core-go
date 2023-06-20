@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cutter
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -68,7 +69,7 @@ func TestBatchCutter(t *testing.T) {
 	require.Zero(t, result.Pending)
 	require.Equal(t, uint64(10), result.ProtocolVersion)
 
-	result.Nack()
+	result.Nack(errors.New("injected error"))
 
 	// After a rollback, the operations should still be in the queue
 	result, err = r.Cut(true)

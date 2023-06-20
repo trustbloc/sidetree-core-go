@@ -239,7 +239,7 @@ func (r *Writer) cutAndProcess(forceCut bool) (numProcessed int, pending uint, e
 	if err != nil {
 		r.logger.Error("Error processing batch operations", logfields.WithTotal(len(result.Operations)), log.WithError(err))
 
-		result.Nack()
+		result.Nack(err)
 
 		return 0, result.Pending + uint(len(result.Operations)), err
 	}
