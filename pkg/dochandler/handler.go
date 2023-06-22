@@ -540,10 +540,12 @@ func (r *DocumentHandler) resolveRequestWithInitialState(uniqueSuffix, longFormD
 func (r *DocumentHandler) addToBatch(op *operation.Operation, versionTime uint64) error {
 	return r.writer.Add(
 		&operation.QueuedOperation{
+			Type:             op.Type,
 			Namespace:        r.namespace,
 			UniqueSuffix:     op.UniqueSuffix,
 			OperationRequest: op.OperationRequest,
 			AnchorOrigin:     op.AnchorOrigin,
+			Properties:       op.Properties,
 		}, versionTime)
 }
 

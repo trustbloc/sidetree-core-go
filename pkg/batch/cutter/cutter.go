@@ -144,9 +144,11 @@ func getOperationsAtProtocolVersion(opsAtTime []*operation.QueuedOperationAtTime
 
 		ops = append(ops,
 			&operation.QueuedOperation{
+				Type:             op.Type,
 				OperationRequest: op.OperationRequest,
 				UniqueSuffix:     op.UniqueSuffix,
 				Namespace:        op.Namespace,
+				Properties:       op.Properties,
 			},
 		)
 	}

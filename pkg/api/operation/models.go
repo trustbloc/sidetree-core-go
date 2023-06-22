@@ -6,6 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 
 package operation
 
+// Property contains a key-value pair.
+type Property struct {
+	Key   string
+	Value interface{}
+}
+
 // Operation holds minimum information required for parsing/validating client request.
 type Operation struct {
 
@@ -23,6 +29,9 @@ type Operation struct {
 
 	// AnchorOrigin defines anchor origin.
 	AnchorOrigin interface{}
+
+	// Properties contains an arbitrary set of implementation-specific name-value pairs.
+	Properties []Property
 }
 
 // Reference holds minimum information about did operation (suffix and type).
@@ -90,10 +99,12 @@ const (
 
 // QueuedOperation stores minimum required operation info for operations queue.
 type QueuedOperation struct {
+	Type             Type
 	OperationRequest []byte
 	UniqueSuffix     string
 	Namespace        string
 	AnchorOrigin     interface{}
+	Properties       []Property
 }
 
 // QueuedOperationAtTime contains queued operation info with protocol genesis time.
