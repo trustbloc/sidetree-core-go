@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5.0.0
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6.0.0
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Run checks
@@ -38,20 +38,22 @@ jobs:
         os: [ubuntu-latest]
     steps:
       - name: Setup Go 1.25
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6.0.0
         with:
           go-version: 1.25
         id: go
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5.0.0
 
       - name: Run unit test
         timeout-minutes: 15
         run: make unit-test
+        env:
+          CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
 
       - name: Upload coverage to Codecov
         timeout-minutes: 10
         if: matrix.os == 'ubuntu-latest' && github.repository == 'trustbloc/sidetree-core-go'
-        uses: codecov/codecov-action@v1.3.1
+        uses: codecov/codecov-action@v5.5.1
         with:
           file: ./coverage.txt
