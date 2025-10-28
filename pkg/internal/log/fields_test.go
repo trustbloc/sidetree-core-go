@@ -36,7 +36,7 @@ func TestStandardFields(t *testing.T) {
 			WithOperationGenesisTime(3321), WithID("id1"), WithResolutionModel(rm),
 		)
 
-		t.Logf(stdOut.String())
+		t.Logf("%s", stdOut.String())
 		l := unmarshalLogData(t, stdOut.Bytes())
 
 		require.Equal(t, `Some message`, l.Msg)
